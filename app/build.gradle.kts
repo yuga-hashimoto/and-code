@@ -270,7 +270,13 @@ tasks.register<JacocoReport>("jacocoTestReport") {
         fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) { exclude(generated) },
     )
     sourceDirectories.setFrom(files("src/main/java"))
+    // Only the unit test coverage directories, never the whole build directory: scanning that
+    // makes Gradle treat every other task's output as an undeclared input of this one, which fails
+    // the build as soon as a release variant is assembled in the same invocation.
     executionData.setFrom(
-        fileTree(layout.buildDirectory) { include("**/*.exec", "**/*.ec") },
+        fileTree(layout.buildDirectory.dir("jacoco")) { include("*.exec") },
+        fileTree(layout.buildDirectory.dir("outputs/unit_test_code_coverage")) {
+            include("**/*.exec")
+        },
     )
 }
