@@ -40,6 +40,7 @@ import com.opencode.android.feature.workspace.RemoteConnectionScreen
 import com.opencode.android.runtime.LocalRuntimeStatus
 import com.opencode.android.runtime.RuntimeType
 import com.opencode.android.runtime.WorkspaceRef
+import com.opencode.android.ui.components.SessionStatus
 import com.opencode.android.ui.theme.OpenCodeAndroidTheme
 import org.junit.Rule
 import org.junit.Test
@@ -128,13 +129,29 @@ class UiScreenshotInstrumentedTest {
                         AppDrawerContent(
                             recentSessions =
                                 listOf(
-                                    DrawerRecentSession("1", "認証エラーの調査", "3時間前"),
-                                    DrawerRecentSession("2", "READMEを更新", "昨日"),
+                                    DrawerRecentSession(
+                                        "1",
+                                        "認証エラーの調査",
+                                        "3時間前",
+                                        status = SessionStatus.RUNNING,
+                                    ),
+                                    DrawerRecentSession(
+                                        "2",
+                                        "READMEを更新",
+                                        "昨日",
+                                        status = SessionStatus.COMPLETED_UNREAD,
+                                    ),
                                     DrawerRecentSession("3", "テスト失敗を修正", "2日前"),
                                     DrawerRecentSession("4", "APIレスポンスを整理", "4日前"),
                                     DrawerRecentSession("5", "依存関係を更新", "1週間前"),
                                 ),
+                            workspaces =
+                                listOf(
+                                    WorkspaceRef("1", "project", "/workspace/project"),
+                                ),
+                            selectedWorkspacePath = "/workspace/project",
                             onNewChat = {},
+                            onSelectProject = {},
                             onOpenSession = { _, _ -> },
                             onNavigate = {},
                         )
@@ -271,8 +288,10 @@ class UiScreenshotInstrumentedTest {
             VoiceSettingsScreen(
                 ttsEnabled = true,
                 continuousConversation = false,
+                wakeWordEnabled = false,
                 onTtsChange = {},
                 onContinuousChange = {},
+                onWakeWordChange = {},
                 onBack = {},
             )
         }
