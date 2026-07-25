@@ -13,8 +13,10 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -59,37 +61,43 @@ class RuntimeActivityRepository(
                 mutableState.value = RuntimeActivityState()
                 if (target == null) return@selected
 
-                target.state.collectLatest state@ { runtimeState ->
-                    mutableState.update {
-                        it.copy(
-                            activeSessionIds = emptySet(),
-                            permissions = emptyList(),
-                            streamError = null
-                        )
-                    }
-                    if (runtimeState !is RuntimeState.Connected) return@state
+                // `connect()` briefly flips the target to Connecting on every catalog refresh.
+                // Treating Connecting as still-streamable keeps the event subscription alive
+                // instead of tearing it down and losing events on each refresh.
+                target.state
+                    .map { it is RuntimeState.Connected || it is RuntimeState.Connecting }
+                    .distinctUntilChanged()
+                    .collectLatest state@ { streamable ->
+                        mutableState.update {
+                            it.copy(
+                                activeSessionIds = emptySet(),
+                                permissions = emptyList(),
+                                streamError = null
+                            )
+                        }
+                        if (!streamable) return@state
 
-                    flow { emitAll(target.events()) }
-                        .retryWhen { error, attempt ->
-                            mutableState.update {
-                                it.copy(
-                                    streamError = error.message
-                                        ?: "OpenCodeイベント接続に失敗しました"
-                                )
+                        flow { emitAll(target.events()) }
+                            .retryWhen { error, attempt ->
+                                mutableState.update {
+                                    it.copy(
+                                        streamError = error.message
+                                            ?: "OpenCodeイベント接続に失敗しました"
+                                    )
+                                }
+                                if (retryDelayMillis > 0L) {
+                                    val backoff = (retryDelayMillis * (1L shl attempt.toInt().coerceAtMost(4)))
+                                        .coerceAtMost(maxRetryDelayMillis)
+                                    delay(backoff)
+                                }
+                                true
                             }
-                            if (retryDelayMillis > 0L) {
-                                val backoff = (retryDelayMillis * (1L shl attempt.toInt().coerceAtMost(4)))
-                                    .coerceAtMost(maxRetryDelayMillis)
-                                delay(backoff)
+                            .collect { event ->
+                                mutableState.update { it.copy(streamError = null) }
+                                mutableEvents.emit(event)
+                                handle(event)
                             }
-                            true
-                        }
-                        .collect { event ->
-                            mutableState.update { it.copy(streamError = null) }
-                            mutableEvents.emit(event)
-                            handle(event)
-                        }
-                }
+                    }
             }
         }
     }
@@ -103,6 +111,11 @@ class RuntimeActivityRepository(
     private fun handle(event: OpenCodeEvent) {
         when (event) {
             OpenCodeEvent.ServerConnected -> appendLog("イベント接続", "OpenCodeのリアルタイムイベントへ接続しました")
+            is OpenCodeEvent.MessageUpdated -> {
+                mutableState.update { current ->
+                    current.copy(activeSessionIds = current.activeSessionIds + event.info.sessionId)
+                }
+            }
             is OpenCodeEvent.MessagePartUpdated -> {
                 val sessionId = event.part.sessionId ?: return
                 mutableState.update { current ->
@@ -127,6 +140,23 @@ class RuntimeActivityRepository(
                 }
                 appendLog("承認待ち", event.request.permission, event.request.sessionId)
                 onPermissionAsked?.invoke(event.request)
+            }
+            is OpenCodeEvent.SessionStatusChanged -> {
+                // Notifications stay driven by session.idle so a run is never announced twice.
+                mutableState.update { current ->
+                    current.copy(
+                        activeSessionIds = if (event.status == "idle") {
+                            current.activeSessionIds - event.sessionId
+                        } else {
+                            current.activeSessionIds + event.sessionId
+                        }
+                    )
+                }
+            }
+            is OpenCodeEvent.PermissionReplied -> {
+                mutableState.update { current ->
+                    current.copy(permissions = current.permissions.filterNot { it.id == event.requestId })
+                }
             }
             is OpenCodeEvent.SessionIdle -> {
                 mutableState.update { current ->

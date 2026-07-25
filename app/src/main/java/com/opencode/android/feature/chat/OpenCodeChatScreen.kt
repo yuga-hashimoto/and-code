@@ -105,7 +105,9 @@ fun OpenCodeChatScreen(
     var input by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    LaunchedEffect(state.messages.size, state.permissions.size) {
+    val tailSignature = state.messages.lastOrNull()?.contentSignature()
+
+    LaunchedEffect(state.messages.size, state.permissions.size, tailSignature) {
         val totalItems = state.messages.size + state.permissions.size
         if (totalItems > 0) listState.animateScrollToItem(totalItems - 1)
     }

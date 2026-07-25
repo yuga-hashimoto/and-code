@@ -183,7 +183,11 @@ interface OpenCodeBackend {
 
 - 標準ポート: 4096
 - ヘルスチェック: `GET /global/health`
-- イベント: `GET /event`のSSE
+- イベント: `GET /global/event`のSSE（未対応サーバーでは`GET /event`へフォールバック）
+  - `GET /event`はインスタンス単位（`directory`クエリ、既定はサーバーのカレントディレクトリ）に
+    スコープされるため、別の作業フォルダで作成したセッションのイベントが一切届かない。
+    ツール出力もストリーミング本文も承認要求も受け取れず、承認待ちのまま実行が止まる。
+    横断ストリームの`/global/event`を使い、`{directory, payload}`エンベロープを展開する。
 - 認証: HTTP Basic認証
 - アプリは平文HTTPをデフォルトではローカルネットワーク・Tailscale接続だけに許可する
 - インターネット越しにはHTTPSを必須にする

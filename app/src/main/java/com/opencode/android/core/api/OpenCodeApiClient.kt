@@ -13,6 +13,8 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlinx.coroutines.flow.emitAll
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.retryWhen
 import kotlinx.coroutines.withContext
 import okhttp3.Credentials
@@ -32,6 +34,10 @@ class OpenCodeApiClient(
     private val eventParser: OpenCodeEventParser = OpenCodeEventParser(gson)
 ) {
     private val baseUrl: HttpUrl = OpenCodeUrl.normalize(profile.baseUrl).getOrThrow()
+
+    @Volatile
+    private var eventPath: String = GLOBAL_EVENT_PATH
+
     private val providerAuthHttpClient: OkHttpClient = httpClient.newBuilder()
         .readTimeout(PROVIDER_AUTH_TIMEOUT_MINUTES, TimeUnit.MINUTES)
         .callTimeout(PROVIDER_AUTH_TIMEOUT_MINUTES, TimeUnit.MINUTES)
@@ -263,7 +269,25 @@ class OpenCodeApiClient(
         )
     }
 
-    fun events(): Flow<OpenCodeEvent> = singleEventStream().retryWhen { cause, attempt ->
+    /**
+     * OpenCode's `/event` stream is scoped to a single instance — the one rooted at the
+     * `directory` query parameter, defaulting to the server's own working directory. A session
+     * created in any other workspace therefore produces no events at all on that stream, so the
+     * client subscribes to the cross-instance `/global/event` stream and falls back to `/event`
+     * only when the server is too old to expose it.
+     */
+    fun events(): Flow<OpenCodeEvent> = flow {
+        emitAll(singleEventStream(eventPath))
+    }.retryWhen { cause, attempt ->
+        if (
+            eventPath == GLOBAL_EVENT_PATH &&
+            cause is OpenCodeApiException &&
+            cause.statusCode in GLOBAL_EVENT_UNSUPPORTED_CODES
+        ) {
+            eventPath = INSTANCE_EVENT_PATH
+            return@retryWhen true
+        }
+
         val retryable = cause !is OpenCodeApiException || cause.statusCode >= 500
         if (!retryable) return@retryWhen false
 
@@ -273,11 +297,11 @@ class OpenCodeApiClient(
         true
     }
 
-    private fun singleEventStream(): Flow<OpenCodeEvent> = callbackFlow {
+    private fun singleEventStream(path: String): Flow<OpenCodeEvent> = callbackFlow {
         val eventClient = httpClient.newBuilder()
             .readTimeout(0, TimeUnit.MILLISECONDS)
             .build()
-        val request = requestBuilder("event")
+        val request = requestBuilder(path)
             .header("Accept", "text/event-stream")
             .get()
             .build()
@@ -472,6 +496,9 @@ class OpenCodeApiClient(
         private val JSON_MEDIA_TYPE = "application/json; charset=utf-8".toMediaType()
         private const val MAX_ERROR_BODY_CHARS = 240
         private const val PROVIDER_AUTH_TIMEOUT_MINUTES = 6L
+        private const val GLOBAL_EVENT_PATH = "global/event"
+        private const val INSTANCE_EVENT_PATH = "event"
+        private val GLOBAL_EVENT_UNSUPPORTED_CODES = setOf(400, 404, 405, 501)
 
         fun defaultHttpClient(): OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(15, TimeUnit.SECONDS)

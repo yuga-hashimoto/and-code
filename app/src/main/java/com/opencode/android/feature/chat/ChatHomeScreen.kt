@@ -108,7 +108,11 @@ fun ChatHomeScreen(
     val errorKind = classifyChatError(state.error)
     val runtimeNotReady = errorKind == ChatErrorKind.RUNTIME_NOT_READY && state.messages.isEmpty()
 
-    LaunchedEffect(state.messages.size, state.permissions.size) {
+    // Follow the tail while the assistant streams: the message count stays put as a single
+    // message grows, so the trailing message's own content has to drive the scroll too.
+    val tailSignature = state.messages.lastOrNull()?.contentSignature()
+
+    LaunchedEffect(state.messages.size, state.permissions.size, tailSignature) {
         val totalItems = state.messages.size + state.permissions.size
         if (totalItems > 0) listState.animateScrollToItem(totalItems - 1)
     }

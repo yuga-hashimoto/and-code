@@ -251,7 +251,27 @@ class OpenCodeApiClientTest {
 
         assertTrue(events[0] is OpenCodeEvent.ServerConnected)
         assertEquals("s1", (events[1] as OpenCodeEvent.SessionIdle).sessionId)
-        assertEquals("/event", server.takeRequest().path)
+        // The cross-instance stream is required: `/event` only carries events for the instance
+        // rooted at the server's own working directory, not for other workspaces.
+        assertEquals("/global/event", server.takeRequest().path)
+        assertEquals("/global/event", server.takeRequest().path)
+    }
+
+    @Test
+    fun `event stream falls back to the instance route on older servers`() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(404).setBody("not found"))
+        server.enqueue(
+            MockResponse()
+                .setHeader("Content-Type", "text/event-stream")
+                .setBody("data: {\"type\":\"session.idle\",\"properties\":{\"sessionID\":\"s1\"}}\n\n")
+        )
+
+        val events = withTimeout(3_000) {
+            client().events().take(1).toList()
+        }
+
+        assertEquals("s1", (events.single() as OpenCodeEvent.SessionIdle).sessionId)
+        assertEquals("/global/event", server.takeRequest().path)
         assertEquals("/event", server.takeRequest().path)
     }
 

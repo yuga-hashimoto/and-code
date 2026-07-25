@@ -19,7 +19,9 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
@@ -382,6 +384,177 @@ class ChatViewModelTest {
         assertFalse(viewModel.uiState.value.isRunning)
     }
 
+    @Test
+    fun `assistant progress is polled in even when no stream events arrive`() = runTest(dispatcher) {
+        val backend = FakeBackend()
+        val viewModel = ChatViewModel(backend, syncIntervalMillis = POLL_MILLIS)
+
+        viewModel.sendMessage("Hello")
+        runCurrent()
+        assertTrue(viewModel.uiState.value.isRunning)
+
+        // Nothing is emitted on the event stream at all — the chat must still catch up.
+        backend.historyMessages = listOf(
+            userMessage("m-user", "Hello"),
+            assistantMessage("m-assistant", "Working on it", completed = null)
+        )
+        advanceTimeBy(POLL_MILLIS + 1)
+        runCurrent()
+
+        val assistant = viewModel.uiState.value.messages.last()
+        assertFalse(assistant.isUser)
+        assertEquals("Working on it", assistant.text)
+        assertTrue(assistant.isStreaming)
+        assertTrue(viewModel.uiState.value.isRunning)
+    }
+
+    @Test
+    fun `run ends when the server reports completion without a session idle event`() = runTest(dispatcher) {
+        val backend = FakeBackend()
+        val viewModel = ChatViewModel(backend, syncIntervalMillis = POLL_MILLIS)
+
+        viewModel.sendMessage("Hello")
+        runCurrent()
+
+        backend.historyMessages = listOf(
+            userMessage("m-user", "Hello"),
+            assistantMessage("m-assistant", "All done", completed = 42L)
+        )
+        advanceTimeBy(POLL_MILLIS + 1)
+        runCurrent()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isRunning)
+        assertFalse(state.isThinking)
+        assertFalse(state.messages.last().isStreaming)
+        assertEquals("All done", state.messages.last().text)
+    }
+
+    @Test
+    fun `polled history replaces the optimistic user bubble instead of duplicating it`() = runTest(dispatcher) {
+        val backend = FakeBackend()
+        val viewModel = ChatViewModel(backend, syncIntervalMillis = POLL_MILLIS)
+
+        viewModel.sendMessage("Hello")
+        runCurrent()
+
+        backend.historyMessages = listOf(
+            userMessage("m-user", "Hello"),
+            assistantMessage("m-assistant", "Hi", completed = 42L)
+        )
+        advanceTimeBy(POLL_MILLIS + 1)
+        runCurrent()
+
+        val userMessages = viewModel.uiState.value.messages.filter { it.isUser }
+        assertEquals(1, userMessages.size)
+        assertEquals("Hello", userMessages.single().text)
+    }
+
+    @Test
+    fun `a delta arriving before its part is still rendered`() = runTest(dispatcher) {
+        val backend = FakeBackend()
+        val viewModel = ChatViewModel(backend, syncIntervalMillis = POLL_MILLIS)
+        viewModel.sendMessage("Hello")
+        runCurrent()
+
+        // Mirrors a stream that reconnected midway through a message: the part.updated event
+        // that would have created this part was delivered while we were disconnected.
+        backend.events.emit(
+            OpenCodeEvent.MessagePartDelta(
+                sessionId = "s1",
+                messageId = "m-assistant",
+                partId = "part-1",
+                field = "text",
+                delta = "recovered text"
+            )
+        )
+        runCurrent()
+
+        assertEquals("recovered text", viewModel.uiState.value.messages.last().text)
+    }
+
+    @Test
+    fun `parts of the user message are not echoed back as an assistant bubble`() = runTest(dispatcher) {
+        val backend = FakeBackend()
+        val viewModel = ChatViewModel(backend, syncIntervalMillis = POLL_MILLIS)
+        viewModel.sendMessage("Hello")
+        runCurrent()
+
+        backend.events.emit(
+            OpenCodeEvent.MessageUpdated(
+                OpenCodeMessageInfo(id = "m-user", sessionId = "s1", role = "user")
+            )
+        )
+        backend.events.emit(
+            OpenCodeEvent.MessagePartUpdated(
+                OpenCodePart(
+                    id = "p-user",
+                    sessionId = "s1",
+                    messageId = "m-user",
+                    type = "text",
+                    text = "Hello"
+                )
+            )
+        )
+        runCurrent()
+
+        assertEquals(1, viewModel.uiState.value.messages.size)
+        assertTrue(viewModel.uiState.value.messages.single().isUser)
+    }
+
+    @Test
+    fun `opening a session that is still running keeps it live`() = runTest(dispatcher) {
+        val backend = FakeBackend()
+        backend.historyMessages = listOf(
+            userMessage("m-user", "Hello"),
+            assistantMessage("m-assistant", "Still thinking", completed = null)
+        )
+        val viewModel = ChatViewModel(backend, syncIntervalMillis = POLL_MILLIS)
+
+        viewModel.openSession("s1")
+        runCurrent()
+
+        assertTrue(viewModel.uiState.value.isRunning)
+        assertTrue(viewModel.uiState.value.messages.last().isStreaming)
+
+        backend.historyMessages = listOf(
+            userMessage("m-user", "Hello"),
+            assistantMessage("m-assistant", "Still thinking, and here is the answer", completed = 9L)
+        )
+        advanceTimeBy(POLL_MILLIS + 1)
+        runCurrent()
+
+        assertFalse(viewModel.uiState.value.isRunning)
+        assertEquals(
+            "Still thinking, and here is the answer",
+            viewModel.uiState.value.messages.last().text
+        )
+    }
+
+    private fun userMessage(id: String, text: String) = OpenCodeMessage(
+        info = OpenCodeMessageInfo(
+            id = id,
+            sessionId = "s1",
+            role = "user",
+            time = OpenCodeTime(created = 1, completed = 1)
+        ),
+        parts = listOf(
+            OpenCodePart(id = "$id-p", sessionId = "s1", messageId = id, type = "text", text = text)
+        )
+    )
+
+    private fun assistantMessage(id: String, text: String, completed: Long?) = OpenCodeMessage(
+        info = OpenCodeMessageInfo(
+            id = id,
+            sessionId = "s1",
+            role = "assistant",
+            time = OpenCodeTime(created = 2, completed = completed)
+        ),
+        parts = listOf(
+            OpenCodePart(id = "$id-p", sessionId = "s1", messageId = id, type = "text", text = text)
+        )
+    )
+
     private class FakeBackend : OpenCodeBackend {
         override val id: String = "fake"
         override val displayName: String = "Fake"
@@ -426,6 +599,10 @@ class ChatViewModelTest {
             return true
         }
         override fun events(): Flow<OpenCodeEvent> = events
+    }
+
+    private companion object {
+        const val POLL_MILLIS = 100L
     }
 
     private data class PermissionRecord(

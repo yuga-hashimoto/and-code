@@ -193,6 +193,7 @@ data class PermissionRequest(
 
 sealed interface OpenCodeEvent {
     data object ServerConnected : OpenCodeEvent
+    data class MessageUpdated(val info: OpenCodeMessageInfo) : OpenCodeEvent
     data class MessagePartUpdated(val part: OpenCodePart) : OpenCodeEvent
     data class MessagePartDelta(
         val sessionId: String,
@@ -202,7 +203,11 @@ sealed interface OpenCodeEvent {
         val delta: String
     ) : OpenCodeEvent
     data class PermissionAsked(val request: PermissionRequest) : OpenCodeEvent
+    data class PermissionReplied(val sessionId: String, val requestId: String) : OpenCodeEvent
     data class SessionIdle(val sessionId: String) : OpenCodeEvent
+
+    /** Replacement for the deprecated `session.idle`: status is `idle`, `busy` or `retry`. */
+    data class SessionStatusChanged(val sessionId: String, val status: String) : OpenCodeEvent
     data class SessionError(val sessionId: String?, val message: String?) : OpenCodeEvent
     data class Unknown(val type: String, val rawJson: String) : OpenCodeEvent
 }

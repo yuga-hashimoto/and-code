@@ -161,9 +161,11 @@ fun OpenCodeApp(
     val chatViewModel: ChatViewModel = viewModel(
         key = "chat-${selectedRuntime?.id ?: "none"}",
         factory = ViewModelFactory {
+            // The chat subscribes to the runtime's event stream directly rather than to the
+            // app-wide activity stream: it then reconnects (and re-syncs) on its own instead
+            // of going silent whenever the shared stream is torn down.
             ChatViewModel(
                 backend = selectedRuntime,
-                eventFlow = app.activityRepository.events,
                 onPermissionResolved = app.activityRepository::resolvePermission
             )
         }
