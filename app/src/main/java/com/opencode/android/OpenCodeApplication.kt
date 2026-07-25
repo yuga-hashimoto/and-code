@@ -188,6 +188,7 @@ class OpenCodeApplication : Application() {
                 onPermissionAsked = notifications::notifyPermission,
                 onSessionIdle = notifications::notifySessionComplete,
                 onSessionError = notifications::notifySessionError,
+                unreadStore = settings,
             )
         scheduleDeferredInitialization()
     }

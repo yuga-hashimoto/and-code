@@ -564,4 +564,8 @@
     <string name="syntax_theme_dialog_title">Choisir le thème de syntaxe</string>
     <string name="usage_row">Utilisation</string>
     <string name="font_size_dialog_title">Taille de police</string>
+    <string name="widget_quick_input_hint">Envoyer un message à OpenCode…</string>
+    <string name="model_visibility_row">Modèles visibles</string>
+    <string name="model_visibility_title">Modèles visibles</string>
+    <string name="model_visibility_caption">Décochez les modèles pour les masquer dans le sélecteur de modèles.</string>
 </resources>

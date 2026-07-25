@@ -564,4 +564,8 @@
     <string name="syntax_theme_dialog_title">选择语法主题</string>
     <string name="usage_row">用量</string>
     <string name="font_size_dialog_title">字体大小</string>
+    <string name="widget_quick_input_hint">向 OpenCode 发送消息…</string>
+    <string name="model_visibility_row">显示的模型</string>
+    <string name="model_visibility_title">显示的模型</string>
+    <string name="model_visibility_caption">取消勾选的模型将不会出现在模型选择器中。</string>
 </resources>

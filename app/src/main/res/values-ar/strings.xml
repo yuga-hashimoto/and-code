@@ -564,4 +564,8 @@
     <string name="syntax_theme_dialog_title">اختيار سمة بناء الجملة</string>
     <string name="usage_row">الاستخدام</string>
     <string name="font_size_dialog_title">حجم الخط</string>
+    <string name="widget_quick_input_hint">أرسل رسالة إلى OpenCode…</string>
+    <string name="model_visibility_row">النماذج المرئية</string>
+    <string name="model_visibility_title">النماذج المرئية</string>
+    <string name="model_visibility_caption">أزل التحديد عن النماذج لإخفائها من قائمة اختيار النموذج.</string>
 </resources>

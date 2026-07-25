@@ -581,4 +581,5 @@
     <string name="syntax_theme_dialog_title">シンタックステーマを選択</string>
     <string name="usage_row">使用量</string>
     <string name="font_size_dialog_title">フォントサイズ</string>
+    <string name="widget_quick_input_hint">OpenCodeにメッセージを送る…</string>
 </resources>

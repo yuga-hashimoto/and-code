@@ -564,4 +564,8 @@
     <string name="syntax_theme_dialog_title">Выбрать тему синтаксиса</string>
     <string name="usage_row">Использование</string>
     <string name="font_size_dialog_title">Размер шрифта</string>
+    <string name="widget_quick_input_hint">Отправить сообщение OpenCode…</string>
+    <string name="model_visibility_row">Показываемые модели</string>
+    <string name="model_visibility_title">Показываемые модели</string>
+    <string name="model_visibility_caption">Снимите отметку с моделей, чтобы скрыть их из списка выбора.</string>
 </resources>

@@ -28,6 +28,8 @@ data class ThemeColors(
     val statusError: Color,
     val statusPermission: Color,
     val statusIdle: Color,
+    /** Finished-but-unread chats in the drawer. */
+    val statusUnread: Color,
 )
 
 val DarkTheme =
@@ -57,6 +59,7 @@ val DarkTheme =
         statusError = Color(0xFFF44336),
         statusPermission = Color(0xFFFFC107),
         statusIdle = Color(0xFF757575),
+        statusUnread = Color(0xFF4C8DF6),
     )
 
 val LightTheme =
@@ -86,6 +89,7 @@ val LightTheme =
         statusError = Color(0xFFF44336),
         statusPermission = Color(0xFFFFC107),
         statusIdle = Color(0xFF9E9E9E),
+        statusUnread = Color(0xFF4C8DF6),
     )
 
 val ZincTheme =
@@ -115,6 +119,7 @@ val ZincTheme =
         statusError = Color(0xFFF44336),
         statusPermission = Color(0xFFFFC107),
         statusIdle = Color(0xFF71717A),
+        statusUnread = Color(0xFF4C8DF6),
     )
 
 val MidnightTheme =
@@ -144,6 +149,7 @@ val MidnightTheme =
         statusError = Color(0xFFF44336),
         statusPermission = Color(0xFFFFC107),
         statusIdle = Color(0xFF5A5F70),
+        statusUnread = Color(0xFF4C8DF6),
     )
 
 val ClaudeTheme =
@@ -173,6 +179,7 @@ val ClaudeTheme =
         statusError = Color(0xFFF44336),
         statusPermission = Color(0xFFFFC107),
         statusIdle = Color(0xFF78716C),
+        statusUnread = Color(0xFF4C8DF6),
     )
 
 val GhosttyTheme =
@@ -202,6 +209,7 @@ val GhosttyTheme =
         statusError = Color(0xFFF44336),
         statusPermission = Color(0xFFFFC107),
         statusIdle = Color(0xFF6B7385),
+        statusUnread = Color(0xFF4C8DF6),
     )
 
 val OpenCodeBackground get() = DarkTheme.surface0

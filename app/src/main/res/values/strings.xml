@@ -581,4 +581,5 @@
     <string name="unified_view">Unified</string>
     <string name="split_view">Split</string>
     <string name="diff_stat">+%1$d / -%2$d</string>
+    <string name="widget_quick_input_hint">Message OpenCode…</string>
 </resources>

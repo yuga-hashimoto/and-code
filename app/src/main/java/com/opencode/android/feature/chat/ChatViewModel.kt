@@ -24,6 +24,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -209,7 +211,17 @@ class ChatViewModel(
     private val eventFlow: Flow<OpenCodeEvent>? = null,
     private val onPermissionResolved: (String) -> Unit = {},
     private val onSessionCreated: () -> Unit = {},
+    /**
+     * Reports whether this chat is working, so the drawer shows real state even when no stream
+     * events arrive. Deriving it from events alone left every chat on the idle marker.
+     */
+    private val onRunStateChanged: (String, Boolean) -> Unit = { _, _ -> },
     private val draftRepo: DraftRepository? = null,
+    /**
+     * Starts the periodic connection probe. It runs an unbounded polling loop, which a virtual
+     * test clock advances through forever, so it stays off unless the real app asks for it.
+     */
+    private val monitorConnectionQuality: Boolean = false,
 ) : ViewModel() {
     private val _uiState =
         MutableStateFlow(
@@ -237,6 +249,27 @@ class ChatViewModel(
 
     init {
         if (backend != null) {
+            viewModelScope.launch {
+                // Only real transitions are reported, so merely opening an idle chat is not
+                // mistaken for a run that just ended.
+                var runningSession: String? = null
+                uiState
+                    .map { it.sessionId to it.isRunning }
+                    .distinctUntilChanged()
+                    .collect { (sessionId, running) ->
+                        if (sessionId == null) return@collect
+                        when {
+                            running && runningSession != sessionId -> {
+                                runningSession = sessionId
+                                onRunStateChanged(sessionId, true)
+                            }
+                            !running && runningSession == sessionId -> {
+                                runningSession = null
+                                onRunStateChanged(sessionId, false)
+                            }
+                        }
+                    }
+            }
             eventJob =
                 viewModelScope.launch {
                     (eventFlow ?: backend.events())
@@ -262,10 +295,12 @@ class ChatViewModel(
                 }
                 reportError(lastError)
             }
-            connectionMonitor.startMonitoring { backend.health() }
-            viewModelScope.launch {
-                connectionMonitor.quality.collect { quality ->
-                    _uiState.update { it.copy(connectionQuality = quality) }
+            if (monitorConnectionQuality) {
+                connectionMonitor.startMonitoring { backend.health() }
+                viewModelScope.launch {
+                    connectionMonitor.quality.collect { quality ->
+                        _uiState.update { it.copy(connectionQuality = quality) }
+                    }
                 }
             }
         }
@@ -569,15 +604,13 @@ class ChatViewModel(
                                     if (uiMessages.isNotEmpty() && uiMessages != _uiState.value.messages) {
                                         _uiState.update { it.copy(messages = uiMessages) }
                                     }
-                                }
-                            if (!isStillActive()) return@withTimeoutOrNull
-                            runCatching { currentBackend.session(targetSessionId) }
-                                .onSuccess { sessionInfo ->
-                                    if (sessionInfo.time.completed != null) {
+                                    // Completion is read off the transcript. A session object
+                                    // carries no completion time — only assistant messages do — so
+                                    // polling the session never ended the run and the composer sat
+                                    // on the stop button until the 2 minute timeout expired.
+                                    if (turnFinished(serverMessages, messageIdsBeforeSend)) {
                                         sessionCompleted = true
-                                        if (isStillActive()) {
-                                            _uiState.update { it.copy(isRunning = false, isThinking = false) }
-                                        }
+                                        _uiState.update { it.copy(isRunning = false, isThinking = false) }
                                     }
                                 }
                         }
@@ -618,6 +651,24 @@ class ChatViewModel(
                 reportError(error)
             }
         }
+    }
+
+    /**
+     * True once the assistant has answered this prompt and marked its reply finished.
+     *
+     * The newest message being a completed assistant turn is the signal every runtime reports;
+     * requiring a reply that did not exist before the prompt keeps the previous turn's completion
+     * from ending the new one instantly.
+     */
+    private fun turnFinished(
+        messages: List<OpenCodeMessage>,
+        messageIdsBeforeSend: Set<String>,
+    ): Boolean {
+        val newest = messages.lastOrNull()?.info ?: return false
+        if (newest.role == "user") return false
+        val answeredThisPrompt =
+            messages.any { it.info.role != "user" && it.info.id !in messageIdsBeforeSend }
+        return answeredThisPrompt && newest.time.completed != null
     }
 
     private fun shouldSummarizeBeforePrompt(): Boolean =

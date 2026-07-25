@@ -15,20 +15,26 @@
         android:src="@mipmap/ic_launcher"
         android:contentDescription="@string/app_name" />
 
-    <EditText
+<!--
+        A widget cannot host an EditText: RemoteViews does not support it, so the whole widget
+        fails to inflate. Tapping here opens QuickInputActivity, which is where typing happens,
+        so this only ever needed to look like an input field.
+    -->
+    <TextView
         android:id="@+id/widget_input"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
         android:layout_marginStart="8dp"
         android:layout_marginEnd="8dp"
-        android:hint="Message OpenCode…"
-        android:textColorHint="#888888"
-        android:textColor="#FFFFFF"
+        android:paddingStart="10dp"
+        android:paddingEnd="10dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="8dp"
+        android:text="@string/widget_quick_input_hint"
+        android:textColor="#888888"
         android:textSize="14sp"
         android:singleLine="true"
-        android:imeOptions="actionSend"
-        android:inputType="text"
         android:background="@android:drawable/edit_text" />
 
     <ImageButton

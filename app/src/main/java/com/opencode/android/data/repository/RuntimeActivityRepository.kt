@@ -29,6 +29,11 @@ data class RuntimeEventLog(
     val sessionId: String? = null,
 )
 
+/** Persists which chats finished without the user having read them. */
+interface UnreadSessionStore {
+    var unreadSessionIds: Set<String>
+}
+
 data class RuntimeActivityState(
     val activeSessionIds: Set<String> = emptySet(),
     val completedSessionIds: Set<String> = emptySet(),
@@ -45,13 +50,19 @@ class RuntimeActivityRepository(
     private val onPermissionAsked: ((PermissionRequest) -> Unit)? = null,
     private val onSessionIdle: ((String) -> Unit)? = null,
     private val onSessionError: ((String?, String?) -> Unit)? = null,
+    private val unreadStore: UnreadSessionStore? = null,
 ) {
     init {
         require(retryDelayMillis >= 0L)
         require(maxRetryDelayMillis >= retryDelayMillis)
     }
 
-    private val mutableState = MutableStateFlow(RuntimeActivityState())
+    // Unread markers outlive the process: a chat that finished while the app was closed is still
+    // unread the next time the drawer is opened.
+    private val mutableState =
+        MutableStateFlow(
+            RuntimeActivityState(completedSessionIds = unreadStore?.unreadSessionIds.orEmpty()),
+        )
     val state: StateFlow<RuntimeActivityState> = mutableState.asStateFlow()
 
     private val mutableEvents = MutableSharedFlow<OpenCodeEvent>(extraBufferCapacity = 128)
@@ -60,33 +71,27 @@ class RuntimeActivityRepository(
     init {
         scope.launch {
             registry.selected.collectLatest selected@{ target ->
-                mutableState.value = RuntimeActivityState()
+                mutableState.value =
+                    RuntimeActivityState(completedSessionIds = mutableState.value.completedSessionIds)
                 if (target == null) return@selected
 
-                // The event stream is kept alive across transient runtime-state churn (e.g. a
-                // health recheck that briefly reports Connecting). Restarting it on every such
-                // blip used to drop whole replies on the floor.
+                // The stream follows the selected runtime, not its connection state.
+                //
+                // It used to only open once the runtime reported Connected. Every REST call
+                // (sending a prompt, loading a transcript) works regardless of that flag, so a
+                // runtime whose state never reached Connected still looked completely functional
+                // while silently never delivering a single event: no live reply, no drawer
+                // activity, no idle notification. Reconnection is handled by the retry below, so
+                // opening eagerly and retrying is both simpler and strictly more robust.
                 coroutineScope {
-                    var streamJob: Job? = null
+                    launch { streamEvents(target) }
+
+                    // Losing the runtime clears in-flight state, but never the unread markers:
+                    // a dropped connection says nothing about what the user has read.
                     target.state.collect { runtimeState ->
-                        when (runtimeState) {
-                            is RuntimeState.Connected -> {
-                                if (streamJob?.isActive != true) {
-                                    streamJob = launch { streamEvents(target) }
-                                }
-                            }
-                            RuntimeState.Connecting -> Unit
-                            else -> {
-                                streamJob?.cancel()
-                                streamJob = null
-                                mutableState.update {
-                                    it.copy(
-                                        activeSessionIds = emptySet(),
-                                        completedSessionIds = emptySet(),
-                                        permissions = emptyList(),
-                                    )
-                                }
-                            }
+                        if (runtimeState is RuntimeState.Connected || runtimeState is RuntimeState.Connecting) return@collect
+                        mutableState.update {
+                            it.copy(activeSessionIds = emptySet(), permissions = emptyList())
                         }
                     }
                 }
@@ -127,6 +132,49 @@ class RuntimeActivityRepository(
         mutableState.update { current ->
             current.copy(completedSessionIds = current.completedSessionIds - sessionId)
         }
+        persistUnread()
+    }
+
+    /**
+     * Records a run the app started itself.
+     *
+     * Session state used to be derived purely from stream events, so with no event stream every
+     * chat sat on the grey idle dot even while it was plainly working. The chat reports its own
+     * runs here so the drawer stays truthful whether or not events are flowing.
+     */
+    fun markSessionRunning(sessionId: String) {
+        if (sessionId.isBlank()) return
+        mutableState.update { current ->
+            current.copy(
+                activeSessionIds = current.activeSessionIds + sessionId,
+                completedSessionIds = current.completedSessionIds - sessionId,
+            )
+        }
+        persistUnread()
+    }
+
+    /** Records that a run finished, leaving the chat unread until it is opened. */
+    fun markSessionFinished(
+        sessionId: String,
+        unread: Boolean,
+    ) {
+        if (sessionId.isBlank()) return
+        mutableState.update { current ->
+            current.copy(
+                activeSessionIds = current.activeSessionIds - sessionId,
+                completedSessionIds =
+                    if (unread) {
+                        current.completedSessionIds + sessionId
+                    } else {
+                        current.completedSessionIds - sessionId
+                    },
+            )
+        }
+        persistUnread()
+    }
+
+    private fun persistUnread() {
+        unreadStore?.unreadSessionIds = mutableState.value.completedSessionIds
     }
 
     private fun handle(event: OpenCodeEvent) {

@@ -202,6 +202,10 @@ fun OpenCodeApp(
         )
     val settingsState by settingsViewModel.state.collectAsState()
 
+    // Which chat the user is actually looking at. A run that finishes while they are elsewhere has
+    // to stay unread, so this is tracked separately from the chat view model's own session.
+    val visibleChatSessionId = remember { mutableStateOf<String?>(null) }
+
     val chatViewModel: ChatViewModel =
         viewModel(
             key = "chat-${selectedRuntime?.id ?: "none"}",
@@ -212,6 +216,19 @@ fun OpenCodeApp(
                         eventFlow = app.activityRepository.events,
                         onPermissionResolved = app.activityRepository::resolvePermission,
                         onSessionCreated = app.catalogRepository::refreshSessionsOnly,
+                        onRunStateChanged = { sessionId, running ->
+                            if (running) {
+                                app.activityRepository.markSessionRunning(sessionId)
+                            } else {
+                                // A chat the user is not currently looking at stays unread; the one
+                                // on screen has just been read by definition.
+                                app.activityRepository.markSessionFinished(
+                                    sessionId = sessionId,
+                                    unread = visibleChatSessionId.value != sessionId,
+                                )
+                            }
+                        },
+                        monitorConnectionQuality = true,
                     )
                 },
         )
@@ -455,6 +472,18 @@ fun OpenCodeApp(
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val drawerScope = rememberCoroutineScope()
     val currentRoute = backStackEntry?.destination?.route
+
+    LaunchedEffect(currentRoute, chatState.sessionId) {
+        visibleChatSessionId.value = chatState.sessionId?.takeIf { currentRoute == ROUTE_CHAT }
+    }
+
+    // Opening a chat and watching it finish counts as reading it.
+    LaunchedEffect(currentRoute, chatState.sessionId, chatState.isRunning) {
+        val sessionId = chatState.sessionId
+        if (currentRoute == ROUTE_CHAT && sessionId != null && !chatState.isRunning) {
+            app.activityRepository.markSessionRead(sessionId)
+        }
+    }
 
     val subagentInfos =
         remember(activityState.sessions, chatState.sessionId, activityState.activeSessionIds) {

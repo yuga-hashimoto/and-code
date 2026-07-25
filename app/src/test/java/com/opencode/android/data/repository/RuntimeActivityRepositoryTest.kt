@@ -32,10 +32,12 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class RuntimeActivityRepositoryTest {
     @Test
-    fun `does not open events until selected runtime is connected`() =
+    fun `opens events for the selected runtime without waiting for a connected state`() =
         runTest {
+            // REST calls work regardless of the runtime's connection flag, so gating the stream on
+            // it left runtimes that never reported Connected permanently event-less.
             val dispatcher = StandardTestDispatcher(testScheduler)
-            val target = FakeTarget()
+            val target = FakeTarget(requireConnected = false)
             val registry =
                 RuntimeRegistry(
                     store = FakeStore(selectedRuntimeId = target.id),
@@ -46,11 +48,6 @@ class RuntimeActivityRepositoryTest {
 
             advanceUntilIdle()
 
-            assertEquals(0, target.eventCalls)
-            assertTrue(repository.state.value.logs.isEmpty())
-
-            target.state.value = RuntimeState.Connected("1.18.3")
-            advanceUntilIdle()
             assertEquals(1, target.eventCalls)
 
             target.eventFlow.emit(OpenCodeEvent.ServerConnected)
@@ -60,11 +57,11 @@ class RuntimeActivityRepositoryTest {
         }
 
     @Test
-    fun `retries events after stream failure while runtime stays connected`() =
+    fun `retries events after stream failure`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
             val target =
-                FakeTarget().apply {
+                FakeTarget(requireConnected = false).apply {
                     eventFlows += flow { throw IllegalStateException("stream dropped") }
                     eventFlows += eventFlow
                 }
@@ -81,7 +78,6 @@ class RuntimeActivityRepositoryTest {
                     retryDelayMillis = 1L,
                 )
 
-            target.state.value = RuntimeState.Connected("1.18.3")
             advanceUntilIdle()
 
             assertEquals(2, target.eventCalls)
@@ -95,10 +91,10 @@ class RuntimeActivityRepositoryTest {
         }
 
     @Test
-    fun `a brief Connecting blip does not restart the event stream`() =
+    fun `runtime state churn never restarts the event stream`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
-            val target = FakeTarget()
+            val target = FakeTarget(requireConnected = false)
             val registry =
                 RuntimeRegistry(
                     store = FakeStore(selectedRuntimeId = target.id),
@@ -107,44 +103,103 @@ class RuntimeActivityRepositoryTest {
                 )
             RuntimeActivityRepository(registry, TestScope(dispatcher))
 
-            target.state.value = RuntimeState.Connected("1.18.3")
             advanceUntilIdle()
             assertEquals(1, target.eventCalls)
 
-            // A health recheck on an already-connected runtime dips back to Connecting and returns;
-            // the existing SSE connection must survive it rather than being torn down and reopened.
+            // Health rechecks and short drops must not tear the live stream down; the stream's own
+            // retry handles a connection that genuinely died.
             target.state.value = RuntimeState.Connecting
             advanceUntilIdle()
             target.state.value = RuntimeState.Connected("1.18.3")
+            advanceUntilIdle()
+            target.state.value = RuntimeState.Disconnected
             advanceUntilIdle()
 
             assertEquals(1, target.eventCalls)
         }
 
     @Test
-    fun `going disconnected then reconnecting does reopen the stream`() =
+    fun `losing the runtime clears activity but keeps unread markers`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
-            val target = FakeTarget()
+            val target = FakeTarget(requireConnected = false)
             val registry =
                 RuntimeRegistry(
                     store = FakeStore(selectedRuntimeId = target.id),
                     localTarget = target,
                     remoteFactory = { error("unused") },
                 )
-            RuntimeActivityRepository(registry, TestScope(dispatcher))
+            val repository = RuntimeActivityRepository(registry, TestScope(dispatcher))
+            advanceUntilIdle()
 
             target.state.value = RuntimeState.Connected("1.18.3")
             advanceUntilIdle()
-            assertEquals(1, target.eventCalls)
+
+            repository.markSessionRunning("ses_running")
+            repository.markSessionFinished("ses_done", unread = true)
 
             target.state.value = RuntimeState.Disconnected
             advanceUntilIdle()
-            target.state.value = RuntimeState.Connected("1.18.3")
+
+            assertTrue(repository.state.value.activeSessionIds.isEmpty())
+            assertEquals(setOf("ses_done"), repository.state.value.completedSessionIds)
+        }
+
+    @Test
+    fun `a chat reports its own run so the drawer works without events`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val repository = RuntimeActivityRepository(registry, TestScope(dispatcher))
             advanceUntilIdle()
 
-            assertEquals(2, target.eventCalls)
+            repository.markSessionRunning("ses_1")
+            assertEquals(setOf("ses_1"), repository.state.value.activeSessionIds)
+
+            repository.markSessionFinished("ses_1", unread = true)
+            assertTrue(repository.state.value.activeSessionIds.isEmpty())
+            assertEquals(setOf("ses_1"), repository.state.value.completedSessionIds)
+
+            repository.markSessionRead("ses_1")
+            assertTrue(repository.state.value.completedSessionIds.isEmpty())
         }
+
+    @Test
+    fun `unread markers are restored from the store on startup`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val unread = FakeUnreadStore(setOf("ses_old"))
+
+            val repository =
+                RuntimeActivityRepository(
+                    registry = registry,
+                    scope = TestScope(dispatcher),
+                    unreadStore = unread,
+                )
+            advanceUntilIdle()
+
+            assertEquals(setOf("ses_old"), repository.state.value.completedSessionIds)
+
+            repository.markSessionRead("ses_old")
+            assertTrue(unread.unreadSessionIds.isEmpty())
+        }
+
+    private class FakeUnreadStore(
+        override var unreadSessionIds: Set<String>,
+    ) : UnreadSessionStore
 
     private class FakeStore(
         override var selectedRuntimeId: String?,
@@ -156,7 +211,9 @@ class RuntimeActivityRepositoryTest {
         override fun deleteConnection(id: String) = Unit
     }
 
-    private class FakeTarget : RuntimeTarget {
+    private class FakeTarget(
+        private val requireConnected: Boolean = true,
+    ) : RuntimeTarget {
         override val id: String = "local-android"
         override val displayName: String = "このAndroid端末"
         override val kind: BackendKind = BackendKind.LOCAL
@@ -202,7 +259,7 @@ class RuntimeActivityRepositoryTest {
         ): Boolean = true
 
         override fun events(): Flow<OpenCodeEvent> {
-            check(state.value is RuntimeState.Connected) { "runtime is not connected" }
+            if (requireConnected) check(state.value is RuntimeState.Connected) { "runtime is not connected" }
             eventCalls++
             return eventFlows.removeFirstOrNull() ?: eventFlow
         }

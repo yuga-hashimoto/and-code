@@ -4,9 +4,10 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.opencode.android.data.repository.UnreadSessionStore
 import com.opencode.android.runtime.RuntimeConnectionStore
 
-class SecureSettingsRepository(context: Context) : RuntimeConnectionStore {
+class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, UnreadSessionStore {
     private val masterKey =
         MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -180,6 +181,21 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore {
         get() = preferences.getBoolean(KEY_ONBOARDING_COMPLETED, false)
         set(value) = preferences.edit().putBoolean(KEY_ONBOARDING_COMPLETED, value).apply()
 
+    /** Chats that finished without being read, kept across restarts for the drawer markers. */
+    override var unreadSessionIds: Set<String>
+        get() =
+            preferences
+                .getStringSet(KEY_UNREAD_SESSIONS, emptySet())
+                .orEmpty()
+                .filter { it.isNotBlank() }
+                .toSet()
+        set(value) {
+            preferences
+                .edit()
+                .putStringSet(KEY_UNREAD_SESSIONS, value.filter { it.isNotBlank() }.toSet())
+                .apply()
+        }
+
     var githubToken: String?
         get() = preferences.getString(KEY_GITHUB_TOKEN, null)
         set(value) = preferences.edit().putString(KEY_GITHUB_TOKEN, value).apply()
@@ -259,6 +275,7 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore {
         private const val KEY_SAF_WORKSPACE_URIS = "saf_workspace_uris"
         private const val KEY_PROJECT_PATHS = "project_paths"
         private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
+        private const val KEY_UNREAD_SESSIONS = "unread_sessions"
         private const val KEY_GITHUB_TOKEN = "github_token"
         private const val KEY_GITHUB_LOGIN = "github_login"
         private const val KEY_THEME = "theme"
