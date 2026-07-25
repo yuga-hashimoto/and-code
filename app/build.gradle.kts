@@ -242,3 +242,35 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
 }
+
+// The base jacoco plugin only wires a report task to the JVM `test` task, which an Android module
+// does not have — so `:app:jacocoTestReport` did not exist and CI's coverage step failed outright.
+tasks.register<JacocoReport>("jacocoTestReport") {
+    dependsOn("testDebugUnitTest")
+    group = "verification"
+    description = "Generates a coverage report for the debug unit tests."
+
+    reports {
+        html.required.set(true)
+        xml.required.set(true)
+    }
+
+    val generated =
+        listOf(
+            "**/R.class",
+            "**/R$*.class",
+            "**/BuildConfig.*",
+            "**/Manifest*.*",
+            "**/*Test*.*",
+            "**/*_Factory*.*",
+            "**/*Composable*.*",
+            "**/*\$\$serializer.*",
+        )
+    classDirectories.setFrom(
+        fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) { exclude(generated) },
+    )
+    sourceDirectories.setFrom(files("src/main/java"))
+    executionData.setFrom(
+        fileTree(layout.buildDirectory) { include("**/*.exec", "**/*.ec") },
+    )
+}
