@@ -9,25 +9,101 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import com.opencode.android.core.ProjectLinks
+import com.opencode.android.feature.support.GitHubStarPromptDialog
+import com.opencode.android.feature.support.openProjectLink
 import com.opencode.android.ui.OpenCodeApp
 
 class MainActivity : ComponentActivity() {
     private var targetSessionId by mutableStateOf<String?>(null)
     private var deepLinkConnectionUrl by mutableStateOf<String?>(null)
+    private var showInitialStarPrompt by mutableStateOf(false)
+
+    private val app: OpenCodeApplication
+        get() = application as OpenCodeApplication
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleDeepLink(intent)
+        showInitialStarPrompt = app.githubStarCoordinator.shouldShowInitialPrompt()
+        app.githubStarCoordinator.refresh()
+
         setContent {
-            OpenCodeApp(
-                onOpenAssistantSettings = ::openAssistantSettings,
-                targetSessionId = targetSessionId,
-                deepLinkConnectionUrl = deepLinkConnectionUrl,
-            )
+            val snapshot by app.githubStarCoordinator.snapshot.collectAsState()
+            val secondPromptRequested by app.githubStarCoordinator.secondPromptRequested.collectAsState()
+            val thankYouRequested by app.githubStarCoordinator.thankYouRequested.collectAsState()
+            val snackbarHostState = remember { SnackbarHostState() }
+            val thankYouMessage = stringResource(R.string.github_star_thanks_snackbar)
+
+            LaunchedEffect(thankYouRequested) {
+                if (thankYouRequested) {
+                    snackbarHostState.showSnackbar(thankYouMessage)
+                    app.githubStarCoordinator.markThankYouShown()
+                }
+            }
+
+            Box {
+                OpenCodeApp(
+                    onOpenAssistantSettings = ::openAssistantSettings,
+                    targetSessionId = targetSessionId,
+                    deepLinkConnectionUrl = deepLinkConnectionUrl,
+                )
+                SnackbarHost(
+                    hostState = snackbarHostState,
+                    modifier =
+                        Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(16.dp),
+                )
+            }
+
+            if (showInitialStarPrompt) {
+                GitHubStarPromptDialog(
+                    starCount = snapshot.stargazersCount,
+                    secondPrompt = false,
+                    onStar = {
+                        app.githubStarCoordinator.markInitialStarOpened()
+                        showInitialStarPrompt = false
+                        openProjectLink(this@MainActivity, ProjectLinks.GITHUB_REPOSITORY)
+                    },
+                    onLater = {
+                        app.githubStarCoordinator.markInitialDeferred()
+                        showInitialStarPrompt = false
+                    },
+                )
+            }
+
+            if (secondPromptRequested) {
+                GitHubStarPromptDialog(
+                    starCount = snapshot.stargazersCount,
+                    secondPrompt = true,
+                    onStar = {
+                        app.githubStarCoordinator.markSecondStarOpened()
+                        openProjectLink(this@MainActivity, ProjectLinks.GITHUB_REPOSITORY)
+                    },
+                    onLater = app.githubStarCoordinator::dismissSecondPrompt,
+                )
+            }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        app.githubStarCoordinator.onAppResumed()
     }
 
     override fun onNewIntent(intent: Intent) {
