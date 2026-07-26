@@ -25,19 +25,19 @@ jobs:
               owner: context.repo.owner, repo: context.repo.repo, run_id: run.id, per_page: 100,
             });
             const apk = artifacts.find((artifact) => artifact.name === 'opencode-android-debug');
-            if (!apk) core.setFailed('The APK artifact was not found.');
-            if (!apk) return;
+            if (!apk) { core.setFailed('The APK artifact was not found.'); return; }
             const marker = '<!-- opencode-debug-apk -->';
-            const body = `${marker}
-            **Debug APK built successfully**
-
-            [Download APK artifact](${apk.archive_download_url})<br>
-            [View workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${run.id})
-
-            Commit: \\`${run.head_sha.slice(0, 12)}\\`  |  Artifact expires in 14 days.`;
+            const body = [
+              marker,
+              '**Debug APK built successfully**',
+              '',
+              `[Download APK artifact](${apk.archive_download_url})`,
+              `[View workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${run.id})`,
+              '',
+              `Commit: \`${run.head_sha.slice(0, 12)}\`  |  Artifact expires in 14 days.`,
+            ].join('\n');
             const comments = await github.paginate(github.rest.issues.listComments, {
-              owner: context.repo.owner, repo: context.repo.repo,
-              issue_number: pullRequest.number, per_page: 100,
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: pullRequest.number, per_page: 100,
             });
             const existing = comments.find((comment) => comment.user?.type === 'Bot' && comment.body?.includes(marker));
             if (existing) {
