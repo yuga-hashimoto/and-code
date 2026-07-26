@@ -8,7 +8,6 @@
     <string name="github_star_action">أضف نجمة على GitHub</string>
     <string name="github_star_later">لاحقًا</string>
     <string name="github_star_not_now">ليس الآن</string>
-    <string name="github_star_verified_short">تمت إضافة نجمة</string>
     <string name="github_star_verified">شكرًا لإضافة نجمة إلى OpenCode Android!</string>
     <string name="github_star_thanks_snackbar">شكرًا على نجمة GitHub! إنها تساعد OpenCode Android على التحسن.</string>
     <string name="github_support_button">ادعم</string>

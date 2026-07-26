@@ -1,6 +1,7 @@
 package com.opencode.android.feature.support
 
 import com.opencode.android.data.connection.SecureSettingsRepository
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -18,6 +19,7 @@ import okhttp3.Request
 
 private const val REPOSITORY_PATH = "/repos/yuga-hashimoto/opencode-android"
 private const val STAR_STATUS_PATH = "/user/starred/yuga-hashimoto/opencode-android"
+private const val USER_AGENT = "OpenCodeAndroid"
 
 const val GITHUB_STAR_COUNT_CACHE_TTL_MS = 6 * 60 * 60 * 1000L
 const val GITHUB_STAR_STATUS_CACHE_TTL_MS = 15 * 60 * 1000L
@@ -41,7 +43,7 @@ object GitHubStarPromptPolicy {
 }
 
 class GitHubStarService(
-    private val client: OkHttpClient = OkHttpClient(),
+    private val client: OkHttpClient,
     private val tokenProvider: () -> String?,
     private val apiBaseUrl: String = "https://api.github.com",
     private val json: Json = Json { ignoreUnknownKeys = true },
@@ -61,6 +63,7 @@ class GitHubStarService(
                 Request.Builder()
                     .url(apiUrl(REPOSITORY_PATH))
                     .header("Accept", "application/vnd.github+json")
+                    .header("User-Agent", USER_AGENT)
                     .build()
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) return null
@@ -79,6 +82,7 @@ class GitHubStarService(
                     .url(apiUrl(STAR_STATUS_PATH))
                     .header("Authorization", "Bearer $token")
                     .header("Accept", "application/vnd.github+json")
+                    .header("User-Agent", USER_AGENT)
                     .build()
             client.newCall(request).execute().use { response ->
                 when (response.code) {
@@ -113,7 +117,7 @@ class GitHubStarCoordinator(
     private val mutableThankYouRequested = MutableStateFlow(false)
     val thankYouRequested: StateFlow<Boolean> = mutableThankYouRequested.asStateFlow()
 
-    private var repositoryCheckPending = false
+    private val repositoryCheckPending = AtomicBoolean(false)
     private var refreshJob: Job? = null
 
     fun shouldShowInitialPrompt(): Boolean =
@@ -125,7 +129,7 @@ class GitHubStarCoordinator(
     fun markInitialStarOpened() {
         settings.githubStarPromptShown = true
         settings.githubStarPromptDeferred = false
-        repositoryCheckPending = true
+        repositoryCheckPending.set(true)
     }
 
     fun markInitialDeferred() {
@@ -153,7 +157,7 @@ class GitHubStarCoordinator(
 
     fun markSecondStarOpened() {
         mutableSecondPromptRequested.value = false
-        repositoryCheckPending = true
+        repositoryCheckPending.set(true)
     }
 
     fun dismissSecondPrompt() {
@@ -161,7 +165,7 @@ class GitHubStarCoordinator(
     }
 
     fun markRepositoryOpenedFromSettings() {
-        repositoryCheckPending = true
+        repositoryCheckPending.set(true)
     }
 
     fun markThankYouShown() {
@@ -171,12 +175,16 @@ class GitHubStarCoordinator(
 
     fun onAppResumed() {
         val canVerify = !settings.githubToken.isNullOrBlank()
-        if (repositoryCheckPending && !canVerify) repositoryCheckPending = false
-        refresh(force = repositoryCheckPending && canVerify)
+        if (repositoryCheckPending.get() && !canVerify) repositoryCheckPending.set(false)
+        refresh(force = repositoryCheckPending.get() && canVerify)
     }
 
     fun refresh(force: Boolean = false) {
-        if (refreshJob?.isActive == true) return
+        if (force) {
+            refreshJob?.cancel()
+        } else if (refreshJob?.isActive == true) {
+            return
+        }
 
         val timestamp = now()
         val countFresh =
@@ -229,8 +237,8 @@ class GitHubStarCoordinator(
                         starred = if (tokenAvailable) fetched.starred ?: settings.githubStarredCache else null,
                     )
 
-                if (repositoryCheckPending && fetched.starred != null) {
-                    repositoryCheckPending = false
+                if (repositoryCheckPending.get() && fetched.starred != null) {
+                    repositoryCheckPending.set(false)
                     if (fetched.starred && !settings.githubStarThankYouShown) {
                         mutableThankYouRequested.value = true
                     }

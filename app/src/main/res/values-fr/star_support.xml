@@ -8,7 +8,6 @@
     <string name="github_star_action">Mettre une étoile sur GitHub</string>
     <string name="github_star_later">Plus tard</string>
     <string name="github_star_not_now">Pas maintenant</string>
-    <string name="github_star_verified_short">Étoilé</string>
     <string name="github_star_verified">Merci d’avoir étoilé OpenCode Android !</string>
     <string name="github_star_thanks_snackbar">Merci pour l’étoile GitHub ! Elle aide OpenCode Android à progresser.</string>
     <string name="github_support_button">Soutenir</string>

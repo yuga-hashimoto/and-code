@@ -8,7 +8,6 @@
     <string name="github_star_action">GitHubでStarする</string>
     <string name="github_star_later">あとで</string>
     <string name="github_star_not_now">今はしない</string>
-    <string name="github_star_verified_short">Star済み</string>
     <string name="github_star_verified">Starありがとうございます！</string>
     <string name="github_star_thanks_snackbar">GitHub Starありがとうございます！OpenCode Androidの改善に役立ちます。</string>
     <string name="github_support_button">応援する</string>

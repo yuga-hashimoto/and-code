@@ -291,12 +291,6 @@ fun SettingsScreenV2(
                     title = stringResource(R.string.github_support_button),
                     onClick = onOpenSupport,
                 )
-                SettingsDivider()
-                SettingsRow(
-                    icon = Icons.Default.Info,
-                    title = stringResource(R.string.app_info_row),
-                    onClick = onOpenSupport,
-                )
             }
         }
 

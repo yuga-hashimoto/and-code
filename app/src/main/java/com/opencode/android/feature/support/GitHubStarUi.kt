@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -241,8 +242,9 @@ private fun SupportLinkButton(
         Icon(icon, contentDescription = null)
         Text(
             text = label,
-            modifier = Modifier.padding(start = 8.dp).weight(1f),
+            modifier = Modifier.padding(start = 8.dp),
         )
+        Spacer(Modifier.weight(1f))
         Icon(Icons.Default.OpenInNew, contentDescription = null)
     }
 }

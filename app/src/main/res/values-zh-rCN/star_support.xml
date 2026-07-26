@@ -8,7 +8,6 @@
     <string name="github_star_action">在 GitHub 上 Star</string>
     <string name="github_star_later">稍后</string>
     <string name="github_star_not_now">暂时不要</string>
-    <string name="github_star_verified_short">已 Star</string>
     <string name="github_star_verified">感谢你 Star OpenCode Android！</string>
     <string name="github_star_thanks_snackbar">感谢你的 GitHub Star！这会帮助 OpenCode Android 持续改进。</string>
     <string name="github_support_button">支持</string>

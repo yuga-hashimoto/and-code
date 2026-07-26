@@ -8,7 +8,6 @@
     <string name="github_star_action">Dar estrella en GitHub</string>
     <string name="github_star_later">Quizá más tarde</string>
     <string name="github_star_not_now">Ahora no</string>
-    <string name="github_star_verified_short">Con estrella</string>
     <string name="github_star_verified">¡Gracias por dar una estrella a OpenCode Android!</string>
     <string name="github_star_thanks_snackbar">¡Gracias por la estrella en GitHub! Ayuda a mejorar OpenCode Android.</string>
     <string name="github_support_button">Apoyar</string>
