@@ -59,6 +59,8 @@ class GitCloneRepository(
                     "-b",
                     "/sys",
                     "-b",
+                    "/system",
+                    "-b",
                     "${workspace.absolutePath}:/workspace",
                     "-w",
                     "/workspace",

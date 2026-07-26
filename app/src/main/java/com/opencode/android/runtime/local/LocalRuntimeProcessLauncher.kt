@@ -51,6 +51,8 @@ class LocalRuntimeProcessLauncher(
                 add("-b")
                 add("/sys")
                 add("-b")
+                add("/system")
+                add("-b")
                 add("${workspace.absolutePath}:/workspace")
                 add("-w")
                 add("/workspace")

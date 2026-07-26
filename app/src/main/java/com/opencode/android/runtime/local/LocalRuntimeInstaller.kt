@@ -209,6 +209,8 @@ class LocalRuntimeInstaller(
                 "/proc",
                 "-b",
                 "/sys",
+                "-b",
+                "/system",
                 "-w",
                 "/root",
                 "/bin/sh",
