@@ -215,7 +215,7 @@ class LocalRuntimeInstaller(
                 "/root",
                 "/bin/sh",
                 "-lc",
-                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /sbin/apk add --no-cache bash git curl openssh-client ripgrep ca-certificates libstdc++ github-cli && /usr/sbin/update-ca-certificates",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /sbin/apk add --no-cache bash git curl openssh-client ripgrep ca-certificates libstdc++ github-cli android-tools && /usr/sbin/update-ca-certificates",
             )
         val installLog =
             File(runtimeDirectory, "logs/tool-install.log").apply {

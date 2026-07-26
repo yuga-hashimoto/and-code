@@ -15,6 +15,7 @@ import com.opencode.android.di.viewModelModule
 import com.opencode.android.feature.support.GitHubStarCoordinator
 import com.opencode.android.feature.support.GitHubStarService
 import com.opencode.android.runtime.RuntimeRegistry
+import com.opencode.android.runtime.local.AdbConnectionManager
 import com.opencode.android.runtime.local.DefaultLocalRuntimeUpdateEngine
 import com.opencode.android.runtime.local.GitCloneRepository
 import com.opencode.android.runtime.local.GitCredentialHelper
@@ -77,6 +78,9 @@ class OpenCodeApplication : Application() {
         private set
 
     lateinit var commandRunner: LocalRuntimeCommandRunner
+        private set
+
+    lateinit var adbConnectionManager: AdbConnectionManager
         private set
 
     lateinit var githubStarCoordinator: GitHubStarCoordinator
@@ -186,6 +190,7 @@ class OpenCodeApplication : Application() {
                 commandExecutor = commandRunner::run,
             )
         localRuntimeController = LocalRuntimeServiceController(this)
+        adbConnectionManager = AdbConnectionManager(this, commandRunner)
         runtimeRegistry =
             RuntimeRegistry(
                 store = settings,

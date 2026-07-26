@@ -159,6 +159,7 @@ class LocalRuntimeDiagnosticsCollector(
                     "CA証明書",
                     "test -s /etc/ssl/certs/ca-certificates.crt && echo installed",
                 ),
+                LocalRuntimeToolDefinition("adb", "ADB", "adb version | head -n 1"),
             )
     }
 }

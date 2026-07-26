@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.opencode.android.R
 import com.opencode.android.runtime.LocalRuntimeStatus
+import com.opencode.android.runtime.local.AdbConnectionState
 import com.opencode.android.runtime.local.LocalRuntimeDiagnostics
 import com.opencode.android.runtime.local.LocalRuntimeOperationResult
 import com.opencode.android.runtime.local.LocalRuntimeUpdateCheck
@@ -30,6 +31,10 @@ data class LocalRuntimeManagementUiState(
     val deleteCompleted: Boolean = false,
     val error: String? = null,
     val updateError: String? = null,
+    val adbState: AdbConnectionState = AdbConnectionState.Disconnected,
+    val showAdbPairDialog: Boolean = false,
+    val isAdbPairing: Boolean = false,
+    val isAdbConnecting: Boolean = false,
 )
 
 class LocalRuntimeManagementViewModel(
@@ -44,6 +49,11 @@ class LocalRuntimeManagementViewModel(
     private val deleteAction: () -> Unit,
     private val getString: (Int) -> String,
     private val deleteTimeoutMillis: Long = 30_000L,
+    adbState: StateFlow<AdbConnectionState>? = null,
+    private val adbPairAction: (suspend (Int, String) -> Result<Unit>)? = null,
+    private val adbConnectAction: (suspend (Int) -> Result<Unit>)? = null,
+    private val adbDisconnectAction: (suspend () -> Result<Unit>)? = null,
+    private val adbStartDiscovery: (() -> Unit)? = null,
 ) : ViewModel() {
     init {
         require(deleteTimeoutMillis > 0L)
@@ -101,6 +111,13 @@ class LocalRuntimeManagementViewModel(
         viewModelScope.launch {
             lastOperationState.collect { operation ->
                 mutableState.update { it.copy(lastOperation = operation) }
+            }
+        }
+        adbState?.let { adb ->
+            viewModelScope.launch {
+                adb.collect { state ->
+                    mutableState.update { it.copy(adbState = state) }
+                }
             }
         }
     }
@@ -237,6 +254,53 @@ class LocalRuntimeManagementViewModel(
 
     fun consumeDeleteCompleted() {
         mutableState.update { it.copy(deleteCompleted = false) }
+    }
+
+    fun showAdbPairDialog() {
+        adbStartDiscovery?.invoke()
+        mutableState.update { it.copy(showAdbPairDialog = true) }
+    }
+
+    fun dismissAdbPairDialog() {
+        mutableState.update { it.copy(showAdbPairDialog = false) }
+    }
+
+    fun adbPair(
+        pairingPort: Int,
+        pairingCode: String,
+    ) {
+        val action = adbPairAction ?: return
+        mutableState.update { it.copy(isAdbPairing = true) }
+        viewModelScope.launch {
+            action(pairingPort, pairingCode)
+                .onSuccess {
+                    mutableState.update { it.copy(isAdbPairing = false, showAdbPairDialog = false) }
+                }.onFailure { error ->
+                    mutableState.update {
+                        it.copy(isAdbPairing = false, error = error.message ?: "ペアリングに失敗しました")
+                    }
+                }
+        }
+    }
+
+    fun adbConnect(port: Int) {
+        val action = adbConnectAction ?: return
+        mutableState.update { it.copy(isAdbConnecting = true) }
+        viewModelScope.launch {
+            action(port)
+                .onSuccess {
+                    mutableState.update { it.copy(isAdbConnecting = false) }
+                }.onFailure { error ->
+                    mutableState.update {
+                        it.copy(isAdbConnecting = false, error = error.message ?: "接続に失敗しました")
+                    }
+                }
+        }
+    }
+
+    fun adbDisconnect() {
+        val action = adbDisconnectAction ?: return
+        viewModelScope.launch { action() }
     }
 
     private fun refreshAfterRuntimeOperation() {

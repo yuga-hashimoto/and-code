@@ -2,6 +2,7 @@ package com.opencode.android.feature.workspace
 
 import com.opencode.android.R
 import com.opencode.android.runtime.LocalRuntimeStatus
+import com.opencode.android.runtime.local.AdbConnectionState
 import com.opencode.android.runtime.local.LocalRuntimeDiagnostics
 import com.opencode.android.runtime.local.LocalRuntimeOperationResult
 import com.opencode.android.runtime.local.LocalRuntimeProcessMetrics
@@ -233,6 +234,101 @@ class LocalRuntimeManagementViewModelTest {
             assertNotNull(viewModel.state.value.diagnostics)
         }
 
+    @Test
+    fun `adb state is collected from adb state flow`() =
+        runTest(dispatcher) {
+            val runtimeState = MutableStateFlow<LocalRuntimeStatus>(LocalRuntimeStatus.Ready("1.18.3", 4097))
+            val adbState = MutableStateFlow<AdbConnectionState>(AdbConnectionState.Disconnected)
+            val viewModel =
+                viewModel(
+                    runtimeState = runtimeState,
+                    adbState = adbState,
+                )
+            advanceUntilIdle()
+
+            assertEquals(AdbConnectionState.Disconnected, viewModel.state.value.adbState)
+
+            adbState.value = AdbConnectionState.Connected(5555)
+            advanceUntilIdle()
+
+            assertEquals(AdbConnectionState.Connected(5555), viewModel.state.value.adbState)
+        }
+
+    @Test
+    fun `adb pair dialog opens and triggers discovery`() =
+        runTest(dispatcher) {
+            val runtimeState = MutableStateFlow<LocalRuntimeStatus>(LocalRuntimeStatus.Ready("1.18.3", 4097))
+            var discoveryCalls = 0
+            val viewModel =
+                viewModel(
+                    runtimeState = runtimeState,
+                    adbStartDiscovery = { discoveryCalls++ },
+                )
+            advanceUntilIdle()
+
+            viewModel.showAdbPairDialog()
+
+            assertTrue(viewModel.state.value.showAdbPairDialog)
+            assertEquals(1, discoveryCalls)
+
+            viewModel.dismissAdbPairDialog()
+            assertFalse(viewModel.state.value.showAdbPairDialog)
+        }
+
+    @Test
+    fun `adb pair success closes dialog`() =
+        runTest(dispatcher) {
+            val runtimeState = MutableStateFlow<LocalRuntimeStatus>(LocalRuntimeStatus.Ready("1.18.3", 4097))
+            val viewModel =
+                viewModel(
+                    runtimeState = runtimeState,
+                    adbPairAction = { _, _ -> Result.success(Unit) },
+                )
+            advanceUntilIdle()
+
+            viewModel.showAdbPairDialog()
+            viewModel.adbPair(37123, "123456")
+            advanceUntilIdle()
+
+            assertFalse(viewModel.state.value.showAdbPairDialog)
+            assertFalse(viewModel.state.value.isAdbPairing)
+        }
+
+    @Test
+    fun `adb pair failure exposes error`() =
+        runTest(dispatcher) {
+            val runtimeState = MutableStateFlow<LocalRuntimeStatus>(LocalRuntimeStatus.Ready("1.18.3", 4097))
+            val viewModel =
+                viewModel(
+                    runtimeState = runtimeState,
+                    adbPairAction = { _, _ -> Result.failure(RuntimeException("pair failed")) },
+                )
+            advanceUntilIdle()
+
+            viewModel.adbPair(37123, "123456")
+            advanceUntilIdle()
+
+            assertEquals("pair failed", viewModel.state.value.error)
+            assertFalse(viewModel.state.value.isAdbPairing)
+        }
+
+    @Test
+    fun `adb connect success clears connecting state`() =
+        runTest(dispatcher) {
+            val runtimeState = MutableStateFlow<LocalRuntimeStatus>(LocalRuntimeStatus.Ready("1.18.3", 4097))
+            val viewModel =
+                viewModel(
+                    runtimeState = runtimeState,
+                    adbConnectAction = { Result.success(Unit) },
+                )
+            advanceUntilIdle()
+
+            viewModel.adbConnect(5555)
+            advanceUntilIdle()
+
+            assertFalse(viewModel.state.value.isAdbConnecting)
+        }
+
     private fun viewModel(
         runtimeState: MutableStateFlow<LocalRuntimeStatus>,
         diagnosticsProvider: suspend () -> LocalRuntimeDiagnostics = { diagnostics(runtimeState.value) },
@@ -244,6 +340,11 @@ class LocalRuntimeManagementViewModelTest {
         rollbackAction: () -> Unit = {},
         deleteAction: () -> Unit = {},
         deleteTimeoutMillis: Long = 30_000L,
+        adbState: MutableStateFlow<AdbConnectionState>? = null,
+        adbPairAction: (suspend (Int, String) -> Result<Unit>)? = null,
+        adbConnectAction: (suspend (Int) -> Result<Unit>)? = null,
+        adbDisconnectAction: (suspend () -> Result<Unit>)? = null,
+        adbStartDiscovery: (() -> Unit)? = null,
     ) = LocalRuntimeManagementViewModel(
         runtimeState = runtimeState,
         lastOperationState = lastOperationState,
@@ -256,6 +357,11 @@ class LocalRuntimeManagementViewModelTest {
         deleteAction = deleteAction,
         getString = { resId -> "string/$resId" },
         deleteTimeoutMillis = deleteTimeoutMillis,
+        adbState = adbState,
+        adbPairAction = adbPairAction,
+        adbConnectAction = adbConnectAction,
+        adbDisconnectAction = adbDisconnectAction,
+        adbStartDiscovery = adbStartDiscovery,
     )
 
     private fun diagnostics(status: LocalRuntimeStatus) =

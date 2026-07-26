@@ -32,11 +32,16 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -46,6 +51,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.opencode.android.R
 import com.opencode.android.runtime.LocalRuntimeStatus
+import com.opencode.android.runtime.local.AdbConnectionState
 import com.opencode.android.runtime.local.LocalRuntimeDiagnostics
 import com.opencode.android.runtime.local.LocalRuntimeOperationResult
 import com.opencode.android.runtime.local.LocalRuntimeUpdateCheck
@@ -69,6 +75,11 @@ fun LocalRuntimeManagementScreen(
     onRequestDelete: () -> Unit,
     onDismissDelete: () -> Unit,
     onConfirmDelete: () -> Unit,
+    onShowAdbPairDialog: () -> Unit = {},
+    onDismissAdbPairDialog: () -> Unit = {},
+    onAdbPair: (Int, String) -> Unit = { _, _ -> },
+    onAdbConnect: (Int) -> Unit = {},
+    onAdbDisconnect: () -> Unit = {},
 ) {
     val busy = state.runtimeStatus.isBusy() || state.isDeleting
     Scaffold(
@@ -123,6 +134,14 @@ fun LocalRuntimeManagementScreen(
                     onRequestRollback = onRequestRollback,
                 )
                 RuntimeToolsCard(diagnostics)
+                AdbSetupCard(
+                    adbState = state.adbState,
+                    isPairing = state.isAdbPairing,
+                    isConnecting = state.isAdbConnecting,
+                    onShowPairDialog = onShowAdbPairDialog,
+                    onConnect = onAdbConnect,
+                    onDisconnect = onAdbDisconnect,
+                )
                 RuntimeLogsCard(diagnostics.logTail)
 
                 if (diagnostics.status.isInstalled()) {
@@ -196,6 +215,14 @@ fun LocalRuntimeManagementScreen(
             dismissButton = {
                 TextButton(onClick = onDismissDelete) { Text(stringResource(R.string.cancel)) }
             },
+        )
+    }
+
+    if (state.showAdbPairDialog) {
+        AdbPairDialog(
+            isPairing = state.isAdbPairing,
+            onDismiss = onDismissAdbPairDialog,
+            onPair = onAdbPair,
         )
     }
 }
@@ -676,4 +703,156 @@ private fun formatDuration(milliseconds: Long): String {
         minutes > 0 -> stringResource(R.string.duration_minutes_seconds, minutes, seconds)
         else -> stringResource(R.string.duration_seconds, seconds)
     }
+}
+
+@Composable
+private fun AdbSetupCard(
+    adbState: AdbConnectionState,
+    isPairing: Boolean,
+    isConnecting: Boolean,
+    onShowPairDialog: () -> Unit,
+    onConnect: (Int) -> Unit,
+    onDisconnect: () -> Unit,
+) {
+    SectionCard {
+        Text(
+            stringResource(R.string.adb_setup_title),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+        )
+        Spacer(Modifier.height(4.dp))
+        Text(
+            stringResource(R.string.adb_setup_description),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Spacer(Modifier.height(10.dp))
+        val statusText =
+            when (adbState) {
+                is AdbConnectionState.Disconnected -> stringResource(R.string.adb_status_disconnected)
+                is AdbConnectionState.Discovered -> stringResource(R.string.adb_status_discovered, adbState.port)
+                is AdbConnectionState.Pairing -> stringResource(R.string.adb_pairing_in_progress)
+                is AdbConnectionState.Connected -> stringResource(R.string.adb_status_connected, adbState.port)
+                is AdbConnectionState.Error -> adbState.message
+            }
+        val isError = adbState is AdbConnectionState.Error
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                imageVector = if (adbState is AdbConnectionState.Connected) Icons.Default.CheckCircle else Icons.Default.Warning,
+                contentDescription = null,
+                tint =
+                    when {
+                        adbState is AdbConnectionState.Connected -> MaterialTheme.colorScheme.primary
+                        isError -> MaterialTheme.colorScheme.error
+                        else -> MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                statusText,
+                style = MaterialTheme.typography.bodyMedium,
+                color = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            when (adbState) {
+                is AdbConnectionState.Disconnected, is AdbConnectionState.Error -> {
+                    OutlinedButton(onClick = onShowPairDialog, enabled = !isPairing) {
+                        Text(stringResource(R.string.adb_pair_button))
+                    }
+                }
+                is AdbConnectionState.Discovered -> {
+                    Button(
+                        onClick = { onConnect(adbState.port) },
+                        enabled = !isConnecting,
+                    ) {
+                        if (isConnecting) {
+                            CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            Spacer(Modifier.size(6.dp))
+                        }
+                        Text(stringResource(R.string.adb_connect_button))
+                    }
+                    OutlinedButton(onClick = onShowPairDialog, enabled = !isPairing) {
+                        Text(stringResource(R.string.adb_pair_button))
+                    }
+                }
+                is AdbConnectionState.Pairing -> {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+                }
+                is AdbConnectionState.Connected -> {
+                    OutlinedButton(onClick = onDisconnect) {
+                        Text(stringResource(R.string.adb_disconnect_button))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AdbPairDialog(
+    isPairing: Boolean,
+    onDismiss: () -> Unit,
+    onPair: (Int, String) -> Unit,
+) {
+    var portText by remember { mutableStateOf("") }
+    var codeText by remember { mutableStateOf("") }
+    val port = portText.toIntOrNull()
+    val canPair = port != null && port in 1..65535 && codeText.length == 6 && !isPairing
+
+    AlertDialog(
+        onDismissRequest = { if (!isPairing) onDismiss() },
+        title = { Text(stringResource(R.string.adb_pair_dialog_title)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    stringResource(R.string.adb_pair_dialog_instructions),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                OutlinedTextField(
+                    value = portText,
+                    onValueChange = { portText = it.filter(Char::isDigit).take(5) },
+                    label = { Text(stringResource(R.string.adb_pair_port_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                OutlinedTextField(
+                    value = codeText,
+                    onValueChange = { codeText = it.filter(Char::isDigit).take(6) },
+                    label = { Text(stringResource(R.string.adb_pair_code_label)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (isPairing) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        Text(stringResource(R.string.adb_pairing_in_progress), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { port?.let { onPair(it, codeText) } },
+                enabled = canPair,
+            ) {
+                Text(stringResource(R.string.adb_pair_confirm))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isPairing) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
 }
