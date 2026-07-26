@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="github_star_prompt_title">هل تدعم OpenCode Android؟</string>
+    <string name="github_star_prompt_body">OpenCode Android مشروع مفتوح المصدر. إذا كان مفيدًا لك، فإن إضافة نجمة على GitHub تساعد في استمرار التطوير.</string>
+    <string name="github_star_second_prompt_title">هل كان OpenCode Android مفيدًا؟</string>
+    <string name="github_star_second_prompt_body">إذا نجحت مهمتك الأولى، ففكّر في دعم OpenCode Android بنجمة على GitHub.</string>
+    <string name="github_star_count">%1$d نجمة على GitHub</string>
+    <string name="github_star_action">أضف نجمة على GitHub</string>
+    <string name="github_star_later">لاحقًا</string>
+    <string name="github_star_not_now">ليس الآن</string>
+    <string name="github_star_verified_short">تمت إضافة نجمة</string>
+    <string name="github_star_verified">شكرًا لإضافة نجمة إلى OpenCode Android!</string>
+    <string name="github_star_thanks_snackbar">شكرًا على نجمة GitHub! إنها تساعد OpenCode Android على التحسن.</string>
+    <string name="github_support_button">ادعم</string>
+    <string name="github_support_title">ادعم OpenCode Android</string>
+    <string name="github_support_body">OpenCode Android مشروع مفتوح المصدر. يمكنك إضافة نجمة أو تصفح الشفرة أو الإبلاغ عن مشكلة.</string>
+    <string name="github_repo_action">مستودع GitHub</string>
+    <string name="github_issue_action">الإبلاغ عن مشكلة</string>
+    <string name="github_license_action">الترخيص</string>
+    <string name="github_version_label">الإصدار</string>
+</resources>
