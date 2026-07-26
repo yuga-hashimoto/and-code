@@ -31,7 +31,7 @@ jobs:
               marker,
               '**Debug APK built successfully**',
               '',
-              `[Download APK artifact](${apk.archive_download_url})`,
+              `[Download APK artifact](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${run.id}/artifacts/${apk.id})`,
               `[View workflow run](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${run.id})`,
               '',
               `Commit: \`${run.head_sha.slice(0, 12)}\`  |  Artifact expires in 14 days.`,
