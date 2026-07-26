@@ -204,6 +204,46 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         get() = preferences.getString(KEY_GITHUB_LOGIN, null)
         set(value) = preferences.edit().putString(KEY_GITHUB_LOGIN, value).apply()
 
+    var githubStarPromptShown: Boolean
+        get() = preferences.getBoolean(KEY_GITHUB_STAR_PROMPT_SHOWN, false)
+        set(value) = preferences.edit().putBoolean(KEY_GITHUB_STAR_PROMPT_SHOWN, value).apply()
+
+    var githubStarPromptDeferred: Boolean
+        get() = preferences.getBoolean(KEY_GITHUB_STAR_PROMPT_DEFERRED, false)
+        set(value) = preferences.edit().putBoolean(KEY_GITHUB_STAR_PROMPT_DEFERRED, value).apply()
+
+    var githubStarSecondPromptShown: Boolean
+        get() = preferences.getBoolean(KEY_GITHUB_STAR_SECOND_PROMPT_SHOWN, false)
+        set(value) = preferences.edit().putBoolean(KEY_GITHUB_STAR_SECOND_PROMPT_SHOWN, value).apply()
+
+    var githubStarThankYouShown: Boolean
+        get() = preferences.getBoolean(KEY_GITHUB_STAR_THANK_YOU_SHOWN, false)
+        set(value) = preferences.edit().putBoolean(KEY_GITHUB_STAR_THANK_YOU_SHOWN, value).apply()
+
+    var githubStarredCache: Boolean?
+        get() = if (preferences.contains(KEY_GITHUB_STARRED_CACHE)) preferences.getBoolean(KEY_GITHUB_STARRED_CACHE, false) else null
+        set(value) {
+            val editor = preferences.edit()
+            if (value == null) editor.remove(KEY_GITHUB_STARRED_CACHE) else editor.putBoolean(KEY_GITHUB_STARRED_CACHE, value)
+            editor.apply()
+        }
+
+    var githubStarStatusCheckedAt: Long
+        get() = preferences.getLong(KEY_GITHUB_STAR_STATUS_CHECKED_AT, 0L)
+        set(value) = preferences.edit().putLong(KEY_GITHUB_STAR_STATUS_CHECKED_AT, value).apply()
+
+    var githubStarCountCache: Int?
+        get() = if (preferences.contains(KEY_GITHUB_STAR_COUNT_CACHE)) preferences.getInt(KEY_GITHUB_STAR_COUNT_CACHE, 0) else null
+        set(value) {
+            val editor = preferences.edit()
+            if (value == null) editor.remove(KEY_GITHUB_STAR_COUNT_CACHE) else editor.putInt(KEY_GITHUB_STAR_COUNT_CACHE, value)
+            editor.apply()
+        }
+
+    var githubStarCountCheckedAt: Long
+        get() = preferences.getLong(KEY_GITHUB_STAR_COUNT_CHECKED_AT, 0L)
+        set(value) = preferences.edit().putLong(KEY_GITHUB_STAR_COUNT_CHECKED_AT, value).apply()
+
     var theme: String
         get() = preferences.getString(KEY_THEME, "dark") ?: "dark"
         set(value) = preferences.edit().putString(KEY_THEME, value).apply()
@@ -278,6 +318,14 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         private const val KEY_UNREAD_SESSIONS = "unread_sessions"
         private const val KEY_GITHUB_TOKEN = "github_token"
         private const val KEY_GITHUB_LOGIN = "github_login"
+        private const val KEY_GITHUB_STAR_PROMPT_SHOWN = "github_star_prompt_shown"
+        private const val KEY_GITHUB_STAR_PROMPT_DEFERRED = "github_star_prompt_deferred"
+        private const val KEY_GITHUB_STAR_SECOND_PROMPT_SHOWN = "github_star_second_prompt_shown"
+        private const val KEY_GITHUB_STAR_THANK_YOU_SHOWN = "github_star_thank_you_shown"
+        private const val KEY_GITHUB_STARRED_CACHE = "github_starred_cache"
+        private const val KEY_GITHUB_STAR_STATUS_CHECKED_AT = "github_star_status_checked_at"
+        private const val KEY_GITHUB_STAR_COUNT_CACHE = "github_star_count_cache"
+        private const val KEY_GITHUB_STAR_COUNT_CHECKED_AT = "github_star_count_checked_at"
         private const val KEY_THEME = "theme"
         private const val KEY_UI_FONT_SIZE = "ui_font_size"
         private const val KEY_CODE_FONT_SIZE = "code_font_size"
