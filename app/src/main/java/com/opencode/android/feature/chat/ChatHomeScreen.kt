@@ -211,9 +211,9 @@ fun ChatHomeScreen(
         }
     val galleryLauncher =
         rememberLauncherForActivityResult(
-            ActivityResultContracts.PickVisualMedia(),
-        ) { uri ->
-            if (uri != null) {
+            ActivityResultContracts.PickMultipleVisualMedia(),
+        ) { uris ->
+            uris.forEach { uri ->
                 try {
                     val bitmap =
                         context.contentResolver.openInputStream(uri)?.use {
