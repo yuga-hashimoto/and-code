@@ -2,11 +2,10 @@ package com.opencode.android.ui.navigation
 
 import android.content.Context
 import android.content.Intent
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
@@ -17,7 +16,7 @@ import com.opencode.android.feature.settings.SettingsScreenV2
 import com.opencode.android.feature.settings.SettingsUiState
 import com.opencode.android.feature.settings.SettingsViewModel
 import com.opencode.android.feature.settings.VoiceSettingsScreen
-import com.opencode.android.feature.support.GitHubSupportSettingsButton
+import com.opencode.android.feature.support.GitHubSupportSheetHost
 import com.opencode.android.runtime.RuntimeRegistry
 
 fun NavGraphBuilder.settingsNavGraph(
@@ -38,43 +37,44 @@ fun NavGraphBuilder.settingsNavGraph(
     onRequestWakeWordPermission: () -> Unit,
 ) {
     composable(ROUTE_SETTINGS) {
-        Box {
-            SettingsScreenV2(
-                assistantConfigured = settingsState.assistantRuntimeId != null,
-                notificationsEnabled = notificationsEnabled,
-                onToggleNotifications = onToggleNotifications,
+        var showSupportSheet by remember { mutableStateOf(false) }
+
+        SettingsScreenV2(
+            assistantConfigured = settingsState.assistantRuntimeId != null,
+            notificationsEnabled = notificationsEnabled,
+            onToggleNotifications = onToggleNotifications,
+            appVersion = appVersion,
+            onOpenDrawer = onOpenDrawer,
+            onOpenAssistantSettings = onOpenAssistantSettings,
+            onOpenVoiceSettings = { navController.navigate(ROUTE_SETTINGS_VOICE) },
+            onOpenProviderSettings = { navController.navigate(ROUTE_SETTINGS_PROVIDERS) },
+            onOpenLocalRuntime = { navController.navigate(LOCAL_RUNTIME_MANAGEMENT_ROUTE) },
+            onOpenRemoteConnection = { navController.navigate(ROUTE_REMOTE_CONNECTION) },
+            onOpenWorkspaces = { navController.navigate(ROUTE_WORKSPACES) },
+            onOpenDiagnostics = onShowDiagnostics,
+            onOpenSupport = { showSupportSheet = true },
+            onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP) },
+            onOpenServerInfo = { navController.navigate(ROUTE_SETTINGS_SERVER_INFO) },
+            currentTheme = preferences.theme,
+            onThemeChange = { appPreferences.setTheme(it) },
+            uiFontSize = preferences.uiFontSize,
+            onUiFontSizeChange = { appPreferences.setUiFontSize(it) },
+            codeFontSize = preferences.codeFontSize,
+            onCodeFontSizeChange = { appPreferences.setCodeFontSize(it) },
+            syntaxTheme = preferences.syntaxTheme,
+            onSyntaxThemeChange = { appPreferences.setSyntaxTheme(it) },
+            toolCallDetailLevel = preferences.toolCallDetailLevel,
+            onToolCallDetailLevelChange = { appPreferences.setToolCallDetailLevel(it) },
+            autoExpandReasoning = preferences.autoExpandReasoning,
+            onAutoExpandReasoningChange = { appPreferences.setAutoExpandReasoning(it) },
+            sendBehavior = preferences.sendBehavior,
+            onSendBehaviorChange = { appPreferences.setSendBehavior(it) },
+        )
+
+        if (showSupportSheet) {
+            GitHubSupportSheetHost(
                 appVersion = appVersion,
-                onOpenDrawer = onOpenDrawer,
-                onOpenAssistantSettings = onOpenAssistantSettings,
-                onOpenVoiceSettings = { navController.navigate(ROUTE_SETTINGS_VOICE) },
-                onOpenProviderSettings = { navController.navigate(ROUTE_SETTINGS_PROVIDERS) },
-                onOpenLocalRuntime = { navController.navigate(LOCAL_RUNTIME_MANAGEMENT_ROUTE) },
-                onOpenRemoteConnection = { navController.navigate(ROUTE_REMOTE_CONNECTION) },
-                onOpenWorkspaces = { navController.navigate(ROUTE_WORKSPACES) },
-                onOpenDiagnostics = onShowDiagnostics,
-                onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP) },
-                onOpenServerInfo = { navController.navigate(ROUTE_SETTINGS_SERVER_INFO) },
-                currentTheme = preferences.theme,
-                onThemeChange = { appPreferences.setTheme(it) },
-                uiFontSize = preferences.uiFontSize,
-                onUiFontSizeChange = { appPreferences.setUiFontSize(it) },
-                codeFontSize = preferences.codeFontSize,
-                onCodeFontSizeChange = { appPreferences.setCodeFontSize(it) },
-                syntaxTheme = preferences.syntaxTheme,
-                onSyntaxThemeChange = { appPreferences.setSyntaxTheme(it) },
-                toolCallDetailLevel = preferences.toolCallDetailLevel,
-                onToolCallDetailLevelChange = { appPreferences.setToolCallDetailLevel(it) },
-                autoExpandReasoning = preferences.autoExpandReasoning,
-                onAutoExpandReasoningChange = { appPreferences.setAutoExpandReasoning(it) },
-                sendBehavior = preferences.sendBehavior,
-                onSendBehaviorChange = { appPreferences.setSendBehavior(it) },
-            )
-            GitHubSupportSettingsButton(
-                appVersion = appVersion,
-                modifier =
-                    Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(20.dp),
+                onDismiss = { showSupportSheet = false },
             )
         }
     }
