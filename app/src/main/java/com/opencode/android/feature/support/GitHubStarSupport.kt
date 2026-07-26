@@ -141,8 +141,13 @@ class GitHubStarCoordinator(
                 starred = settings.githubStarredCache,
             )
         ) {
-            settings.githubStarSecondPromptShown = true
             mutableSecondPromptRequested.value = true
+        }
+    }
+
+    fun markSecondPromptPresented() {
+        if (mutableSecondPromptRequested.value) {
+            settings.githubStarSecondPromptShown = true
         }
     }
 
@@ -194,6 +199,13 @@ class GitHubStarCoordinator(
                     starred = if (tokenAvailable) settings.githubStarredCache else null,
                 )
             return
+        }
+
+        if (!tokenAvailable || !statusFresh) {
+            mutableSnapshot.value =
+                mutableSnapshot.value.copy(
+                    starred = if (tokenAvailable) settings.githubStarredCache else null,
+                )
         }
 
         refreshJob =
