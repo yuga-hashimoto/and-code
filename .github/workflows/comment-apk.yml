@@ -2,7 +2,7 @@ name: Comment APK Artifact
 
 on:
   workflow_run:
-    workflows: [PR APK Build]
+    workflows: [Android CI]
     types: [completed]
 
 permissions:
@@ -24,7 +24,7 @@ jobs:
             const artifacts = await github.paginate(github.rest.actions.listWorkflowRunArtifacts, {
               owner: context.repo.owner, repo: context.repo.repo, run_id: run.id, per_page: 100,
             });
-            const apk = artifacts.find((artifact) => artifact.name === 'opencode-debug-apk');
+            const apk = artifacts.find((artifact) => artifact.name === 'opencode-android-debug');
             if (!apk) core.setFailed('The APK artifact was not found.');
             if (!apk) return;
             const marker = '<!-- opencode-debug-apk -->';
