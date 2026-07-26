@@ -1,0 +1,33 @@
+name: PR APK Build
+
+on:
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.label.name == 'build-apk' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+      - uses: android-actions/setup-android@v3
+      - run: yes | sdkmanager --licenses >/dev/null || true
+      - run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - run: chmod +x ./gradlew
+      - run: ./gradlew :app:testDebugUnitTest --no-daemon
+      - run: ./gradlew :app:assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: opencode-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

@@ -2,7 +2,7 @@ name: Comment APK Artifact
 
 on:
   workflow_run:
-    workflows: [Android APK]
+    workflows: [PR APK Build]
     types: [completed]
 
 permissions:
