@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="github_star_prompt_title">Soutenir OpenCode Android ?</string>
+    <string name="github_star_prompt_body">OpenCode Android est open source. Si l’application vous est utile, une étoile GitHub aide à poursuivre son développement.</string>
+    <string name="github_star_second_prompt_title">OpenCode Android vous a été utile ?</string>
+    <string name="github_star_second_prompt_body">Si votre première tâche s’est bien passée, pensez à soutenir OpenCode Android avec une étoile GitHub.</string>
+    <string name="github_star_count">%1$d étoiles GitHub</string>
+    <string name="github_star_action">Mettre une étoile sur GitHub</string>
+    <string name="github_star_later">Plus tard</string>
+    <string name="github_star_not_now">Pas maintenant</string>
+    <string name="github_star_verified_short">Étoilé</string>
+    <string name="github_star_verified">Merci d’avoir étoilé OpenCode Android !</string>
+    <string name="github_star_thanks_snackbar">Merci pour l’étoile GitHub ! Elle aide OpenCode Android à progresser.</string>
+    <string name="github_support_button">Soutenir</string>
+    <string name="github_support_title">Soutenir OpenCode Android</string>
+    <string name="github_support_body">OpenCode Android est un projet open source. Ajoutez une étoile, consultez le code ou signalez un problème.</string>
+    <string name="github_repo_action">Dépôt GitHub</string>
+    <string name="github_issue_action">Signaler un problème</string>
+    <string name="github_license_action">Licence</string>
+    <string name="github_version_label">Version</string>
+</resources>
