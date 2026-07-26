@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="github_star_prompt_title">Поддержать OpenCode Android?</string>
+    <string name="github_star_prompt_body">OpenCode Android — проект с открытым исходным кодом. Если он полезен, звезда на GitHub поможет продолжать разработку.</string>
+    <string name="github_star_second_prompt_title">OpenCode Android оказался полезен?</string>
+    <string name="github_star_second_prompt_body">Если первая задача прошла успешно, поддержите OpenCode Android звездой на GitHub.</string>
+    <string name="github_star_count">Звёзд GitHub: %1$d</string>
+    <string name="github_star_action">Поставить звезду на GitHub</string>
+    <string name="github_star_later">Позже</string>
+    <string name="github_star_not_now">Не сейчас</string>
+    <string name="github_star_verified_short">Звезда поставлена</string>
+    <string name="github_star_verified">Спасибо за звезду OpenCode Android!</string>
+    <string name="github_star_thanks_snackbar">Спасибо за звезду на GitHub! Это помогает улучшать OpenCode Android.</string>
+    <string name="github_support_button">Поддержать</string>
+    <string name="github_support_title">Поддержать OpenCode Android</string>
+    <string name="github_support_body">OpenCode Android — проект с открытым исходным кодом. Поставьте звезду, посмотрите код или сообщите о проблеме.</string>
+    <string name="github_repo_action">Репозиторий GitHub</string>
+    <string name="github_issue_action">Сообщить о проблеме</string>
+    <string name="github_license_action">Лицензия</string>
+    <string name="github_version_label">Версия</string>
+</resources>
