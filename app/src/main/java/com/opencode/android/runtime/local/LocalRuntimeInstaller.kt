@@ -262,7 +262,7 @@ class LocalRuntimeInstaller(
             writeText(
                 "export HOME=/root\n" +
                     "export TMPDIR=/tmp\n" +
-                    "export PATH=/usr/local/bin:/usr/bin:/bin\n" +
+                    "export PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/system/bin:/system/xbin\n" +
                     "export OPENCODE_CONFIG_DIR=/root/.config/opencode\n",
             )
         }

@@ -26,7 +26,7 @@ class LocalRuntimeProcessLauncherTest {
 
         assertEquals("/root", environment["HOME"])
         assertEquals(
-            "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/system/bin:/system/xbin",
             environment["PATH"],
         )
         assertEquals("/tmp", environment["TMPDIR"])
@@ -34,6 +34,24 @@ class LocalRuntimeProcessLauncherTest {
         assertEquals("/android/proot-tmp", environment["PROOT_TMP_DIR"])
         assertEquals("/native/lib", environment["LD_LIBRARY_PATH"])
         assertTrue(environment["OPENCODE_DISABLE_AUTOUPDATE"] == "true")
+    }
+
+    @Test
+    fun `guest PATH includes Android system directories for am pm input access`() {
+        val environment =
+            localRuntimeEnvironment(
+                suiteEnvironment = emptyMap(),
+                prootTmp = File("/android/proot-tmp"),
+            )
+
+        val path = environment["PATH"]!!
+        val entries = path.split(":")
+        assertTrue("PATH must contain /system/bin", "/system/bin" in entries)
+        assertTrue("PATH must contain /system/xbin", "/system/xbin" in entries)
+        assertTrue(
+            "Alpine paths must precede Android system paths",
+            entries.indexOf("/usr/local/bin") < entries.indexOf("/system/bin"),
+        )
     }
 
     @Test
