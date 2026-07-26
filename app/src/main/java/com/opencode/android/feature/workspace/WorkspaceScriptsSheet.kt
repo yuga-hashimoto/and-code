@@ -27,10 +27,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.opencode.android.R
 import com.opencode.android.ui.components.SectionCard
 
 data class WorkspaceScript(val name: String, val command: String)
@@ -59,7 +61,7 @@ fun WorkspaceScriptsSheet(
                     .padding(bottom = 32.dp),
         ) {
             Text(
-                "Scripts",
+                stringResource(R.string.scripts_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -67,7 +69,7 @@ fun WorkspaceScriptsSheet(
 
             if (scripts.isEmpty() && !showAddForm) {
                 Text(
-                    "No scripts configured",
+                    stringResource(R.string.scripts_empty),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             } else {
@@ -101,14 +103,14 @@ fun WorkspaceScriptsSheet(
                         value = newName,
                         onValueChange = { newName = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Name") },
+                        label = { Text(stringResource(R.string.script_name_label)) },
                         singleLine = true,
                     )
                     OutlinedTextField(
                         value = newCommand,
                         onValueChange = { newCommand = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Command") },
+                        label = { Text(stringResource(R.string.script_command_label)) },
                         singleLine = true,
                     )
                     Row(
@@ -127,13 +129,13 @@ fun WorkspaceScriptsSheet(
                             enabled = newName.isNotBlank() && newCommand.isNotBlank(),
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text("Save")
+                            Text(stringResource(R.string.save))
                         }
                         OutlinedButton(
                             onClick = { showAddForm = false },
                             modifier = Modifier.weight(1f),
                         ) {
-                            Text("Cancel")
+                            Text(stringResource(R.string.cancel))
                         }
                     }
                 }
@@ -142,9 +144,9 @@ fun WorkspaceScriptsSheet(
                     onClick = { showAddForm = true },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_script))
                     Spacer(Modifier.height(4.dp))
-                    Text("Add Script")
+                    Text(stringResource(R.string.add_script))
                 }
             }
         }

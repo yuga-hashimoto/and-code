@@ -22,9 +22,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.opencode.android.R
 
 data class SearchResult(
     val sessionId: String,
@@ -61,14 +63,14 @@ fun GlobalSearchSheet(
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("Search") },
+                label = { Text(stringResource(R.string.search_label)) },
             )
             Spacer(Modifier.height(8.dp))
         }
 
         if (filtered.isEmpty()) {
             Text(
-                text = "Search across all sessions",
+                text = stringResource(R.string.global_search_empty_hint),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),

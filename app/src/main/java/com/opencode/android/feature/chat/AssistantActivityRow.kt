@@ -78,7 +78,7 @@ fun AssistantActivityRow(
             } else {
                 Icon(
                     if (summary.hasError) Icons.Default.ErrorOutline else Icons.Default.AutoAwesome,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_subagent_status),
                     tint = accent,
                     modifier = Modifier.size(16.dp),
                 )

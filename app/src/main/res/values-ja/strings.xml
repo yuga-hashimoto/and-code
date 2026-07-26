@@ -603,4 +603,248 @@
     <string name="subagent_session_label">サブエージェントのセッション</string>
     <string name="subagent_return_to_parent">メインエージェントに戻る: %1$s</string>
     <string name="subagent_parent_untitled">メインのセッション</string>
+    <!-- Content descriptions -->
+    <string name="cd_folder">フォルダ</string>
+    <string name="cd_expand_dropdown">ドロップダウンを展開</string>
+    <string name="cd_expand_collapse">展開または折りたたみ</string>
+    <string name="cd_search">検索</string>
+    <string name="cd_app_logo">OpenCode</string>
+    <string name="cd_permission">権限</string>
+    <string name="cd_runtime_type">ランタイムタイプ</string>
+    <string name="cd_new_chat">新しいチャット</string>
+    <string name="cd_setting">設定</string>
+    <string name="cd_server_url">サーバーURL</string>
+    <string name="cd_password">パスワード</string>
+    <string name="cd_test_connection">接続テスト</string>
+    <string name="cd_scan_qr">QRコードをスキャン</string>
+    <string name="cd_lan_discovery">LANで検出</string>
+    <string name="cd_clear_search">検索をクリア</string>
+    <string name="cd_repair">修復</string>
+    <string name="cd_session">セッション</string>
+    <string name="cd_attachment">添付ファイル</string>
+    <string name="cd_image_preview">画像プレビュー</string>
+    <string name="cd_reasoning">推論</string>
+    <string name="cd_tool">ツール</string>
+    <string name="cd_file_changes">ファイル変更</string>
+    <string name="cd_compacted">コンテキスト圧縮済み</string>
+    <string name="cd_plan">プラン</string>
+    <string name="cd_task_completed">完了</string>
+    <string name="cd_task_in_progress">進行中</string>
+    <string name="cd_task_pending">保留中</string>
+    <string name="cd_setup">セットアップ</string>
+    <string name="cd_start">開始</string>
+    <string name="cd_stop">停止</string>
+    <string name="cd_diagnostics">診断</string>
+    <string name="cd_connection_error">接続エラー</string>
+    <string name="cd_import_folder">フォルダをインポート</string>
+    <string name="cd_clone_github">GitHubからクローン</string>
+    <string name="cd_scroll_to_bottom">最下部へスクロール</string>
+    <string name="cd_attached_image">添付画像</string>
+    <string name="cd_remove_image">画像を削除</string>
+    <string name="cd_attach_file">ファイルを添付</string>
+    <string name="cd_camera">カメラ</string>
+    <string name="cd_gallery">ギャラリー</string>
+    <string name="cd_thinking">思考中</string>
+    <string name="cd_agent_mode">エージェントモード</string>
+    <string name="cd_updating">更新中</string>
+    <string name="cd_operation_result">操作結果</string>
+    <string name="cd_check_update">更新を確認</string>
+    <string name="cd_up_to_date">最新です</string>
+    <string name="cd_update">更新</string>
+    <string name="cd_rollback">ロールバック</string>
+    <string name="cd_tool_status">ツール状態</string>
+    <string name="cd_delete_runtime">ランタイムを削除</string>
+    <string name="cd_new_schedule">新しいスケジュール</string>
+    <string name="cd_schedule">スケジュール</string>
+    <string name="cd_cron">スケジュール時刻</string>
+    <string name="cd_workspace">ワークスペース</string>
+    <string name="cd_event_log">イベントログ</string>
+    <string name="cd_navigate">移動</string>
+    <string name="cd_cancel">キャンセル</string>
+    <string name="cd_accept">承認</string>
+    <string name="cd_send">送信</string>
+    <string name="cd_continue_chat">チャットを続行</string>
+    <string name="cd_task_status">タスク状態</string>
+    <string name="cd_file_change">ファイル変更</string>
+    <string name="cd_disconnect">切断</string>
+    <string name="cd_connect">接続</string>
+    <string name="cd_onboarding_option">セットアップオプション</string>
+    <string name="cd_favorite">お気に入り切替</string>
+    <string name="cd_microphone">マイク</string>
+    <string name="cd_file_type">ファイル</string>
+    <string name="cd_repository">リポジトリ</string>
+    <string name="cd_add_script">スクリプトを追加</string>
+    <string name="cd_voice_setting">音声設定</string>
+    <string name="cd_settings_section">設定セクション</string>
+    <string name="cd_command">コマンド</string>
+    <string name="cd_subagent_status">サブエージェント状態</string>
+    <string name="cd_toggle_password">パスワード表示切替</string>
+    <string name="cd_info">情報</string>
+    <string name="cd_add_project">プロジェクトを追加</string>
+    <string name="cd_file">ファイル</string>
+    <string name="cd_code_match">コード一致</string>
+    <string name="cd_git">Git</string>
+    <string name="cd_current_branch">現在のブランチ</string>
+    <string name="cd_new_branch">新しいブランチ</string>
+    <string name="cd_step_completed">ステップ完了</string>
+    <string name="cd_error">エラー</string>
+    <string name="cd_runtime_ready">ランタイム準備完了</string>
+    <string name="cd_workspaces">ワークスペース</string>
+    <string name="cd_configuration">構成</string>
+    <string name="cd_assistant_settings">アシスタント設定</string>
+    <string name="cd_provider_key">プロバイダーキー</string>
+    <string name="cd_local_runtime">ローカルランタイム</string>
+    <string name="cd_about">情報</string>
+    <string name="cd_nav_item">ナビゲーション項目</string>
+    <string name="cd_terminal">ターミナル</string>
+    <string name="cd_scripts">スクリプト</string>
+    <string name="cd_add_tab">タブを追加</string>
+    <string name="cd_back">戻る</string>
+    <string name="cd_toggle_wrap">折り返し切替</string>
+    <string name="cd_next_match">次の一致</string>
+    <string name="cd_clear_terminal">ターミナルをクリア</string>
+    <string name="cd_send_command">コマンドを送信</string>
+    <string name="cd_delete">削除</string>
+
+    <!-- Command palette & search -->
+    <string name="palette_new_chat">新しいチャット</string>
+    <string name="palette_settings">設定</string>
+    <string name="palette_workspaces">ワークスペース</string>
+    <string name="palette_activity">アクティビティ</string>
+    <string name="search_label">検索</string>
+    <string name="palette_section_actions">アクション</string>
+    <string name="palette_section_sessions">セッション</string>
+    <string name="global_search_empty_hint">全セッションから検索</string>
+
+    <!-- Scripts -->
+    <string name="scripts_title">スクリプト</string>
+    <string name="scripts_empty">スクリプトが設定されていません</string>
+    <string name="script_name_label">名前</string>
+    <string name="script_command_label">コマンド</string>
+    <string name="add_script">スクリプトを追加</string>
+
+    <!-- Session import -->
+    <string name="import_session_title">セッションをインポート</string>
+    <string name="session_id_label">セッションID</string>
+    <string name="import_session_hint">別のOpenCodeクライアントからセッションIDまたはresumeコマンドを入力</string>
+    <string name="import_button">インポート</string>
+
+    <!-- Activity errors -->
+    <string name="error_permission_not_accepted">権限応答が受け入れられませんでした</string>
+    <string name="error_permission_failed">権限応答に失敗しました</string>
+    <string name="error_rename_session">セッション名の変更に失敗しました</string>
+    <string name="error_delete_session">セッションの削除に失敗しました</string>
+
+    <!-- Terminal -->
+    <string name="terminal_banner">OpenCode ターミナル - PRoot Alpine Linux</string>
+    <string name="terminal_exit_code">終了コード: %1$d</string>
+
+    <!-- Workspace explorer tabs -->
+    <string name="tab_type_agent">エージェント</string>
+    <string name="tab_new_default">新規</string>
+    <string name="tab_type_terminal">ターミナル</string>
+    <string name="tab_close">閉じる</string>
+    <string name="tab_close_others">他を閉じる</string>
+    <string name="tab_content_placeholder">タブコンテンツ</string>
+    <string name="git_label">Git</string>
+
+    <!-- Code viewer -->
+    <string name="code_no_matches">一致なし</string>
+    <string name="code_match_counter">%1$d / %2$d</string>
+
+    <!-- Chat screen -->
+    <string name="copy_resume_command">resumeコマンドをコピー</string>
+    <string name="model_default">デフォルト</string>
+    <string name="no_connected_providers">接続されたプロバイダーがありません</string>
+    <string name="tool_call_count">🔧 %1$d ツールコール</string>
+    <string name="context_compacted_marker">コンテキスト圧縮済み</string>
+    <string name="plan_card_title">プラン</string>
+    <string name="tasks_card_title">タスク</string>
+    <string name="tasks_progress">%1$d/%2$d 完了</string>
+
+    <!-- Chat errors -->
+    <string name="error_opencode_operation">OpenCode操作に失敗しました</string>
+    <string name="error_no_connection">OpenCode接続が設定されていません</string>
+    <string name="session_title_attachment">添付ファイル</string>
+    <string name="error_answer_required">回答が必要です</string>
+    <string name="error_question_failed">OpenCodeの質問に失敗しました</string>
+    <string name="error_session_failed">OpenCodeセッションに失敗しました</string>
+
+    <!-- Connection dialog -->
+    <string name="connection_test_success">OpenCode %1$s</string>
+    <string name="connection_test_failed">接続に失敗しました</string>
+
+    <!-- Slash commands -->
+    <string name="slash_desc_new">新しいセッションを開始</string>
+    <string name="slash_desc_clear">現在の会話をクリア</string>
+    <string name="slash_desc_model">モデルを切替</string>
+    <string name="slash_desc_agent">エージェントを切替</string>
+    <string name="slash_desc_attach">ファイルを添付</string>
+    <string name="slash_desc_help">ヘルプを表示</string>
+
+    <!-- Chat home -->
+    <string name="side_panel_files_title">ファイル</string>
+    <string name="side_panel_files_desc">ファイルエクスプローラー</string>
+    <string name="action_copy">コピー</string>
+    <string name="action_copy_markdown">Markdownとしてコピー</string>
+    <string name="attach_file">ファイル</string>
+    <string name="attach_camera">カメラ</string>
+    <string name="attach_gallery">ギャラリー</string>
+    <string name="status_queued">キュー済み</string>
+
+    <!-- Resume command -->
+    <string name="toast_resume_copied">resumeコマンドをコピーしました</string>
+
+    <!-- Voice -->
+    <string name="voice_listening_placeholder">聞き取り中…</string>
+
+    <!-- Drawer grouping -->
+    <string name="grouping_project">プロジェクト</string>
+    <string name="grouping_status">ステータス</string>
+    <string name="status_group_running">実行中</string>
+    <string name="status_group_waiting">待機中</string>
+    <string name="status_group_done">完了</string>
+    <string name="status_group_error">エラー</string>
+
+    <!-- Quick input widget -->
+    <string name="toast_permission_granted">権限が付与されました。もう一度マイクをタップしてください。</string>
+    <string name="toast_mic_permission_required">マイクの権限が必要です</string>
+    <string name="widget_no_runtime">ランタイムが接続されていません</string>
+    <string name="widget_sending">送信中…</string>
+    <string name="widget_session_title">ウィジェット: %1$s</string>
+    <string name="widget_sent">送信しました！</string>
+    <string name="widget_error">エラー: %1$s</string>
+    <string name="widget_listening">聞き取り中…</string>
+    <string name="widget_processing">処理中…</string>
+    <string name="widget_voice_error">音声エラー</string>
+    <string name="widget_no_speech">音声が検出されません</string>
+
+    <!-- Diagnostics sheet -->
+    <string name="diagnostics_title">診断</string>
+    <string name="diagnostics_section_app">アプリ</string>
+    <string name="diagnostics_version">バージョン</string>
+    <string name="diagnostics_build_type">ビルドタイプ</string>
+    <string name="diagnostics_section_connection">接続</string>
+    <string name="diagnostics_status">ステータス</string>
+    <string name="diagnostics_runtime">ランタイム</string>
+    <string name="diagnostics_section_memory">メモリ</string>
+    <string name="diagnostics_total">合計</string>
+    <string name="diagnostics_free">空き</string>
+    <string name="diagnostics_max">最大</string>
+    <string name="diagnostics_section_storage">ストレージ</string>
+    <string name="diagnostics_available">利用可能</string>
+    <string name="diagnostics_copy_button">診断情報をコピー</string>
+
+    <!-- Session detail -->
+    <string name="session_info_id">ID</string>
+    <string name="session_info_opencode">OpenCode</string>
+    <string name="session_todo_title">Todo</string>
+
+    <string name="runtime_diagnostics_failed">ローカルランタイムの診断に失敗しました</string>
+    <string name="runtime_update_check_failed">OpenCodeの更新確認に失敗しました</string>
+    <string name="runtime_repair_start_failed">ローカルランタイムの修復を開始できません</string>
+    <string name="runtime_update_start_failed">OpenCodeの更新を開始できません</string>
+    <string name="runtime_rollback_start_failed">OpenCodeのロールバックを開始できません</string>
+    <string name="runtime_delete_failed">ローカルランタイムを削除できません</string>
+    <string name="runtime_delete_timeout">ランタイムの削除がタイムアウトしました</string>
 </resources>

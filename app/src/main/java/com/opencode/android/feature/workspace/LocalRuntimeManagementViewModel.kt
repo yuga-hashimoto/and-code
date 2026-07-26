@@ -2,6 +2,7 @@ package com.opencode.android.feature.workspace
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.opencode.android.R
 import com.opencode.android.runtime.LocalRuntimeStatus
 import com.opencode.android.runtime.local.LocalRuntimeDiagnostics
 import com.opencode.android.runtime.local.LocalRuntimeOperationResult
@@ -41,6 +42,7 @@ class LocalRuntimeManagementViewModel(
     private val updateAction: () -> Unit,
     private val rollbackAction: () -> Unit,
     private val deleteAction: () -> Unit,
+    private val getString: (Int) -> String,
     private val deleteTimeoutMillis: Long = 30_000L,
 ) : ViewModel() {
     init {
@@ -128,7 +130,7 @@ class LocalRuntimeManagementViewModel(
                             isLoading = false,
                             error =
                                 error.message?.takeIf(String::isNotBlank)
-                                    ?: "ローカルランタイムの診断に失敗しました",
+                                    ?: getString(R.string.runtime_diagnostics_failed),
                         )
                     }
                 }
@@ -159,7 +161,7 @@ class LocalRuntimeManagementViewModel(
                             isCheckingUpdate = false,
                             updateError =
                                 error.message?.takeIf(String::isNotBlank)
-                                    ?: "OpenCodeの更新確認に失敗しました",
+                                    ?: getString(R.string.runtime_update_check_failed),
                         )
                     }
                 }
@@ -167,7 +169,7 @@ class LocalRuntimeManagementViewModel(
     }
 
     fun repair() {
-        dispatchAction("ローカルランタイムの修復を開始できません", repairAction)
+        dispatchAction(getString(R.string.runtime_repair_start_failed), repairAction)
     }
 
     fun requestUpdate() {
@@ -182,7 +184,7 @@ class LocalRuntimeManagementViewModel(
 
     fun confirmUpdate() {
         mutableState.update { it.copy(showUpdateConfirmation = false, error = null) }
-        dispatchAction("OpenCodeの更新を開始できません", updateAction)
+        dispatchAction(getString(R.string.runtime_update_start_failed), updateAction)
     }
 
     fun requestRollback() {
@@ -197,7 +199,7 @@ class LocalRuntimeManagementViewModel(
 
     fun confirmRollback() {
         mutableState.update { it.copy(showRollbackConfirmation = false, error = null) }
-        dispatchAction("OpenCodeのロールバックを開始できません", rollbackAction)
+        dispatchAction(getString(R.string.runtime_rollback_start_failed), rollbackAction)
     }
 
     fun requestDelete() {
@@ -227,7 +229,7 @@ class LocalRuntimeManagementViewModel(
                         isDeleting = false,
                         error =
                             error.message?.takeIf(String::isNotBlank)
-                                ?: "ローカルランタイムを削除できません",
+                                ?: getString(R.string.runtime_delete_failed),
                     )
                 }
             }
@@ -274,7 +276,7 @@ class LocalRuntimeManagementViewModel(
                     mutableState.update {
                         it.copy(
                             isDeleting = false,
-                            error = "ランタイムの削除がタイムアウトしました",
+                            error = getString(R.string.runtime_delete_timeout),
                         )
                     }
                 }

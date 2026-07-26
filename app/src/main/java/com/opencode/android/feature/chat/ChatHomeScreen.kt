@@ -80,6 +80,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -117,20 +118,17 @@ import com.opencode.android.feature.workspace.GitHubAutoAttachChips
 import com.opencode.android.feature.workspace.GitHubReference
 import com.opencode.android.runtime.PermissionResponse
 import com.opencode.android.runtime.RuntimeTarget
-import com.opencode.android.runtime.WorkspaceRef
 import com.opencode.android.ui.components.StatusChip
 import com.opencode.android.ui.components.VolumeMeter
 import com.opencode.android.ui.theme.OpenCodeAndroidTheme
 import kotlinx.coroutines.launch
 
-@Suppress("UNUSED_PARAMETER")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ChatHomeScreen(
     state: ChatUiState,
     providers: List<OpenCodeProvider>,
     agents: List<OpenCodeAgent>,
-    workspaces: List<WorkspaceRef>,
     selectedProviderId: String?,
     selectedModelId: String?,
     selectedAgentId: String?,
@@ -139,8 +137,6 @@ fun ChatHomeScreen(
     onSelectRuntime: (String) -> Unit,
     onSelectModel: (String, String) -> Unit,
     onSelectAgent: (String) -> Unit,
-    onSelectWorkspace: (String?) -> Unit,
-    thinkingOptions: List<String> = emptyList(),
     selectedVariant: String? = null,
     onSelectVariant: (String?) -> Unit = {},
     attachments: List<PromptAttachment> = emptyList(),
@@ -162,12 +158,10 @@ fun ChatHomeScreen(
     onAbort: () -> Unit,
     onMic: () -> Unit,
     onNewChat: () -> Unit,
-    onOpenHistory: () -> Unit,
     onOpenLocalSetup: () -> Unit,
     onOpenRemoteSetup: () -> Unit,
     onRefreshCatalog: () -> Unit = {},
     onOpenDrawer: () -> Unit,
-    contextUsageFraction: Float = 0f,
     subagents: List<SubagentInfo> = emptyList(),
     onSubagentClick: (String) -> Unit = {},
     onReturnToParentSession: () -> Unit = {},
@@ -190,6 +184,12 @@ fun ChatHomeScreen(
     var showSidePanel by remember { mutableStateOf(false) }
     var dragOffset by remember { mutableFloatStateOf(0f) }
     val attachedImages = remember { mutableStateListOf<Bitmap>() }
+    DisposableEffect(Unit) {
+        onDispose {
+            attachedImages.forEach { if (!it.isRecycled) it.recycle() }
+            attachedImages.clear()
+        }
+    }
     val context = androidx.compose.ui.platform.LocalContext.current
 
     val cameraLauncher =
@@ -223,7 +223,8 @@ fun ChatHomeScreen(
                         attachedImages.add(bitmap)
                         onImageAttachment(bitmap)
                     }
-                } catch (_: Exception) {
+                } catch (e: Exception) {
+                    android.util.Log.w("ChatHomeScreen", "Failed to load image", e)
                 }
             }
         }
@@ -406,7 +407,7 @@ fun ChatHomeScreen(
                         },
                         modifier = Modifier.align(Alignment.BottomEnd).padding(16.dp),
                     ) {
-                        Icon(Icons.Default.ArrowDownward, contentDescription = null)
+                        Icon(Icons.Default.ArrowDownward, contentDescription = stringResource(R.string.cd_scroll_to_bottom))
                     }
                 }
             }
@@ -467,7 +468,8 @@ fun ChatHomeScreen(
                     githubRefs = githubRefs,
                     attachedImages = attachedImages,
                     onRemoveImage = {
-                        attachedImages.removeAt(it)
+                        val removed = attachedImages.removeAt(it)
+                        if (!removed.isRecycled) removed.recycle()
                         onRemoveAttachment(it)
                     },
                     onCameraLaunch = {
@@ -516,13 +518,13 @@ fun ChatHomeScreen(
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
-                        text = "Files",
+                        text = stringResource(R.string.side_panel_files_title),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                     )
                     Spacer(Modifier.height(12.dp))
                     Text(
-                        text = "File explorer",
+                        text = stringResource(R.string.side_panel_files_desc),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -563,14 +565,14 @@ fun ChatHomeScreen(
         ModalBottomSheet(onDismissRequest = { showActionSheet = null }) {
             Column(modifier = Modifier.padding(bottom = 32.dp)) {
                 DropdownMenuItem(
-                    text = { Text("Copy") },
+                    text = { Text(stringResource(R.string.action_copy)) },
                     onClick = {
                         clipboardManager.setText(AnnotatedString(content))
                         showActionSheet = null
                     },
                 )
                 DropdownMenuItem(
-                    text = { Text("Copy as Markdown") },
+                    text = { Text(stringResource(R.string.action_copy_markdown)) },
                     onClick = {
                         clipboardManager.setText(AnnotatedString(content))
                         showActionSheet = null
@@ -696,7 +698,7 @@ private fun OpenCodeMark() {
         Box(contentAlignment = Alignment.Center) {
             Icon(
                 imageVector = Icons.Default.Terminal,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.cd_app_logo),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(27.dp),
             )
@@ -851,7 +853,7 @@ private fun ChatComposer(
                     Box {
                         Image(
                             bitmap = bitmap.asImageBitmap(),
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.cd_attached_image),
                             modifier =
                                 Modifier
                                     .size(56.dp)
@@ -860,7 +862,7 @@ private fun ChatComposer(
                         )
                         Icon(
                             Icons.Default.Close,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.cd_remove_image),
                             modifier =
                                 Modifier
                                     .size(18.dp)
@@ -939,11 +941,11 @@ private fun ChatComposer(
                             onDismissRequest = { showAttachMenu = false },
                         ) {
                             DropdownMenuItem(
-                                text = { Text("File") },
+                                text = { Text(stringResource(R.string.attach_file)) },
                                 leadingIcon = {
                                     Icon(
                                         Icons.AutoMirrored.Filled.InsertDriveFile,
-                                        contentDescription = null,
+                                        contentDescription = stringResource(R.string.cd_attach_file),
                                         modifier = Modifier.size(18.dp),
                                     )
                                 },
@@ -953,9 +955,13 @@ private fun ChatComposer(
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("Camera") },
+                                text = { Text(stringResource(R.string.attach_camera)) },
                                 leadingIcon = {
-                                    Icon(Icons.Default.CameraAlt, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Icon(
+                                        Icons.Default.CameraAlt,
+                                        contentDescription = stringResource(R.string.cd_camera),
+                                        modifier = Modifier.size(18.dp),
+                                    )
                                 },
                                 onClick = {
                                     showAttachMenu = false
@@ -963,9 +969,13 @@ private fun ChatComposer(
                                 },
                             )
                             DropdownMenuItem(
-                                text = { Text("Gallery") },
+                                text = { Text(stringResource(R.string.attach_gallery)) },
                                 leadingIcon = {
-                                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Icon(
+                                        Icons.Default.PhotoLibrary,
+                                        contentDescription = stringResource(R.string.cd_gallery),
+                                        modifier = Modifier.size(18.dp),
+                                    )
                                 },
                                 onClick = {
                                     showAttachMenu = false
@@ -1028,7 +1038,7 @@ private fun ChatComposer(
                                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                             ) {
                                 Text(
-                                    text = "Queued",
+                                    text = stringResource(R.string.status_queued),
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                     style = MaterialTheme.typography.labelSmall,
                                 )
@@ -1135,7 +1145,7 @@ private fun ThinkingChip(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Icon(Icons.Default.Psychology, contentDescription = null, modifier = Modifier.size(14.dp))
+                Icon(Icons.Default.Psychology, contentDescription = stringResource(R.string.cd_thinking), modifier = Modifier.size(14.dp))
                 Text(
                     selected ?: stringResource(R.string.chat_thinking_default),
                     style = MaterialTheme.typography.labelMedium,
@@ -1185,7 +1195,7 @@ private fun AttachmentTray(
                 ) {
                     Icon(
                         Icons.AutoMirrored.Filled.InsertDriveFile,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.cd_attachment),
                         modifier = Modifier.size(14.dp),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -1236,7 +1246,7 @@ private fun ModeChip(
             ) {
                 Icon(
                     Icons.Outlined.Shield,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_agent_mode),
                     modifier = Modifier.size(14.dp),
                 )
                 Text(
@@ -1247,7 +1257,7 @@ private fun ModeChip(
                 )
                 Icon(
                     Icons.Default.ArrowDropDown,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_expand_dropdown),
                     modifier = Modifier.size(14.dp),
                 )
             }
@@ -1389,7 +1399,11 @@ private fun CompactContextButton(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            Icon(Icons.Default.ArrowDropDown, contentDescription = null, modifier = Modifier.size(14.dp))
+            Icon(
+                Icons.Default.ArrowDropDown,
+                contentDescription = stringResource(R.string.cd_expand_dropdown),
+                modifier = Modifier.size(14.dp),
+            )
         }
     }
 }
@@ -1439,43 +1453,6 @@ private fun formatTokenCount(tokens: Long): String =
         else -> tokens.toString()
     }
 
-@Composable
-private fun CompactWorkspaceButton(
-    workspaces: List<WorkspaceRef>,
-    selectedPath: String?,
-    enabled: Boolean,
-    onSelect: (String?) -> Unit,
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val selected = workspaces.firstOrNull { it.path == selectedPath }
-    Box {
-        CompactContextButton(
-            label = selected?.name ?: stringResource(R.string.chat_workspace_short_default),
-            maxWidth = 78.dp,
-            enabled = enabled,
-            onClick = { expanded = true },
-        )
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            DropdownMenuItem(
-                text = { Text(stringResource(R.string.default_folder)) },
-                onClick = {
-                    onSelect(null)
-                    expanded = false
-                },
-            )
-            workspaces.forEach { workspace ->
-                DropdownMenuItem(
-                    text = { Text(workspace.name) },
-                    onClick = {
-                        onSelect(workspace.path)
-                        expanded = false
-                    },
-                )
-            }
-        }
-    }
-}
-
 @Preview(showBackground = true)
 @Composable
 private fun ChatHomeScreenEmptyPreview() {
@@ -1484,7 +1461,6 @@ private fun ChatHomeScreenEmptyPreview() {
             state = ChatUiState(backendName = "OpenCode · 1.0.0", isConnected = true),
             providers = emptyList(),
             agents = emptyList(),
-            workspaces = emptyList(),
             selectedProviderId = null,
             selectedModelId = null,
             selectedAgentId = null,
@@ -1493,7 +1469,6 @@ private fun ChatHomeScreenEmptyPreview() {
             onSelectRuntime = {},
             onSelectModel = { _, _ -> },
             onSelectAgent = {},
-            onSelectWorkspace = {},
             onSelectQuestionAnswer = { _, _, _ -> },
             onSubmitQuestion = {},
             onSendMessage = {},
@@ -1501,7 +1476,6 @@ private fun ChatHomeScreenEmptyPreview() {
             onAbort = {},
             onMic = {},
             onNewChat = {},
-            onOpenHistory = {},
             onOpenLocalSetup = {},
             onOpenRemoteSetup = {},
             onOpenDrawer = {},

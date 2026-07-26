@@ -32,6 +32,8 @@ import java.io.File
 val appModule =
     module {
 
+        single<File> { File(androidContext().filesDir, "runtime") }
+
         single { CoroutineScope(SupervisorJob() + Dispatchers.IO) }
 
         single { SecureSettingsRepository(androidContext()) }
@@ -49,7 +51,7 @@ val appModule =
         single { LocalRuntimeAccessCoordinator() }
 
         single {
-            val runtimeDirectory = File(androidContext().filesDir, "runtime")
+            val runtimeDirectory: File = get()
             val abi = Build.SUPPORTED_ABIS.firstOrNull().orEmpty()
             LocalRuntimeInstaller(
                 context = androidContext(),
@@ -62,7 +64,7 @@ val appModule =
         single {
             val settings: SecureSettingsRepository = get()
             val providerCredentials: LocalProviderCredentialStore = get()
-            val runtimeDirectory = File(androidContext().filesDir, "runtime")
+            val runtimeDirectory: File = get()
             LocalRuntimeProcessLauncher(
                 runtimeDirectory = runtimeDirectory,
                 portProbe = LocalRuntimeManager::defaultPortProbe,
@@ -79,7 +81,7 @@ val appModule =
         }
 
         single {
-            val runtimeDirectory = File(androidContext().filesDir, "runtime")
+            val runtimeDirectory: File = get()
             val installer: LocalRuntimeInstaller = get()
             LocalRuntimeCommandRunner(
                 runtimeDirectory = runtimeDirectory,
@@ -89,7 +91,7 @@ val appModule =
         }
 
         single {
-            val runtimeDirectory = File(androidContext().filesDir, "runtime")
+            val runtimeDirectory: File = get()
             val abi = Build.SUPPORTED_ABIS.firstOrNull().orEmpty()
             val httpClient: OkHttpClient = get()
             val commandRunner: LocalRuntimeCommandRunner = get()

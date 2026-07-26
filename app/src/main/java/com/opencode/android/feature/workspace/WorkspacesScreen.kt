@@ -216,7 +216,7 @@ fun WorkspacesScreen(
                         },
                         modifier = Modifier.weight(1f),
                     ) {
-                        Icon(Icons.Default.QrCodeScanner, contentDescription = null)
+                        Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(R.string.cd_scan_qr))
                         Spacer(Modifier.padding(horizontal = 4.dp))
                         Text(stringResource(R.string.add_via_qr))
                     }
@@ -224,7 +224,7 @@ fun WorkspacesScreen(
                         onClick = { startLanDiscovery() },
                         modifier = Modifier.weight(1f),
                     ) {
-                        Icon(Icons.Default.WifiFind, contentDescription = null)
+                        Icon(Icons.Default.WifiFind, contentDescription = stringResource(R.string.cd_lan_discovery))
                         Spacer(Modifier.padding(horizontal = 4.dp))
                         Text(stringResource(R.string.discover_on_lan))
                     }
@@ -254,7 +254,7 @@ fun WorkspacesScreen(
                     ) {
                         Icon(
                             imageVector = if (target.type == RuntimeType.LOCAL) Icons.Default.Android else Icons.Default.Computer,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.cd_runtime_type),
                             tint = MaterialTheme.colorScheme.primary,
                         )
                         Column(modifier = Modifier.weight(1f)) {
@@ -281,7 +281,7 @@ fun WorkspacesScreen(
                         when (val local = state.localStatus) {
                             LocalRuntimeStatus.NotInstalled -> {
                                 Button(onClick = onSetupLocal, modifier = Modifier.fillMaxWidth()) {
-                                    Icon(Icons.Default.Build, contentDescription = null)
+                                    Icon(Icons.Default.Build, contentDescription = stringResource(R.string.cd_setup))
                                     Spacer(Modifier.padding(horizontal = 4.dp))
                                     Text(stringResource(R.string.setup_this_device_button))
                                 }
@@ -317,21 +317,21 @@ fun WorkspacesScreen(
                             }
                             is LocalRuntimeStatus.Stopped -> {
                                 Button(onClick = onStartLocal, modifier = Modifier.fillMaxWidth()) {
-                                    Icon(Icons.Default.PlayArrow, contentDescription = null)
+                                    Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.cd_start))
                                     Spacer(Modifier.padding(horizontal = 4.dp))
                                     Text(stringResource(R.string.start_opencode_button))
                                 }
                             }
                             is LocalRuntimeStatus.Ready -> {
                                 OutlinedButton(onClick = onStopLocal, modifier = Modifier.fillMaxWidth()) {
-                                    Icon(Icons.Default.Stop, contentDescription = null)
+                                    Icon(Icons.Default.Stop, contentDescription = stringResource(R.string.cd_stop))
                                     Spacer(Modifier.padding(horizontal = 4.dp))
                                     Text(stringResource(R.string.stop_local_runtime_button))
                                 }
                             }
                             is LocalRuntimeStatus.Broken -> {
                                 Button(onClick = onReinstallLocal, modifier = Modifier.fillMaxWidth()) {
-                                    Icon(Icons.Default.Build, contentDescription = null)
+                                    Icon(Icons.Default.Build, contentDescription = stringResource(R.string.cd_repair))
                                     Spacer(Modifier.padding(horizontal = 4.dp))
                                     Text(stringResource(R.string.repair_and_resetup_button))
                                 }
@@ -348,7 +348,7 @@ fun WorkspacesScreen(
                                         state.localStatus !is LocalRuntimeStatus.Updating,
                                 modifier = Modifier.fillMaxWidth(),
                             ) {
-                                Icon(Icons.Default.Settings, contentDescription = null)
+                                Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.cd_diagnostics))
                                 Spacer(Modifier.padding(horizontal = 4.dp))
                                 Text(stringResource(R.string.diagnostics_and_management_button))
                             }
@@ -370,7 +370,7 @@ fun WorkspacesScreen(
                     ) {
                         Icon(
                             Icons.Default.Computer,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.cd_connection_error),
                             tint = MaterialTheme.colorScheme.error,
                         )
                         Column(modifier = Modifier.weight(1f)) {
@@ -415,7 +415,11 @@ fun WorkspacesScreen(
                             onClick = onImportFolder,
                             modifier = Modifier.weight(1f),
                         ) {
-                            Icon(Icons.Default.DriveFolderUpload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.DriveFolderUpload,
+                                contentDescription = stringResource(R.string.cd_import_folder),
+                                modifier = Modifier.size(18.dp),
+                            )
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.workspace_import_folder))
                         }
@@ -423,7 +427,11 @@ fun WorkspacesScreen(
                             onClick = onCloneGithub,
                             modifier = Modifier.weight(1f),
                         ) {
-                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Icon(
+                                Icons.Default.CloudDownload,
+                                contentDescription = stringResource(R.string.cd_clone_github),
+                                modifier = Modifier.size(18.dp),
+                            )
                             Spacer(Modifier.width(6.dp))
                             Text(stringResource(R.string.workspace_clone_github))
                         }
@@ -434,7 +442,11 @@ fun WorkspacesScreen(
             if (state.workspaces.isEmpty()) {
                 item {
                     SectionCard {
-                        Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            Icons.Default.Folder,
+                            contentDescription = stringResource(R.string.cd_folder),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
                         Spacer(Modifier.height(10.dp))
                         Text(stringResource(R.string.no_workspaces_title), fontWeight = FontWeight.Medium)
                         Text(
@@ -566,7 +578,7 @@ private fun WorkspaceProjectRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Icon(Icons.Default.Folder, contentDescription = stringResource(R.string.cd_folder), tint = MaterialTheme.colorScheme.primary)
             Column(modifier = Modifier.weight(1f)) {
                 Text(workspace.name, fontWeight = FontWeight.Medium)
                 Text(

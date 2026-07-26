@@ -6,10 +6,19 @@ import android.os.Bundle
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
+import android.util.Log
 import com.opencode.android.R
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
+import kotlin.coroutines.EmptyCoroutineContext
+
+private const val TAG = "SpeechRecognizerManager"
+private const val CLEANUP_DELAY_MS = 300L
+private const val MAX_RESULTS = 3
+private const val SILENCE_LENGTH_MS = 1500L
 
 /**
  * 音声認識マネージャー
@@ -29,24 +38,20 @@ class SpeechRecognizerManager(private val context: Context) {
      */
     fun startListening(language: String = "ja-JP"): Flow<SpeechResult> =
         callbackFlow {
-            // Skip isAvailable() check - MIUI may return false incorrectly
-            android.util.Log.e("SpeechRecognizerManager", "startListening called, isAvailable=${isAvailable()}")
+            Log.d(TAG, "startListening called, isAvailable=${isAvailable()}")
 
-            // Clean slate: Ensure any previous instance is safely destroyed
             recognizer?.let { rec ->
                 try {
                     rec.cancel()
                     rec.destroy()
                 } catch (e: Exception) {
-                    // Ignore
+                    Log.w(TAG, "Failed to clean up previous recognizer", e)
                 }
                 recognizer = null
             }
 
-            // Wait for Android to release internal resources (critical for 2nd+ invocations)
-            kotlinx.coroutines.delay(300)
+            delay(CLEANUP_DELAY_MS)
 
-            // Use application context to avoid activity/service lifecycle leaks
             val appContext = context.applicationContext
             val newRecognizer = SpeechRecognizer.createSpeechRecognizer(appContext)
             recognizer = newRecognizer
@@ -85,9 +90,6 @@ class SpeechRecognizerManager(private val context: Context) {
                             }
 
                         trySend(SpeechResult.Error(errorMessage, error))
-
-                        // If busy, we don't necessarily close immediately if we want to retry manually in session,
-                        // but for now, let the session handle the error result.
                         close()
                     }
 
@@ -130,14 +132,13 @@ class SpeechRecognizerManager(private val context: Context) {
                     putExtra(RecognizerIntent.EXTRA_LANGUAGE_PREFERENCE, language)
                     putExtra(RecognizerIntent.EXTRA_ONLY_RETURN_LANGUAGE_PREFERENCE, language)
                     putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, 3)
-                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
-                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, 1500L)
+                    putExtra(RecognizerIntent.EXTRA_MAX_RESULTS, MAX_RESULTS)
+                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_LENGTH_MS)
+                    putExtra(RecognizerIntent.EXTRA_SPEECH_INPUT_POSSIBLY_COMPLETE_SILENCE_LENGTH_MILLIS, SILENCE_LENGTH_MS)
                 }
 
-            // Run on Main thread
-            kotlinx.coroutines.Dispatchers.Main.dispatch(
-                kotlin.coroutines.EmptyCoroutineContext,
+            Dispatchers.Main.dispatch(
+                EmptyCoroutineContext,
                 Runnable {
                     try {
                         newRecognizer.startListening(intent)
@@ -149,15 +150,14 @@ class SpeechRecognizerManager(private val context: Context) {
             )
 
             awaitClose {
-                kotlinx.coroutines.Dispatchers.Main.dispatch(
-                    kotlin.coroutines.EmptyCoroutineContext,
+                Dispatchers.Main.dispatch(
+                    EmptyCoroutineContext,
                     Runnable {
                         try {
-                            // Cancel before destroy is safer
                             newRecognizer.cancel()
                             newRecognizer.destroy()
                         } catch (e: Exception) {
-                            // Ignore
+                            Log.w(TAG, "Failed to destroy recognizer", e)
                         }
                         if (recognizer == newRecognizer) {
                             recognizer = null
@@ -181,7 +181,7 @@ class SpeechRecognizerManager(private val context: Context) {
         try {
             recognizer?.destroy()
         } catch (e: Exception) {
-            // Ignore
+            Log.w(TAG, "Failed to destroy recognizer", e)
         }
         recognizer = null
     }
@@ -190,20 +190,20 @@ class SpeechRecognizerManager(private val context: Context) {
 /**
  * 音声認識の結果
  */
-sealed class SpeechResult {
-    object Ready : SpeechResult()
+sealed interface SpeechResult {
+    data object Ready : SpeechResult
 
-    object Listening : SpeechResult()
+    data object Listening : SpeechResult
 
-    object Processing : SpeechResult()
+    data object Processing : SpeechResult
 
-    data class PartialResult(val text: String) : SpeechResult()
+    data class PartialResult(val text: String) : SpeechResult
 
     data class Result(
         val text: String,
         val confidence: Float,
         val alternatives: List<String>,
-    ) : SpeechResult()
+    ) : SpeechResult
 
-    data class Error(val message: String, val code: Int? = null) : SpeechResult()
+    data class Error(val message: String, val code: Int? = null) : SpeechResult
 }

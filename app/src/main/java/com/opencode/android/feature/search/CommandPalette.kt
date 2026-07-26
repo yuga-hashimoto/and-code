@@ -30,8 +30,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.opencode.android.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,10 +47,10 @@ fun CommandPaletteSheet(
 
     val actions =
         listOf(
-            PaletteAction("New Chat", Icons.Default.Add, "new_chat"),
-            PaletteAction("Settings", Icons.Default.Settings, "settings"),
-            PaletteAction("Workspaces", Icons.Default.Folder, "workspaces"),
-            PaletteAction("Activity", Icons.Default.History, "activity"),
+            PaletteAction(stringResource(R.string.palette_new_chat), Icons.Default.Add, "new_chat"),
+            PaletteAction(stringResource(R.string.palette_settings), Icons.Default.Settings, "settings"),
+            PaletteAction(stringResource(R.string.palette_workspaces), Icons.Default.Folder, "workspaces"),
+            PaletteAction(stringResource(R.string.palette_activity), Icons.Default.History, "activity"),
         )
 
     val filteredActions =
@@ -72,7 +74,7 @@ fun CommandPaletteSheet(
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("Search") },
+                label = { Text(stringResource(R.string.search_label)) },
             )
             Spacer(Modifier.height(8.dp))
         }
@@ -84,7 +86,7 @@ fun CommandPaletteSheet(
             verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             if (filteredActions.isNotEmpty()) {
-                item { PaletteSectionHeader("Actions") }
+                item { PaletteSectionHeader(stringResource(R.string.palette_section_actions)) }
                 items(filteredActions, key = { "action-${it.route}" }) { action ->
                     PaletteRow(
                         icon = action.icon,
@@ -97,7 +99,7 @@ fun CommandPaletteSheet(
                 }
             }
             if (filteredSessions.isNotEmpty()) {
-                item { PaletteSectionHeader("Sessions") }
+                item { PaletteSectionHeader(stringResource(R.string.palette_section_sessions)) }
                 items(filteredSessions, key = { "session-${it.first}" }) { (id, title) ->
                     PaletteRow(
                         icon = Icons.Default.Chat,
@@ -148,7 +150,7 @@ private fun PaletteRow(
     ) {
         Icon(
             imageVector = icon,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.cd_command),
             tint = MaterialTheme.colorScheme.primary,
         )
         Text(

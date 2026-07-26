@@ -18,6 +18,7 @@ import com.opencode.android.core.api.ProviderAuthAuthorization
 import com.opencode.android.core.api.ProviderAuthMethod
 import com.opencode.android.core.api.ProviderCatalog
 import com.opencode.android.core.api.QuestionRequest
+import com.opencode.android.core.util.safeMessage
 import com.opencode.android.data.connection.ConnectionProfile
 import com.opencode.android.runtime.BackendKind
 import com.opencode.android.runtime.PermissionResponse
@@ -60,7 +61,7 @@ class RemoteRuntimeTarget(
                     }
             }
             .onFailure { error ->
-                mutableState.value = RuntimeState.Failed(error.safeMessage())
+                mutableState.value = RuntimeState.Failed(error.safeMessage("OpenCode connection failed"))
             }
     }
 
@@ -258,6 +259,4 @@ class RemoteRuntimeTarget(
     override suspend fun initAgentsMd(sessionId: String): Boolean = backend.initAgentsMd(sessionId)
 
     override fun events(): Flow<OpenCodeEvent> = backend.events()
-
-    private fun Throwable.safeMessage(): String = message?.takeIf { it.isNotBlank() } ?: "OpenCode connection failed"
 }

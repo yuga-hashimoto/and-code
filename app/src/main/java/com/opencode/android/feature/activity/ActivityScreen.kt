@@ -121,7 +121,11 @@ private fun RunningTab(
         items(activeSessions, key = { it.id }) { session ->
             SectionCard(modifier = Modifier.clickable { onInspectSession(session) }) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Default.Terminal, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.Terminal,
+                        contentDescription = stringResource(R.string.cd_session),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(session.title.ifBlank { session.id }, fontWeight = FontWeight.SemiBold)
                         Text(
@@ -154,7 +158,11 @@ private fun ApprovalTab(
             val busy = permission.id in state.permissionBusyIds
             SectionCard {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Default.Security, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
+                    Icon(
+                        Icons.Default.Security,
+                        contentDescription = stringResource(R.string.cd_permission),
+                        tint = MaterialTheme.colorScheme.tertiary,
+                    )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(permission.permission, fontWeight = FontWeight.SemiBold)
                         permission.patterns.forEach { pattern ->
@@ -214,7 +222,11 @@ private fun SessionsTab(
         items(topLevelSessions, key = { it.id }) { session ->
             SectionCard(modifier = Modifier.clickable { onInspectSession(session) }) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.Folder,
+                        contentDescription = stringResource(R.string.cd_session),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(session.title.ifBlank { session.slug ?: session.id }, fontWeight = FontWeight.SemiBold)
                         Spacer(Modifier.height(4.dp))
@@ -324,7 +336,11 @@ private fun LogsTab(state: ActivityUiState) {
         items(state.logs, key = { "${it.timestamp}-${it.title}-${it.sessionId}" }) { log ->
             SectionCard {
                 Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Icon(Icons.Default.History, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                    Icon(
+                        Icons.Default.History,
+                        contentDescription = stringResource(R.string.cd_event_log),
+                        tint = MaterialTheme.colorScheme.secondary,
+                    )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(log.title, fontWeight = FontWeight.Medium)
                         log.detail?.let {

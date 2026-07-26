@@ -28,7 +28,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.opencode.android.R
 import com.opencode.android.ui.components.VolumeMeter
 
 @Composable
@@ -65,7 +67,7 @@ fun LiveTranscriptOverlay(
                 VolumeMeter(amplitude = amplitude)
                 Spacer(Modifier.height(12.dp))
                 Text(
-                    text = transcript.ifBlank { "Listening..." },
+                    text = transcript.ifBlank { stringResource(R.string.voice_listening_placeholder) },
                     style = MaterialTheme.typography.bodyLarge,
                     modifier =
                         Modifier
@@ -86,7 +88,7 @@ fun LiveTranscriptOverlay(
                                 containerColor = MaterialTheme.colorScheme.error,
                             ),
                     ) {
-                        Icon(Icons.Default.Close, contentDescription = null)
+                        Icon(Icons.Default.Close, contentDescription = stringResource(R.string.cd_cancel))
                     }
                     FilledIconButton(
                         onClick = onAccept,
@@ -95,7 +97,7 @@ fun LiveTranscriptOverlay(
                                 containerColor = MaterialTheme.colorScheme.tertiary,
                             ),
                     ) {
-                        Icon(Icons.Default.Check, contentDescription = null)
+                        Icon(Icons.Default.Check, contentDescription = stringResource(R.string.cd_accept))
                     }
                     FilledIconButton(
                         onClick = onAcceptAndSend,
@@ -104,7 +106,7 @@ fun LiveTranscriptOverlay(
                                 containerColor = MaterialTheme.colorScheme.primary,
                             ),
                     ) {
-                        Icon(Icons.Default.Send, contentDescription = null)
+                        Icon(Icons.Default.Send, contentDescription = stringResource(R.string.cd_send))
                     }
                 }
             }

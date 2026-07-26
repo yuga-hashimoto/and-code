@@ -62,7 +62,6 @@ import com.opencode.android.R
 import com.opencode.android.ui.theme.OpenCodeAndroidTheme
 
 /** Compact settings landing screen backed only by real destinations and state. */
-@Suppress("UNUSED_PARAMETER")
 @Composable
 fun SettingsScreenV2(
     assistantConfigured: Boolean,
@@ -504,7 +503,7 @@ private fun SettingsRow(
     ) {
         Icon(
             icon,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.cd_setting),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp),
         )
@@ -523,7 +522,7 @@ private fun SettingsRow(
         trailing?.invoke()
         Icon(
             Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.cd_navigate),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp),
         )
@@ -547,7 +546,7 @@ private fun SettingsToggleRow(
     ) {
         Icon(
             icon,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.cd_setting),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(20.dp),
         )

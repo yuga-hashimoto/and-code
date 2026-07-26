@@ -93,12 +93,12 @@ fun SessionDetailScreen(
             SectionCard {
                 Text(stringResource(R.string.session_info_title), fontWeight = FontWeight.SemiBold)
                 Spacer(Modifier.height(10.dp))
-                SessionInfoRow("ID", state.session.id)
-                state.session.version?.let { SessionInfoRow("OpenCode", it) }
+                SessionInfoRow(stringResource(R.string.session_info_id), state.session.id)
+                state.session.version?.let { SessionInfoRow(stringResource(R.string.session_info_opencode), it) }
                 state.session.projectId?.let { SessionInfoRow(stringResource(R.string.session_info_project), it) }
                 Spacer(Modifier.height(12.dp))
                 Button(onClick = onContinueChat, modifier = Modifier.fillMaxWidth()) {
-                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = stringResource(R.string.cd_continue_chat))
                     Spacer(Modifier.padding(horizontal = 4.dp))
                     Text(stringResource(R.string.continue_this_session_chat))
                 }
@@ -119,7 +119,7 @@ fun SessionDetailScreen(
             }
         }
 
-        item { SectionHeading("Todo", state.todos.size) }
+        item { SectionHeading(stringResource(R.string.session_todo_title), state.todos.size) }
 
         if (!state.isLoading && state.todos.isEmpty()) {
             item {
@@ -176,7 +176,7 @@ private fun TodoCard(todo: OpenCodeTodo) {
                         "in_progress" -> Icons.Default.PendingActions
                         else -> Icons.Default.TaskAlt
                     },
-                contentDescription = null,
+                contentDescription = stringResource(R.string.cd_task_status),
                 tint =
                     when (todo.status) {
                         "completed" -> MaterialTheme.colorScheme.secondary
@@ -205,7 +205,11 @@ private fun SessionChangeCard(change: OpenCodeFileChange) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Icon(Icons.Default.Description, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+            Icon(
+                Icons.Default.Description,
+                contentDescription = stringResource(R.string.cd_file_change),
+                tint = MaterialTheme.colorScheme.secondary,
+            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(change.displayPath.ifBlank { stringResource(R.string.changed_file_default) }, fontWeight = FontWeight.SemiBold)
                 Text(

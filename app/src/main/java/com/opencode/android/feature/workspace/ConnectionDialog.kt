@@ -30,6 +30,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -48,6 +49,7 @@ internal fun ConnectionDialog(
 ) {
     var form by remember(initial.id) { mutableStateOf(initial) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -76,7 +78,7 @@ internal fun ConnectionDialog(
                     value = form.baseUrl,
                     onValueChange = { form = form.copy(baseUrl = it, testSucceeded = false, testMessage = null) },
                     label = { Text(stringResource(R.string.server_url)) },
-                    leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Default.Link, contentDescription = stringResource(R.string.cd_server_url)) },
                     placeholder = { Text("192.168.1.10:4096") },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                     modifier = Modifier.fillMaxWidth(),
@@ -100,7 +102,7 @@ internal fun ConnectionDialog(
                     value = form.password,
                     onValueChange = { form = form.copy(password = it, testSucceeded = false, testMessage = null) },
                     label = { Text(stringResource(R.string.password)) },
-                    leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Default.Key, contentDescription = stringResource(R.string.cd_password)) },
                     visualTransformation = PasswordVisualTransformation(),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
@@ -119,7 +121,7 @@ internal fun ConnectionDialog(
                                         form.copy(
                                             isTesting = false,
                                             testSucceeded = health.healthy,
-                                            testMessage = "OpenCode ${health.version}",
+                                            testMessage = context.getString(R.string.connection_test_success, health.version),
                                         )
                                 },
                                 onFailure = { error ->
@@ -127,7 +129,7 @@ internal fun ConnectionDialog(
                                         form.copy(
                                             isTesting = false,
                                             testSucceeded = false,
-                                            testMessage = error.message ?: "Connection failed",
+                                            testMessage = error.message ?: context.getString(R.string.connection_test_failed),
                                         )
                                 },
                             )
@@ -141,7 +143,7 @@ internal fun ConnectionDialog(
                     } else {
                         Icon(
                             if (form.testSucceeded) Icons.Default.CheckCircle else Icons.Default.NetworkCheck,
-                            contentDescription = null,
+                            contentDescription = stringResource(R.string.cd_test_connection),
                         )
                     }
                     Spacer(Modifier.padding(horizontal = 4.dp))
@@ -158,7 +160,7 @@ internal fun ConnectionDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 onDelete?.let {
                     TextButton(onClick = it) {
-                        Icon(Icons.Default.Delete, contentDescription = null)
+                        Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.cd_delete))
                         Text(stringResource(R.string.delete))
                     }
                 }

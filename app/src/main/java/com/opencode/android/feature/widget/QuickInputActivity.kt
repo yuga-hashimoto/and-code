@@ -17,8 +17,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.opencode.android.OpenCodeApplication
+import com.opencode.android.R
 import com.opencode.android.core.api.PromptRequest
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -32,9 +34,9 @@ class QuickInputActivity : ComponentActivity() {
             ActivityResultContracts.RequestPermission(),
         ) { granted ->
             if (granted) {
-                Toast.makeText(this, "Permission granted. Tap mic again.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.toast_permission_granted), Toast.LENGTH_SHORT).show()
             } else {
-                Toast.makeText(this, "Microphone permission required", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, getString(R.string.toast_mic_permission_required), Toast.LENGTH_SHORT).show()
                 finish()
             }
         }
@@ -63,7 +65,7 @@ class QuickInputActivity : ComponentActivity() {
 
         val inputField =
             EditText(this).apply {
-                hint = "Message OpenCode…"
+                hint = getString(R.string.widget_quick_input_hint)
                 isSingleLine = true
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)
             }
@@ -120,31 +122,31 @@ class QuickInputActivity : ComponentActivity() {
         val runtime = app.runtimeRegistry.selected.value
 
         if (runtime == null) {
-            statusText.text = "No runtime connected"
+            statusText.text = getString(R.string.widget_no_runtime)
             statusText.setTextColor(0xFFFF5555.toInt())
             finishAfterDelay()
             return
         }
 
-        statusText.text = "Sending…"
+        statusText.text = getString(R.string.widget_sending)
         statusText.setTextColor(0xFFAAAAAA.toInt())
 
         lifecycleScope.launch {
             val result =
                 withContext(Dispatchers.IO) {
                     runCatching {
-                        val title = "Widget: ${text.take(30)}"
+                        val title = getString(R.string.widget_session_title, text.take(30))
                         val session = runtime.createSession(title = title)
                         runtime.sendMessage(session.id, PromptRequest(text = text))
                     }
                 }
 
             result.onSuccess {
-                statusText.text = "Sent!"
+                statusText.text = getString(R.string.widget_sent)
                 statusText.setTextColor(0xFF55FF55.toInt())
                 finishAfterDelay()
             }.onFailure { error ->
-                statusText.text = "Error: ${error.message}"
+                statusText.text = getString(R.string.widget_error, error.message)
                 statusText.setTextColor(0xFFFF5555.toInt())
                 finishAfterDelay(3000L)
             }
@@ -168,7 +170,7 @@ class QuickInputActivity : ComponentActivity() {
         recognizer.setRecognitionListener(
             object : RecognitionListener {
                 override fun onReadyForSpeech(params: Bundle?) {
-                    statusText.text = "Listening…"
+                    statusText.text = getString(R.string.widget_listening)
                 }
 
                 override fun onBeginningOfSpeech() {}
@@ -178,11 +180,11 @@ class QuickInputActivity : ComponentActivity() {
                 override fun onBufferReceived(buffer: ByteArray?) {}
 
                 override fun onEndOfSpeech() {
-                    statusText.text = "Processing…"
+                    statusText.text = getString(R.string.widget_processing)
                 }
 
                 override fun onError(error: Int) {
-                    statusText.text = "Voice error"
+                    statusText.text = getString(R.string.widget_voice_error)
                     statusText.setTextColor(0xFFFF5555.toInt())
                     finishAfterDelay()
                 }
@@ -194,7 +196,7 @@ class QuickInputActivity : ComponentActivity() {
                         inputField.setText(text)
                         sendMessage(text, statusText)
                     } else {
-                        statusText.text = "No speech detected"
+                        statusText.text = getString(R.string.widget_no_speech)
                         finishAfterDelay()
                     }
                 }
@@ -228,7 +230,7 @@ class QuickInputActivity : ComponentActivity() {
 
     private fun finishAfterDelay(delayMs: Long = 1200L) {
         lifecycleScope.launch {
-            kotlinx.coroutines.delay(delayMs)
+            delay(delayMs)
             finish()
         }
     }

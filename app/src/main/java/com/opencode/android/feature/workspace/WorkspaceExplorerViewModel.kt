@@ -7,6 +7,7 @@ import com.opencode.android.core.api.OpenCodeFileContent
 import com.opencode.android.core.api.OpenCodeFileNode
 import com.opencode.android.core.api.OpenCodeSearchMatch
 import com.opencode.android.core.api.OpenCodeVcsInfo
+import com.opencode.android.core.util.safeMessage
 import com.opencode.android.runtime.OpenCodeBackend
 import com.opencode.android.runtime.WorkspaceRef
 import kotlinx.coroutines.async
@@ -72,7 +73,7 @@ class WorkspaceExplorerViewModel(
                 }
                 .onFailure { error ->
                     mutableState.update {
-                        it.copy(isLoadingFiles = false, error = error.safeMessage())
+                        it.copy(isLoadingFiles = false, error = error.safeMessage("OpenCode workspace operation failed"))
                     }
                 }
         }
@@ -127,7 +128,7 @@ class WorkspaceExplorerViewModel(
                     textMatches = result.first.getOrDefault(emptyList()),
                     fileMatches = result.second.getOrDefault(emptyList()),
                     isSearching = false,
-                    error = error?.safeMessage(),
+                    error = error?.safeMessage("OpenCode workspace operation failed"),
                 )
             }
         }
@@ -154,7 +155,7 @@ class WorkspaceExplorerViewModel(
                     changes = result.second.getOrDefault(emptyList()),
                     diff = result.third.getOrDefault(emptyList()),
                     isLoadingChanges = false,
-                    error = error?.takeUnless(::isNonGitWorkspace)?.safeMessage(),
+                    error = error?.takeUnless(::isNonGitWorkspace)?.safeMessage("OpenCode workspace operation failed"),
                 )
             }
         }
@@ -187,7 +188,7 @@ class WorkspaceExplorerViewModel(
                 }
                 .onFailure { error ->
                     mutableState.update {
-                        it.copy(isLoadingFiles = false, error = error.safeMessage())
+                        it.copy(isLoadingFiles = false, error = error.safeMessage("OpenCode workspace operation failed"))
                     }
                 }
         }
@@ -197,6 +198,4 @@ class WorkspaceExplorerViewModel(
         val message = error.message.orEmpty().lowercase()
         return "git" in message && ("not" in message || "repository" in message)
     }
-
-    private fun Throwable.safeMessage(): String = message?.takeIf { it.isNotBlank() } ?: "OpenCode workspace operation failed"
 }

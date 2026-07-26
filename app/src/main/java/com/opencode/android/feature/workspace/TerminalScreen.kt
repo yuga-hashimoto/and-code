@@ -25,9 +25,11 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.opencode.android.R
 
 private val TerminalBackground = Color(0xFF1A1A2E)
 private val InputColor = Color(0xFF4EC9B0)
@@ -67,7 +69,7 @@ fun TerminalScreen(
             IconButton(onClick = onClear) {
                 Icon(
                     Icons.Default.DeleteSweep,
-                    contentDescription = "Clear",
+                    contentDescription = stringResource(R.string.cd_clear_terminal),
                     tint = Color.White.copy(alpha = 0.7f),
                 )
             }
@@ -135,7 +137,7 @@ fun TerminalScreen(
             ) {
                 Icon(
                     Icons.AutoMirrored.Filled.Send,
-                    contentDescription = "Send",
+                    contentDescription = stringResource(R.string.cd_send_command),
                     tint = InputColor,
                 )
             }

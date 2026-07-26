@@ -208,7 +208,7 @@ private fun RuntimeUpdateProgressCard(status: LocalRuntimeStatus.Updating) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Icon(Icons.Default.SystemUpdate, contentDescription = null)
+            Icon(Icons.Default.SystemUpdate, contentDescription = stringResource(R.string.cd_updating))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     stringResource(R.string.runtime_version_transition, status.currentVersion, status.targetVersion),
@@ -292,7 +292,7 @@ private fun RuntimeOperationResultCard(result: LocalRuntimeOperationResult) {
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.Top) {
             Icon(
                 icon,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.cd_operation_result),
                 tint = if (isError) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary,
             )
             Column(modifier = Modifier.weight(1f)) {
@@ -385,14 +385,18 @@ private fun RuntimeUpdateCard(
                     enabled = !state.isCheckingUpdate && !busy,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null)
+                    Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cd_check_update))
                     Spacer(Modifier.padding(horizontal = 4.dp))
                     Text(stringResource(R.string.check_for_update_button))
                 }
             }
             is LocalRuntimeUpdateCheck.UpToDate -> {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.CheckCircle,
+                        contentDescription = stringResource(R.string.cd_up_to_date),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Text(stringResource(R.string.up_to_date_label, check.currentVersion), fontWeight = FontWeight.Medium)
                 }
                 Spacer(Modifier.height(8.dp))
@@ -438,7 +442,7 @@ private fun RuntimeUpdateCard(
                     enabled = !busy && !state.isCheckingUpdate && enoughSpace,
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Icon(Icons.Default.SystemUpdate, contentDescription = null)
+                    Icon(Icons.Default.SystemUpdate, contentDescription = stringResource(R.string.cd_update))
                     Spacer(Modifier.padding(horizontal = 4.dp))
                     Text(stringResource(R.string.update_to_button, check.release.version))
                 }
@@ -465,7 +469,7 @@ private fun RuntimeUpdateCard(
                 enabled = !busy,
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Icon(Icons.Default.History, contentDescription = null)
+                Icon(Icons.Default.History, contentDescription = stringResource(R.string.cd_rollback))
                 Spacer(Modifier.padding(horizontal = 4.dp))
                 Text(stringResource(R.string.rollback_to_button, rollbackVersion))
             }
@@ -489,7 +493,7 @@ private fun RuntimeToolsCard(diagnostics: LocalRuntimeDiagnostics) {
             ) {
                 Icon(
                     imageVector = if (tool.available) Icons.Default.CheckCircle else Icons.Default.Error,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_tool_status),
                     tint = if (tool.available) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
                 )
                 Column(modifier = Modifier.weight(1f)) {
@@ -550,7 +554,7 @@ private fun RuntimeManagementCard(
             enabled = !busy,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Icon(Icons.Default.Build, contentDescription = null)
+            Icon(Icons.Default.Build, contentDescription = stringResource(R.string.cd_repair))
             Spacer(Modifier.padding(horizontal = 4.dp))
             Text(stringResource(R.string.repair_and_resetup_button))
         }
@@ -565,7 +569,7 @@ private fun RuntimeManagementCard(
             } else {
                 Icon(
                     Icons.Default.DeleteForever,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_delete_runtime),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }

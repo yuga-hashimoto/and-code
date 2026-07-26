@@ -170,21 +170,23 @@ fun AppDrawerContent(
                                 FilterChip(
                                     selected = sidebarGrouping == "project",
                                     onClick = { onGroupingChange("project") },
-                                    label = { Text("Project") },
+                                    label = { Text(stringResource(R.string.grouping_project)) },
                                 )
                                 FilterChip(
                                     selected = sidebarGrouping == "status",
                                     onClick = { onGroupingChange("status") },
-                                    label = { Text("Status") },
+                                    label = { Text(stringResource(R.string.grouping_status)) },
                                 )
                             }
                             if (sidebarGrouping == "status") {
                                 val statusGroups =
                                     listOf(
-                                        "Running" to setOf(SessionStatus.RUNNING),
-                                        "Waiting" to setOf(SessionStatus.WAITING),
-                                        "Done" to setOf(SessionStatus.COMPLETED_UNREAD, SessionStatus.IDLE),
-                                        "Error" to setOf(SessionStatus.ERROR),
+                                        stringResource(R.string.status_group_running) to setOf(SessionStatus.RUNNING),
+                                        stringResource(R.string.status_group_waiting) to setOf(SessionStatus.WAITING),
+                                        stringResource(
+                                            R.string.status_group_done,
+                                        ) to setOf(SessionStatus.COMPLETED_UNREAD, SessionStatus.IDLE),
+                                        stringResource(R.string.status_group_error) to setOf(SessionStatus.ERROR),
                                     )
                                 statusGroups.forEach { (label, statuses) ->
                                     val sessions = recentSessions.filter { it.status in statuses }
@@ -349,7 +351,7 @@ private fun DrawerHeader() {
     ) {
         Icon(
             imageVector = Icons.Default.Terminal,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.cd_app_logo),
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(22.dp),
         )
@@ -381,7 +383,7 @@ private fun NewChatRow(onClick: () -> Unit) {
         ) {
             Icon(
                 Icons.AutoMirrored.Filled.Chat,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.cd_new_chat),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(18.dp),
             )
@@ -410,7 +412,7 @@ private fun DrawerSectionHeader(
     ) {
         Icon(
             imageVector = if (collapsed) Icons.Default.ChevronRight else Icons.Default.ExpandMore,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.cd_expand_collapse),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp),
         )
@@ -452,7 +454,7 @@ private fun DrawerProjectRow(
         ) {
             Icon(
                 Icons.Default.Folder,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.cd_folder),
                 tint =
                     if (selected) {
                         MaterialTheme.colorScheme.primary
@@ -496,7 +498,7 @@ private fun DrawerAddProjectRow(onClick: () -> Unit) {
     ) {
         Icon(
             Icons.Default.Add,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.cd_add_project),
             tint = MaterialTheme.colorScheme.primary,
             modifier = Modifier.size(18.dp),
         )
@@ -526,13 +528,13 @@ private fun DrawerRecentProjectHeader(
     ) {
         Icon(
             imageVector = if (collapsed) Icons.Default.ChevronRight else Icons.Default.ExpandMore,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.cd_expand_collapse),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(14.dp),
         )
         Icon(
             Icons.Default.Folder,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.cd_folder),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(18.dp),
         )
@@ -624,7 +626,7 @@ private fun DrawerDestinationRow(
     ) {
         Icon(
             icon,
-            contentDescription = null,
+            contentDescription = stringResource(R.string.cd_nav_item),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(19.dp),
         )

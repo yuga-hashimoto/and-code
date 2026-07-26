@@ -10,7 +10,7 @@ if [[ "$COMMIT_MSG" =~ ^Merge ]]; then
   exit 0
 fi
 
-if ! echo "$COMMIT_MSG" | grep -qP "$PATTERN"; then
+if ! echo "$COMMIT_MSG" | grep -qE "$PATTERN"; then
   echo "ERROR: Commit message does not follow Conventional Commits."
   echo ""
   echo "  Format: <type>(<scope>): <description>"

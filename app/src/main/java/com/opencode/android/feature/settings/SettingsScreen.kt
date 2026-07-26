@@ -95,7 +95,11 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    Icon(Icons.Default.Home, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.Home,
+                        contentDescription = stringResource(R.string.cd_assistant_settings),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(stringResource(R.string.set_default_assistant), fontWeight = FontWeight.Medium)
                         Text(
@@ -229,7 +233,7 @@ fun SettingsScreen(
                     label = { Text(stringResource(R.string.provider_id_hint)) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
-                    leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Default.Key, contentDescription = stringResource(R.string.cd_provider_key)) },
                 )
                 Spacer(Modifier.height(8.dp))
                 OutlinedTextField(
@@ -266,7 +270,11 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Icon(Icons.Default.Android, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                    Icon(
+                        Icons.Default.Android,
+                        contentDescription = stringResource(R.string.cd_local_runtime),
+                        tint = MaterialTheme.colorScheme.secondary,
+                    )
                     Column(modifier = Modifier.weight(1f)) {
                         Text(stringResource(R.string.experimental_not_installed), fontWeight = FontWeight.Medium)
                         Text(
@@ -319,7 +327,11 @@ fun SettingsScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Icon(Icons.Default.Info, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = stringResource(R.string.cd_about),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Column {
                         Text("OpenCode Android 0.1.0", fontWeight = FontWeight.Medium)
                         Text(
@@ -354,7 +366,7 @@ private fun SettingSwitchRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+        Icon(icon, contentDescription = stringResource(R.string.cd_setting), tint = MaterialTheme.colorScheme.primary)
         Column(modifier = Modifier.weight(1f)) {
             Text(title, fontWeight = FontWeight.Medium)
             Text(

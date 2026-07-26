@@ -18,6 +18,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
+import com.opencode.android.R
 
 private val extensionIconMap =
     mapOf(
@@ -83,7 +85,7 @@ fun FileTypeIcon(
         }
     Icon(
         imageVector = icon,
-        contentDescription = null,
+        contentDescription = stringResource(R.string.cd_file_type),
         tint =
             if (isDirectory) {
                 MaterialTheme.colorScheme.primary

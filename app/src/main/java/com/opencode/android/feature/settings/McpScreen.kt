@@ -202,13 +202,17 @@ private fun McpServerCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 if (isConnected) {
                     OutlinedButton(onClick = onDisconnect) {
-                        Icon(Icons.Default.LinkOff, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(
+                            Icons.Default.LinkOff,
+                            contentDescription = stringResource(R.string.cd_disconnect),
+                            modifier = Modifier.size(16.dp),
+                        )
                         Spacer(Modifier.size(4.dp))
                         Text(stringResource(R.string.mcp_disconnect))
                     }
                 } else {
                     OutlinedButton(onClick = onConnect) {
-                        Icon(Icons.Default.Link, contentDescription = null, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Default.Link, contentDescription = stringResource(R.string.cd_connect), modifier = Modifier.size(16.dp))
                         Spacer(Modifier.size(4.dp))
                         Text(stringResource(R.string.mcp_connect))
                     }

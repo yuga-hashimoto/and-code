@@ -145,10 +145,10 @@ fun WorkspaceExplorerScreen(
                 )
             }
             IconButton(onClick = onOpenTerminal) {
-                Icon(Icons.Default.Terminal, contentDescription = "Terminal")
+                Icon(Icons.Default.Terminal, contentDescription = stringResource(R.string.tab_type_terminal))
             }
             IconButton(onClick = { showScripts = true }) {
-                Icon(Icons.Default.PlayArrow, contentDescription = "Scripts")
+                Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.scripts_title))
             }
             IconButton(
                 onClick = if (selectedTab == 2) onRefreshChanges else onRefresh,
@@ -260,11 +260,11 @@ private fun WorkspaceTabRow(tabManager: WorkspaceTabManager) {
             }
             Box {
                 IconButton(onClick = { showAddMenu = true }) {
-                    Icon(Icons.Default.Add, contentDescription = "Add tab")
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_tab))
                 }
                 DropdownMenu(expanded = showAddMenu, onDismissRequest = { showAddMenu = false }) {
                     DropdownMenuItem(
-                        text = { Text("Agent") },
+                        text = { Text(stringResource(R.string.tab_type_agent)) },
                         onClick = {
                             tabManager.addTab(
                                 WorkspaceTab(
@@ -277,7 +277,7 @@ private fun WorkspaceTabRow(tabManager: WorkspaceTabManager) {
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text("Terminal") },
+                        text = { Text(stringResource(R.string.tab_type_terminal)) },
                         onClick = {
                             tabManager.addTab(
                                 WorkspaceTab(
@@ -294,14 +294,14 @@ private fun WorkspaceTabRow(tabManager: WorkspaceTabManager) {
         }
         DropdownMenu(expanded = tabDropdownId != null, onDismissRequest = { tabDropdownId = null }) {
             DropdownMenuItem(
-                text = { Text("Close") },
+                text = { Text(stringResource(R.string.tab_close)) },
                 onClick = {
                     tabDropdownId?.let { tabManager.removeTab(it) }
                     tabDropdownId = null
                 },
             )
             DropdownMenuItem(
-                text = { Text("Close Others") },
+                text = { Text(stringResource(R.string.tab_close_others)) },
                 onClick = {
                     tabDropdownId?.let { tabManager.closeOthers(it) }
                     tabDropdownId = null
@@ -325,7 +325,7 @@ private fun WorkspaceTabContent(
                 when {
                     tab.type == TabType.TERMINAL -> TerminalTabPlaceholder()
                     selectedTabId == tab.id -> content()
-                    else -> Text("Tab content", modifier = Modifier.padding(20.dp))
+                    else -> Text(stringResource(R.string.tab_content_placeholder), modifier = Modifier.padding(20.dp))
                 }
             }
         }
@@ -447,7 +447,11 @@ private fun FilesTab(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.Folder,
+                        contentDescription = stringResource(R.string.cd_folder),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Text(
                         state.currentPath,
                         modifier = Modifier.weight(1f),
@@ -520,7 +524,7 @@ private fun SearchTab(
                 onValueChange = { query = it },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.search_files_hint)) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_search)) },
                 singleLine = true,
             )
             Spacer(Modifier.height(10.dp))
@@ -552,7 +556,11 @@ private fun SearchTab(
             items(state.fileMatches, key = { "file-$it" }) { path ->
                 SectionCard {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Description, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+                        Icon(
+                            Icons.Default.Description,
+                            contentDescription = stringResource(R.string.cd_file),
+                            tint = MaterialTheme.colorScheme.secondary,
+                        )
                         Text(path, fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
                     }
                 }
@@ -567,7 +575,11 @@ private fun SearchTab(
             ) { match ->
                 SectionCard {
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.Top) {
-                        Icon(Icons.Default.Code, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            Icons.Default.Code,
+                            contentDescription = stringResource(R.string.cd_code_match),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "${match.path.text}:${match.lineNumber}",
@@ -617,9 +629,13 @@ private fun ChangesTab(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Icon(Icons.Default.Source, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.Source,
+                        contentDescription = stringResource(R.string.cd_git),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("Git", fontWeight = FontWeight.SemiBold)
+                        Text(stringResource(R.string.git_label), fontWeight = FontWeight.SemiBold)
                         Text(
                             state.vcsInfo?.branch?.let { stringResource(R.string.branch_label, it) }
                                 ?: stringResource(R.string.no_git_info),
@@ -737,7 +753,7 @@ private fun BranchSwitcherSheet(
                 onValueChange = { searchQuery = it },
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text(stringResource(R.string.search_branches)) },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_search)) },
                 singleLine = true,
             )
             Spacer(Modifier.height(12.dp))
@@ -758,7 +774,7 @@ private fun BranchSwitcherSheet(
                         if (branch == currentBranch) {
                             Icon(
                                 Icons.Default.Check,
-                                contentDescription = null,
+                                contentDescription = stringResource(R.string.cd_current_branch),
                                 tint = MaterialTheme.colorScheme.primary,
                             )
                         } else {
@@ -798,7 +814,7 @@ private fun BranchSwitcherSheet(
                     onClick = { showNewBranchField = true },
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Icon(Icons.Default.Add, contentDescription = null)
+                    Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_new_branch))
                     Spacer(Modifier.height(4.dp))
                     Text(stringResource(R.string.new_branch))
                 }

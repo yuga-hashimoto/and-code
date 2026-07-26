@@ -19,8 +19,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.opencode.android.R
 import com.opencode.android.ui.theme.OpenCodeSuccess
 
 @Composable
@@ -36,7 +38,7 @@ fun OpenCodeBrand(modifier: Modifier = Modifier) {
         ) {
             Icon(
                 imageVector = Icons.Default.Terminal,
-                contentDescription = null,
+                contentDescription = stringResource(R.string.cd_app_logo),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(10.dp),
             )

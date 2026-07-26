@@ -5,4 +5,13 @@ build/
 .idea/
 __pycache__/
 *.keystore
+*.jks
 .kotlin/
+.env
+*.apk
+*.aab
+*.hprof
+.DS_Store
+.externalNativeBuild/
+.cxx/
+captures/

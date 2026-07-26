@@ -137,7 +137,7 @@ fun ScheduleScreen(
                     contentColor = MaterialTheme.colorScheme.onPrimary,
                 ),
         ) {
-            Icon(Icons.Default.Add, contentDescription = null)
+            Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_new_schedule))
             Spacer(Modifier.width(6.dp))
             Text(stringResource(R.string.new_schedule_button))
         }
@@ -189,7 +189,7 @@ private fun ScheduleCard(
             ) {
                 Icon(
                     Icons.Default.CloudSync,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_schedule),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(8.dp),
                 )
@@ -200,7 +200,7 @@ private fun ScheduleCard(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon(
                         Icons.Default.Schedule,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.cd_cron),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.height(14.dp),
                     )
@@ -213,7 +213,7 @@ private fun ScheduleCard(
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     Icon(
                         Icons.Default.Work,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.cd_workspace),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.height(14.dp),
                     )

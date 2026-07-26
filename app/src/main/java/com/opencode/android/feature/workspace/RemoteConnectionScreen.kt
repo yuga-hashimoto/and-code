@@ -284,7 +284,7 @@ fun RemoteConnectionScreen(
                     },
                     label = { Text(stringResource(R.string.server_url)) },
                     placeholder = { Text("192.168.1.10:4096") },
-                    leadingIcon = { Icon(Icons.Default.Link, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Default.Link, contentDescription = stringResource(R.string.cd_server_url)) },
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
@@ -313,12 +313,12 @@ fun RemoteConnectionScreen(
                         form = form.copy(password = it, testSucceeded = false, testMessage = null)
                     },
                     label = { Text(stringResource(R.string.password)) },
-                    leadingIcon = { Icon(Icons.Default.Key, contentDescription = null) },
+                    leadingIcon = { Icon(Icons.Default.Key, contentDescription = stringResource(R.string.cd_password)) },
                     trailingIcon = {
                         IconButton(onClick = { passwordVisible = !passwordVisible }) {
                             Icon(
                                 if (passwordVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = null,
+                                contentDescription = stringResource(R.string.cd_toggle_password),
                             )
                         }
                     },
@@ -346,7 +346,11 @@ fun RemoteConnectionScreen(
                     },
                     modifier = Modifier.weight(1f),
                 ) {
-                    Icon(Icons.Default.QrCodeScanner, contentDescription = null, modifier = Modifier.size(19.dp))
+                    Icon(
+                        Icons.Default.QrCodeScanner,
+                        contentDescription = stringResource(R.string.cd_scan_qr),
+                        modifier = Modifier.size(19.dp),
+                    )
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.add_via_qr), maxLines = 1)
                 }
@@ -354,7 +358,11 @@ fun RemoteConnectionScreen(
                     onClick = { startLanDiscovery() },
                     modifier = Modifier.weight(1f),
                 ) {
-                    Icon(Icons.Default.WifiFind, contentDescription = null, modifier = Modifier.size(19.dp))
+                    Icon(
+                        Icons.Default.WifiFind,
+                        contentDescription = stringResource(R.string.cd_lan_discovery),
+                        modifier = Modifier.size(19.dp),
+                    )
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.discover_on_lan), maxLines = 1)
                 }
@@ -372,7 +380,7 @@ fun RemoteConnectionScreen(
                 ) {
                     Icon(
                         Icons.Default.Info,
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.cd_info),
                         tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.size(20.dp),
                     )
@@ -531,7 +539,11 @@ private fun RemoteConnectionBottomBar(
             if (form.isTesting) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             } else {
-                Icon(Icons.Default.NetworkCheck, contentDescription = null, modifier = Modifier.size(20.dp))
+                Icon(
+                    Icons.Default.NetworkCheck,
+                    contentDescription = stringResource(R.string.cd_test_connection),
+                    modifier = Modifier.size(20.dp),
+                )
             }
             Spacer(Modifier.width(8.dp))
             Text(

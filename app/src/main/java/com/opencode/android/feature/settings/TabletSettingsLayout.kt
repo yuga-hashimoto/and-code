@@ -21,8 +21,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.opencode.android.R
 
 data class SettingsSectionItem(
     val id: String,
@@ -67,7 +69,7 @@ fun TabletSettingsLayout(
                         ) {
                             Icon(
                                 imageVector = section.icon,
-                                contentDescription = null,
+                                contentDescription = stringResource(R.string.cd_settings_section),
                                 tint =
                                     if (isSelected) {
                                         MaterialTheme.colorScheme.onPrimaryContainer

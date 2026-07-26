@@ -589,4 +589,248 @@
     <string name="subagent_session_label">Session de sous-agent</string>
     <string name="subagent_return_to_parent">Retour à l’agent principal : %1$s</string>
     <string name="subagent_parent_untitled">Session principale</string>
+    <!-- Content descriptions -->
+    <string name="cd_folder">Folder</string>
+    <string name="cd_expand_dropdown">Expand dropdown</string>
+    <string name="cd_expand_collapse">Expand or collapse</string>
+    <string name="cd_search">Search</string>
+    <string name="cd_app_logo">OpenCode</string>
+    <string name="cd_permission">Permission</string>
+    <string name="cd_runtime_type">Runtime type</string>
+    <string name="cd_new_chat">New chat</string>
+    <string name="cd_setting">Setting</string>
+    <string name="cd_server_url">Server URL</string>
+    <string name="cd_password">Password</string>
+    <string name="cd_test_connection">Test connection</string>
+    <string name="cd_scan_qr">Scan QR code</string>
+    <string name="cd_lan_discovery">Discover on LAN</string>
+    <string name="cd_clear_search">Clear search</string>
+    <string name="cd_repair">Repair</string>
+    <string name="cd_session">Session</string>
+    <string name="cd_attachment">Attachment</string>
+    <string name="cd_image_preview">Image preview</string>
+    <string name="cd_reasoning">Reasoning</string>
+    <string name="cd_tool">Tool</string>
+    <string name="cd_file_changes">File changes</string>
+    <string name="cd_compacted">Context compacted</string>
+    <string name="cd_plan">Plan</string>
+    <string name="cd_task_completed">Completed</string>
+    <string name="cd_task_in_progress">In progress</string>
+    <string name="cd_task_pending">Pending</string>
+    <string name="cd_setup">Setup</string>
+    <string name="cd_start">Start</string>
+    <string name="cd_stop">Stop</string>
+    <string name="cd_diagnostics">Diagnostics</string>
+    <string name="cd_connection_error">Connection error</string>
+    <string name="cd_import_folder">Import folder</string>
+    <string name="cd_clone_github">Clone from GitHub</string>
+    <string name="cd_scroll_to_bottom">Scroll to bottom</string>
+    <string name="cd_attached_image">Attached image</string>
+    <string name="cd_remove_image">Remove image</string>
+    <string name="cd_attach_file">Attach file</string>
+    <string name="cd_camera">Camera</string>
+    <string name="cd_gallery">Gallery</string>
+    <string name="cd_thinking">Thinking</string>
+    <string name="cd_agent_mode">Agent mode</string>
+    <string name="cd_updating">Updating</string>
+    <string name="cd_operation_result">Operation result</string>
+    <string name="cd_check_update">Check for update</string>
+    <string name="cd_up_to_date">Up to date</string>
+    <string name="cd_update">Update</string>
+    <string name="cd_rollback">Rollback</string>
+    <string name="cd_tool_status">Tool status</string>
+    <string name="cd_delete_runtime">Delete runtime</string>
+    <string name="cd_new_schedule">New schedule</string>
+    <string name="cd_schedule">Schedule</string>
+    <string name="cd_cron">Schedule time</string>
+    <string name="cd_workspace">Workspace</string>
+    <string name="cd_event_log">Event log</string>
+    <string name="cd_navigate">Navigate</string>
+    <string name="cd_cancel">Cancel</string>
+    <string name="cd_accept">Accept</string>
+    <string name="cd_send">Send</string>
+    <string name="cd_continue_chat">Continue chat</string>
+    <string name="cd_task_status">Task status</string>
+    <string name="cd_file_change">File change</string>
+    <string name="cd_disconnect">Disconnect</string>
+    <string name="cd_connect">Connect</string>
+    <string name="cd_onboarding_option">Setup option</string>
+    <string name="cd_favorite">Toggle favorite</string>
+    <string name="cd_microphone">Microphone</string>
+    <string name="cd_file_type">File</string>
+    <string name="cd_repository">Repository</string>
+    <string name="cd_add_script">Add script</string>
+    <string name="cd_voice_setting">Voice setting</string>
+    <string name="cd_settings_section">Settings section</string>
+    <string name="cd_command">Command</string>
+    <string name="cd_subagent_status">Subagent status</string>
+    <string name="cd_toggle_password">Toggle password visibility</string>
+    <string name="cd_info">Info</string>
+    <string name="cd_add_project">Add project</string>
+    <string name="cd_file">File</string>
+    <string name="cd_code_match">Code match</string>
+    <string name="cd_git">Git</string>
+    <string name="cd_current_branch">Current branch</string>
+    <string name="cd_new_branch">New branch</string>
+    <string name="cd_step_completed">Step completed</string>
+    <string name="cd_error">Error</string>
+    <string name="cd_runtime_ready">Runtime ready</string>
+    <string name="cd_workspaces">Workspaces</string>
+    <string name="cd_configuration">Configuration</string>
+    <string name="cd_assistant_settings">Assistant settings</string>
+    <string name="cd_provider_key">Provider key</string>
+    <string name="cd_local_runtime">Local runtime</string>
+    <string name="cd_about">About</string>
+    <string name="cd_nav_item">Navigation item</string>
+    <string name="cd_terminal">Terminal</string>
+    <string name="cd_scripts">Scripts</string>
+    <string name="cd_add_tab">Add tab</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_toggle_wrap">Toggle wrap</string>
+    <string name="cd_next_match">Next match</string>
+    <string name="cd_clear_terminal">Clear terminal</string>
+    <string name="cd_send_command">Send command</string>
+    <string name="cd_delete">Delete</string>
+
+    <!-- Command palette & search -->
+    <string name="palette_new_chat">New Chat</string>
+    <string name="palette_settings">Settings</string>
+    <string name="palette_workspaces">Workspaces</string>
+    <string name="palette_activity">Activity</string>
+    <string name="search_label">Search</string>
+    <string name="palette_section_actions">Actions</string>
+    <string name="palette_section_sessions">Sessions</string>
+    <string name="global_search_empty_hint">Search across all sessions</string>
+
+    <!-- Scripts -->
+    <string name="scripts_title">Scripts</string>
+    <string name="scripts_empty">No scripts configured</string>
+    <string name="script_name_label">Name</string>
+    <string name="script_command_label">Command</string>
+    <string name="add_script">Add Script</string>
+
+    <!-- Session import -->
+    <string name="import_session_title">Import Session</string>
+    <string name="session_id_label">Session ID</string>
+    <string name="import_session_hint">Enter the session ID or resume command from another OpenCode client</string>
+    <string name="import_button">Import</string>
+
+    <!-- Activity errors -->
+    <string name="error_permission_not_accepted">Permission response was not accepted</string>
+    <string name="error_permission_failed">Permission response failed</string>
+    <string name="error_rename_session">Failed to rename session</string>
+    <string name="error_delete_session">Failed to delete session</string>
+
+    <!-- Terminal -->
+    <string name="terminal_banner">OpenCode Terminal - PRoot Alpine Linux</string>
+    <string name="terminal_exit_code">exit code: %1$d</string>
+
+    <!-- Workspace explorer tabs -->
+    <string name="tab_type_agent">Agent</string>
+    <string name="tab_new_default">New</string>
+    <string name="tab_type_terminal">Terminal</string>
+    <string name="tab_close">Close</string>
+    <string name="tab_close_others">Close Others</string>
+    <string name="tab_content_placeholder">Tab content</string>
+    <string name="git_label">Git</string>
+
+    <!-- Code viewer -->
+    <string name="code_no_matches">No matches</string>
+    <string name="code_match_counter">%1$d / %2$d</string>
+
+    <!-- Chat screen -->
+    <string name="copy_resume_command">Copy resume command</string>
+    <string name="model_default">Default</string>
+    <string name="no_connected_providers">No connected providers</string>
+    <string name="tool_call_count">🔧 %1$d tool calls</string>
+    <string name="context_compacted_marker">context compacted</string>
+    <string name="plan_card_title">Plan</string>
+    <string name="tasks_card_title">Tasks</string>
+    <string name="tasks_progress">%1$d/%2$d done</string>
+
+    <!-- Chat errors -->
+    <string name="error_opencode_operation">OpenCode operation failed</string>
+    <string name="error_no_connection">OpenCode connection is not configured</string>
+    <string name="session_title_attachment">Attachment</string>
+    <string name="error_answer_required">Answer required</string>
+    <string name="error_question_failed">OpenCode question failed</string>
+    <string name="error_session_failed">OpenCode session failed</string>
+
+    <!-- Connection dialog -->
+    <string name="connection_test_success">OpenCode %1$s</string>
+    <string name="connection_test_failed">Connection failed</string>
+
+    <!-- Slash commands -->
+    <string name="slash_desc_new">Start a new session</string>
+    <string name="slash_desc_clear">Clear current conversation</string>
+    <string name="slash_desc_model">Switch model</string>
+    <string name="slash_desc_agent">Switch agent</string>
+    <string name="slash_desc_attach">Attach a file</string>
+    <string name="slash_desc_help">Show help</string>
+
+    <!-- Chat home -->
+    <string name="side_panel_files_title">Files</string>
+    <string name="side_panel_files_desc">File explorer</string>
+    <string name="action_copy">Copy</string>
+    <string name="action_copy_markdown">Copy as Markdown</string>
+    <string name="attach_file">File</string>
+    <string name="attach_camera">Camera</string>
+    <string name="attach_gallery">Gallery</string>
+    <string name="status_queued">Queued</string>
+
+    <!-- Resume command -->
+    <string name="toast_resume_copied">Resume command copied</string>
+
+    <!-- Voice -->
+    <string name="voice_listening_placeholder">Listening…</string>
+
+    <!-- Drawer grouping -->
+    <string name="grouping_project">Project</string>
+    <string name="grouping_status">Status</string>
+    <string name="status_group_running">Running</string>
+    <string name="status_group_waiting">Waiting</string>
+    <string name="status_group_done">Done</string>
+    <string name="status_group_error">Error</string>
+
+    <!-- Quick input widget -->
+    <string name="toast_permission_granted">Permission granted. Tap mic again.</string>
+    <string name="toast_mic_permission_required">Microphone permission required</string>
+    <string name="widget_no_runtime">No runtime connected</string>
+    <string name="widget_sending">Sending…</string>
+    <string name="widget_session_title">Widget: %1$s</string>
+    <string name="widget_sent">Sent!</string>
+    <string name="widget_error">Error: %1$s</string>
+    <string name="widget_listening">Listening…</string>
+    <string name="widget_processing">Processing…</string>
+    <string name="widget_voice_error">Voice error</string>
+    <string name="widget_no_speech">No speech detected</string>
+
+    <!-- Diagnostics sheet -->
+    <string name="diagnostics_title">Diagnostics</string>
+    <string name="diagnostics_section_app">App</string>
+    <string name="diagnostics_version">Version</string>
+    <string name="diagnostics_build_type">Build type</string>
+    <string name="diagnostics_section_connection">Connection</string>
+    <string name="diagnostics_status">Status</string>
+    <string name="diagnostics_runtime">Runtime</string>
+    <string name="diagnostics_section_memory">Memory</string>
+    <string name="diagnostics_total">Total</string>
+    <string name="diagnostics_free">Free</string>
+    <string name="diagnostics_max">Max</string>
+    <string name="diagnostics_section_storage">Storage</string>
+    <string name="diagnostics_available">Available</string>
+    <string name="diagnostics_copy_button">Copy Diagnostics</string>
+
+    <!-- Session detail -->
+    <string name="session_info_id">ID</string>
+    <string name="session_info_opencode">OpenCode</string>
+    <string name="session_todo_title">Todo</string>
+
+    <string name="runtime_diagnostics_failed">Failed to diagnose the local runtime</string>
+    <string name="runtime_update_check_failed">Failed to check for OpenCode updates</string>
+    <string name="runtime_repair_start_failed">Cannot start local runtime repair</string>
+    <string name="runtime_update_start_failed">Cannot start OpenCode update</string>
+    <string name="runtime_rollback_start_failed">Cannot start OpenCode rollback</string>
+    <string name="runtime_delete_failed">Cannot delete the local runtime</string>
+    <string name="runtime_delete_timeout">Runtime deletion timed out</string>
 </resources>

@@ -17,8 +17,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.opencode.android.R
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -36,7 +38,7 @@ fun SessionImportSheet(
                     .padding(horizontal = 20.dp),
         ) {
             Text(
-                text = "Import Session",
+                text = stringResource(R.string.import_session_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -46,11 +48,11 @@ fun SessionImportSheet(
                 onValueChange = { sessionId = it },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                label = { Text("Session ID") },
+                label = { Text(stringResource(R.string.session_id_label)) },
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "Enter the session ID or resume command from another OpenCode client",
+                text = stringResource(R.string.import_session_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -60,7 +62,7 @@ fun SessionImportSheet(
                 enabled = sessionId.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Import")
+                Text(stringResource(R.string.import_button))
             }
             Spacer(Modifier.height(24.dp))
         }

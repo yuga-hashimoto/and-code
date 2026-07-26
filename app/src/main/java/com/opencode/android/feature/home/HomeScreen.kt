@@ -78,7 +78,7 @@ fun HomeScreen(
                                 RuntimeType.REMOTE -> Icons.Default.Computer
                                 null -> Icons.Default.Computer
                             },
-                        contentDescription = null,
+                        contentDescription = stringResource(R.string.cd_runtime_type),
                         tint = if (state.connected) OpenCodeSuccess else MaterialTheme.colorScheme.primary,
                     )
                     Column(modifier = Modifier.weight(1f)) {
@@ -118,7 +118,7 @@ fun HomeScreen(
                     modifier = Modifier.weight(1f),
                     enabled = state.runtimeId != null,
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = null)
+                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = stringResource(R.string.cd_new_chat))
                     Spacer(Modifier.padding(horizontal = 4.dp))
                     Text(stringResource(R.string.new_chat))
                 }
@@ -126,7 +126,7 @@ fun HomeScreen(
                     onClick = onOpenWorkspaces,
                     modifier = Modifier.weight(1f),
                 ) {
-                    Icon(Icons.Default.Folder, contentDescription = null)
+                    Icon(Icons.Default.Folder, contentDescription = stringResource(R.string.cd_workspaces))
                     Spacer(Modifier.padding(horizontal = 4.dp))
                     Text(stringResource(R.string.nav_workspaces))
                 }
@@ -153,7 +153,11 @@ fun HomeScreen(
                 ConfigurationRow(stringResource(R.string.agent), state.agentId ?: "build")
                 Spacer(Modifier.height(12.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.Tune, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                    Icon(
+                        Icons.Default.Tune,
+                        contentDescription = stringResource(R.string.cd_configuration),
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
                     Spacer(Modifier.padding(horizontal = 5.dp))
                     Text(
                         text = state.providerId ?: stringResource(R.string.no_ai_service_selected),
@@ -210,7 +214,11 @@ fun HomeScreen(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        Icon(Icons.Default.Folder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                        Icon(
+                            Icons.Default.Folder,
+                            contentDescription = stringResource(R.string.cd_session),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(session.title.ifBlank { session.slug ?: session.id }, fontWeight = FontWeight.Medium)
                             Text(

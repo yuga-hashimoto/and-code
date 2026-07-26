@@ -35,6 +35,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
@@ -43,6 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.opencode.android.R
 import com.opencode.android.ui.theme.SyntaxTheme
 import com.opencode.android.ui.theme.syntaxThemeFor
 import kotlinx.coroutines.launch
@@ -106,15 +108,15 @@ fun CodeViewerScreen(
                 title = { Text(fileName) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
                     }
                 },
                 actions = {
                     IconButton(onClick = { showSearch = !showSearch }) {
-                        Icon(Icons.Default.Search, contentDescription = "Search")
+                        Icon(Icons.Default.Search, contentDescription = stringResource(R.string.cd_search))
                     }
                     IconButton(onClick = { wrap = !wrap }) {
-                        Icon(Icons.AutoMirrored.Filled.WrapText, contentDescription = "Toggle wrap")
+                        Icon(Icons.AutoMirrored.Filled.WrapText, contentDescription = stringResource(R.string.cd_toggle_wrap))
                     }
                 },
             )
@@ -139,7 +141,7 @@ fun CodeViewerScreen(
                         onValueChange = { searchQuery = it },
                         modifier = Modifier.weight(1f),
                         singleLine = true,
-                        label = { Text("Search") },
+                        label = { Text(stringResource(R.string.search_label)) },
                     )
                     IconButton(
                         onClick = {
@@ -150,12 +152,19 @@ fun CodeViewerScreen(
                             }
                         },
                     ) {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = "Next match")
+                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.cd_next_match))
                     }
                 }
                 if (searchQuery.isNotEmpty()) {
                     Text(
-                        text = if (matchLines.isEmpty()) "No matches" else "${currentMatch + 1} / ${matchLines.size}",
+                        text =
+                            if (matchLines.isEmpty()) {
+                                stringResource(
+                                    R.string.code_no_matches,
+                                )
+                            } else {
+                                stringResource(R.string.code_match_counter, currentMatch + 1, matchLines.size)
+                            },
                         style = MaterialTheme.typography.labelSmall,
                         color = LineNumberColor,
                         modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),

@@ -15,6 +15,7 @@ import com.opencode.android.runtime.RuntimeRegistry
 import com.opencode.android.runtime.RuntimeTarget
 import com.opencode.android.runtime.local.LocalProviderCredentialStore
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -349,7 +350,7 @@ class SettingsViewModel(
                                     TAG,
                                     "completeProviderOAuth attempt=$attempt completed=$completed error=${result.exceptionOrNull()?.message}",
                                 )
-                                if (!completed) kotlinx.coroutines.delay(AUTO_OAUTH_POLL_MS)
+                                if (!completed) delay(AUTO_OAUTH_POLL_MS)
                             }
                             android.util.Log.w(TAG, "OAuth polling finished: completed=$completed")
                             if (completed) {

@@ -1,6 +1,8 @@
 package com.opencode.android.feature.assistant
 
 import android.content.Context
+import android.os.Handler
+import android.os.Looper
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import android.util.Log
@@ -14,6 +16,7 @@ import java.util.UUID
 import kotlin.coroutines.resume
 
 private const val TAG = "TTSManager"
+private const val INIT_TIMEOUT_MS = 3000L
 
 /**
  * テキスト読み上げ（TTS）マネージャー
@@ -25,30 +28,15 @@ class TTSManager(context: Context) {
     private var pendingSpeak: (() -> Unit)? = null
 
     init {
-        Log.e(TAG, "Initializing TTS...")
-        // Try with explicit engine package name
+        Log.d(TAG, "Initializing TTS...")
         val engine = "com.google.android.tts"
         tts =
             TextToSpeech(context.applicationContext, { status ->
-                Log.e(TAG, "TTS init callback, status=$status (SUCCESS=${TextToSpeech.SUCCESS})")
+                Log.d(TAG, "TTS init callback, status=$status (SUCCESS=${TextToSpeech.SUCCESS})")
                 if (status == TextToSpeech.SUCCESS) {
-                    isInitialized = true
-                    // 日本語を優先、なければデフォルト
-                    val result = tts?.setLanguage(Locale.JAPANESE)
-                    Log.e(TAG, "setLanguage result=$result")
-                    if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                        tts?.setLanguage(Locale.getDefault())
-                    }
-                    // 読み上げ速度調整
-                    tts?.setSpeechRate(1.0f)
-                    tts?.setPitch(1.0f)
-
-                    // 初期化待ちの発話があれば実行
-                    pendingSpeak?.invoke()
-                    pendingSpeak = null
+                    onInitSuccess()
                 } else {
                     Log.e(TAG, "TTS init FAILED with status=$status, trying without engine...")
-                    // Retry without specifying engine
                     tryInitWithoutEngine(context.applicationContext)
                 }
             }, engine)
@@ -57,22 +45,26 @@ class TTSManager(context: Context) {
     private fun tryInitWithoutEngine(context: Context) {
         tts =
             TextToSpeech(context) { status ->
-                Log.e(TAG, "TTS retry init callback, status=$status")
+                Log.d(TAG, "TTS retry init callback, status=$status")
                 if (status == TextToSpeech.SUCCESS) {
-                    isInitialized = true
-                    val result = tts?.setLanguage(Locale.JAPANESE)
-                    Log.e(TAG, "setLanguage result=$result")
-                    if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-                        tts?.setLanguage(Locale.getDefault())
-                    }
-                    tts?.setSpeechRate(1.0f)
-                    tts?.setPitch(1.0f)
-                    pendingSpeak?.invoke()
-                    pendingSpeak = null
+                    onInitSuccess()
                 } else {
                     Log.e(TAG, "TTS retry also FAILED with status=$status")
                 }
             }
+    }
+
+    private fun onInitSuccess() {
+        isInitialized = true
+        val result = tts?.setLanguage(Locale.JAPANESE)
+        Log.d(TAG, "setLanguage result=$result")
+        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
+            tts?.setLanguage(Locale.getDefault())
+        }
+        tts?.setSpeechRate(1.0f)
+        tts?.setPitch(1.0f)
+        pendingSpeak?.invoke()
+        pendingSpeak = null
     }
 
     /**
@@ -113,18 +105,16 @@ class TTSManager(context: Context) {
                 tts?.setOnUtteranceProgressListener(listener)
                 tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
             } else {
-                // 初期化待ち - Listenerを保持してpendingSpeakで使用
                 pendingSpeak = {
                     tts?.setOnUtteranceProgressListener(listener)
                     tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
                 }
-                // 初期化タイムアウト処理（3秒待っても初期化されなければfalseを返す）
-                android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                Handler(Looper.getMainLooper()).postDelayed({
                     if (continuation.isActive && !isInitialized) {
                         pendingSpeak = null
                         continuation.resume(false)
                     }
-                }, 3000)
+                }, INIT_TIMEOUT_MS)
             }
 
             continuation.invokeOnCancellation {
@@ -219,12 +209,12 @@ class TTSManager(context: Context) {
 /**
  * TTSの状態
  */
-sealed class TTSState {
-    object Preparing : TTSState()
+sealed interface TTSState {
+    data object Preparing : TTSState
 
-    object Speaking : TTSState()
+    data object Speaking : TTSState
 
-    object Done : TTSState()
+    data object Done : TTSState
 
-    data class Error(val message: String) : TTSState()
+    data class Error(val message: String) : TTSState
 }

@@ -17,10 +17,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.opencode.android.BuildConfig
+import com.opencode.android.R
 import com.opencode.android.ui.components.LabelValueRow
 import com.opencode.android.ui.components.SectionCard
 
@@ -75,41 +77,41 @@ fun DiagnosticsSheet(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                text = "Diagnostics",
+                text = stringResource(R.string.diagnostics_title),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
 
             SectionCard {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DiagnosticsSectionHeader("App")
-                    LabelValueRow(label = "Version", value = appVersion)
-                    LabelValueRow(label = "Build type", value = buildType)
+                    DiagnosticsSectionHeader(stringResource(R.string.diagnostics_section_app))
+                    LabelValueRow(label = stringResource(R.string.diagnostics_version), value = appVersion)
+                    LabelValueRow(label = stringResource(R.string.diagnostics_build_type), value = buildType)
                 }
             }
 
             SectionCard {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DiagnosticsSectionHeader("Connection")
-                    LabelValueRow(label = "Status", value = connectionStatus)
-                    LabelValueRow(label = "Runtime", value = runtimeStatus)
+                    DiagnosticsSectionHeader(stringResource(R.string.diagnostics_section_connection))
+                    LabelValueRow(label = stringResource(R.string.diagnostics_status), value = connectionStatus)
+                    LabelValueRow(label = stringResource(R.string.diagnostics_runtime), value = runtimeStatus)
                 }
             }
 
             SectionCard {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DiagnosticsSectionHeader("Memory")
-                    LabelValueRow(label = "Total", value = "${totalMemoryMb}MB")
-                    LabelValueRow(label = "Free", value = "${freeMemoryMb}MB")
-                    LabelValueRow(label = "Max", value = "${maxMemoryMb}MB")
+                    DiagnosticsSectionHeader(stringResource(R.string.diagnostics_section_memory))
+                    LabelValueRow(label = stringResource(R.string.diagnostics_total), value = "${totalMemoryMb}MB")
+                    LabelValueRow(label = stringResource(R.string.diagnostics_free), value = "${freeMemoryMb}MB")
+                    LabelValueRow(label = stringResource(R.string.diagnostics_max), value = "${maxMemoryMb}MB")
                 }
             }
 
             SectionCard {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DiagnosticsSectionHeader("Storage")
-                    LabelValueRow(label = "Available", value = formatBytes(availableBytes))
-                    LabelValueRow(label = "Total", value = formatBytes(totalBytes))
+                    DiagnosticsSectionHeader(stringResource(R.string.diagnostics_section_storage))
+                    LabelValueRow(label = stringResource(R.string.diagnostics_available), value = formatBytes(availableBytes))
+                    LabelValueRow(label = stringResource(R.string.diagnostics_total), value = formatBytes(totalBytes))
                 }
             }
 
@@ -120,7 +122,7 @@ fun DiagnosticsSheet(
                 },
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Copy Diagnostics")
+                Text(stringResource(R.string.diagnostics_copy_button))
             }
 
             Spacer(Modifier.height(24.dp))

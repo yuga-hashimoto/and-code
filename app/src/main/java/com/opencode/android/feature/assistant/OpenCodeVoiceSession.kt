@@ -423,7 +423,7 @@ private fun VoiceAssistantSurface(
             } else {
                 Icon(
                     Icons.Default.Mic,
-                    contentDescription = null,
+                    contentDescription = stringResource(R.string.cd_microphone),
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.padding(24.dp),
                 )
@@ -474,7 +474,7 @@ private fun VoiceAssistantSurface(
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Security, contentDescription = null)
+                        Icon(Icons.Default.Security, contentDescription = stringResource(R.string.cd_permission))
                         Spacer(Modifier.padding(horizontal = 5.dp))
                         Text(request.permission, fontWeight = FontWeight.SemiBold)
                     }

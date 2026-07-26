@@ -1,5 +1,6 @@
 package com.opencode.android.feature.workspace
 
+import com.opencode.android.R
 import com.opencode.android.runtime.LocalRuntimeStatus
 import com.opencode.android.runtime.local.LocalRuntimeDiagnostics
 import com.opencode.android.runtime.local.LocalRuntimeOperationResult
@@ -211,7 +212,7 @@ class LocalRuntimeManagementViewModelTest {
             runCurrent()
 
             assertFalse(viewModel.state.value.isDeleting)
-            assertEquals("ランタイムの削除がタイムアウトしました", viewModel.state.value.error)
+            assertEquals("string/${R.string.runtime_delete_timeout}", viewModel.state.value.error)
         }
 
     @Test
@@ -253,6 +254,7 @@ class LocalRuntimeManagementViewModelTest {
         updateAction = updateAction,
         rollbackAction = rollbackAction,
         deleteAction = deleteAction,
+        getString = { resId -> "string/$resId" },
         deleteTimeoutMillis = deleteTimeoutMillis,
     )
 

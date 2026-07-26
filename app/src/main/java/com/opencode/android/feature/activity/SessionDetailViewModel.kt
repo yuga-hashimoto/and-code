@@ -6,6 +6,7 @@ import com.opencode.android.core.api.OpenCodeApiException
 import com.opencode.android.core.api.OpenCodeFileChange
 import com.opencode.android.core.api.OpenCodeSession
 import com.opencode.android.core.api.OpenCodeTodo
+import com.opencode.android.core.util.safeMessage
 import com.opencode.android.runtime.OpenCodeBackend
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -56,11 +57,9 @@ class SessionDetailViewModel(
                     todos = result.first.getOrDefault(emptyList()),
                     diff = result.second.getOrDefault(emptyList()),
                     isLoading = false,
-                    error = error?.safeMessage(),
+                    error = error?.safeMessage("OpenCode session details could not be loaded"),
                 )
             }
         }
     }
-
-    private fun Throwable.safeMessage(): String = message?.takeIf { it.isNotBlank() } ?: "OpenCode session details could not be loaded"
 }
