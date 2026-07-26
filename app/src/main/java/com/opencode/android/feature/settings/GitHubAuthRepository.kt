@@ -139,12 +139,20 @@ class GitHubAuthRepository(
         }
 
     fun saveToken(value: String) {
-        settings.githubToken = value.trim().takeIf { it.isNotEmpty() }
+        val normalized = value.trim().takeIf { it.isNotEmpty() }
+        if (normalized != settings.githubToken) invalidateStarVerification()
+        settings.githubToken = normalized
     }
 
     fun disconnect() {
         settings.githubToken = null
         settings.githubLogin = null
+        invalidateStarVerification()
+    }
+
+    private fun invalidateStarVerification() {
+        settings.githubStarredCache = null
+        settings.githubStarStatusCheckedAt = 0L
     }
 
     private inline fun <reified T> executeJson(
