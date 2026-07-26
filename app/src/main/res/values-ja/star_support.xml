@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="github_star_prompt_title">OpenCode Androidを応援してくれませんか？</string>
+    <string name="github_star_prompt_body">OpenCode Androidはオープンソースで開発しています。役に立ったら、GitHub Starで開発を応援してもらえるとうれしいです。</string>
+    <string name="github_star_second_prompt_title">OpenCode Androidは役に立ちましたか？</string>
+    <string name="github_star_second_prompt_body">最初のタスクがうまくいったら、GitHub StarでOpenCode Androidを応援してもらえるとうれしいです。</string>
+    <string name="github_star_count">GitHub Stars %1$d</string>
+    <string name="github_star_action">GitHubでStarする</string>
+    <string name="github_star_later">あとで</string>
+    <string name="github_star_not_now">今はしない</string>
+    <string name="github_star_verified_short">Star済み</string>
+    <string name="github_star_verified">Starありがとうございます！</string>
+    <string name="github_star_thanks_snackbar">GitHub Starありがとうございます！OpenCode Androidの改善に役立ちます。</string>
+    <string name="github_support_button">応援する</string>
+    <string name="github_support_title">OpenCode Androidを応援</string>
+    <string name="github_support_body">OpenCode Androidはオープンソースです。Star、ソースの確認、Issue報告をここから行えます。</string>
+    <string name="github_repo_action">GitHubリポジトリ</string>
+    <string name="github_issue_action">Issueを報告</string>
+    <string name="github_license_action">ライセンス</string>
+    <string name="github_version_label">バージョン</string>
+</resources>
