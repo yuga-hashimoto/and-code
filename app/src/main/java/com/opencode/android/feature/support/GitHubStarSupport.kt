@@ -1,6 +1,13 @@
 package com.opencode.android.feature.support
 
+import com.opencode.android.data.connection.SecureSettingsRepository
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.intOrNull
@@ -83,4 +90,139 @@ class GitHubStarService(
         }.getOrNull()
 
     private fun apiUrl(path: String): String = apiBaseUrl.trimEnd('/') + path
+}
+
+class GitHubStarCoordinator(
+    private val settings: SecureSettingsRepository,
+    private val service: GitHubStarService,
+    private val scope: CoroutineScope,
+    private val now: () -> Long = System::currentTimeMillis,
+) {
+    private val mutableSnapshot =
+        MutableStateFlow(
+            GitHubStarSnapshot(
+                stargazersCount = settings.githubStarCountCache,
+                starred = settings.githubStarredCache,
+            ),
+        )
+    val snapshot: StateFlow<GitHubStarSnapshot> = mutableSnapshot.asStateFlow()
+
+    private val mutableSecondPromptRequested = MutableStateFlow(false)
+    val secondPromptRequested: StateFlow<Boolean> = mutableSecondPromptRequested.asStateFlow()
+
+    private val mutableThankYouRequested = MutableStateFlow(false)
+    val thankYouRequested: StateFlow<Boolean> = mutableThankYouRequested.asStateFlow()
+
+    private var repositoryCheckPending = false
+    private var refreshJob: Job? = null
+
+    fun shouldShowInitialPrompt(): Boolean =
+        GitHubStarPromptPolicy.shouldShowInitial(
+            onboardingCompleted = settings.onboardingCompleted,
+            promptHandled = settings.githubStarPromptShown,
+        )
+
+    fun markInitialStarOpened() {
+        settings.githubStarPromptShown = true
+        settings.githubStarPromptDeferred = false
+        repositoryCheckPending = true
+    }
+
+    fun markInitialDeferred() {
+        settings.githubStarPromptShown = true
+        settings.githubStarPromptDeferred = true
+    }
+
+    fun onSessionCompleted() {
+        if (
+            GitHubStarPromptPolicy.shouldShowSecond(
+                deferred = settings.githubStarPromptDeferred,
+                secondPromptShown = settings.githubStarSecondPromptShown,
+                starred = settings.githubStarredCache,
+            )
+        ) {
+            settings.githubStarSecondPromptShown = true
+            mutableSecondPromptRequested.value = true
+        }
+    }
+
+    fun markSecondStarOpened() {
+        mutableSecondPromptRequested.value = false
+        repositoryCheckPending = true
+    }
+
+    fun dismissSecondPrompt() {
+        mutableSecondPromptRequested.value = false
+    }
+
+    fun markRepositoryOpenedFromSettings() {
+        repositoryCheckPending = true
+    }
+
+    fun markThankYouShown() {
+        settings.githubStarThankYouShown = true
+        mutableThankYouRequested.value = false
+    }
+
+    fun onAppResumed() {
+        val canVerify = !settings.githubToken.isNullOrBlank()
+        if (repositoryCheckPending && !canVerify) repositoryCheckPending = false
+        refresh(force = repositoryCheckPending && canVerify)
+    }
+
+    fun refresh(force: Boolean = false) {
+        if (refreshJob?.isActive == true) return
+
+        val timestamp = now()
+        val countFresh =
+            settings.githubStarCountCache != null &&
+                settings.githubStarCountCheckedAt > 0L &&
+                timestamp - settings.githubStarCountCheckedAt < GITHUB_STAR_COUNT_CACHE_TTL_MS
+        val tokenAvailable = !settings.githubToken.isNullOrBlank()
+        val statusFresh =
+            !tokenAvailable ||
+                (
+                    settings.githubStarredCache != null &&
+                        settings.githubStarStatusCheckedAt > 0L &&
+                        timestamp - settings.githubStarStatusCheckedAt < GITHUB_STAR_STATUS_CACHE_TTL_MS
+                )
+
+        if (!force && countFresh && statusFresh) {
+            mutableSnapshot.value =
+                GitHubStarSnapshot(
+                    stargazersCount = settings.githubStarCountCache,
+                    starred = if (tokenAvailable) settings.githubStarredCache else null,
+                )
+            return
+        }
+
+        refreshJob =
+            scope.launch {
+                val fetched = service.fetch()
+                val checkedAt = now()
+                fetched.stargazersCount?.let {
+                    settings.githubStarCountCache = it
+                    settings.githubStarCountCheckedAt = checkedAt
+                }
+                if (tokenAvailable) {
+                    fetched.starred?.let {
+                        settings.githubStarredCache = it
+                        settings.githubStarStatusCheckedAt = checkedAt
+                    }
+                }
+
+                mutableSnapshot.value =
+                    GitHubStarSnapshot(
+                        stargazersCount = fetched.stargazersCount ?: settings.githubStarCountCache,
+                        starred = if (tokenAvailable) fetched.starred ?: settings.githubStarredCache else null,
+                    )
+
+                if (repositoryCheckPending && fetched.starred != null) {
+                    repositoryCheckPending = false
+                    if (fetched.starred && !settings.githubStarThankYouShown) {
+                        mutableThankYouRequested.value = true
+                    }
+                }
+            }
+    }
 }
