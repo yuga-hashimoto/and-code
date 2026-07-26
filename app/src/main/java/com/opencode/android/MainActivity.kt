@@ -56,6 +56,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
 
+            LaunchedEffect(secondPromptRequested) {
+                if (secondPromptRequested) {
+                    app.githubStarCoordinator.markSecondPromptPresented()
+                }
+            }
+
             Box {
                 OpenCodeApp(
                     onOpenAssistantSettings = ::openAssistantSettings,
