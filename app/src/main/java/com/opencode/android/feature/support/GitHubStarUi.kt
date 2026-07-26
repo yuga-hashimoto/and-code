@@ -1,0 +1,240 @@
+package com.opencode.android.feature.support
+
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.opencode.android.OpenCodeApplication
+import com.opencode.android.R
+import com.opencode.android.core.ProjectLinks
+
+@Composable
+fun GitHubStarPromptDialog(
+    starCount: Int?,
+    secondPrompt: Boolean,
+    onStar: () -> Unit,
+    onLater: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onLater,
+        icon = { Icon(Icons.Default.Star, contentDescription = null) },
+        title = {
+            Text(
+                stringResource(
+                    if (secondPrompt) R.string.github_star_second_prompt_title else R.string.github_star_prompt_title,
+                ),
+            )
+        },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(
+                    stringResource(
+                        if (secondPrompt) R.string.github_star_second_prompt_body else R.string.github_star_prompt_body,
+                    ),
+                )
+                starCount?.let {
+                    Text(
+                        stringResource(R.string.github_star_count, it),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            Button(onClick = onStar) {
+                Icon(Icons.Default.Star, contentDescription = null)
+                Text(
+                    text = stringResource(R.string.github_star_action),
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onLater) {
+                Text(stringResource(if (secondPrompt) R.string.github_star_not_now else R.string.github_star_later))
+            }
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GitHubSupportSettingsButton(
+    appVersion: String,
+    modifier: Modifier = Modifier,
+) {
+    val context = LocalContext.current
+    val app = context.applicationContext as OpenCodeApplication
+    val snapshot by app.githubStarCoordinator.snapshot.collectAsState()
+    var showSheet by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showSheet) {
+        if (showSheet) app.githubStarCoordinator.refresh()
+    }
+
+    ExtendedFloatingActionButton(
+        modifier = modifier,
+        onClick = { showSheet = true },
+        icon = { Icon(Icons.Default.Star, contentDescription = null) },
+        text = {
+            Text(
+                if (snapshot.starred == true) {
+                    stringResource(R.string.github_star_verified_short)
+                } else {
+                    stringResource(R.string.github_support_button)
+                },
+            )
+        },
+    )
+
+    if (showSheet) {
+        ModalBottomSheet(onDismissRequest = { showSheet = false }) {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 8.dp)
+                        .padding(bottom = 28.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    stringResource(R.string.github_support_title),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    if (snapshot.starred == true) {
+                        stringResource(R.string.github_star_verified)
+                    } else {
+                        stringResource(R.string.github_support_body)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                snapshot.stargazersCount?.let {
+                    Text(
+                        stringResource(R.string.github_star_count, it),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+
+                Button(
+                    modifier = Modifier.fillMaxWidth(),
+                    onClick = {
+                        app.githubStarCoordinator.markRepositoryOpenedFromSettings()
+                        openProjectLink(context, ProjectLinks.GITHUB_REPOSITORY)
+                    },
+                ) {
+                    Icon(Icons.Default.Star, contentDescription = null)
+                    Text(
+                        text =
+                            stringResource(
+                                if (snapshot.starred == true) R.string.github_repo_action else R.string.github_star_action,
+                            ),
+                        modifier = Modifier.padding(start = 8.dp),
+                    )
+                }
+
+                SupportLinkButton(
+                    icon = Icons.Default.Code,
+                    label = stringResource(R.string.github_repo_action),
+                    onClick = { openProjectLink(context, ProjectLinks.GITHUB_REPOSITORY) },
+                )
+                SupportLinkButton(
+                    icon = Icons.Default.BugReport,
+                    label = stringResource(R.string.github_issue_action),
+                    onClick = { openProjectLink(context, ProjectLinks.GITHUB_ISSUES) },
+                )
+                SupportLinkButton(
+                    icon = Icons.Default.Info,
+                    label = stringResource(R.string.github_license_action),
+                    onClick = { openProjectLink(context, ProjectLinks.LICENSE) },
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        stringResource(R.string.github_version_label),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        appVersion,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SupportLinkButton(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    OutlinedButton(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onClick,
+    ) {
+        Icon(icon, contentDescription = null)
+        Text(
+            text = label,
+            modifier = Modifier.padding(start = 8.dp).weight(1f),
+        )
+        Icon(Icons.Default.OpenInNew, contentDescription = null)
+    }
+}
+
+fun openProjectLink(
+    context: Context,
+    url: String,
+) {
+    runCatching {
+        context.startActivity(
+            Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            },
+        )
+    }
+}
