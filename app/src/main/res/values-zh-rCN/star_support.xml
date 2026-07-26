@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="github_star_prompt_title">支持 OpenCode Android 吗？</string>
+    <string name="github_star_prompt_body">OpenCode Android 是开源项目。如果它对你有帮助，欢迎在 GitHub 上点一个 Star 支持持续开发。</string>
+    <string name="github_star_second_prompt_title">OpenCode Android 对你有帮助吗？</string>
+    <string name="github_star_second_prompt_body">如果第一次任务体验不错，欢迎用一个 GitHub Star 支持 OpenCode Android。</string>
+    <string name="github_star_count">GitHub Stars：%1$d</string>
+    <string name="github_star_action">在 GitHub 上 Star</string>
+    <string name="github_star_later">稍后</string>
+    <string name="github_star_not_now">暂时不要</string>
+    <string name="github_star_verified_short">已 Star</string>
+    <string name="github_star_verified">感谢你 Star OpenCode Android！</string>
+    <string name="github_star_thanks_snackbar">感谢你的 GitHub Star！这会帮助 OpenCode Android 持续改进。</string>
+    <string name="github_support_button">支持</string>
+    <string name="github_support_title">支持 OpenCode Android</string>
+    <string name="github_support_body">OpenCode Android 是开源项目。你可以 Star 仓库、查看源码或提交问题。</string>
+    <string name="github_repo_action">GitHub 仓库</string>
+    <string name="github_issue_action">报告问题</string>
+    <string name="github_license_action">许可证</string>
+    <string name="github_version_label">版本</string>
+</resources>
