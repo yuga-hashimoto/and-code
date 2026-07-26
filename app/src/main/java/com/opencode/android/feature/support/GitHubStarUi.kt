@@ -122,88 +122,131 @@ fun GitHubSupportSettingsButton(
     )
 
     if (showSheet) {
-        ModalBottomSheet(onDismissRequest = { showSheet = false }) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 8.dp)
-                        .padding(bottom = 28.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    stringResource(R.string.github_support_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    if (snapshot.starred == true) {
-                        stringResource(R.string.github_star_verified)
-                    } else {
-                        stringResource(R.string.github_support_body)
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                snapshot.stargazersCount?.let {
-                    Text(
-                        stringResource(R.string.github_star_count, it),
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                }
+        GitHubSupportSheet(
+            snapshot = snapshot,
+            appVersion = appVersion,
+            onDismiss = { showSheet = false },
+            onStar = {
+                app.githubStarCoordinator.markRepositoryOpenedFromSettings()
+                openProjectLink(context, ProjectLinks.GITHUB_REPOSITORY)
+            },
+            onOpenRepository = { openProjectLink(context, ProjectLinks.GITHUB_REPOSITORY) },
+            onOpenIssues = { openProjectLink(context, ProjectLinks.GITHUB_ISSUES) },
+            onOpenLicense = { openProjectLink(context, ProjectLinks.LICENSE) },
+        )
+    }
+}
 
-                Button(
-                    modifier = Modifier.fillMaxWidth(),
-                    onClick = {
-                        app.githubStarCoordinator.markRepositoryOpenedFromSettings()
-                        openProjectLink(context, ProjectLinks.GITHUB_REPOSITORY)
-                    },
-                ) {
-                    Icon(Icons.Default.Star, contentDescription = null)
-                    Text(
-                        text =
-                            stringResource(
-                                if (snapshot.starred == true) R.string.github_repo_action else R.string.github_star_action,
-                            ),
-                        modifier = Modifier.padding(start = 8.dp),
-                    )
-                }
-
-                SupportLinkButton(
-                    icon = Icons.Default.Code,
-                    label = stringResource(R.string.github_repo_action),
-                    onClick = { openProjectLink(context, ProjectLinks.GITHUB_REPOSITORY) },
-                )
-                SupportLinkButton(
-                    icon = Icons.Default.BugReport,
-                    label = stringResource(R.string.github_issue_action),
-                    onClick = { openProjectLink(context, ProjectLinks.GITHUB_ISSUES) },
-                )
-                SupportLinkButton(
-                    icon = Icons.Default.Info,
-                    label = stringResource(R.string.github_license_action),
-                    onClick = { openProjectLink(context, ProjectLinks.LICENSE) },
-                )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        stringResource(R.string.github_version_label),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Text(
-                        appVersion,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GitHubSupportSheet(
+    snapshot: GitHubStarSnapshot,
+    appVersion: String,
+    onDismiss: () -> Unit,
+    onStar: () -> Unit,
+    onOpenRepository: () -> Unit,
+    onOpenIssues: () -> Unit,
+    onOpenLicense: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(
+            modifier =
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 8.dp)
+                    .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            GitHubSupportHeader(snapshot)
+            GitHubSupportActions(
+                starred = snapshot.starred == true,
+                onStar = onStar,
+                onOpenRepository = onOpenRepository,
+                onOpenIssues = onOpenIssues,
+                onOpenLicense = onOpenLicense,
+            )
+            VersionRow(appVersion)
         }
+    }
+}
+
+@Composable
+private fun GitHubSupportHeader(snapshot: GitHubStarSnapshot) {
+    Text(
+        stringResource(R.string.github_support_title),
+        style = MaterialTheme.typography.titleLarge,
+        fontWeight = FontWeight.SemiBold,
+    )
+    Text(
+        if (snapshot.starred == true) {
+            stringResource(R.string.github_star_verified)
+        } else {
+            stringResource(R.string.github_support_body)
+        },
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+    snapshot.stargazersCount?.let {
+        Text(
+            stringResource(R.string.github_star_count, it),
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.primary,
+        )
+    }
+}
+
+@Composable
+private fun GitHubSupportActions(
+    starred: Boolean,
+    onStar: () -> Unit,
+    onOpenRepository: () -> Unit,
+    onOpenIssues: () -> Unit,
+    onOpenLicense: () -> Unit,
+) {
+    Button(
+        modifier = Modifier.fillMaxWidth(),
+        onClick = onStar,
+    ) {
+        Icon(Icons.Default.Star, contentDescription = null)
+        Text(
+            text = stringResource(if (starred) R.string.github_repo_action else R.string.github_star_action),
+            modifier = Modifier.padding(start = 8.dp),
+        )
+    }
+    SupportLinkButton(
+        icon = Icons.Default.Code,
+        label = stringResource(R.string.github_repo_action),
+        onClick = onOpenRepository,
+    )
+    SupportLinkButton(
+        icon = Icons.Default.BugReport,
+        label = stringResource(R.string.github_issue_action),
+        onClick = onOpenIssues,
+    )
+    SupportLinkButton(
+        icon = Icons.Default.Info,
+        label = stringResource(R.string.github_license_action),
+        onClick = onOpenLicense,
+    )
+}
+
+@Composable
+private fun VersionRow(appVersion: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            stringResource(R.string.github_version_label),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            appVersion,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
