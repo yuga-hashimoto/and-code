@@ -264,6 +264,7 @@ internal fun localRuntimeEnvironment(
         put("LOGNAME", "root")
         put("SHELL", "/bin/bash")
         put("PATH", "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/system/bin:/system/xbin")
+        put("JAVA_HOME", "/usr/lib/jvm/java-17-openjdk")
         put("TMPDIR", "/tmp")
         put("XDG_CONFIG_HOME", "/root/.config")
         put("XDG_CACHE_HOME", "/root/.cache")

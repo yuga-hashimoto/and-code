@@ -223,13 +223,15 @@ class AssistantActivityGroupTest {
 
     @Test
     fun `todowrite with todos is extracted into a Todo entry`() {
-        val todos = listOf(
-            TodoItem("task 1", "completed", "high"),
-            TodoItem("task 2", "in_progress", "medium"),
-        )
-        val entries = groupConversationTimeline(
-            listOf(assistant("m1", tool("t1", "todowrite", todos = todos))),
-        )
+        val todos =
+            listOf(
+                TodoItem("task 1", "completed", "high"),
+                TodoItem("task 2", "in_progress", "medium"),
+            )
+        val entries =
+            groupConversationTimeline(
+                listOf(assistant("m1", tool("t1", "todowrite", todos = todos))),
+            )
 
         assertEquals(1, entries.size)
         val todoEntry = entries.single() as TimelineEntry.Todo
@@ -241,16 +243,17 @@ class AssistantActivityGroupTest {
     @Test
     fun `todowrite with todos splits surrounding activity`() {
         val todos = listOf(TodoItem("task 1", "completed", "high"))
-        val entries = groupConversationTimeline(
-            listOf(
-                assistant(
-                    "m1",
-                    tool("t1", "bash"),
-                    tool("t2", "todowrite", todos = todos),
-                    tool("t3", "read"),
+        val entries =
+            groupConversationTimeline(
+                listOf(
+                    assistant(
+                        "m1",
+                        tool("t1", "bash"),
+                        tool("t2", "todowrite", todos = todos),
+                        tool("t3", "read"),
+                    ),
                 ),
-            ),
-        )
+            )
 
         assertEquals(3, entries.size)
         assertEquals(listOf("t1"), (entries[0] as TimelineEntry.Activity).parts.map { it.id })
@@ -260,9 +263,10 @@ class AssistantActivityGroupTest {
 
     @Test
     fun `todowrite without todos stays in activity group`() {
-        val entries = groupConversationTimeline(
-            listOf(assistant("m1", tool("t1", "todowrite"))),
-        )
+        val entries =
+            groupConversationTimeline(
+                listOf(assistant("m1", tool("t1", "todowrite"))),
+            )
 
         assertEquals(1, entries.size)
         assertTrue(entries.single() is TimelineEntry.Activity)

@@ -160,6 +160,8 @@ class LocalRuntimeDiagnosticsCollector(
                     "test -s /etc/ssl/certs/ca-certificates.crt && echo installed",
                 ),
                 LocalRuntimeToolDefinition("adb", "ADB", "adb version | head -n 1"),
+                LocalRuntimeToolDefinition("java", "Java", "java -version 2>&1 | head -n 1"),
+                LocalRuntimeToolDefinition("gradle", "Gradle", "gradle --version 2>&1 | head -n 1"),
             )
     }
 }

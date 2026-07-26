@@ -21,13 +21,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Hub
+import androidx.compose.material.icons.filled.PendingActions
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
@@ -51,14 +54,11 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.opencode.android.R
 import com.opencode.android.ui.theme.OpenCodeSuccess
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.PendingActions
-import androidx.compose.material.icons.filled.RadioButtonUnchecked
-import androidx.compose.ui.text.style.TextDecoration
 
 /**
  * One collapsed line standing in for a whole run of reasoning/tool calls.

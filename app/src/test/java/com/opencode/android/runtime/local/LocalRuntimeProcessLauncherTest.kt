@@ -29,6 +29,7 @@ class LocalRuntimeProcessLauncherTest {
             "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/system/bin:/system/xbin",
             environment["PATH"],
         )
+        assertEquals("/usr/lib/jvm/java-17-openjdk", environment["JAVA_HOME"])
         assertEquals("/tmp", environment["TMPDIR"])
         assertEquals("/root/.config", environment["XDG_CONFIG_HOME"])
         assertEquals("/android/proot-tmp", environment["PROOT_TMP_DIR"])
