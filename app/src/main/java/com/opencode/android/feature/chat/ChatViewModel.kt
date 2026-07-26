@@ -19,6 +19,7 @@ import com.opencode.android.data.settings.DraftRepository
 import com.opencode.android.runtime.OpenCodeBackend
 import com.opencode.android.runtime.PermissionResponse
 import kotlinx.coroutines.Job
+import delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -323,7 +324,7 @@ class ChatViewModel(
                             return@launch
                         }
                         .onFailure { error -> lastError = error.safeMessage() }
-                    kotlinx.coroutines.delay(HEALTH_CHECK_DELAY_MS)
+                    delay(HEALTH_CHECK_DELAY_MS)
                 }
                 reportError(lastError)
             }
@@ -671,7 +672,7 @@ class ChatViewModel(
                 val pollFinished =
                     withTimeoutOrNull(RESPONSE_POLL_TIMEOUT_MS) {
                         while (isStillActive() && _uiState.value.isRunning) {
-                            kotlinx.coroutines.delay(RESPONSE_POLL_INTERVAL_MS)
+                            delay(RESPONSE_POLL_INTERVAL_MS)
                             if (!isStillActive()) return@withTimeoutOrNull
                             runCatching { currentBackend.listMessages(targetSessionId) }
                                 .onSuccess { serverMessages ->
@@ -1319,7 +1320,7 @@ class ChatViewModel(
 
     private fun scheduleTransientRecovery() {
         viewModelScope.launch {
-            kotlinx.coroutines.delay(TRANSIENT_RECOVERY_DELAY_MS)
+            delay(TRANSIENT_RECOVERY_DELAY_MS)
             val currentBackend = backend ?: return@launch
             if (classifyChatError(_uiState.value.error) != ChatErrorKind.TRANSIENT_CONNECTION) return@launch
             runCatching { currentBackend.health() }
