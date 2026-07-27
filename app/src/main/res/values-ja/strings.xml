@@ -921,4 +921,6 @@
     <string name="setup_download_agents_description">共有のLinux環境と、選んだエージェントを準備します。</string>
     <string name="settings_agents_row">エージェント</string>
     <string name="settings_agents_section">エージェント</string>
+    <string name="chat_response_duration">%1$d分</string>
+    <string name="chat_response_duration_under_minute">1分未満</string>
 </resources>

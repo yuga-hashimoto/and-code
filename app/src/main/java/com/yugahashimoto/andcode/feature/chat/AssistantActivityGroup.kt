@@ -20,6 +20,16 @@ sealed interface TimelineEntry {
     data class Activity(override val id: String, val parts: List<ChatPart>) : TimelineEntry
 
     data class Todo(override val id: String, val todos: List<TodoItem>) : TimelineEntry
+
+    /**
+     * Trailing meta row for a finished assistant turn: the clock time the reply landed plus how
+     * long the user waited for it, surfaced LINE-style beneath the answer.
+     */
+    data class Footer(
+        override val id: String,
+        val completedAt: Long,
+        val durationMs: Long,
+    ) : TimelineEntry
 }
 
 /** Broad buckets used to summarise a run of tool calls in one line. */
@@ -58,6 +68,10 @@ data class ActivitySummary(
 fun groupConversationTimeline(messages: List<ChatMessage>): List<TimelineEntry> {
     val entries = mutableListOf<TimelineEntry>()
     val pending = mutableListOf<ChatPart>()
+    var lastUserAt: Long? = null
+    var turnStartAt: Long? = null
+    var turnCompletedAt: Long? = null
+    var turnLastId: String? = null
 
     fun flush() {
         if (pending.isEmpty()) return
@@ -65,11 +79,33 @@ fun groupConversationTimeline(messages: List<ChatMessage>): List<TimelineEntry> 
         pending.clear()
     }
 
+    fun flushTurnFooter() {
+        val completed = turnCompletedAt ?: return
+        val lastId = turnLastId ?: return
+        val start = lastUserAt ?: turnStartAt ?: completed
+        entries +=
+            TimelineEntry.Footer(
+                id = "footer:$lastId",
+                completedAt = completed,
+                durationMs = (completed - start).coerceAtLeast(0L),
+            )
+        turnStartAt = null
+        turnCompletedAt = null
+        turnLastId = null
+    }
+
     messages.forEach { message ->
         if (message.isUser) {
             flush()
+            flushTurnFooter()
+            lastUserAt = message.timestamp
             entries += TimelineEntry.UserMessage(message)
             return@forEach
+        }
+        if (turnStartAt == null) turnStartAt = message.timestamp
+        turnLastId = message.id
+        message.completedAt?.let { completed ->
+            turnCompletedAt = maxOf(turnCompletedAt ?: 0L, completed)
         }
         message.parts.forEach { part ->
             when {
@@ -87,6 +123,7 @@ fun groupConversationTimeline(messages: List<ChatMessage>): List<TimelineEntry> 
         }
     }
     flush()
+    flushTurnFooter()
     return entries
 }
 

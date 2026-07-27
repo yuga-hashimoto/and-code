@@ -907,4 +907,6 @@
     <string name="setup_download_agents_description">Prepara o ambiente Linux compartilhado e os agentes escolhidos.</string>
     <string name="settings_agents_row">Agentes</string>
     <string name="settings_agents_section">Agentes</string>
+    <string name="chat_response_duration">%1$d min</string>
+    <string name="chat_response_duration_under_minute">&lt;1 min</string>
 </resources>

@@ -58,6 +58,9 @@ import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.ui.theme.AndCodeWarning
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private val TOOL_CALL_ECHO_REGEX =
     Regex("""Called the [A-Za-z][A-Za-z ]*? tool with the following input: \{(?:[^{}]|\{[^{}]*\})*\}""")
@@ -71,43 +74,54 @@ fun MessageBubble(message: ChatMessage) {
         modifier = Modifier.fillMaxWidth(),
         contentAlignment = Alignment.CenterEnd,
     ) {
-        Surface(
-            modifier = Modifier.widthIn(max = 340.dp),
-            shape = RoundedCornerShape(20.dp, 20.dp, 5.dp, 20.dp),
-            color = MaterialTheme.colorScheme.primary,
-            contentColor = MaterialTheme.colorScheme.onPrimary,
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                message.imagePreviews.forEach { preview ->
-                    Image(
-                        bitmap = preview.asImageBitmap(),
-                        contentDescription = stringResource(R.string.cd_image_preview),
-                        modifier =
-                            Modifier
-                                .widthIn(max = 280.dp)
-                                .heightIn(max = 220.dp)
-                                .padding(bottom = 8.dp),
-                        contentScale = ContentScale.Fit,
-                    )
-                }
-                message.attachments.forEach { attachment ->
-                    if (attachment.mime.startsWith("image/")) return@forEach
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.padding(bottom = 8.dp),
-                    ) {
-                        Icon(Icons.Default.Description, contentDescription = stringResource(R.string.cd_attachment))
-                        Text(
-                            text = attachment.filename,
-                            style = MaterialTheme.typography.labelMedium,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
+            Text(
+                text = formatClockTime(message.timestamp),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(bottom = 4.dp),
+            )
+            Surface(
+                modifier = Modifier.widthIn(max = 340.dp),
+                shape = RoundedCornerShape(20.dp, 20.dp, 5.dp, 20.dp),
+                color = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    message.imagePreviews.forEach { preview ->
+                        Image(
+                            bitmap = preview.asImageBitmap(),
+                            contentDescription = stringResource(R.string.cd_image_preview),
+                            modifier =
+                                Modifier
+                                    .widthIn(max = 280.dp)
+                                    .heightIn(max = 220.dp)
+                                    .padding(bottom = 8.dp),
+                            contentScale = ContentScale.Fit,
                         )
                     }
-                }
-                if (displayText.isNotBlank()) {
-                    Text(text = displayText)
+                    message.attachments.forEach { attachment ->
+                        if (attachment.mime.startsWith("image/")) return@forEach
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        ) {
+                            Icon(Icons.Default.Description, contentDescription = stringResource(R.string.cd_attachment))
+                            Text(
+                                text = attachment.filename,
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                    if (displayText.isNotBlank()) {
+                        Text(text = displayText)
+                    }
                 }
             }
         }
@@ -128,6 +142,7 @@ fun TimelineEntryRow(
                 onClick = { onOpenActivity(entry.id) },
             )
         is TimelineEntry.Todo -> TodoTimelineCard(entry.todos)
+        is TimelineEntry.Footer -> MessageFooter(entry)
     }
 }
 
@@ -428,3 +443,38 @@ private fun renderInline(
             }
         }
     }
+
+private val clockTimeFormat = SimpleDateFormat("HH:mm", Locale.US)
+
+private fun formatClockTime(epochMs: Long): String = clockTimeFormat.format(Date(epochMs))
+
+@Composable
+private fun MessageFooter(entry: TimelineEntry.Footer) {
+    val minutes = entry.durationMs / 60_000L
+    val durationLabel =
+        when {
+            entry.durationMs <= 0L -> null
+            minutes < 1L -> stringResource(R.string.chat_response_duration_under_minute)
+            else -> stringResource(R.string.chat_response_duration, minutes)
+        }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
+    ) {
+        if (durationLabel != null) {
+            Text(
+                text = durationLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (entry.completedAt > 0L) {
+            Text(
+                text = formatClockTime(entry.completedAt),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}

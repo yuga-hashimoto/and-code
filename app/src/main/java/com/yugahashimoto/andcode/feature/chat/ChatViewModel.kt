@@ -75,6 +75,7 @@ data class ChatMessage(
     val attachments: List<PromptAttachment> = emptyList(),
     val imagePreviews: List<Bitmap> = emptyList(),
     val timestamp: Long = System.currentTimeMillis(),
+    val completedAt: Long? = null,
     val isStreaming: Boolean = false,
 ) {
     val text: String
@@ -1237,6 +1238,7 @@ class ChatViewModel(
             parts = parts,
             attachments = attachments,
             timestamp = message.info.time.created,
+            completedAt = message.info.time.completed,
             isStreaming = false,
         )
     }

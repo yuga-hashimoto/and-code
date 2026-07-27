@@ -354,6 +354,7 @@ fun ChatHomeScreen(
                                         is TimelineEntry.Body -> entry.messageId to entry.part.text
                                         is TimelineEntry.Activity -> null
                                         is TimelineEntry.Todo -> null
+                                        is TimelineEntry.Footer -> null
                                     }
                                 Box(
                                     modifier =
