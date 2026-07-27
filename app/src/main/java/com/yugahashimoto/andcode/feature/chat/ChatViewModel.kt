@@ -686,7 +686,6 @@ class ChatViewModel(
                     .onSuccess { title ->
                         if (title.isNotBlank()) _uiState.update { it.copy(sessionTitle = title) }
                     }
-                _uiState.value.imagePreviews.forEach { bmp -> if (!bmp.isRecycled) bmp.recycle() }
                 _uiState.update { it.copy(attachments = emptyList(), imagePreviews = emptyList()) }
                 clearDraft(targetSessionId)
                 var sessionCompleted = false

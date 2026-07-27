@@ -197,7 +197,6 @@ fun ChatHomeScreen(
     val attachedImages = remember { mutableStateListOf<Bitmap>() }
     DisposableEffect(Unit) {
         onDispose {
-            attachedImages.forEach { if (!it.isRecycled) it.recycle() }
             attachedImages.clear()
         }
     }
