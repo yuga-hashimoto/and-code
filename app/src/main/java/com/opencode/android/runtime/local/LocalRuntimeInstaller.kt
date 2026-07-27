@@ -360,7 +360,11 @@ class LocalRuntimeInstaller(
 
     private fun installAndroidHelperScripts(rootfs: File) {
         val binDir = File(rootfs, "usr/local/bin").apply { mkdirs() }
-        listOf("android-vision.sh" to "android-vision", "android-screenshot.sh" to "android-screenshot").forEach {
+        listOf(
+            "android-vision.sh" to "android-vision",
+            "android-screenshot.sh" to "android-screenshot",
+            "android-ui.sh" to "android-ui",
+        ).forEach {
                 (assetName, scriptName) ->
             val scriptFile = File(binDir, scriptName)
             context.assets.open("scripts/$assetName").use { input ->

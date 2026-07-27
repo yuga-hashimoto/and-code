@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.startup.AppInitializer
+import com.opencode.android.accessibility.AccessibilityHttpServer
 import com.opencode.android.core.notification.RuntimeNotificationHelper
 import com.opencode.android.data.connection.SecureSettingsRepository
 import com.opencode.android.data.repository.ProviderCatalogCache
@@ -102,6 +103,8 @@ class OpenCodeApplication : Application() {
 
     lateinit var runtimeMessages: LocalRuntimeMessages
         private set
+
+    val accessibilityHttpServer = AccessibilityHttpServer()
 
     lateinit var githubStarCoordinator: GitHubStarCoordinator
         private set
@@ -224,6 +227,7 @@ class OpenCodeApplication : Application() {
             )
         localRuntimeController = LocalRuntimeServiceController(this)
         adbConnectionManager = AdbConnectionManager(this, commandRunner)
+        accessibilityHttpServer.start()
         runtimeRegistry =
             RuntimeRegistry(
                 store = settings,

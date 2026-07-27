@@ -286,6 +286,12 @@
     <string name="adb_pairing_in_progress">ペアリング中…</string>
     <string name="adb_connecting_in_progress">接続中…</string>
     <string name="adb_requires_android_11">Android 11以降が必要です</string>
+    <string name="accessibility_service_description">OpenCodeエージェントがADBなしで画面読み取り、タップ、スワイプ、テキスト入力を行えるようにします。ローカルHTTPサーバー（ポート4098）を提供します。</string>
+    <string name="accessibility_setup_title">アクセシビリティサービス</string>
+    <string name="accessibility_setup_description">ADBなしで画面読み取りとジェスチャー制御を有効にします。エージェントはcurl経由でデバイスを操作できます。</string>
+    <string name="accessibility_status_disconnected">無効</string>
+    <string name="accessibility_status_connected">アクティブ（ポート %1$d）</string>
+    <string name="accessibility_enable_button">設定で有効にする</string>
     <string name="runtime_status_not_installed">未インストール</string>
     <string name="runtime_status_setting_up">セットアップ中</string>
     <string name="runtime_status_starting">起動中</string>

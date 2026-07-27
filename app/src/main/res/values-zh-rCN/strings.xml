@@ -286,6 +286,12 @@
     <string name="adb_pairing_in_progress">配对中…</string>
     <string name="adb_connecting_in_progress">连接中…</string>
     <string name="adb_requires_android_11">需要 Android 11 或更高版本</string>
+    <string name="accessibility_service_description">允许 OpenCode 代理在无需 ADB 的情况下读取屏幕、点击、滑动和输入文本。在端口 4098 上提供本地 HTTP API。</string>
+    <string name="accessibility_setup_title">无障碍服务</string>
+    <string name="accessibility_setup_description">无需 ADB 即可启用屏幕阅读和手势控制。代理可以通过 curl 与设备交互。</string>
+    <string name="accessibility_status_disconnected">未启用</string>
+    <string name="accessibility_status_connected">活跃（端口 %1$d）</string>
+    <string name="accessibility_enable_button">在设置中启用</string>
     <string name="runtime_status_not_installed">未安装</string>
     <string name="runtime_status_setting_up">正在设置</string>
     <string name="runtime_status_starting">正在启动</string>

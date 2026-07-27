@@ -286,6 +286,12 @@
     <string name="adb_pairing_in_progress">Сопряжение…</string>
     <string name="adb_connecting_in_progress">Подключение…</string>
     <string name="adb_requires_android_11">Требуется Android 11 или новее</string>
+    <string name="accessibility_service_description">Позволяет агенту OpenCode читать экран, нажимать, свайпать и вводить текст без ADB. Предоставляет локальный HTTP-сервер на порту 4098.</string>
+    <string name="accessibility_setup_title">Служба специальных возможностей</string>
+    <string name="accessibility_setup_description">Включает чтение экрана и управление жестами без ADB. Агент может использовать curl для взаимодействия с устройством.</string>
+    <string name="accessibility_status_disconnected">Не включено</string>
+    <string name="accessibility_status_connected">Активно (порт %1$d)</string>
+    <string name="accessibility_enable_button">Включить в настройках</string>
     <string name="runtime_status_not_installed">Не установлено</string>
     <string name="runtime_status_setting_up">Настройка</string>
     <string name="runtime_status_starting">Запуск</string>

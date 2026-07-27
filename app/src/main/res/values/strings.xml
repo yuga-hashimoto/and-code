@@ -286,6 +286,12 @@
     <string name="adb_pairing_in_progress">Pairing…</string>
     <string name="adb_connecting_in_progress">Connecting…</string>
     <string name="adb_requires_android_11">Requires Android 11 or later</string>
+    <string name="accessibility_service_description">Allows the OpenCode agent to read the screen, tap, swipe, and type text without ADB. Exposes a local HTTP API on port 4098.</string>
+    <string name="accessibility_setup_title">Accessibility Service</string>
+    <string name="accessibility_setup_description">Enable screen reading and gesture control without ADB. The agent can use curl to interact with the device through a local HTTP server.</string>
+    <string name="accessibility_status_disconnected">Not enabled</string>
+    <string name="accessibility_status_connected">Active (port %1$d)</string>
+    <string name="accessibility_enable_button">Enable in Settings</string>
     <string name="runtime_status_not_installed">Not installed</string>
     <string name="runtime_status_setting_up">Setting up</string>
     <string name="runtime_status_starting">Starting</string>
