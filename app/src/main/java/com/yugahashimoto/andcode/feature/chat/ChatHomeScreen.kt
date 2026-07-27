@@ -49,6 +49,11 @@ import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.PendingActions
+import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
@@ -426,6 +431,16 @@ fun ChatHomeScreen(
 
             SubagentsTrack(subagents = subagents, onSubagentClick = onSubagentClick)
 
+            val activeTodos =
+                timelineEntries
+                    .filterIsInstance<TimelineEntry.Todo>()
+                    .lastOrNull()
+                    ?.todos
+                    ?.takeIf { list -> list.any { it.status != "completed" } }
+            if (activeTodos != null) {
+                StickyTodoBar(todos = activeTodos)
+            }
+
             if (!runtimeNotReady) {
                 ChatComposer(
                     input = input,
@@ -652,6 +667,101 @@ private fun SubagentSessionBanner(
                     style = MaterialTheme.typography.labelSmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun StickyTodoBar(todos: List<TodoItem>) {
+    var expanded by remember { mutableStateOf(false) }
+    val completedCount = todos.count { it.status == "completed" }
+    val totalCount = todos.size
+    val currentTask = todos.firstOrNull { it.status == "in_progress" }
+
+    Surface(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp)
+                .clickable { expanded = !expanded },
+        shape = RoundedCornerShape(12.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.todo_timeline_progress, completedCount, totalCount),
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.weight(1f),
+                )
+                Icon(
+                    if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            LinearProgressIndicator(
+                progress = { if (totalCount > 0) completedCount.toFloat() / totalCount else 0f },
+                modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.outlineVariant,
+            )
+            if (expanded) {
+                Spacer(Modifier.height(6.dp))
+                todos.forEach { todo ->
+                    val isCompleted = todo.status == "completed"
+                    val isInProgress = todo.status == "in_progress"
+                    Row(
+                        modifier = Modifier.padding(vertical = 2.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Icon(
+                            imageVector =
+                                when {
+                                    isCompleted -> Icons.Default.CheckCircle
+                                    isInProgress -> Icons.Default.PendingActions
+                                    else -> Icons.Default.RadioButtonUnchecked
+                                },
+                            contentDescription = null,
+                            tint =
+                                when {
+                                    isCompleted -> MaterialTheme.colorScheme.secondary
+                                    isInProgress -> MaterialTheme.colorScheme.primary
+                                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                                },
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Text(
+                            text = todo.content,
+                            style = MaterialTheme.typography.bodySmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            color =
+                                if (isCompleted) {
+                                    MaterialTheme.colorScheme.onSurfaceVariant
+                                } else {
+                                    MaterialTheme.colorScheme.onSurface
+                                },
+                        )
+                    }
+                }
+            } else if (currentTask != null) {
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = currentTask.content,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         }
