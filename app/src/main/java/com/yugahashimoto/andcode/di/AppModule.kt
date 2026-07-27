@@ -163,6 +163,7 @@ val appModule =
                 },
                 onSessionIdle = notifications::notifySessionComplete,
                 onSessionError = notifications::notifySessionError,
+                onQuestionAsked = notifications::notifyQuestion,
             )
         }
     }

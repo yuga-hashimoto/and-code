@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import com.yugahashimoto.andcode.MainActivity
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.PermissionRequest
+import com.yugahashimoto.andcode.core.api.QuestionRequest
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 
 class RuntimeNotificationHelper(private val context: Context) {
@@ -77,6 +78,48 @@ class RuntimeNotificationHelper(private val context: Context) {
         safeNotify(permissionNotificationId(request.id), notification)
     }
 
+    fun notifyQuestion(
+        request: QuestionRequest,
+        chatTitle: String?,
+    ) {
+        if (!canPostNotifications()) return
+        val openIntent =
+            pendingActivityIntent(
+                requestCode = request.id.hashCode(),
+                extras =
+                    mapOf(
+                        EXTRA_OPEN_CHAT to true,
+                        EXTRA_TARGET_SESSION_ID to request.sessionId,
+                    ),
+            )
+        val prompt = request.questions.firstOrNull()?.question?.takeIf(String::isNotBlank)
+        val notification =
+            NotificationCompat.Builder(context, CHANNEL_APPROVALS)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(
+                    context.getString(R.string.notification_question_title) + " · " +
+                        (chatTitle?.takeIf(String::isNotBlank) ?: context.getString(R.string.new_chat)),
+                )
+                .setContentText(prompt ?: context.getString(R.string.notification_question_body))
+                .setStyle(
+                    NotificationCompat.BigTextStyle().bigText(
+                        buildString {
+                            append(chatTitle?.takeIf(String::isNotBlank) ?: context.getString(R.string.new_chat))
+                            if (prompt != null) {
+                                append('\n')
+                                append(prompt)
+                            }
+                        },
+                    ),
+                )
+                .setContentIntent(openIntent)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .build()
+
+        safeNotify(questionNotificationId(request.id), notification)
+    }
+
     fun notifySessionComplete(
         sessionId: String,
         chatTitle: String?,
@@ -134,6 +177,10 @@ class RuntimeNotificationHelper(private val context: Context) {
 
     fun cancelPermission(permissionId: String) {
         manager.cancel(permissionNotificationId(permissionId))
+    }
+
+    fun cancelQuestion(questionId: String) {
+        manager.cancel(questionNotificationId(questionId))
     }
 
     private fun canPostNotifications(): Boolean {
@@ -220,6 +267,8 @@ class RuntimeNotificationHelper(private val context: Context) {
     }
 
     private fun permissionNotificationId(permissionId: String): Int = 20_000 + (permissionId.hashCode() and 0x0FFF)
+
+    private fun questionNotificationId(questionId: String): Int = 25_000 + (questionId.hashCode() and 0x0FFF)
 
     private fun statusNotificationId(
         sessionId: String,

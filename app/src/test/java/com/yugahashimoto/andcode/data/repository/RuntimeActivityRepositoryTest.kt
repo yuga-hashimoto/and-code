@@ -7,6 +7,8 @@ import com.yugahashimoto.andcode.core.api.OpenCodeMessage
 import com.yugahashimoto.andcode.core.api.OpenCodeSession
 import com.yugahashimoto.andcode.core.api.PromptRequest
 import com.yugahashimoto.andcode.core.api.ProviderCatalog
+import com.yugahashimoto.andcode.core.api.QuestionPrompt
+import com.yugahashimoto.andcode.core.api.QuestionRequest
 import com.yugahashimoto.andcode.data.connection.ConnectionProfile
 import com.yugahashimoto.andcode.runtime.BackendKind
 import com.yugahashimoto.andcode.runtime.PermissionResponse
@@ -232,6 +234,39 @@ class RuntimeActivityRepositoryTest {
             assertEquals("notification cancel callback", listOf("perm-1"), cancelled)
             assertEquals("resolvedPermissions subscribers", listOf("perm-1"), observed)
             collector.cancel()
+        }
+
+    @Test
+    fun `a question event raises the notification callback`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val asked = mutableListOf<QuestionRequest>()
+            RuntimeActivityRepository(
+                registry = registry,
+                scope = TestScope(dispatcher),
+                onQuestionAsked = { request, _ -> asked += request },
+            )
+            advanceUntilIdle()
+
+            target.eventFlow.emit(
+                OpenCodeEvent.QuestionAsked(
+                    QuestionRequest(
+                        id = "q-1",
+                        sessionId = "ses_1",
+                        questions = listOf(QuestionPrompt(question = "Which framework?")),
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+
+            assertEquals(listOf("q-1"), asked.map { it.id })
         }
 
     private class FakeUnreadStore(

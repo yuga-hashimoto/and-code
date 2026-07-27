@@ -104,6 +104,8 @@
     <string name="notification_channel_approvals">批准</string>
     <string name="notification_channel_status">任务状态</string>
     <string name="notification_approval_title">需要批准</string>
+    <string name="notification_question_title">需要回答</string>
+    <string name="notification_question_body">智能体正在提问</string>
     <string name="notification_complete_title">运行已完成</string>
     <string name="notification_complete_body">聊天 %1$s 处于空闲状态</string>
     <string name="permission_chat_confirmation">此对话正在等待你的批准。请选择允许该智能体执行的操作：</string>

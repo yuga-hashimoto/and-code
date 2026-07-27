@@ -104,6 +104,8 @@
     <string name="notification_channel_approvals">الموافقات</string>
     <string name="notification_channel_status">حالة المهمة</string>
     <string name="notification_approval_title">مطلوب موافقة</string>
+    <string name="notification_question_title">مطلوب إجابة</string>
+    <string name="notification_question_body">الوكيل يطرح سؤالاً</string>
     <string name="notification_complete_title">انتهى التنفيذ</string>
     <string name="notification_complete_body">المحادثة %1$s خاملة</string>
     <string name="permission_chat_confirmation">تنتظر هذه المحادثة موافقتك. اختر ما يُسمح للوكيل بفعله:</string>

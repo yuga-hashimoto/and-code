@@ -104,6 +104,8 @@
     <string name="notification_channel_approvals">Aprovações</string>
     <string name="notification_channel_status">Status da tarefa</string>
     <string name="notification_approval_title">Aprovação necessária</string>
+    <string name="notification_question_title">Resposta necessária</string>
+    <string name="notification_question_body">O agente está fazendo uma pergunta</string>
     <string name="notification_complete_title">Execução concluída</string>
     <string name="notification_complete_body">O chat %1$s está ocioso</string>
     <string name="permission_chat_confirmation">Este chat aguarda sua aprovação. Escolha o que o agente pode fazer:</string>

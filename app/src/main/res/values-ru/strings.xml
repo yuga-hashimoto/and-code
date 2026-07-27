@@ -104,6 +104,8 @@
     <string name="notification_channel_approvals">Одобрения</string>
     <string name="notification_channel_status">Статус задачи</string>
     <string name="notification_approval_title">Требуется подтверждение</string>
+    <string name="notification_question_title">Требуется ответ</string>
+    <string name="notification_question_body">Агент задаёт вопрос</string>
     <string name="notification_complete_title">Выполнение завершено</string>
     <string name="notification_complete_body">Чат %1$s бездействует</string>
     <string name="permission_chat_confirmation">Этот чат ожидает вашего подтверждения. Выберите, что разрешено агенту:</string>

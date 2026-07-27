@@ -2,6 +2,7 @@ package com.yugahashimoto.andcode.data.repository
 
 import com.yugahashimoto.andcode.core.api.OpenCodeEvent
 import com.yugahashimoto.andcode.core.api.PermissionRequest
+import com.yugahashimoto.andcode.core.api.QuestionRequest
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
@@ -50,6 +51,7 @@ class RuntimeActivityRepository(
     private val onPermissionResolved: ((String) -> Unit)? = null,
     private val onSessionIdle: ((String, String?) -> Unit)? = null,
     private val onSessionError: ((String?, String?) -> Unit)? = null,
+    private val onQuestionAsked: ((QuestionRequest, String?) -> Unit)? = null,
     private val unreadStore: UnreadSessionStore? = null,
 ) {
     init {
@@ -284,6 +286,10 @@ class RuntimeActivityRepository(
                     current.copy(activeSessionIds = current.activeSessionIds + event.request.sessionId)
                 }
                 appendLog("質問", event.request.questions.firstOrNull()?.question, event.request.sessionId)
+                onQuestionAsked?.invoke(
+                    event.request,
+                    sessionTitle(target, event.request.sessionId),
+                )
             }
             is OpenCodeEvent.Unknown -> appendLog("未対応イベント", event.type)
         }

@@ -266,6 +266,7 @@ class AndCodeApplication : Application() {
                     githubStarCoordinator.onSessionCompleted()
                 },
                 onSessionError = notifications::notifySessionError,
+                onQuestionAsked = notifications::notifyQuestion,
                 unreadStore = settings,
             )
         githubStarCoordinator.refresh()
