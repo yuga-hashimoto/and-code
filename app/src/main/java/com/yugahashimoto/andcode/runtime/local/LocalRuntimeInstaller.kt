@@ -300,7 +300,7 @@ class LocalRuntimeInstaller(
                 "/root",
                 "/bin/sh",
                 "-lc",
-                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /sbin/apk add --no-cache bash git curl wget jq tree file less nano openssh-client ripgrep ca-certificates libstdc++ github-cli android-tools openjdk17 gradle python3 py3-pillow && /usr/sbin/update-ca-certificates",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /sbin/apk add --no-cache bash git curl wget jq tree file less nano vim openssh-client ripgrep ca-certificates libstdc++ github-cli android-tools openjdk17 gradle python3 py3-pillow py3-pip nodejs npm make cmake gcc g++ musl-dev pkgconf patch zip unzip sqlite go && /usr/sbin/update-ca-certificates",
             )
         val installLog =
             File(runtimeDirectory, "logs/tool-install.log").apply {
@@ -316,7 +316,7 @@ class LocalRuntimeInstaller(
                     environment()["PROOT_TMP_DIR"] = prootTmp.absolutePath
                 }
                 .start()
-        val completed = process.waitFor(10, java.util.concurrent.TimeUnit.MINUTES)
+        val completed = process.waitFor(15, java.util.concurrent.TimeUnit.MINUTES)
         if (!completed) {
             process.destroyForcibly()
             error("Development tool installation timed out")

@@ -1,4 +1,4 @@
-package com.yugahashimoto.andcode.ui
+package com.yugahashimoto.androidcode.ui
 
 import android.Manifest
 import android.content.Intent
@@ -55,45 +55,45 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.yugahashimoto.andcode.AndCodeApplication
-import com.yugahashimoto.andcode.R
-import com.yugahashimoto.andcode.core.api.OpenCodeSession
-import com.yugahashimoto.andcode.feature.activity.ActivityScreen
-import com.yugahashimoto.andcode.feature.activity.ActivityViewModel
-import com.yugahashimoto.andcode.feature.activity.SessionDetailScreen
-import com.yugahashimoto.andcode.feature.activity.SessionDetailViewModel
-import com.yugahashimoto.andcode.feature.activity.SessionImportSheet
-import com.yugahashimoto.andcode.feature.assistant.SpeechRecognizerManager
-import com.yugahashimoto.andcode.feature.assistant.SpeechResult
-import com.yugahashimoto.andcode.feature.chat.ChatHomeScreen
-import com.yugahashimoto.andcode.feature.chat.ChatViewModel
-import com.yugahashimoto.andcode.feature.chat.SubagentInfo
-import com.yugahashimoto.andcode.feature.chat.buildHandoffPrompt
-import com.yugahashimoto.andcode.feature.onboarding.AndroidSetupScreen
-import com.yugahashimoto.andcode.feature.onboarding.OnboardingChoiceScreen
-import com.yugahashimoto.andcode.feature.schedule.ScheduleScreen
-import com.yugahashimoto.andcode.feature.schedule.ScheduleViewModel
-import com.yugahashimoto.andcode.feature.search.CommandPaletteSheet
-import com.yugahashimoto.andcode.feature.settings.DiagnosticsSheet
-import com.yugahashimoto.andcode.feature.settings.GitHubRepo
-import com.yugahashimoto.andcode.feature.settings.SettingsViewModel
-import com.yugahashimoto.andcode.feature.workspace.WorkspaceViewModel
-import com.yugahashimoto.andcode.runtime.WorkspaceRef
-import com.yugahashimoto.andcode.runtime.local.GitCloneResult
-import com.yugahashimoto.andcode.ui.components.SessionStatus
-import com.yugahashimoto.andcode.ui.navigation.ClaudeSettingsActions
-import com.yugahashimoto.andcode.ui.navigation.DRAWER_ROOT_ROUTES
-import com.yugahashimoto.andcode.ui.navigation.ROUTE_ACTIVITY
-import com.yugahashimoto.andcode.ui.navigation.ROUTE_ANDROID_SETUP
-import com.yugahashimoto.andcode.ui.navigation.ROUTE_CHAT
-import com.yugahashimoto.andcode.ui.navigation.ROUTE_ONBOARDING
-import com.yugahashimoto.andcode.ui.navigation.ROUTE_REMOTE_CONNECTION
-import com.yugahashimoto.andcode.ui.navigation.ROUTE_SCHEDULE
-import com.yugahashimoto.andcode.ui.navigation.SESSION_DETAIL_ROUTE
-import com.yugahashimoto.andcode.ui.navigation.settingsNavGraph
-import com.yugahashimoto.andcode.ui.navigation.workspaceNavGraph
-import com.yugahashimoto.andcode.ui.theme.AppTheme
-import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
+import com.yugahashimoto.androidcode.AndroidCodeApplication
+import com.yugahashimoto.androidcode.R
+import com.yugahashimoto.androidcode.core.api.OpenCodeSession
+import com.yugahashimoto.androidcode.feature.activity.ActivityScreen
+import com.yugahashimoto.androidcode.feature.activity.ActivityViewModel
+import com.yugahashimoto.androidcode.feature.activity.SessionDetailScreen
+import com.yugahashimoto.androidcode.feature.activity.SessionDetailViewModel
+import com.yugahashimoto.androidcode.feature.activity.SessionImportSheet
+import com.yugahashimoto.androidcode.feature.assistant.SpeechRecognizerManager
+import com.yugahashimoto.androidcode.feature.assistant.SpeechResult
+import com.yugahashimoto.androidcode.feature.chat.ChatHomeScreen
+import com.yugahashimoto.androidcode.feature.chat.ChatViewModel
+import com.yugahashimoto.androidcode.feature.chat.SubagentInfo
+import com.yugahashimoto.androidcode.feature.chat.buildHandoffPrompt
+import com.yugahashimoto.androidcode.feature.onboarding.AndroidSetupScreen
+import com.yugahashimoto.androidcode.feature.onboarding.OnboardingChoiceScreen
+import com.yugahashimoto.androidcode.feature.schedule.ScheduleScreen
+import com.yugahashimoto.androidcode.feature.schedule.ScheduleViewModel
+import com.yugahashimoto.androidcode.feature.search.CommandPaletteSheet
+import com.yugahashimoto.androidcode.feature.settings.DiagnosticsSheet
+import com.yugahashimoto.androidcode.feature.settings.GitHubRepo
+import com.yugahashimoto.androidcode.feature.settings.SettingsViewModel
+import com.yugahashimoto.androidcode.feature.workspace.WorkspaceViewModel
+import com.yugahashimoto.androidcode.runtime.WorkspaceRef
+import com.yugahashimoto.androidcode.runtime.local.GitCloneResult
+import com.yugahashimoto.androidcode.ui.components.SessionStatus
+import com.yugahashimoto.androidcode.ui.navigation.ClaudeSettingsActions
+import com.yugahashimoto.androidcode.ui.navigation.DRAWER_ROOT_ROUTES
+import com.yugahashimoto.androidcode.ui.navigation.ROUTE_ACTIVITY
+import com.yugahashimoto.androidcode.ui.navigation.ROUTE_ANDROID_SETUP
+import com.yugahashimoto.androidcode.ui.navigation.ROUTE_CHAT
+import com.yugahashimoto.androidcode.ui.navigation.ROUTE_ONBOARDING
+import com.yugahashimoto.androidcode.ui.navigation.ROUTE_REMOTE_CONNECTION
+import com.yugahashimoto.androidcode.ui.navigation.ROUTE_SCHEDULE
+import com.yugahashimoto.androidcode.ui.navigation.SESSION_DETAIL_ROUTE
+import com.yugahashimoto.androidcode.ui.navigation.settingsNavGraph
+import com.yugahashimoto.androidcode.ui.navigation.workspaceNavGraph
+import com.yugahashimoto.androidcode.ui.theme.AndroidCodeTheme
+import com.yugahashimoto.androidcode.ui.theme.AppTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -128,7 +128,7 @@ private fun relativeTimeLabel(
 }
 
 @Composable
-fun AndCodeApp(
+fun AndroidCodeApp(
     onOpenAssistantSettings: () -> Unit,
     appTheme: AppTheme = AppTheme.DARK,
     uiFontSize: Int = 16,
@@ -136,7 +136,7 @@ fun AndCodeApp(
     deepLinkConnectionUrl: String? = null,
 ) {
     val context = LocalContext.current
-    val app = context.applicationContext as AndCodeApplication
+    val app = context.applicationContext as AndroidCodeApplication
     val navController = rememberNavController()
     val backStackEntry by navController.currentBackStackEntryAsState()
     var pendingSession by remember { mutableStateOf<Pair<String, String>?>(null) }
@@ -298,7 +298,7 @@ fun AndCodeApp(
                 startOrStopVoiceInput()
             } else if (granted && startWakeWordAfterPermission) {
                 startWakeWordAfterPermission = false
-                com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(context)
+                com.yugahashimoto.androidcode.feature.wakeword.WakeWordService.start(context)
             } else if (!granted) {
                 startVoiceAfterPermission = false
                 startWakeWordAfterPermission = false
@@ -325,7 +325,7 @@ fun AndCodeApp(
                     )
                     val imported =
                         withContext(Dispatchers.IO) {
-                            com.yugahashimoto.andcode.runtime.local.SafWorkspaceImporter(context).importTree(uri)
+                            com.yugahashimoto.androidcode.runtime.local.SafWorkspaceImporter(context).importTree(uri)
                         }
                     val existing = app.settings.safWorkspaceUris.toMutableList()
                     if (uri.toString() !in existing) {
@@ -348,7 +348,7 @@ fun AndCodeApp(
             voiceScope.launch {
                 runCatching {
                     withContext(Dispatchers.IO) {
-                        com.yugahashimoto.andcode.runtime.local.AttachmentImporter(context).import(uri)
+                        com.yugahashimoto.androidcode.runtime.local.AttachmentImporter(context).import(uri)
                     }
                 }.onSuccess { attachment ->
                     chatViewModel.addAttachment(attachment)
@@ -369,16 +369,13 @@ fun AndCodeApp(
         }
     }
 
-    LaunchedEffect(preferences.wakeWordEnabled, preferences.wakeWordModel) {
+    LaunchedEffect(preferences.wakeWordEnabled) {
         if (preferences.wakeWordEnabled && hasMicrophonePermission()) {
-            if (!com.yugahashimoto.andcode.feature.wakeword.WakeWordService.isRunning(context)) {
-                com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
-                    context,
-                    model = preferences.wakeWordModel,
-                )
+            if (!com.yugahashimoto.androidcode.feature.wakeword.WakeWordService.isRunning(context)) {
+                com.yugahashimoto.androidcode.feature.wakeword.WakeWordService.start(context)
             }
         } else if (!preferences.wakeWordEnabled) {
-            com.yugahashimoto.andcode.feature.wakeword.WakeWordService.stop(context)
+            com.yugahashimoto.androidcode.feature.wakeword.WakeWordService.stop(context)
         }
     }
 
@@ -532,7 +529,7 @@ fun AndCodeApp(
         drawerScope.launch { drawerState.close() }
     }
 
-    AndCodeTheme(
+    AndroidCodeTheme(
         appTheme = AppTheme.fromKey(preferences.theme),
         uiFontSize = preferences.uiFontSize,
     ) {
@@ -635,11 +632,11 @@ fun AndCodeApp(
                         runtimeStatus = localRuntimeStatus,
                         claude = workspaceState.claude,
                         onStartSetup = { agents ->
-                            if (com.yugahashimoto.andcode.runtime.LocalAgent.OPEN_CODE in agents) {
+                            if (com.yugahashimoto.androidcode.runtime.LocalAgent.OPEN_CODE in agents) {
                                 workspaceViewModel.setupLocalRuntime()
                             }
-                            if (com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE in agents &&
-                                com.yugahashimoto.andcode.runtime.LocalAgent.OPEN_CODE !in agents
+                            if (com.yugahashimoto.androidcode.runtime.LocalAgent.CLAUDE_CODE in agents &&
+                                com.yugahashimoto.androidcode.runtime.LocalAgent.OPEN_CODE !in agents
                             ) {
                                 workspaceViewModel.installClaudeCode()
                             }
@@ -701,7 +698,7 @@ fun AndCodeApp(
                         selectedRuntimeId = selectedRuntime?.id,
                         claudePermissionMode =
                             workspaceState.claude
-                                .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
+                                .takeIf { selectedRuntime?.agent == com.yugahashimoto.androidcode.runtime.LocalAgent.CLAUDE_CODE }
                                 ?.permissionMode,
                         onSelectClaudePermissionMode = { mode ->
                             workspaceViewModel.setClaudePermissionMode(mode, chatState.sessionId)
@@ -726,7 +723,7 @@ fun AndCodeApp(
                             voiceScope.launch {
                                 runCatching {
                                     withContext(Dispatchers.IO) {
-                                        com.yugahashimoto.andcode.runtime.local.AttachmentImporter(context).import(bitmap)
+                                        com.yugahashimoto.androidcode.runtime.local.AttachmentImporter(context).import(bitmap)
                                     }
                                 }.onSuccess { attachment ->
                                     chatViewModel.addImageAttachment(attachment, bitmap)

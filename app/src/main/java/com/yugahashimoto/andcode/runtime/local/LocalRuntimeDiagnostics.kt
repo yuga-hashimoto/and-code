@@ -163,6 +163,11 @@ class LocalRuntimeDiagnosticsCollector(
                 LocalRuntimeToolDefinition("java", "Java", "java -version 2>&1 | head -n 1"),
                 LocalRuntimeToolDefinition("gradle", "Gradle", "gradle --version 2>&1 | head -n 1"),
                 LocalRuntimeToolDefinition("python3", "Python", "python3 --version"),
+                LocalRuntimeToolDefinition("node", "Node.js", "node --version"),
+                LocalRuntimeToolDefinition("npm", "npm", "npm --version"),
+                LocalRuntimeToolDefinition("go", "Go", "go version"),
+                LocalRuntimeToolDefinition("make", "Make", "make --version | head -n 1"),
+                LocalRuntimeToolDefinition("gcc", "GCC", "gcc --version | head -n 1"),
             )
     }
 }
