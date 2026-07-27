@@ -215,7 +215,7 @@ class LocalRuntimeInstaller(
                 "/root",
                 "/bin/sh",
                 "-lc",
-                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /sbin/apk add --no-cache bash git curl openssh-client ripgrep ca-certificates libstdc++ github-cli android-tools openjdk17 gradle && /usr/sbin/update-ca-certificates",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /sbin/apk add --no-cache bash git curl openssh-client ripgrep ca-certificates libstdc++ github-cli android-tools openjdk17 gradle python3 py3-pillow && /usr/sbin/update-ca-certificates",
             )
         val installLog =
             File(runtimeDirectory, "logs/tool-install.log").apply {
@@ -269,7 +269,20 @@ class LocalRuntimeInstaller(
         }
         File(rootfs, "root/.config/opencode").mkdirs()
         File(rootfs, "root/.local/share/opencode").mkdirs()
+        installAndroidHelperScripts(rootfs)
         require(suite.proot.isFile) { "PRoot launcher is unavailable" }
+    }
+
+    private fun installAndroidHelperScripts(rootfs: File) {
+        val binDir = File(rootfs, "usr/local/bin").apply { mkdirs() }
+        listOf("android-vision.sh" to "android-vision", "android-screenshot.sh" to "android-screenshot").forEach {
+                (assetName, scriptName) ->
+            val scriptFile = File(binDir, scriptName)
+            context.assets.open("scripts/$assetName").use { input ->
+                scriptFile.outputStream().use { output -> input.copyTo(output) }
+            }
+            scriptFile.setExecutable(true, false)
+        }
     }
 
     companion object {
