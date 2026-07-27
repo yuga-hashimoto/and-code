@@ -20,7 +20,6 @@ class OpenWakeWordDetector(
     private val context: Context,
     private val modelName: String = DEFAULT_MODEL,
 ) {
-
     val keyword: String
         get() = modelName.replace('_', ' ').replaceFirstChar { it.uppercase() }
 

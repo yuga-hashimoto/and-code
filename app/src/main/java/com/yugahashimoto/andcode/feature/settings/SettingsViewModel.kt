@@ -567,12 +567,13 @@ class SettingsViewModel(
         const val TAG = "SettingsVM"
         const val AUTO_OAUTH_TIMEOUT_MS = 6 * 60 * 1000L
         const val AUTO_OAUTH_POLL_MS = 3000L
-        val WAKE_WORD_MODELS = listOf(
-            "alexa",
-            "computer",
-            "hey_jarvis",
-            "hey_mycroft",
-            "ok_nabu",
-        )
+        val WAKE_WORD_MODELS =
+            listOf(
+                "alexa",
+                "computer",
+                "hey_jarvis",
+                "hey_mycroft",
+                "ok_nabu",
+            )
     }
 }
