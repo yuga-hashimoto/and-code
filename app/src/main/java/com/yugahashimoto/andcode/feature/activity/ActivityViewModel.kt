@@ -111,11 +111,12 @@ class ActivityViewModel(
         actionError.value = null
         viewModelScope.launch {
             val targets = registry.targets.value
-            val results = coroutineScope {
-                targets.map { target ->
-                    async { runCatching { target.deleteSession(sessionId) } }
-                }.awaitAll()
-            }
+            val results =
+                coroutineScope {
+                    targets.map { target ->
+                        async { runCatching { target.deleteSession(sessionId) } }
+                    }.awaitAll()
+                }
             val deleted = results.any { it.getOrDefault(false) }
             val errors = results.mapNotNull { it.exceptionOrNull() }
             catalog.refresh()
