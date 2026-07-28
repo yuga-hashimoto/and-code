@@ -21,6 +21,7 @@ import com.yugahashimoto.andcode.core.api.QuestionRequest
 import com.yugahashimoto.andcode.runtime.BackendKind
 import com.yugahashimoto.andcode.runtime.LocalAgent
 import com.yugahashimoto.andcode.runtime.LocalRuntimeStatus
+import com.yugahashimoto.andcode.runtime.RuntimeCapabilities
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
@@ -48,6 +49,7 @@ class LocalRuntimeTarget(
     override val agent: LocalAgent = LocalAgent.OPEN_CODE
     override val type: RuntimeType = RuntimeType.LOCAL
     override val kind: BackendKind = BackendKind.LOCAL
+    override val capabilities = RuntimeCapabilities(permissions = true)
 
     private val mutableState = MutableStateFlow(mapStatus(runtimeManager.status()))
     override val state: StateFlow<RuntimeState> = mutableState.asStateFlow()
