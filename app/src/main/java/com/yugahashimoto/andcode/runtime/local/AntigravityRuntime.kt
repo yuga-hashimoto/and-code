@@ -270,11 +270,12 @@ class AntigravityRuntime(
 
     fun listMessages(sessionId: String): List<OpenCodeMessage> = messages[sessionId].orEmpty().toList()
 
-    fun remove(sessionId: String) {
+    fun remove(sessionId: String): Boolean {
         abort(sessionId)
-        records.remove(sessionId)
+        val removed = records.remove(sessionId) != null
         messages.remove(sessionId)
         persist()
+        return removed
     }
 
     fun create(

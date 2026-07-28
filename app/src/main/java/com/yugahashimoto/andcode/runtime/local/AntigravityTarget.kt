@@ -190,8 +190,7 @@ class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarge
     }
 
     override suspend fun deleteSession(sessionId: String): Boolean {
-        runtime.remove(sessionId)
-        return true
+        return runtime.remove(sessionId)
     }
 
     override suspend fun respondToPermission(

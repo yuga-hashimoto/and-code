@@ -105,14 +105,20 @@ class ActivityViewModel(
     }
 
     fun deleteSession(sessionId: String) {
-        val backend = registry.selected.value ?: return
         actionError.value = null
         viewModelScope.launch {
-            runCatching { backend.deleteSession(sessionId) }
-                .onSuccess { catalog.refresh() }
-                .onFailure { error ->
-                    actionError.value = error.message ?: "Failed to delete session"
-                }
+            val targets = registry.targets.value
+            var deleted = false
+            var lastError: Throwable? = null
+            for (target in targets) {
+                runCatching { target.deleteSession(sessionId) }
+                    .onSuccess { if (it) deleted = true }
+                    .onFailure { lastError = it }
+            }
+            catalog.refresh()
+            if (!deleted && lastError != null) {
+                actionError.value = lastError?.message ?: "Failed to delete session"
+            }
         }
     }
 }

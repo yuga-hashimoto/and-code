@@ -624,20 +624,26 @@ fun AndCodeApp(
                         },
                         onDeleteSession = { sessionId ->
                             voiceScope.launch {
-                                runCatching { selectedRuntime?.deleteSession(sessionId) }
+                                app.runtimeRegistry.targets.value.forEach { target ->
+                                    runCatching { target.deleteSession(sessionId) }
+                                }
                                 app.catalogRepository.refreshSessionsOnly()
                             }
                         },
                         onArchiveSession = { sessionId ->
                             voiceScope.launch {
-                                runCatching { selectedRuntime?.archiveSession(sessionId) }
+                                app.runtimeRegistry.targets.value.forEach { target ->
+                                    runCatching { target.archiveSession(sessionId) }
+                                }
                                 app.catalogRepository.refreshSessionsOnly()
                             }
                         },
                         onBatchDelete = { sessionIds ->
                             voiceScope.launch {
                                 sessionIds.forEach { id ->
-                                    runCatching { selectedRuntime?.deleteSession(id) }
+                                    app.runtimeRegistry.targets.value.forEach { target ->
+                                        runCatching { target.deleteSession(id) }
+                                    }
                                 }
                                 app.catalogRepository.refreshSessionsOnly()
                             }
@@ -645,7 +651,9 @@ fun AndCodeApp(
                         onBatchArchive = { sessionIds ->
                             voiceScope.launch {
                                 sessionIds.forEach { id ->
-                                    runCatching { selectedRuntime?.archiveSession(id) }
+                                    app.runtimeRegistry.targets.value.forEach { target ->
+                                        runCatching { target.archiveSession(id) }
+                                    }
                                 }
                                 app.catalogRepository.refreshSessionsOnly()
                             }

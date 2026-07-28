@@ -281,10 +281,12 @@ class ClaudeCodeTarget(
     }
 
     override suspend fun deleteSession(sessionId: String): Boolean {
-        if (records.remove(sessionId) == null) return false
-        persist()
+        val removed = records.remove(sessionId) != null
+        if (removed) {
+            persist()
+        }
         withContext(Dispatchers.IO) { runtime.deleteSessionData(sessionId) }
-        return true
+        return removed
     }
 
     /**
