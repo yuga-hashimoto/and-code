@@ -21,8 +21,8 @@ import com.yugahashimoto.andcode.core.api.QuestionRequest
 import com.yugahashimoto.andcode.core.util.safeMessage
 import com.yugahashimoto.andcode.data.connection.ConnectionProfile
 import com.yugahashimoto.andcode.runtime.BackendKind
-import com.yugahashimoto.andcode.runtime.RuntimeCapabilities
 import com.yugahashimoto.andcode.runtime.PermissionResponse
+import com.yugahashimoto.andcode.runtime.RuntimeCapabilities
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.RuntimeType
