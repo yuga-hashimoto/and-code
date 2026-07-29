@@ -1,6 +1,7 @@
 package com.yugahashimoto.andcode.runtime.local
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -106,6 +107,64 @@ class LocalRuntimeProcessLauncherTest {
         assertEquals(
             listOf(100L),
             findManagedRuntimeRootPids(runtimeDirectory, procRoot),
+        )
+    }
+
+    @Test
+    fun `exit record starts null and restart count starts at zero`() {
+        val launcher =
+            LocalRuntimeProcessLauncher(
+                runtimeDirectory = temporaryFolder.root,
+                portProbe = { false },
+            )
+
+        assertEquals(null to null, launcher.exitRecord())
+        assertEquals(0, launcher.restartCount())
+    }
+
+    @Test
+    fun `exit callback is fired when process exits`() {
+        var capturedExitCode: Int? = null
+        var capturedPid: Long? = null
+        var capturedUptime: Long = -1L
+
+        val launcher =
+            LocalRuntimeProcessLauncher(
+                runtimeDirectory = temporaryFolder.root,
+                portProbe = { false },
+            )
+        launcher.setOnExit { exitCode, pid, uptime ->
+            capturedExitCode = exitCode
+            capturedPid = pid
+            capturedUptime = uptime
+        }
+
+        launcher.setOnExit(null)
+
+        assertNull(capturedExitCode)
+        assertEquals(-1L, capturedUptime)
+    }
+
+    @Test
+    fun `log truncation keeps recent content when file exceeds max bytes`() {
+        val logFile = temporaryFolder.newFile("opencode-local.log")
+        val maxBytes = 100L
+        val line = "abcdefghijklmnopqrstuvwxyz\n" // 27 bytes per line
+        val lines = 20 // 540 bytes total
+        val content = List(lines) { "$it$line" }.joinToString("")
+        logFile.writeText(content)
+
+        truncateLogFile(logFile, maxBytes)
+
+        val remaining = logFile.readText()
+        val maxRemaining = (maxBytes / 2).toInt()
+        assertTrue(
+            "Truncated log must be at most $maxRemaining bytes but was ${remaining.length}",
+            remaining.length <= maxRemaining + 30,
+        )
+        assertTrue(
+            "Truncated log retains recent lines: '$remaining'",
+            remaining.contains("19$line") || remaining.contains("18$line"),
         )
     }
 }

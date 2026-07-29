@@ -14,6 +14,7 @@ class LocalRuntimeProcessLauncher(
     private val githubToken: () -> String? = { null },
     private val accessibilityToken: () -> String? = { null },
     private val beforeStart: (LocalRuntimeInstaller.InstalledRuntime) -> Unit = {},
+    private val maxLogBytes: Long = 1_048_576L,
 ) {
     @Volatile
     private var process: Process? = null
@@ -21,12 +22,26 @@ class LocalRuntimeProcessLauncher(
     @Volatile
     private var startedAtMillis: Long? = null
 
+    @Volatile
+    private var generation = 0L
+
+    private var onExit: ((exitCode: Int?, pid: Long?, uptimeMillis: Long) -> Unit)? = null
+    private var lastExitCode: Int? = null
+    private var lastExitAtMillis: Long? = null
+    private var restartCount: Int = 0
+
+    fun setOnExit(callback: ((exitCode: Int?, pid: Long?, uptimeMillis: Long) -> Unit)?) {
+        synchronized(this) { onExit = callback }
+    }
+
+    fun exitRecord(): Pair<Int?, Long?> = synchronized(this) { lastExitCode to lastExitAtMillis }
+
+    fun restartCount(): Int = synchronized(this) { restartCount }
+
     @Synchronized
     fun start(runtime: LocalRuntimeInstaller.InstalledRuntime): Process {
         val port = runtime.metadata.port
         process?.let { current ->
-            // A running process is kept whether or not it answered the probe: under load it may be
-            // slow to accept a connection, and replacing it would drop the session it is serving.
             if (current.isAlive) return current
             terminate(current)
             process = null
@@ -36,6 +51,7 @@ class LocalRuntimeProcessLauncher(
         val suite = runtime.commandSuite
         val logs = File(runtimeDirectory, "logs").apply { mkdirs() }
         val logFile = File(logs, "opencode-local.log")
+        truncateLogFile(logFile, maxLogBytes)
         val workspace = File(runtimeDirectory, "workspace").apply { mkdirs() }
         val prootTmp = File(runtimeDirectory, "proot-tmp").apply { mkdirs() }
 
@@ -79,8 +95,13 @@ class LocalRuntimeProcessLauncher(
         val started = builder.start()
         process = started
         startedAtMillis = nowMillis()
+        generation++
+        val expectedGeneration = generation
+        val startedPid = processId(started)
+        val startedAt = startedAtMillis!!
         return try {
             waitUntilReady(started, port, logFile)
+            startExitMonitor(started, expectedGeneration, startedPid, startedAt)
             started
         } catch (error: Throwable) {
             process = null
@@ -102,8 +123,8 @@ class LocalRuntimeProcessLauncher(
 
     @Synchronized
     fun metrics(): LocalRuntimeProcessMetrics? {
-        val current = process?.takeIf(Process::isAlive) ?: return null
-        val pid = processId(current)
+        val current = process?.takeIf(Process::isAlive)
+        val pid = current?.let(::processId)
         val rssBytes =
             pid?.let { rootPid ->
                 totalResidentSetBytes(
@@ -114,11 +135,38 @@ class LocalRuntimeProcessLauncher(
                     childrenReader = ::readDirectChildPids,
                 )
             }
+        val uptime =
+            if (current != null) (nowMillis() - (startedAtMillis ?: nowMillis())).coerceAtLeast(0L) else 0L
+        val hasData = current != null || lastExitCode != null
+        if (!hasData) return null
         return LocalRuntimeProcessMetrics(
             pid = pid,
             rssBytes = rssBytes,
-            uptimeMillis = (nowMillis() - (startedAtMillis ?: nowMillis())).coerceAtLeast(0L),
+            uptimeMillis = uptime,
+            restartCount = restartCount,
+            lastExitCode = lastExitCode,
+            lastExitAtMillis = lastExitAtMillis,
         )
+    }
+
+    private fun startExitMonitor(
+        process: Process,
+        expectedGeneration: Long,
+        pid: Long?,
+        startedAt: Long,
+    ) {
+        Thread({
+            process.waitFor()
+            val exitCode = runCatching { process.exitValue() }.getOrNull()
+            val uptime = (nowMillis() - startedAt).coerceAtLeast(0L)
+            val callback: ((Int?, Long?, Long) -> Unit)? = synchronized(this) {
+                lastExitCode = exitCode
+                lastExitAtMillis = nowMillis()
+                restartCount++
+                if (generation == expectedGeneration) onExit else null
+            }
+            callback?.invoke(exitCode, pid, uptime)
+        }, "opencode-exit-monitor").apply { isDaemon = true }.start()
     }
 
     private fun terminate(current: Process) {
@@ -179,6 +227,20 @@ class LocalRuntimeProcessLauncher(
         runCatching {
             file.readLines().takeLast(20).joinToString("\n")
         }.getOrDefault("No runtime log was produced")
+}
+
+internal fun truncateLogFile(logFile: File, maxBytes: Long) {
+    if (!logFile.isFile) return
+    val currentSize = logFile.length()
+    if (currentSize <= maxBytes) return
+    runCatching {
+        val keepSize = maxBytes / 2
+        val bytes = logFile.readBytes()
+        val cutPoint = (bytes.size - keepSize.toInt()).coerceAtLeast(0)
+        val lineBreak = bytes.indexOf('\n'.code.toByte(), cutPoint)
+        val start = if (lineBreak >= 0 && lineBreak < bytes.size - 1) lineBreak + 1 else cutPoint
+        logFile.writeBytes(bytes.copyOfRange(start, bytes.size))
+    }
 }
 
 internal fun processTreePostOrder(

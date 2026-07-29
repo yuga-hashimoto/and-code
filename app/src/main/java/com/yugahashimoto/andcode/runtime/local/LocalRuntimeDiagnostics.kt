@@ -8,6 +8,9 @@ data class LocalRuntimeProcessMetrics(
     val pid: Long?,
     val rssBytes: Long?,
     val uptimeMillis: Long,
+    val restartCount: Int = 0,
+    val lastExitCode: Int? = null,
+    val lastExitAtMillis: Long? = null,
 )
 
 data class LocalRuntimeCommandResult(
@@ -39,6 +42,9 @@ data class LocalRuntimeDiagnostics(
     val tools: List<LocalRuntimeToolCheck>,
     val logTail: String,
     val collectedAtMillis: Long,
+    val restartCount: Int = 0,
+    val lastExitCode: Int? = null,
+    val lastExitAtMillis: Long? = null,
 )
 
 class LocalRuntimeDiagnosticsCollector(
@@ -110,6 +116,9 @@ class LocalRuntimeDiagnosticsCollector(
             tools = tools,
             logTail = readLogTail(),
             collectedAtMillis = nowMillis(),
+            restartCount = processMetricsProvider()?.restartCount ?: 0,
+            lastExitCode = processMetricsProvider()?.lastExitCode,
+            lastExitAtMillis = processMetricsProvider()?.lastExitAtMillis,
         )
     }
 

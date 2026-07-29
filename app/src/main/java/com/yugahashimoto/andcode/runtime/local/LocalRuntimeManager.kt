@@ -81,6 +81,14 @@ class LocalRuntimeManager(
 
     fun isHealthy(): Boolean = installedPort()?.let(portProbe) == true
 
+    fun setOnExit(callback: ((Int?, Long?, Long) -> Unit)?) {
+        processLauncher?.setOnExit(callback)
+    }
+
+    fun lastExitCode(): Int? = processLauncher?.exitRecord()?.first
+    fun lastExitAtMillis(): Long? = processLauncher?.exitRecord()?.second
+    fun restartCount(): Int = processLauncher?.restartCount() ?: 0
+
     suspend fun installAndStart(agents: Set<LocalAgent> = setOf(LocalAgent.OPEN_CODE)): Result<LocalRuntimeStatus.Ready> =
         operationMutex.withLock {
             val configuredInstaller =
