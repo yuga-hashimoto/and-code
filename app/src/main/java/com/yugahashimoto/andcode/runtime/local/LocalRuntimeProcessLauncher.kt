@@ -159,12 +159,13 @@ class LocalRuntimeProcessLauncher(
             process.waitFor()
             val exitCode = runCatching { process.exitValue() }.getOrNull()
             val uptime = (nowMillis() - startedAt).coerceAtLeast(0L)
-            val callback: ((Int?, Long?, Long) -> Unit)? = synchronized(this) {
-                lastExitCode = exitCode
-                lastExitAtMillis = nowMillis()
-                restartCount++
-                if (generation == expectedGeneration) onExit else null
-            }
+            val callback: ((Int?, Long?, Long) -> Unit)? =
+                synchronized(this) {
+                    lastExitCode = exitCode
+                    lastExitAtMillis = nowMillis()
+                    restartCount++
+                    if (generation == expectedGeneration) onExit else null
+                }
             callback?.invoke(exitCode, pid, uptime)
         }, "opencode-exit-monitor").apply { isDaemon = true }.start()
     }
@@ -229,7 +230,10 @@ class LocalRuntimeProcessLauncher(
         }.getOrDefault("No runtime log was produced")
 }
 
-internal fun truncateLogFile(logFile: File, maxBytes: Long) {
+internal fun truncateLogFile(
+    logFile: File,
+    maxBytes: Long,
+) {
     if (!logFile.isFile) return
     val currentSize = logFile.length()
     if (currentSize <= maxBytes) return
@@ -237,7 +241,7 @@ internal fun truncateLogFile(logFile: File, maxBytes: Long) {
         val keepSize = maxBytes / 2
         val bytes = logFile.readBytes()
         val cutPoint = (bytes.size - keepSize.toInt()).coerceAtLeast(0)
-        val lineBreak = bytes.indexOf('\n'.code.toByte(), cutPoint)
+        val lineBreak = (cutPoint until bytes.size).firstOrNull { bytes[it] == '\n'.code.toByte() } ?: -1
         val start = if (lineBreak >= 0 && lineBreak < bytes.size - 1) lineBreak + 1 else cutPoint
         logFile.writeBytes(bytes.copyOfRange(start, bytes.size))
     }
