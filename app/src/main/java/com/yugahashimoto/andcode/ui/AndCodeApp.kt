@@ -597,7 +597,6 @@ fun AndCodeApp(
                             if (agent.runtimeId != selectedRuntime?.id) {
                                 app.runtimeRegistry.select(agent.runtimeId)
                                 pendingSession = null
-                                chatViewModel.newSession()
                             }
                             navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
                         },

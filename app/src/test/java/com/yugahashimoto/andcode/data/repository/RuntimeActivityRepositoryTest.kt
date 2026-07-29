@@ -175,6 +175,32 @@ class RuntimeActivityRepositoryTest {
         }
 
     @Test
+    fun `switching runtimes keeps an in-flight session active`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val current = FakeTarget(id = "opencode", requireConnected = false)
+            val next = FakeTarget(id = "claude", requireConnected = false)
+            current.state.value = RuntimeState.Connected("1.0")
+            next.state.value = RuntimeState.Connected("1.0")
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = current.id),
+                    localTarget = current,
+                    additionalTargets = listOf(next),
+                    remoteFactory = { error("unused") },
+                )
+            val repository = RuntimeActivityRepository(registry, TestScope(dispatcher))
+            advanceUntilIdle()
+
+            repository.markSessionRunning("session-in-flight")
+            registry.select(next.id)
+            runCurrent()
+
+            assertEquals(setOf("session-in-flight"), repository.state.value.activeSessionIds)
+            assertTrue(repository.state.value.completedSessionIds.isEmpty())
+        }
+
+    @Test
     fun `unread markers are restored from the store on startup`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
@@ -337,9 +363,9 @@ class RuntimeActivityRepositoryTest {
     }
 
     private class FakeTarget(
+        override val id: String = "local-android",
         private val requireConnected: Boolean = true,
     ) : RuntimeTarget {
-        override val id: String = "local-android"
         override val displayName: String = "このAndroid端末"
         override val kind: BackendKind = BackendKind.LOCAL
         override val type: RuntimeType = RuntimeType.LOCAL

@@ -81,8 +81,12 @@ class RuntimeActivityRepository(
     init {
         scope.launch {
             registry.selected.collectLatest selected@{ target ->
-                mutableState.value =
-                    RuntimeActivityState(completedSessionIds = mutableState.value.completedSessionIds)
+                // A runtime switch does not cancel work already submitted to the previous target.
+                // Keep its active sessions visible until that target reports completion; clearing
+                // them here made an in-flight chat look idle/completed in the drawer.
+                mutableState.update { current ->
+                    current.copy(permissions = emptyList(), streamError = null)
+                }
                 if (target == null) return@selected
 
                 // The stream follows the selected runtime, not its connection state.
