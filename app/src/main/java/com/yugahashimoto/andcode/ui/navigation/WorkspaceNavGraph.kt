@@ -1,7 +1,5 @@
 package com.yugahashimoto.andcode.ui.navigation
 
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -52,7 +50,6 @@ fun NavGraphBuilder.workspaceNavGraph(
     }
 
     composable(ROUTE_WORKSPACES) {
-        val context = androidx.compose.ui.platform.LocalContext.current
         // Collected here rather than passed in: NavHost remembers the graph, so a state value
         // handed to this builder would stay frozen at whatever it was on first composition and
         // every later update — runtime installs, health checks — would never reach the screen.
@@ -69,25 +66,6 @@ fun NavGraphBuilder.workspaceNavGraph(
             onOpenWorkspace = { workspace ->
                 onSelectWorkspace(workspace)
                 navController.navigate(WORKSPACE_DETAIL_ROUTE)
-            },
-            onSetupLocal = workspaceViewModel::setupLocalRuntime,
-            onStartLocal = workspaceViewModel::startLocalRuntime,
-            onStopLocal = workspaceViewModel::stopLocalRuntime,
-            onReinstallLocal = workspaceViewModel::reinstallLocalRuntime,
-            onInstallClaude = workspaceViewModel::installClaudeCode,
-            onUpdateClaude = workspaceViewModel::updateClaudeCode,
-            onSelectClaudePermissionMode = workspaceViewModel::setClaudePermissionMode,
-            onBeginClaudeSignIn = workspaceViewModel::beginClaudeSignIn,
-            onSubmitClaudeSignInCode = workspaceViewModel::submitClaudeSignInCode,
-            onCancelClaudeSignIn = workspaceViewModel::cancelClaudeSignIn,
-            onSignOutClaude = workspaceViewModel::signOutClaude,
-            onOpenUrl = { url ->
-                runCatching {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
-                }
-            },
-            onOpenLocalManagement = {
-                navController.navigate(LOCAL_RUNTIME_MANAGEMENT_ROUTE)
             },
             onImportFolder = onImportFolder,
             onCloneGithub = onShowCloneDialog,

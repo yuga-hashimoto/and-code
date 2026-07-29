@@ -20,18 +20,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.DriveFolderUpload
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.WifiFind
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -71,7 +67,6 @@ import com.yugahashimoto.andcode.runtime.LocalRuntimeStatus
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.RuntimeType
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
-import com.yugahashimoto.andcode.runtime.local.ClaudePermissionMode
 import com.yugahashimoto.andcode.ui.components.SectionCard
 import com.yugahashimoto.andcode.ui.components.StatusChip
 import com.yugahashimoto.andcode.ui.runtimeAgentIcon
@@ -90,19 +85,6 @@ fun WorkspacesScreen(
     onTestConnection: suspend (ConnectionFormState) -> Result<OpenCodeHealth>,
     onRefresh: () -> Unit,
     onOpenWorkspace: (WorkspaceRef) -> Unit,
-    onSetupLocal: () -> Unit,
-    onStartLocal: () -> Unit,
-    onStopLocal: () -> Unit,
-    onReinstallLocal: () -> Unit,
-    onInstallClaude: () -> Unit = {},
-    onUpdateClaude: () -> Unit = {},
-    onSelectClaudePermissionMode: (ClaudePermissionMode) -> Unit = {},
-    onBeginClaudeSignIn: () -> Unit = {},
-    onSubmitClaudeSignInCode: (String) -> Unit = {},
-    onCancelClaudeSignIn: () -> Unit = {},
-    onSignOutClaude: () -> Unit = {},
-    onOpenUrl: (String) -> Unit = {},
-    onOpenLocalManagement: () -> Unit,
     onImportFolder: () -> Unit = {},
     onCloneGithub: () -> Unit = {},
     onRemoveProject: (String) -> Unit = {},
@@ -292,96 +274,6 @@ fun WorkspacesScreen(
                         if (remoteProfile != null) {
                             IconButton(onClick = { editing = ConnectionFormState.from(remoteProfile) }) {
                                 Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.edit_description))
-                            }
-                        }
-                    }
-                    if (target.agent == LocalAgent.CLAUDE_CODE) {
-                        ClaudeCodeCard(
-                            claude = state.claude,
-                            onInstall = onInstallClaude,
-                            onUpdate = onUpdateClaude,
-                            onSelectPermissionMode = onSelectClaudePermissionMode,
-                            onSignIn = onBeginClaudeSignIn,
-                            onSubmitCode = onSubmitClaudeSignInCode,
-                            onCancelSignIn = onCancelClaudeSignIn,
-                            onSignOut = onSignOutClaude,
-                            onOpenUrl = onOpenUrl,
-                        )
-                    } else if (target.type == RuntimeType.LOCAL && target.agent != LocalAgent.ANTIGRAVITY) {
-                        Spacer(Modifier.height(12.dp))
-                        when (val local = state.localStatus) {
-                            LocalRuntimeStatus.NotInstalled -> {
-                                Button(onClick = onSetupLocal, modifier = Modifier.fillMaxWidth()) {
-                                    Icon(Icons.Default.Build, contentDescription = stringResource(R.string.cd_setup))
-                                    Spacer(Modifier.padding(horizontal = 4.dp))
-                                    Text(stringResource(R.string.setup_this_device_button))
-                                }
-                            }
-                            is LocalRuntimeStatus.Installing -> {
-                                Text(local.step, style = MaterialTheme.typography.bodySmall)
-                                Spacer(Modifier.height(8.dp))
-                                if (local.progress != null) {
-                                    LinearProgressIndicator(
-                                        progress = { local.progress.coerceIn(0f, 1f) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                } else {
-                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                                }
-                            }
-                            is LocalRuntimeStatus.Starting -> {
-                                Text(stringResource(R.string.starting_opencode_version, local.version))
-                                Spacer(Modifier.height(8.dp))
-                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                            }
-                            is LocalRuntimeStatus.Updating -> {
-                                Text(local.step, style = MaterialTheme.typography.bodySmall)
-                                Spacer(Modifier.height(8.dp))
-                                if (local.progress != null) {
-                                    LinearProgressIndicator(
-                                        progress = { local.progress.coerceIn(0f, 1f) },
-                                        modifier = Modifier.fillMaxWidth(),
-                                    )
-                                } else {
-                                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-                                }
-                            }
-                            is LocalRuntimeStatus.Stopped -> {
-                                Button(onClick = onStartLocal, modifier = Modifier.fillMaxWidth()) {
-                                    Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.cd_start))
-                                    Spacer(Modifier.padding(horizontal = 4.dp))
-                                    Text(stringResource(R.string.start_opencode_button))
-                                }
-                            }
-                            is LocalRuntimeStatus.Ready -> {
-                                OutlinedButton(onClick = onStopLocal, modifier = Modifier.fillMaxWidth()) {
-                                    Icon(Icons.Default.Stop, contentDescription = stringResource(R.string.cd_stop))
-                                    Spacer(Modifier.padding(horizontal = 4.dp))
-                                    Text(stringResource(R.string.stop_local_runtime_button))
-                                }
-                            }
-                            is LocalRuntimeStatus.Broken -> {
-                                Button(onClick = onReinstallLocal, modifier = Modifier.fillMaxWidth()) {
-                                    Icon(Icons.Default.Build, contentDescription = stringResource(R.string.cd_repair))
-                                    Spacer(Modifier.padding(horizontal = 4.dp))
-                                    Text(stringResource(R.string.repair_and_resetup_button))
-                                }
-                            }
-                            is LocalRuntimeStatus.UnsupportedAbi -> Unit
-                        }
-                        if (state.localStatus !is LocalRuntimeStatus.UnsupportedAbi) {
-                            Spacer(Modifier.height(8.dp))
-                            OutlinedButton(
-                                onClick = onOpenLocalManagement,
-                                enabled =
-                                    state.localStatus !is LocalRuntimeStatus.Installing &&
-                                        state.localStatus !is LocalRuntimeStatus.Starting &&
-                                        state.localStatus !is LocalRuntimeStatus.Updating,
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                Icon(Icons.Default.Settings, contentDescription = stringResource(R.string.cd_diagnostics))
-                                Spacer(Modifier.padding(horizontal = 4.dp))
-                                Text(stringResource(R.string.diagnostics_and_management_button))
                             }
                         }
                     }
