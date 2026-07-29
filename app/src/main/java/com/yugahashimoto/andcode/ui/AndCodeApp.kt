@@ -90,6 +90,7 @@ import com.yugahashimoto.andcode.ui.navigation.ROUTE_CHAT
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_ONBOARDING
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_REMOTE_CONNECTION
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_SCHEDULE
+import com.yugahashimoto.andcode.ui.navigation.ROUTE_SETTINGS_PROVIDERS
 import com.yugahashimoto.andcode.ui.navigation.SESSION_DETAIL_ROUTE
 import com.yugahashimoto.andcode.ui.navigation.settingsNavGraph
 import com.yugahashimoto.andcode.ui.navigation.workspaceNavGraph
@@ -100,7 +101,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -248,12 +248,13 @@ fun AndCodeApp(
 
     val speechManager = remember { SpeechRecognizerManager(context.applicationContext) }
     val voiceScope = rememberCoroutineScope()
-    settingsViewModel.onLocalRuntimeRestartNeeded = {
-        voiceScope.launch {
-            workspaceViewModel.stopLocalRuntime()
-            delay(2000)
-            workspaceViewModel.startLocalRuntime()
+    settingsViewModel.onProviderAuthCompleted = {
+        navController.navigate(ROUTE_SETTINGS_PROVIDERS) {
+            launchSingleTop = true
         }
+    }
+    settingsViewModel.onLocalRuntimeRestartNeeded = {
+        workspaceViewModel.restartLocalRuntime()
     }
     var voiceJob by remember { mutableStateOf<Job?>(null) }
     var startVoiceAfterPermission by remember { mutableStateOf(false) }

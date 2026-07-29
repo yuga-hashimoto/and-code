@@ -200,6 +200,8 @@ class WorkspaceViewModel(
 
     fun stopLocalRuntime() = localRuntimeController.stop()
 
+    fun restartLocalRuntime() = localRuntimeController.restart()
+
     fun reinstallLocalRuntime() = localRuntimeController.reinstall()
 
     fun installClaudeCode() = claudeCode?.install() ?: Unit

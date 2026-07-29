@@ -89,6 +89,7 @@ class SettingsViewModel(
             clientId = com.yugahashimoto.andcode.BuildConfig.GITHUB_CLIENT_ID,
         )
     var onLocalRuntimeRestartNeeded: (() -> Unit)? = null
+    var onProviderAuthCompleted: (() -> Unit)? = null
 
     private data class CoreState(
         val runtime: RuntimeCatalogState,
@@ -411,7 +412,7 @@ class SettingsViewModel(
         val dialog = oauthState.value.dialog ?: return
         val methodIndex = dialog.methodIndex ?: return
         if (dialog.authorization?.method != "code" || code.isBlank()) return
-        val target = registry.selected.value ?: return
+        val target = providerTarget() ?: return
         if (providerAuthJob?.isActive == true) return
         providerAuthJob =
             viewModelScope.launch {
@@ -489,8 +490,11 @@ class SettingsViewModel(
             )
         }
         settingsTick.update { it + 1 }
-        if (notice == ProviderAuthNotice.CONNECTED && registry.selected.value?.kind == BackendKind.LOCAL) {
-            onLocalRuntimeRestartNeeded?.invoke()
+        if (notice == ProviderAuthNotice.CONNECTED) {
+            onProviderAuthCompleted?.invoke()
+            if (providerTarget()?.kind == BackendKind.LOCAL) {
+                onLocalRuntimeRestartNeeded?.invoke()
+            }
         }
         catalog.refreshProvidersOnly()
         catalog.refresh()

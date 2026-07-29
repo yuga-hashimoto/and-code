@@ -32,6 +32,7 @@ internal enum class LocalRuntimeServiceCommand {
     Rollback,
     Delete,
     Stop,
+    Restart,
     Restore,
     Ignore,
 }
@@ -45,6 +46,7 @@ internal fun localRuntimeServiceCommand(action: String?): LocalRuntimeServiceCom
         LocalRuntimeService.ACTION_ROLLBACK -> LocalRuntimeServiceCommand.Rollback
         LocalRuntimeService.ACTION_DELETE -> LocalRuntimeServiceCommand.Delete
         LocalRuntimeService.ACTION_STOP -> LocalRuntimeServiceCommand.Stop
+        LocalRuntimeService.ACTION_RESTART -> LocalRuntimeServiceCommand.Restart
         null -> LocalRuntimeServiceCommand.Restore
         else -> LocalRuntimeServiceCommand.Ignore
     }
@@ -126,6 +128,13 @@ class LocalRuntimeService : Service() {
                     manager.stop()
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
+                }
+            }
+            LocalRuntimeServiceCommand.Restart -> {
+                autoRestartEnabled = true
+                launchOperation {
+                    manager.stop()
+                    manager.start()
                 }
             }
             LocalRuntimeServiceCommand.Restore -> {
@@ -272,6 +281,7 @@ class LocalRuntimeService : Service() {
         const val ACTION_INSTALL_AND_START = "com.yugahashimoto.andcode.local.INSTALL_AND_START"
         const val ACTION_START = "com.yugahashimoto.andcode.local.START"
         const val ACTION_STOP = "com.yugahashimoto.andcode.local.STOP"
+        const val ACTION_RESTART = "com.yugahashimoto.andcode.local.RESTART"
         const val ACTION_REINSTALL = "com.yugahashimoto.andcode.local.REINSTALL"
         const val ACTION_UPDATE = "com.yugahashimoto.andcode.local.UPDATE"
         const val ACTION_ROLLBACK = "com.yugahashimoto.andcode.local.ROLLBACK"
@@ -304,6 +314,8 @@ class LocalRuntimeServiceController(private val context: Context) {
     fun start() = LocalRuntimeService.send(context, LocalRuntimeService.ACTION_START)
 
     fun stop() = LocalRuntimeService.send(context, LocalRuntimeService.ACTION_STOP)
+
+    fun restart() = LocalRuntimeService.send(context, LocalRuntimeService.ACTION_RESTART)
 
     fun reinstall() = LocalRuntimeService.send(context, LocalRuntimeService.ACTION_REINSTALL)
 

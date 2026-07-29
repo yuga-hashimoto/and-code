@@ -35,6 +35,10 @@ class LocalRuntimeServiceCommandTest {
             LocalRuntimeServiceCommand.Stop,
             localRuntimeServiceCommand(LocalRuntimeService.ACTION_STOP),
         )
+        assertEquals(
+            LocalRuntimeServiceCommand.Restart,
+            localRuntimeServiceCommand(LocalRuntimeService.ACTION_RESTART),
+        )
         assertEquals(LocalRuntimeServiceCommand.Restore, localRuntimeServiceCommand(null))
     }
 
