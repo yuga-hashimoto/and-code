@@ -39,11 +39,22 @@
     <string name="assistant_workspace_label">Espace de travail</string>
     <string name="voice_conversation_section">Conversation vocale</string>
     <string name="voice_response_description">Lit à voix haute les réponses de l’agent.</string>
+    <string name="tts_provider_label">Fournisseur vocal</string>
+    <string name="tts_provider_android">Synthèse vocale Android</string>
+    <string name="tts_engine_label">Moteur vocal Android</string>
+    <string name="tts_engine_system_default">Valeur système</string>
+    <string name="tts_api_key_label">Clé API</string>
+    <string name="tts_voice_label">Voix</string>
+    <string name="tts_voice_id_label">ID vocal</string>
+    <string name="tts_model_label">Modèle</string>
     <string name="wake_word_section_title">Invocation</string>
     <string name="wake_word_pack_required">Le pack de mot de réveil optionnel n\'est pas encore installé.</string>
-    <string name="wake_word_description">Écoutez « hey opencode » pour démarrer l\'assistant en mains libres.</string>
+    <string name="wake_word_description">Écoutez « hey Mycroft » pour démarrer l\'assistant en mains libres.</string>
     <string name="wake_word_notification_channel">Détection du mot de réveil</string>
     <string name="wake_word_notification_title">Mot de réveil actif</string>
-    <string name="wake_word_notification_text">Écoute de « hey opencode »…</string>
+    <string name="wake_word_notification_text">Écoute de « hey Mycroft »…</string>
     <string name="wake_word_notification_stop">Arrêter</string>
+    <string name="assistant_setup_hint">Choisissez AndCode comme assistant numérique par défaut.</string>
+    <string name="wake_word_requires_assistant">Définissez AndCode comme assistant par défaut avant d’activer le mot de réveil.</string>
+    <string name="wake_word_start_failed">Impossible de démarrer la détection du mot de réveil.</string>
 </resources>

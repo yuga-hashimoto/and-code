@@ -134,6 +134,7 @@ private fun relativeTimeLabel(
 @Composable
 fun AndCodeApp(
     onOpenAssistantSettings: () -> Unit,
+    assistantActive: Boolean = false,
     appTheme: AppTheme = AppTheme.DARK,
     uiFontSize: Int = 16,
     targetSessionId: String? = null,
@@ -303,7 +304,19 @@ fun AndCodeApp(
                 startOrStopVoiceInput()
             } else if (granted && startWakeWordAfterPermission) {
                 startWakeWordAfterPermission = false
-                com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(context)
+                val started =
+                    com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
+                        context,
+                        preferences.wakeWordModel,
+                    )
+                settingsViewModel.setWakeWordEnabled(started)
+                if (!started) {
+                    android.widget.Toast.makeText(
+                        context,
+                        R.string.wake_word_start_failed,
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                }
             } else if (!granted) {
                 startVoiceAfterPermission = false
                 startWakeWordAfterPermission = false
@@ -374,14 +387,20 @@ fun AndCodeApp(
         }
     }
 
-    LaunchedEffect(preferences.wakeWordEnabled, preferences.wakeWordModel) {
-        if (preferences.wakeWordEnabled && hasMicrophonePermission()) {
-            if (!com.yugahashimoto.andcode.feature.wakeword.WakeWordService.isRunning(context)) {
+    LaunchedEffect(preferences.wakeWordEnabled, preferences.wakeWordModel, assistantActive) {
+        if (preferences.wakeWordEnabled && hasMicrophonePermission() && assistantActive) {
+            val started =
                 com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
                     context,
                     model = preferences.wakeWordModel,
                 )
-            }
+            if (!started) settingsViewModel.setWakeWordEnabled(false)
+        } else if (preferences.wakeWordEnabled && !assistantActive) {
+            settingsViewModel.setWakeWordEnabled(false)
+            com.yugahashimoto.andcode.feature.wakeword.WakeWordService.stop(context)
+        } else if (preferences.wakeWordEnabled && !hasMicrophonePermission()) {
+            settingsViewModel.setWakeWordEnabled(false)
+            com.yugahashimoto.andcode.feature.wakeword.WakeWordService.stop(context)
         } else if (!preferences.wakeWordEnabled) {
             com.yugahashimoto.andcode.feature.wakeword.WakeWordService.stop(context)
         }
@@ -892,6 +911,7 @@ fun AndCodeApp(
                     appVersion = appVersion,
                     onOpenDrawer = { drawerScope.launch { drawerState.open() } },
                     onOpenAssistantSettings = onOpenAssistantSettings,
+                    assistantActive = { assistantActive },
                     onShowDiagnostics = { showDiagnostics = true },
                     preferences = { preferences },
                     appPreferences = app.preferences,

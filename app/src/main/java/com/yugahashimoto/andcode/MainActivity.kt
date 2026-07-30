@@ -24,14 +24,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.core.ProjectLinks
+import com.yugahashimoto.andcode.feature.assistant.AndCodeVoiceInteractionService
+import com.yugahashimoto.andcode.feature.assistant.AssistantStatus
 import com.yugahashimoto.andcode.feature.support.GitHubStarPromptDialog
 import com.yugahashimoto.andcode.feature.support.openProjectLink
 import com.yugahashimoto.andcode.ui.AndCodeApp
+import java.util.UUID
 
 class MainActivity : ComponentActivity() {
     private var targetSessionId by mutableStateOf<String?>(null)
     private var deepLinkConnectionUrl by mutableStateOf<String?>(null)
     private var showInitialStarPrompt by mutableStateOf(false)
+    private var assistantActive by mutableStateOf(false)
 
     private val app: AndCodeApplication
         get() = application as AndCodeApplication
@@ -39,6 +43,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         handleDeepLink(intent)
+        assistantActive = AssistantStatus.isActive(this)
         showInitialStarPrompt = app.githubStarCoordinator.shouldShowInitialPrompt()
         app.githubStarCoordinator.refresh()
 
@@ -65,6 +70,7 @@ class MainActivity : ComponentActivity() {
             Box {
                 AndCodeApp(
                     onOpenAssistantSettings = ::openAssistantSettings,
+                    assistantActive = assistantActive,
                     targetSessionId = targetSessionId,
                     deepLinkConnectionUrl = deepLinkConnectionUrl,
                 )
@@ -109,6 +115,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        assistantActive = AssistantStatus.isActive(this)
         app.githubStarCoordinator.onAppResumed()
     }
 
@@ -140,6 +147,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openAssistantSettings() {
+        if (assistantActive) {
+            AndCodeVoiceInteractionService.show(this, UUID.randomUUID().toString())
+            return
+        }
+        Toast.makeText(this, R.string.assistant_setup_hint, Toast.LENGTH_LONG).show()
         val roleOpened =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val roleManager = getSystemService(RoleManager::class.java)

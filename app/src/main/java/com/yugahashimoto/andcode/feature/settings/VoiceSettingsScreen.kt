@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Mic
@@ -38,6 +39,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
@@ -47,6 +50,15 @@ import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
 @Composable
 fun VoiceSettingsScreen(
     ttsEnabled: Boolean,
+    ttsProvider: String = "android",
+    ttsAndroidEngine: String? = null,
+    androidTtsEngines: List<Pair<String, String>> = emptyList(),
+    ttsOpenAiApiKey: String = "",
+    ttsOpenAiVoice: String = "alloy",
+    ttsOpenAiModel: String = "gpt-4o-mini-tts",
+    ttsElevenLabsApiKey: String = "",
+    ttsElevenLabsVoiceId: String = "",
+    ttsElevenLabsModel: String = "eleven_multilingual_v2",
     continuousConversation: Boolean,
     wakeWordEnabled: Boolean,
     wakeWordModel: String = "hey_mycroft",
@@ -55,6 +67,14 @@ fun VoiceSettingsScreen(
     availableRuntimes: List<Pair<String, String>> = emptyList(),
     assistantWorkspacePath: String = "",
     onTtsChange: (Boolean) -> Unit,
+    onTtsProviderChange: (String) -> Unit = {},
+    onTtsAndroidEngineChange: (String?) -> Unit = {},
+    onTtsOpenAiApiKeyChange: (String) -> Unit = {},
+    onTtsOpenAiVoiceChange: (String) -> Unit = {},
+    onTtsOpenAiModelChange: (String) -> Unit = {},
+    onTtsElevenLabsApiKeyChange: (String) -> Unit = {},
+    onTtsElevenLabsVoiceIdChange: (String) -> Unit = {},
+    onTtsElevenLabsModelChange: (String) -> Unit = {},
     onContinuousChange: (Boolean) -> Unit,
     onWakeWordChange: (Boolean) -> Unit,
     onWakeWordModelChange: (String) -> Unit = {},
@@ -108,6 +128,67 @@ fun VoiceSettingsScreen(
                         checked = ttsEnabled,
                         onCheckedChange = onTtsChange,
                     )
+                    if (ttsEnabled) {
+                        VoiceDivider()
+                        ChoiceDropdown(
+                            label = stringResource(R.string.tts_provider_label),
+                            selected = ttsProvider,
+                            options =
+                                listOf(
+                                    "android" to stringResource(R.string.tts_provider_android),
+                                    "openai" to "OpenAI",
+                                    "elevenlabs" to "ElevenLabs",
+                                ),
+                            onSelect = onTtsProviderChange,
+                        )
+                        when (ttsProvider) {
+                            "android" -> {
+                                VoiceDivider()
+                                ChoiceDropdown(
+                                    label = stringResource(R.string.tts_engine_label),
+                                    selected = ttsAndroidEngine.orEmpty(),
+                                    options = listOf("" to stringResource(R.string.tts_engine_system_default)) + androidTtsEngines,
+                                    onSelect = { onTtsAndroidEngineChange(it.takeIf(String::isNotBlank)) },
+                                )
+                            }
+                            "openai" -> {
+                                VoiceDivider()
+                                SecretTextField(
+                                    label = stringResource(R.string.tts_api_key_label),
+                                    value = ttsOpenAiApiKey,
+                                    onValueChange = onTtsOpenAiApiKeyChange,
+                                )
+                                VoiceTextField(
+                                    label = stringResource(R.string.tts_voice_label),
+                                    value = ttsOpenAiVoice,
+                                    onValueChange = onTtsOpenAiVoiceChange,
+                                )
+                                VoiceTextField(
+                                    label = stringResource(R.string.tts_model_label),
+                                    value = ttsOpenAiModel,
+                                    onValueChange = onTtsOpenAiModelChange,
+                                )
+                            }
+                            "elevenlabs" -> {
+                                VoiceDivider()
+                                SecretTextField(
+                                    label = stringResource(R.string.tts_api_key_label),
+                                    value = ttsElevenLabsApiKey,
+                                    onValueChange = onTtsElevenLabsApiKeyChange,
+                                )
+                                VoiceTextField(
+                                    label = stringResource(R.string.tts_voice_id_label),
+                                    value = ttsElevenLabsVoiceId,
+                                    onValueChange = onTtsElevenLabsVoiceIdChange,
+                                )
+                                VoiceTextField(
+                                    label = stringResource(R.string.tts_model_label),
+                                    value = ttsElevenLabsModel,
+                                    onValueChange = onTtsElevenLabsModelChange,
+                                )
+                            }
+                        }
+                    }
                     VoiceDivider()
                     VoiceToggleRow(
                         icon = Icons.Default.Mic,
@@ -157,6 +238,76 @@ fun VoiceSettingsScreen(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ChoiceDropdown(
+    label: String,
+    selected: String,
+    options: List<Pair<String, String>>,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = options.firstOrNull { it.first == selected }?.second ?: selected
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = it },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+    ) {
+        OutlinedTextField(
+            value = selectedLabel,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text(label) },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
+            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+            singleLine = true,
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            options.forEach { (value, displayName) ->
+                DropdownMenuItem(
+                    text = { Text(displayName) },
+                    onClick = {
+                        onSelect(value)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun VoiceTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+        singleLine = true,
+    )
+}
+
+@Composable
+private fun SecretTextField(
+    label: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
+        singleLine = true,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

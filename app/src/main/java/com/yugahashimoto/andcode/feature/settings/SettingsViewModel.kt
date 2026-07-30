@@ -35,6 +35,14 @@ data class SettingsUiState(
     val modelId: String? = null,
     val agentId: String? = null,
     val ttsEnabled: Boolean = true,
+    val ttsProvider: String = "android",
+    val ttsAndroidEngine: String? = null,
+    val ttsOpenAiApiKey: String = "",
+    val ttsOpenAiVoice: String = "alloy",
+    val ttsOpenAiModel: String = "gpt-4o-mini-tts",
+    val ttsElevenLabsApiKey: String = "",
+    val ttsElevenLabsVoiceId: String = "",
+    val ttsElevenLabsModel: String = "eleven_multilingual_v2",
     val continuousConversation: Boolean = false,
     val wakeWordEnabled: Boolean = false,
     val wakeWordModel: String = "hey_mycroft",
@@ -154,6 +162,14 @@ class SettingsViewModel(
                 modelId = core.preferences.modelId,
                 agentId = core.preferences.agentId,
                 ttsEnabled = core.preferences.ttsEnabled,
+                ttsProvider = core.preferences.ttsProvider,
+                ttsAndroidEngine = core.preferences.ttsAndroidEngine,
+                ttsOpenAiApiKey = core.preferences.ttsOpenAiApiKey,
+                ttsOpenAiVoice = core.preferences.ttsOpenAiVoice,
+                ttsOpenAiModel = core.preferences.ttsOpenAiModel,
+                ttsElevenLabsApiKey = core.preferences.ttsElevenLabsApiKey,
+                ttsElevenLabsVoiceId = core.preferences.ttsElevenLabsVoiceId,
+                ttsElevenLabsModel = core.preferences.ttsElevenLabsModel,
                 continuousConversation = core.preferences.continuousConversation,
                 wakeWordEnabled = core.preferences.wakeWordEnabled,
                 wakeWordModel = core.preferences.wakeWordModel,
@@ -187,6 +203,22 @@ class SettingsViewModel(
     fun selectAgent(agentId: String) = preferences.selectAgent(agentId)
 
     fun setTtsEnabled(enabled: Boolean) = preferences.setTtsEnabled(enabled)
+
+    fun setTtsProvider(provider: String) = preferences.setTtsProvider(provider)
+
+    fun setTtsAndroidEngine(engine: String?) = preferences.setTtsAndroidEngine(engine)
+
+    fun setTtsOpenAiApiKey(apiKey: String) = preferences.setTtsOpenAiApiKey(apiKey)
+
+    fun setTtsOpenAiVoice(voice: String) = preferences.setTtsOpenAiVoice(voice)
+
+    fun setTtsOpenAiModel(model: String) = preferences.setTtsOpenAiModel(model)
+
+    fun setTtsElevenLabsApiKey(apiKey: String) = preferences.setTtsElevenLabsApiKey(apiKey)
+
+    fun setTtsElevenLabsVoiceId(voiceId: String) = preferences.setTtsElevenLabsVoiceId(voiceId)
+
+    fun setTtsElevenLabsModel(model: String) = preferences.setTtsElevenLabsModel(model)
 
     fun setContinuousConversation(enabled: Boolean) = preferences.setContinuousConversation(enabled)
 

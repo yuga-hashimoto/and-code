@@ -39,11 +39,22 @@
     <string name="assistant_workspace_label">Рабочая область</string>
     <string name="voice_conversation_section">Голосовой разговор</string>
     <string name="voice_response_description">Зачитывать ответы агента вслух.</string>
+    <string name="tts_provider_label">Провайдер речи</string>
+    <string name="tts_provider_android">Синтез речи Android</string>
+    <string name="tts_engine_label">Речевой движок Android</string>
+    <string name="tts_engine_system_default">Системный по умолчанию</string>
+    <string name="tts_api_key_label">API-ключ</string>
+    <string name="tts_voice_label">Голос</string>
+    <string name="tts_voice_id_label">ID голоса</string>
+    <string name="tts_model_label">Модель</string>
     <string name="wake_word_section_title">Активация</string>
     <string name="wake_word_pack_required">Необязательный пакет ключевого слова ещё не установлен.</string>
-    <string name="wake_word_description">Слушайте «hey opencode», чтобы запустить ассистента без рук.</string>
+    <string name="wake_word_description">Слушайте «hey Mycroft», чтобы запустить ассистента без рук.</string>
     <string name="wake_word_notification_channel">Обнаружение ключевого слова</string>
     <string name="wake_word_notification_title">Ключевое слово активно</string>
-    <string name="wake_word_notification_text">Слушаю «hey opencode»…</string>
+    <string name="wake_word_notification_text">Слушаю «hey Mycroft»…</string>
     <string name="wake_word_notification_stop">Остановить</string>
+    <string name="assistant_setup_hint">Выберите AndCode в качестве цифрового помощника по умолчанию.</string>
+    <string name="wake_word_requires_assistant">Назначьте AndCode помощником по умолчанию перед включением ключевого слова.</string>
+    <string name="wake_word_start_failed">Не удалось запустить обнаружение ключевого слова.</string>
 </resources>

@@ -39,11 +39,22 @@
     <string name="assistant_workspace_label">デフォルトワークスペース</string>
     <string name="voice_conversation_section">音声会話</string>
     <string name="voice_response_description">エージェントの応答を読み上げます。</string>
+    <string name="tts_provider_label">音声プロバイダー</string>
+    <string name="tts_provider_android">Androidテキスト読み上げ</string>
+    <string name="tts_engine_label">Android音声エンジン</string>
+    <string name="tts_engine_system_default">システム既定</string>
+    <string name="tts_api_key_label">APIキー</string>
+    <string name="tts_voice_label">音声</string>
+    <string name="tts_voice_id_label">音声ID</string>
+    <string name="tts_model_label">モデル</string>
     <string name="wake_word_section_title">呼びかけ</string>
     <string name="wake_word_pack_required">ウェイクワード用の追加パックはまだ導入されていません。</string>
-    <string name="wake_word_description">「hey opencode」でハンズフリーでアシスタントを起動します。</string>
+    <string name="wake_word_description">「hey Mycroft」でハンズフリーでアシスタントを起動します。</string>
     <string name="wake_word_notification_channel">ウェイクワード検出</string>
     <string name="wake_word_notification_title">ウェイクワード有効</string>
-    <string name="wake_word_notification_text">「hey opencode」を待機中…</string>
+    <string name="wake_word_notification_text">「hey Mycroft」を待機中…</string>
     <string name="wake_word_notification_stop">停止</string>
+    <string name="assistant_setup_hint">AndCodeをデジタルアシスタントの既定に設定してください。</string>
+    <string name="wake_word_requires_assistant">ウェイクワードを有効にする前に、AndCodeを既定のアシスタントに設定してください。</string>
+    <string name="wake_word_start_failed">ウェイクワード検出を開始できませんでした。</string>
 </resources>

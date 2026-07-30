@@ -537,7 +537,7 @@
     <string name="section_assistant_settings">アシスタント設定</string>
     <string name="section_system_settings">システム設定</string>
     <string name="section_app_settings">アプリ設定</string>
-    <string name="settings_home_assistant_row">ホームアシスタント</string>
+    <string name="settings_home_assistant_row">デジタルアシスタント</string>
     <string name="assistant_enabled_pill">有効</string>
     <string name="assistant_disabled_pill">無効</string>
     <string name="wake_word_row_title">ウェイクワード</string>

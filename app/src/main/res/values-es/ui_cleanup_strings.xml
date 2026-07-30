@@ -39,11 +39,22 @@
     <string name="assistant_workspace_label">Espacio de trabajo</string>
     <string name="voice_conversation_section">Conversación por voz</string>
     <string name="voice_response_description">Lee en voz alta las respuestas del agente.</string>
+    <string name="tts_provider_label">Proveedor de voz</string>
+    <string name="tts_provider_android">Texto a voz de Android</string>
+    <string name="tts_engine_label">Motor de voz de Android</string>
+    <string name="tts_engine_system_default">Predeterminado del sistema</string>
+    <string name="tts_api_key_label">Clave API</string>
+    <string name="tts_voice_label">Voz</string>
+    <string name="tts_voice_id_label">ID de voz</string>
+    <string name="tts_model_label">Modelo</string>
     <string name="wake_word_section_title">Invocación</string>
     <string name="wake_word_pack_required">El paquete opcional de palabra de activación aún no está instalado.</string>
-    <string name="wake_word_description">Escucha \"hey opencode\" para iniciar el asistente en modo manos libres.</string>
+    <string name="wake_word_description">Escucha \"hey Mycroft\" para iniciar el asistente en modo manos libres.</string>
     <string name="wake_word_notification_channel">Detección de palabra de activación</string>
     <string name="wake_word_notification_title">Palabra de activación activa</string>
-    <string name="wake_word_notification_text">Escuchando \"hey opencode\"…</string>
+    <string name="wake_word_notification_text">Escuchando \"hey Mycroft\"…</string>
     <string name="wake_word_notification_stop">Detener</string>
+    <string name="assistant_setup_hint">Elige AndCode como tu asistente digital predeterminado.</string>
+    <string name="wake_word_requires_assistant">Establece AndCode como asistente predeterminado antes de activar la palabra de activación.</string>
+    <string name="wake_word_start_failed">No se pudo iniciar la detección de la palabra de activación.</string>
 </resources>

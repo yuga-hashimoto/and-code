@@ -58,6 +58,38 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         get() = preferences.getBoolean(KEY_TTS_ENABLED, true)
         set(value) = preferences.edit().putBoolean(KEY_TTS_ENABLED, value).apply()
 
+    var ttsProvider: String
+        get() = preferences.getString(KEY_TTS_PROVIDER, "android") ?: "android"
+        set(value) = preferences.edit().putString(KEY_TTS_PROVIDER, value).apply()
+
+    var ttsAndroidEngine: String?
+        get() = preferences.getString(KEY_TTS_ANDROID_ENGINE, null)
+        set(value) = preferences.edit().putString(KEY_TTS_ANDROID_ENGINE, value).apply()
+
+    var ttsOpenAiApiKey: String
+        get() = preferences.getString(KEY_TTS_OPENAI_API_KEY, "").orEmpty()
+        set(value) = preferences.edit().putString(KEY_TTS_OPENAI_API_KEY, value).apply()
+
+    var ttsOpenAiVoice: String
+        get() = preferences.getString(KEY_TTS_OPENAI_VOICE, "alloy") ?: "alloy"
+        set(value) = preferences.edit().putString(KEY_TTS_OPENAI_VOICE, value).apply()
+
+    var ttsOpenAiModel: String
+        get() = preferences.getString(KEY_TTS_OPENAI_MODEL, "gpt-4o-mini-tts") ?: "gpt-4o-mini-tts"
+        set(value) = preferences.edit().putString(KEY_TTS_OPENAI_MODEL, value).apply()
+
+    var ttsElevenLabsApiKey: String
+        get() = preferences.getString(KEY_TTS_ELEVENLABS_API_KEY, "").orEmpty()
+        set(value) = preferences.edit().putString(KEY_TTS_ELEVENLABS_API_KEY, value).apply()
+
+    var ttsElevenLabsVoiceId: String
+        get() = preferences.getString(KEY_TTS_ELEVENLABS_VOICE_ID, "").orEmpty()
+        set(value) = preferences.edit().putString(KEY_TTS_ELEVENLABS_VOICE_ID, value).apply()
+
+    var ttsElevenLabsModel: String
+        get() = preferences.getString(KEY_TTS_ELEVENLABS_MODEL, "eleven_multilingual_v2") ?: "eleven_multilingual_v2"
+        set(value) = preferences.edit().putString(KEY_TTS_ELEVENLABS_MODEL, value).apply()
+
     var continuousConversation: Boolean
         get() = preferences.getBoolean(KEY_CONTINUOUS_CONVERSATION, false)
         set(value) = preferences.edit().putBoolean(KEY_CONTINUOUS_CONVERSATION, value).apply()
@@ -301,6 +333,14 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         private const val KEY_CONNECTIONS = "connections"
         private const val KEY_SELECTED_CONNECTION = "selected_connection"
         private const val KEY_TTS_ENABLED = "tts_enabled"
+        private const val KEY_TTS_PROVIDER = "tts_provider"
+        private const val KEY_TTS_ANDROID_ENGINE = "tts_android_engine"
+        private const val KEY_TTS_OPENAI_API_KEY = "tts_openai_api_key"
+        private const val KEY_TTS_OPENAI_VOICE = "tts_openai_voice"
+        private const val KEY_TTS_OPENAI_MODEL = "tts_openai_model"
+        private const val KEY_TTS_ELEVENLABS_API_KEY = "tts_elevenlabs_api_key"
+        private const val KEY_TTS_ELEVENLABS_VOICE_ID = "tts_elevenlabs_voice_id"
+        private const val KEY_TTS_ELEVENLABS_MODEL = "tts_elevenlabs_model"
         private const val KEY_CONTINUOUS_CONVERSATION = "continuous_conversation"
         private const val KEY_WAKE_WORD_ENABLED = "wake_word_enabled"
         private const val KEY_WAKE_WORD_MODEL = "wake_word_model"

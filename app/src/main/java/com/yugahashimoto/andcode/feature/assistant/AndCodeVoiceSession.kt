@@ -66,6 +66,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class AndCodeVoiceSession(context: Context) :
     VoiceInteractionSession(context),
@@ -87,6 +88,10 @@ class AndCodeVoiceSession(context: Context) :
     private var preferredWorkspace: String? = null
     private var eventJob: Job? = null
     private var listeningJob: Job? = null
+    private var responseJob: Job? = null
+    private var sessionToken: String? = null
+    private var sessionVisible = false
+    private var sessionEnded = true
     private var sessionId: String? = null
     private val responseParts = linkedMapOf<String, String>()
     private val textPartIds = mutableSetOf<String>()
@@ -105,8 +110,41 @@ class AndCodeVoiceSession(context: Context) :
         savedStateController.performRestore(null)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_CREATE)
         speech = SpeechRecognizerManager(context)
-        tts = TTSManager(context)
+        tts = TTSManager(context, ttsConfiguration())
     }
+
+    private fun ttsConfiguration(): TTSProviderConfig =
+        when (settings.ttsProvider) {
+            "openai" ->
+                if (
+                    settings.ttsOpenAiApiKey.isNotBlank() &&
+                    settings.ttsOpenAiVoice.isNotBlank() &&
+                    settings.ttsOpenAiModel.isNotBlank()
+                ) {
+                    TTSProviderConfig.OpenAI(
+                        apiKey = settings.ttsOpenAiApiKey,
+                        voice = settings.ttsOpenAiVoice,
+                        model = settings.ttsOpenAiModel,
+                    )
+                } else {
+                    TTSProviderConfig.Android(settings.ttsAndroidEngine)
+                }
+            "elevenlabs" ->
+                if (
+                    settings.ttsElevenLabsApiKey.isNotBlank() &&
+                    settings.ttsElevenLabsVoiceId.isNotBlank() &&
+                    settings.ttsElevenLabsModel.isNotBlank()
+                ) {
+                    TTSProviderConfig.ElevenLabs(
+                        apiKey = settings.ttsElevenLabsApiKey,
+                        voiceId = settings.ttsElevenLabsVoiceId,
+                        model = settings.ttsElevenLabsModel,
+                    )
+                } else {
+                    TTSProviderConfig.Android(settings.ttsAndroidEngine)
+                }
+            else -> TTSProviderConfig.Android(settings.ttsAndroidEngine)
+        }
 
     override fun onCreateContentView(): View =
         ComposeView(context).apply {
@@ -135,6 +173,17 @@ class AndCodeVoiceSession(context: Context) :
         showFlags: Int,
     ) {
         super.onShow(args, showFlags)
+        sessionVisible = true
+        sessionEnded = false
+        sessionToken = args?.getString(AndCodeVoiceInteractionService.EXTRA_REQUEST_ID) ?: UUID.randomUUID().toString()
+        sessionToken?.let(com.yugahashimoto.andcode.feature.wakeword.WakeWordService::pauseForSession)
+        sessionToken?.let(com.yugahashimoto.andcode.feature.wakeword.WakeWordService::confirmSession)
+        speech.destroy()
+        speech = SpeechRecognizerManager(context)
+        responseHandled = false
+        responseParts.clear()
+        textPartIds.clear()
+        tts.configure(ttsConfiguration())
         if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
             lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_START)
         }
@@ -163,22 +212,35 @@ class AndCodeVoiceSession(context: Context) :
     }
 
     override fun onHide() {
+        sessionVisible = false
         listeningJob?.cancel()
+        responseJob?.cancel()
         eventJob?.cancel()
         speech.destroy()
         tts.stop()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_PAUSE)
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_STOP)
+        endWakeWordPause()
         super.onHide()
     }
 
     override fun onDestroy() {
+        sessionVisible = false
+        responseJob?.cancel()
         scope.cancel()
         speech.destroy()
         tts.shutdown()
         viewModelStore.clear()
         lifecycleRegistry.handleLifecycleEvent(Lifecycle.Event.ON_DESTROY)
+        endWakeWordPause()
         super.onDestroy()
+    }
+
+    private fun endWakeWordPause() {
+        if (sessionEnded) return
+        sessionEnded = true
+        sessionToken?.let(com.yugahashimoto.andcode.feature.wakeword.WakeWordService::resumeAfterSession)
+        sessionToken = null
     }
 
     private fun startEventCollection() {
@@ -327,15 +389,21 @@ class AndCodeVoiceSession(context: Context) :
             showError(context.getString(R.string.voice_no_answer_text))
             return
         }
-        scope.launch {
-            assistantState.value = VoiceState.SPEAKING
-            if (settings.ttsEnabled) tts.speak(answer)
-            assistantState.value = VoiceState.DONE
-            if (settings.continuousConversation) {
-                delay(300)
-                startListening()
+        responseJob =
+            scope.launch {
+                assistantState.value = VoiceState.SPEAKING
+                val spoken = !settings.ttsEnabled || tts.speak(answer)
+                if (!sessionVisible) return@launch
+                if (!spoken) {
+                    showError(context.getString(R.string.tts_error))
+                    return@launch
+                }
+                assistantState.value = VoiceState.DONE
+                if (settings.continuousConversation && sessionVisible) {
+                    delay(300)
+                    if (sessionVisible) startListening()
+                }
             }
-        }
     }
 
     private fun respondPermission(response: PermissionResponse) {

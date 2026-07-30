@@ -21,7 +21,7 @@ class OpenWakeWordDetector(
     private val modelName: String = DEFAULT_MODEL,
 ) {
     val keyword: String
-        get() = modelName.replace('_', ' ').replaceFirstChar { it.uppercase() }
+        get() = keywordForModel(modelName)
 
     private var melspecInterpreter: Interpreter? = null
     private var embeddingInterpreter: Interpreter? = null
@@ -60,7 +60,9 @@ class OpenWakeWordDetector(
     fun processAudio(samples: ShortArray): WakeWordResult? {
         if (!initialized) return null
 
-        val floatSamples = FloatArray(samples.size) { samples[it] / 32768f }
+        // The feature model was trained with PCM16 amplitudes represented as Float32,
+        // not normalized audio in the -1..1 range.
+        val floatSamples = pcm16ToFeatureInput(samples)
 
         for (sample in floatSamples) {
             if (rawBuffer.size >= MAX_RAW_BUFFER) rawBuffer.removeFirst()
@@ -79,8 +81,8 @@ class OpenWakeWordDetector(
     }
 
     private fun processFrame(): WakeWordResult? {
-        val melspec = computeMelspectrogram()
-        appendMelspec(melspec)
+        val melspecFrames = computeMelspectrogram()
+        appendMelspec(melspecFrames)
 
         val embedding = computeEmbedding() ?: return null
         featureBuffer.addLast(embedding)
@@ -96,8 +98,8 @@ class OpenWakeWordDetector(
         }
     }
 
-    private fun computeMelspectrogram(): FloatArray {
-        val interpreter = melspecInterpreter ?: return FloatArray(32)
+    private fun computeMelspectrogram(): Array<FloatArray> {
+        val interpreter = melspecInterpreter ?: return emptyArray()
 
         val startIdx = max(0, rawBuffer.size - FRAME_SIZE - CONTEXT_SAMPLES)
         val nSamples = rawBuffer.size - startIdx
@@ -117,18 +119,16 @@ class OpenWakeWordDetector(
 
         interpreter.run(input, output)
 
-        if (nFrames == 0) return FloatArray(32)
-        val lastFrame = output[0][nFrames - 1]
-        return FloatArray(32) { i ->
-            if (i < nBins) lastFrame[i] / 10f + 2f else 2f
+        return Array(nFrames) { frameIndex ->
+            FloatArray(32) { binIndex ->
+                if (binIndex < nBins) output[0][frameIndex][binIndex] / 10f + 2f else 2f
+            }
         }
     }
 
-    private fun appendMelspec(frame: FloatArray) {
-        melspecBuffer =
-            Array(76) { i ->
-                if (i < 75) melspecBuffer[i + 1] else frame
-            }
+    private fun appendMelspec(frames: Array<FloatArray>) {
+        if (frames.isEmpty()) return
+        melspecBuffer = appendFeatureFrames(melspecBuffer, frames, MELSPEC_WINDOW_FRAMES)
     }
 
     private fun computeEmbedding(): FloatArray? {
@@ -203,7 +203,18 @@ class OpenWakeWordDetector(
         private const val CONTEXT_SAMPLES = 480
         private const val MAX_RAW_BUFFER = SAMPLE_RATE * 10
         private const val FEATURE_BUFFER_MAX = 120
+        private const val MELSPEC_WINDOW_FRAMES = 76
         private const val DETECTION_THRESHOLD = 0.5f
         const val DEFAULT_MODEL = "hey_mycroft"
+
+        internal fun keywordForModel(model: String): String = model.replace('_', ' ').replaceFirstChar { it.uppercase() }
+
+        internal fun pcm16ToFeatureInput(samples: ShortArray): FloatArray = FloatArray(samples.size) { samples[it].toFloat() }
+
+        internal fun appendFeatureFrames(
+            existing: Array<FloatArray>,
+            frames: Array<FloatArray>,
+            limit: Int,
+        ): Array<FloatArray> = (existing.asList() + frames.asList()).takeLast(limit).toTypedArray()
     }
 }

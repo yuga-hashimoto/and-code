@@ -13,6 +13,14 @@ data class AppPreferences(
     val modelId: String? = null,
     val agentId: String? = null,
     val ttsEnabled: Boolean = true,
+    val ttsProvider: String = "android",
+    val ttsAndroidEngine: String? = null,
+    val ttsOpenAiApiKey: String = "",
+    val ttsOpenAiVoice: String = "alloy",
+    val ttsOpenAiModel: String = "gpt-4o-mini-tts",
+    val ttsElevenLabsApiKey: String = "",
+    val ttsElevenLabsVoiceId: String = "",
+    val ttsElevenLabsModel: String = "eleven_multilingual_v2",
     val continuousConversation: Boolean = false,
     val wakeWordEnabled: Boolean = false,
     val wakeWordModel: String = "hey_mycroft",
@@ -43,6 +51,14 @@ class AppPreferencesRepository(
                 modelId = settings.selectedModelId,
                 agentId = settings.selectedAgentId,
                 ttsEnabled = settings.ttsEnabled,
+                ttsProvider = settings.ttsProvider,
+                ttsAndroidEngine = settings.ttsAndroidEngine,
+                ttsOpenAiApiKey = settings.ttsOpenAiApiKey,
+                ttsOpenAiVoice = settings.ttsOpenAiVoice,
+                ttsOpenAiModel = settings.ttsOpenAiModel,
+                ttsElevenLabsApiKey = settings.ttsElevenLabsApiKey,
+                ttsElevenLabsVoiceId = settings.ttsElevenLabsVoiceId,
+                ttsElevenLabsModel = settings.ttsElevenLabsModel,
                 continuousConversation = settings.continuousConversation,
                 wakeWordEnabled = settings.wakeWordEnabled,
                 wakeWordModel = settings.wakeWordModel,
@@ -134,6 +150,46 @@ class AppPreferencesRepository(
     fun setTtsEnabled(enabled: Boolean) {
         settings.ttsEnabled = enabled
         mutableState.update { it.copy(ttsEnabled = enabled) }
+    }
+
+    fun setTtsProvider(provider: String) {
+        settings.ttsProvider = provider
+        mutableState.update { it.copy(ttsProvider = provider) }
+    }
+
+    fun setTtsAndroidEngine(engine: String?) {
+        settings.ttsAndroidEngine = engine
+        mutableState.update { it.copy(ttsAndroidEngine = engine) }
+    }
+
+    fun setTtsOpenAiApiKey(apiKey: String) {
+        settings.ttsOpenAiApiKey = apiKey
+        mutableState.update { it.copy(ttsOpenAiApiKey = apiKey) }
+    }
+
+    fun setTtsOpenAiVoice(voice: String) {
+        settings.ttsOpenAiVoice = voice
+        mutableState.update { it.copy(ttsOpenAiVoice = voice) }
+    }
+
+    fun setTtsOpenAiModel(model: String) {
+        settings.ttsOpenAiModel = model
+        mutableState.update { it.copy(ttsOpenAiModel = model) }
+    }
+
+    fun setTtsElevenLabsApiKey(apiKey: String) {
+        settings.ttsElevenLabsApiKey = apiKey
+        mutableState.update { it.copy(ttsElevenLabsApiKey = apiKey) }
+    }
+
+    fun setTtsElevenLabsVoiceId(voiceId: String) {
+        settings.ttsElevenLabsVoiceId = voiceId
+        mutableState.update { it.copy(ttsElevenLabsVoiceId = voiceId) }
+    }
+
+    fun setTtsElevenLabsModel(model: String) {
+        settings.ttsElevenLabsModel = model
+        mutableState.update { it.copy(ttsElevenLabsModel = model) }
     }
 
     fun setContinuousConversation(enabled: Boolean) {

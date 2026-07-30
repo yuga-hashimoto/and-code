@@ -6,6 +6,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.content.pm.ServiceInfo
 import android.media.AudioFormat
 import android.media.AudioRecord
@@ -15,27 +16,39 @@ import android.os.IBinder
 import android.os.PowerManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
+import com.yugahashimoto.andcode.AndCodeApplication
 import com.yugahashimoto.andcode.MainActivity
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.feature.assistant.AndCodeVoiceInteractionService
+import com.yugahashimoto.andcode.feature.assistant.AssistantStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class WakeWordService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private var listenJob: Job? = null
-    private var audioRecord: AudioRecord? = null
+
+    @Volatile private var audioRecord: AudioRecord? = null
     private var wakeLock: PowerManager.WakeLock? = null
+
+    @Volatile private var currentModel = OpenWakeWordDetector.DEFAULT_MODEL
+
+    @Volatile private var assistantRequestId: String? = null
+    private var assistantTimeoutJob: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
+        activeInstance = this
     }
 
     override fun onStartCommand(
@@ -45,19 +58,42 @@ class WakeWordService : Service() {
     ): Int {
         when (intent?.action) {
             ACTION_STOP -> {
+                persistEnabled(false)
                 stopSelf()
                 return START_NOT_STICKY
             }
         }
 
-        val model = intent?.getStringExtra(EXTRA_MODEL) ?: OpenWakeWordDetector.DEFAULT_MODEL
-        startForegroundWithNotification()
-        startListening(model)
+        val preferences = (application as? AndCodeApplication)?.preferences?.state?.value
+        if (
+            ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED ||
+            !AssistantStatus.isActive(this) ||
+            (intent == null && preferences?.wakeWordEnabled != true)
+        ) {
+            persistEnabled(false)
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        val model = intent?.getStringExtra(EXTRA_MODEL) ?: preferences?.wakeWordModel ?: OpenWakeWordDetector.DEFAULT_MODEL
+        runCatching { startForegroundWithNotification() }
+            .onFailure {
+                Log.e(TAG, "Unable to start wake-word foreground service", it)
+                persistEnabled(false)
+                stopSelf()
+                return START_NOT_STICKY
+            }
+        if (assistantRequestId != null) {
+            currentModel = model
+        } else {
+            startListening(model)
+        }
         return START_STICKY
     }
 
     override fun onDestroy() {
         stopListening()
+        assistantTimeoutJob?.cancel()
+        if (activeInstance === this) activeInstance = null
         wakeLock?.let { if (it.isHeld) it.release() }
         wakeLock = null
         scope.cancel()
@@ -109,20 +145,31 @@ class WakeWordService : Service() {
         }
     }
 
+    @Synchronized
     private fun startListening(model: String) {
-        if (listenJob?.isActive == true) return
+        if (listenJob?.isActive == true && currentModel == model) return
 
-        val pm = getSystemService(PowerManager::class.java)
-        wakeLock =
-            pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG).apply {
-                acquire(WAKELOCK_TIMEOUT)
-            }
+        val previousJob = listenJob
+        currentModel = model
+        stopAudioRecord()
+        previousJob?.cancel()
+        assistantTimeoutJob?.cancel()
+        assistantRequestId = null
 
         listenJob =
             scope.launch {
+                previousJob?.join()
+                val pm = getSystemService(PowerManager::class.java)
+                wakeLock?.let { if (it.isHeld) it.release() }
+                wakeLock =
+                    pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG).apply {
+                        acquire(WAKELOCK_TIMEOUT)
+                    }
                 val det = OpenWakeWordDetector(this@WakeWordService, model)
                 if (!det.initialize()) {
                     Log.e(TAG, "Detector initialization failed")
+                    det.release()
+                    persistEnabled(false)
                     stopSelf()
                     return@launch
                 }
@@ -148,6 +195,8 @@ class WakeWordService : Service() {
                         )
                     } catch (e: SecurityException) {
                         Log.e(TAG, "No microphone permission", e)
+                        det.release()
+                        persistEnabled(false)
                         stopSelf()
                         return@launch
                     }
@@ -155,50 +204,111 @@ class WakeWordService : Service() {
                 if (record.state != AudioRecord.STATE_INITIALIZED) {
                     Log.e(TAG, "AudioRecord failed to initialize")
                     record.release()
+                    det.release()
+                    persistEnabled(false)
                     stopSelf()
                     return@launch
                 }
 
-                audioRecord = record
-                record.startRecording()
-                Log.i(TAG, "Wake word listening started")
-
                 val buffer = ShortArray(FRAME_SIZE)
-                val vadLocal = VoiceActivityDetector()
+                var detected = false
 
                 try {
+                    audioRecord = record
+                    record.startRecording()
+                    Log.i(TAG, "Wake word listening started")
                     while (isActive) {
+                        if (wakeLock?.isHeld != true) wakeLock?.acquire(WAKELOCK_TIMEOUT)
                         val read = record.read(buffer, 0, FRAME_SIZE)
-                        if (read <= 0) continue
+                        if (read < 0) error("AudioRecord read failed with code $read")
+                        if (read == 0) continue
 
                         val samples = if (read == FRAME_SIZE) buffer else buffer.copyOf(read)
-
-                        if (!vadLocal.isSpeech(samples)) continue
 
                         val result = det.processAudio(samples)
                         if (result != null) {
                             Log.i(TAG, "Wake word detected: ${result.keyword} (${result.confidence})")
-                            onWakeWordDetected()
-                            det.reset()
-                            vadLocal.reset()
+                            detected = true
+                            break
                         }
+                    }
+                } catch (error: RuntimeException) {
+                    if (isActive) {
+                        Log.e(TAG, "Wake-word audio capture failed", error)
+                        persistEnabled(false)
+                        stopSelf()
                     }
                 } finally {
                     runCatching { record.stop() }
                     record.release()
-                    audioRecord = null
+                    if (audioRecord === record) audioRecord = null
+                    det.release()
+                    wakeLock?.let { if (it.isHeld) it.release() }
+                    wakeLock = null
                     Log.i(TAG, "Wake word listening stopped")
                 }
+                if (detected && isActive) requestAssistant()
             }
     }
 
-    private fun onWakeWordDetected() {
-        AndCodeVoiceInteractionService.show(this)
+    private fun requestAssistant() {
+        if (!AssistantStatus.isActive(this)) {
+            Log.e(TAG, "Wake word disabled because AndCode is no longer the active assistant")
+            persistEnabled(false)
+            stopSelf()
+            return
+        }
+        val requestId = UUID.randomUUID().toString()
+        assistantRequestId = requestId
+        assistantTimeoutJob?.cancel()
+        assistantTimeoutJob =
+            scope.launch {
+                delay(ASSISTANT_SHOW_TIMEOUT_MS)
+                if (assistantRequestId == requestId) {
+                    Log.e(TAG, "Timed out waiting for the active assistant")
+                    resumeAfterSession(requestId)
+                }
+            }
+        AndCodeVoiceInteractionService.show(this, requestId)
     }
 
+    @Synchronized
+    private fun pauseForSessionInternal(requestId: String) {
+        assistantRequestId = requestId
+        stopListening()
+    }
+
+    @Synchronized
+    private fun confirmSessionInternal(requestId: String) {
+        if (assistantRequestId != requestId) return
+        assistantTimeoutJob?.cancel()
+        assistantTimeoutJob = null
+    }
+
+    @Synchronized
+    private fun resumeAfterSessionInternal(requestId: String) {
+        if (assistantRequestId != requestId) return
+        assistantRequestId = null
+        assistantTimeoutJob?.cancel()
+        assistantTimeoutJob = null
+        startListening(currentModel)
+    }
+
+    @Synchronized
     private fun stopListening() {
+        stopAudioRecord()
         listenJob?.cancel()
         listenJob = null
+    }
+
+    private fun stopAudioRecord() {
+        audioRecord?.let { record ->
+            runCatching { record.stop() }
+        }
+    }
+
+    private fun persistEnabled(enabled: Boolean) {
+        (application as? AndCodeApplication)?.preferences?.setWakeWordEnabled(enabled)
     }
 
     companion object {
@@ -211,29 +321,45 @@ class WakeWordService : Service() {
         private const val FRAME_SIZE = 1280
         private const val WAKELOCK_TAG = "opencode:wakeword"
         private const val WAKELOCK_TIMEOUT = 10 * 60 * 1000L
+        private const val ASSISTANT_SHOW_TIMEOUT_MS = 5_000L
+
+        @Volatile private var activeInstance: WakeWordService? = null
+
+        fun pauseForSession(requestId: String) {
+            activeInstance?.pauseForSessionInternal(requestId)
+        }
+
+        fun confirmSession(requestId: String) {
+            activeInstance?.confirmSessionInternal(requestId)
+        }
+
+        fun resumeAfterSession(requestId: String) {
+            activeInstance?.resumeAfterSessionInternal(requestId)
+        }
 
         fun start(
             context: Context,
             model: String = OpenWakeWordDetector.DEFAULT_MODEL,
-        ) {
+        ): Boolean {
+            if (
+                ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) !=
+                PackageManager.PERMISSION_GRANTED || !AssistantStatus.isActive(context)
+            ) {
+                return false
+            }
             val intent = Intent(context, WakeWordService::class.java)
             intent.putExtra(EXTRA_MODEL, model)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                context.startForegroundService(intent)
-            } else {
-                context.startService(intent)
-            }
+            return runCatching {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            }.isSuccess
         }
 
         fun stop(context: Context) {
-            context.startService(
-                Intent(context, WakeWordService::class.java).apply { action = ACTION_STOP },
-            )
-        }
-
-        fun isRunning(context: Context): Boolean {
-            val nm = context.getSystemService(NotificationManager::class.java)
-            return nm.activeNotifications.any { it.id == NOTIFICATION_ID }
+            context.stopService(Intent(context, WakeWordService::class.java))
         }
     }
 }

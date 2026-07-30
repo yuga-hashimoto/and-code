@@ -1,214 +1,122 @@
 package com.yugahashimoto.andcode.feature.assistant
 
 import android.content.Context
-import android.os.Handler
-import android.os.Looper
+import android.content.Intent
 import android.speech.tts.TextToSpeech
-import android.speech.tts.UtteranceProgressListener
-import android.util.Log
 import com.yugahashimoto.andcode.R
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.suspendCancellableCoroutine
-import java.util.Locale
-import java.util.UUID
-import kotlin.coroutines.resume
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
 
-private const val TAG = "TTSManager"
-private const val INIT_TIMEOUT_MS = 3000L
-
-/**
- * テキスト読み上げ（TTS）マネージャー
- */
-class TTSManager(context: Context) {
+/** Coordinates the configured text-to-speech provider. */
+class TTSManager(
+    context: Context,
+    configuration: TTSProviderConfig = TTSProviderConfig.Android(),
+    private val httpClient: OkHttpClient = OkHttpClient(),
+) {
     private val appContext = context.applicationContext
-    private var tts: TextToSpeech? = null
-    private var isInitialized = false
-    private var pendingSpeak: (() -> Unit)? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
-    init {
-        Log.d(TAG, "Initializing TTS...")
-        val engine = "com.google.android.tts"
-        tts =
-            TextToSpeech(context.applicationContext, { status ->
-                Log.d(TAG, "TTS init callback, status=$status (SUCCESS=${TextToSpeech.SUCCESS})")
-                if (status == TextToSpeech.SUCCESS) {
-                    onInitSuccess()
-                } else {
-                    Log.e(TAG, "TTS init FAILED with status=$status, trying without engine...")
-                    tryInitWithoutEngine(context.applicationContext)
-                }
-            }, engine)
+    @Volatile
+    private var provider: TTSProvider = createProvider(configuration)
+
+    /** Replaces the active provider and releases any in-flight playback. */
+    @Synchronized
+    fun configure(configuration: TTSProviderConfig) {
+        val previous = provider
+        provider = createProvider(configuration)
+        previous.shutdown()
     }
 
-    private fun tryInitWithoutEngine(context: Context) {
-        tts =
-            TextToSpeech(context) { status ->
-                Log.d(TAG, "TTS retry init callback, status=$status")
-                if (status == TextToSpeech.SUCCESS) {
-                    onInitSuccess()
-                } else {
-                    Log.e(TAG, "TTS retry also FAILED with status=$status")
-                }
-            }
+    /** Speaks text and returns whether synthesis and playback completed. */
+    suspend fun speak(text: String): Boolean {
+        if (text.isBlank()) return true
+        return provider.speak(text, TTSQueueMode.FLUSH)
     }
 
-    private fun onInitSuccess() {
-        isInitialized = true
-        val result = tts?.setLanguage(Locale.JAPANESE)
-        Log.d(TAG, "setLanguage result=$result")
-        if (result == TextToSpeech.LANG_MISSING_DATA || result == TextToSpeech.LANG_NOT_SUPPORTED) {
-            tts?.setLanguage(Locale.getDefault())
-        }
-        tts?.setSpeechRate(1.0f)
-        tts?.setPitch(1.0f)
-        pendingSpeak?.invoke()
-        pendingSpeak = null
-    }
-
-    /**
-     * テキストを読み上げ（suspend版）
-     */
-    suspend fun speak(text: String): Boolean =
-        suspendCancellableCoroutine { continuation ->
-            val utteranceId = UUID.randomUUID().toString()
-
-            val listener =
-                object : UtteranceProgressListener() {
-                    override fun onStart(utteranceId: String?) {}
-
-                    override fun onDone(utteranceId: String?) {
-                        if (continuation.isActive) {
-                            continuation.resume(true)
-                        }
-                    }
-
-                    @Deprecated("Deprecated in Java")
-                    override fun onError(utteranceId: String?) {
-                        if (continuation.isActive) {
-                            continuation.resume(false)
-                        }
-                    }
-
-                    override fun onError(
-                        utteranceId: String?,
-                        errorCode: Int,
-                    ) {
-                        if (continuation.isActive) {
-                            continuation.resume(false)
-                        }
-                    }
-                }
-
-            if (isInitialized) {
-                tts?.setOnUtteranceProgressListener(listener)
-                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
-            } else {
-                pendingSpeak = {
-                    tts?.setOnUtteranceProgressListener(listener)
-                    tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
-                }
-                Handler(Looper.getMainLooper()).postDelayed({
-                    if (continuation.isActive && !isInitialized) {
-                        pendingSpeak = null
-                        continuation.resume(false)
-                    }
-                }, INIT_TIMEOUT_MS)
-            }
-
-            continuation.invokeOnCancellation {
-                pendingSpeak = null
-                stop()
-            }
-        }
-
-    /**
-     * テキストを読み上げ（Flow版 - 進捗通知あり）
-     */
+    /** Speaks text while emitting preparation, playback, and completion states. */
     fun speakWithProgress(text: String): Flow<TTSState> =
         callbackFlow {
-            val utteranceId = UUID.randomUUID().toString()
-
-            val listener =
-                object : UtteranceProgressListener() {
-                    override fun onStart(utteranceId: String?) {
-                        trySend(TTSState.Speaking)
-                    }
-
-                    override fun onDone(utteranceId: String?) {
+            trySend(TTSState.Preparing)
+            val activeProvider = provider
+            val job =
+                launch {
+                    val succeeded =
+                        activeProvider.speak(text, TTSQueueMode.FLUSH) {
+                            trySend(TTSState.Speaking)
+                        }
+                    if (succeeded) {
                         trySend(TTSState.Done)
-                        close()
-                    }
-
-                    @Deprecated("Deprecated in Java")
-                    override fun onError(utteranceId: String?) {
+                    } else {
                         trySend(TTSState.Error(appContext.getString(R.string.tts_error)))
-                        close()
                     }
-
-                    override fun onError(
-                        utteranceId: String?,
-                        errorCode: Int,
-                    ) {
-                        trySend(TTSState.Error(appContext.getString(R.string.tts_error_code, errorCode)))
-                        close()
-                    }
+                    close()
                 }
-
-            if (isInitialized) {
-                tts?.setOnUtteranceProgressListener(listener)
-                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
-                trySend(TTSState.Preparing)
-            } else {
-                trySend(TTSState.Preparing)
-                pendingSpeak = {
-                    tts?.setOnUtteranceProgressListener(listener)
-                    tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, utteranceId)
-                }
-            }
-
             awaitClose {
-                stop()
+                job.cancel()
+                activeProvider.stop()
             }
         }
 
-    /**
-     * キューに追加して読み上げ
-     */
+    /** Adds text after current playback without blocking the caller. */
     fun speakQueued(text: String) {
-        if (isInitialized) {
-            val utteranceId = UUID.randomUUID().toString()
-            tts?.speak(text, TextToSpeech.QUEUE_ADD, null, utteranceId)
-        }
+        if (text.isBlank()) return
+        val activeProvider = provider
+        scope.launch { activeProvider.speak(text, TTSQueueMode.ADD) }
     }
 
-    /**
-     * 読み上げを停止
-     */
     fun stop() {
-        tts?.stop()
+        provider.stop()
     }
 
-    /**
-     * リソースを解放
-     */
     fun shutdown() {
-        tts?.stop()
-        tts?.shutdown()
-        tts = null
-        isInitialized = false
+        scope.cancel()
+        provider.shutdown()
     }
 
-    /**
-     * 初期化済みかチェック
-     */
-    fun isReady(): Boolean = isInitialized
+    fun isReady(): Boolean = provider.isReady
+
+    data class AndroidEngine(val packageName: String, val label: String)
+
+    companion object {
+        @Suppress("DEPRECATION")
+        fun availableAndroidEngines(context: Context): List<AndroidEngine> =
+            context.packageManager
+                .queryIntentServices(Intent(TextToSpeech.Engine.INTENT_ACTION_TTS_SERVICE), 0)
+                .map { service ->
+                    AndroidEngine(
+                        packageName = service.serviceInfo.packageName,
+                        label = service.serviceInfo.applicationInfo.loadLabel(context.packageManager).toString(),
+                    )
+                }
+                .distinctBy(AndroidEngine::packageName)
+                .sortedBy(AndroidEngine::label)
+    }
+
+    private fun createProvider(configuration: TTSProviderConfig): TTSProvider =
+        when (configuration) {
+            is TTSProviderConfig.Android -> AndroidTTSProvider(appContext, configuration)
+            is TTSProviderConfig.OpenAI ->
+                CloudTTSProvider(
+                    context = appContext,
+                    httpClient = httpClient,
+                    requestFactory = OpenAITTSRequestFactory(configuration),
+                )
+            is TTSProviderConfig.ElevenLabs ->
+                CloudTTSProvider(
+                    context = appContext,
+                    httpClient = httpClient,
+                    requestFactory = ElevenLabsTTSRequestFactory(configuration),
+                )
+        }
 }
 
-/**
- * TTSの状態
- */
 sealed interface TTSState {
     data object Preparing : TTSState
 

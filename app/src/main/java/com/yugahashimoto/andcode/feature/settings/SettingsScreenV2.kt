@@ -24,7 +24,6 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
-import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Router
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Star
@@ -145,12 +144,6 @@ fun SettingsScreenV2(
                     icon = Icons.Default.Mic,
                     title = stringResource(R.string.settings_wake_word_row),
                     value = if (wakeWordEnabled) stringResource(R.string.wake_word_active) else stringResource(R.string.wake_word_inactive),
-                    onClick = onOpenVoiceSettings,
-                )
-                SettingsDivider()
-                SettingsRow(
-                    icon = Icons.Default.RecordVoiceOver,
-                    title = stringResource(R.string.voice_settings_row),
                     onClick = onOpenVoiceSettings,
                 )
             }

@@ -39,11 +39,22 @@
     <string name="assistant_workspace_label">Default workspace</string>
     <string name="voice_conversation_section">Voice conversation</string>
     <string name="voice_response_description">Read agent responses aloud.</string>
+    <string name="tts_provider_label">Speech provider</string>
+    <string name="tts_provider_android">Android text-to-speech</string>
+    <string name="tts_engine_label">Android speech engine</string>
+    <string name="tts_engine_system_default">System default</string>
+    <string name="tts_api_key_label">API key</string>
+    <string name="tts_voice_label">Voice</string>
+    <string name="tts_voice_id_label">Voice ID</string>
+    <string name="tts_model_label">Model</string>
     <string name="wake_word_section_title">Invocation</string>
     <string name="wake_word_pack_required">The optional wake-word pack is not installed yet.</string>
-    <string name="wake_word_description">Listen for \"hey opencode\" to start the assistant hands-free.</string>
+    <string name="wake_word_description">Listen for \"hey Mycroft\" to start the assistant hands-free.</string>
     <string name="wake_word_notification_channel">Wake word detection</string>
     <string name="wake_word_notification_title">Wake word active</string>
-    <string name="wake_word_notification_text">Listening for \"hey opencode\"…</string>
+    <string name="wake_word_notification_text">Listening for \"hey Mycroft\"…</string>
     <string name="wake_word_notification_stop">Stop</string>
+    <string name="assistant_setup_hint">Choose AndCode as your default digital assistant.</string>
+    <string name="wake_word_requires_assistant">Set AndCode as the default assistant before enabling the wake word.</string>
+    <string name="wake_word_start_failed">Wake-word detection could not start.</string>
 </resources>

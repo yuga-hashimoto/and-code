@@ -39,11 +39,22 @@
     <string name="assistant_workspace_label">مساحة العمل الافتراضية</string>
     <string name="voice_conversation_section">محادثة صوتية</string>
     <string name="voice_response_description">قراءة ردود الوكيل بصوت عالٍ.</string>
+    <string name="tts_provider_label">موفر الصوت</string>
+    <string name="tts_provider_android">تحويل النص إلى كلام في Android</string>
+    <string name="tts_engine_label">محرك الكلام في Android</string>
+    <string name="tts_engine_system_default">الإعداد الافتراضي للنظام</string>
+    <string name="tts_api_key_label">مفتاح API</string>
+    <string name="tts_voice_label">الصوت</string>
+    <string name="tts_voice_id_label">معرّف الصوت</string>
+    <string name="tts_model_label">النموذج</string>
     <string name="wake_word_section_title">الاستدعاء</string>
     <string name="wake_word_pack_required">لم يتم تثبيت حزمة كلمة التنبيه الاختيارية بعد.</string>
-    <string name="wake_word_description">استمع إلى \"hey opencode\" لبدء المساعد بدون استخدام اليدين.</string>
+    <string name="wake_word_description">استمع إلى \"hey Mycroft\" لبدء المساعد بدون استخدام اليدين.</string>
     <string name="wake_word_notification_channel">كشف كلمة التنبيه</string>
     <string name="wake_word_notification_title">كلمة التنبيه نشطة</string>
-    <string name="wake_word_notification_text">جارٍ الاستماع إلى \"hey opencode\"…</string>
+    <string name="wake_word_notification_text">جارٍ الاستماع إلى \"hey Mycroft\"…</string>
     <string name="wake_word_notification_stop">إيقاف</string>
+    <string name="assistant_setup_hint">اختر AndCode كمساعدك الرقمي الافتراضي.</string>
+    <string name="wake_word_requires_assistant">عيّن AndCode كمساعد افتراضي قبل تفعيل كلمة التنبيه.</string>
+    <string name="wake_word_start_failed">تعذر بدء اكتشاف كلمة التنبيه.</string>
 </resources>

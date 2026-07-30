@@ -1,58 +1,102 @@
 package com.yugahashimoto.andcode.feature.assistant
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.os.Bundle
 import android.service.voice.VoiceInteractionService
 import android.service.voice.VoiceInteractionSession
 import android.util.Log
+import androidx.core.content.ContextCompat
+import com.yugahashimoto.andcode.AndCodeApplication
+import com.yugahashimoto.andcode.feature.wakeword.WakeWordService
 
 class AndCodeVoiceInteractionService : VoiceInteractionService() {
     private var ready = false
-    private var pendingShow = false
+    private var receiverRegistered = false
+    private val showReceiver =
+        object : BroadcastReceiver() {
+            override fun onReceive(
+                context: Context,
+                intent: Intent,
+            ) {
+                if (intent.action == ACTION_SHOW_ASSISTANT) {
+                    showAssistant(intent.getStringExtra(EXTRA_REQUEST_ID))
+                }
+            }
+        }
 
     override fun onReady() {
         super.onReady()
         ready = true
-        if (pendingShow) {
-            pendingShow = false
-            showAssistant()
+        if (!receiverRegistered) {
+            ContextCompat.registerReceiver(
+                this,
+                showReceiver,
+                IntentFilter(ACTION_SHOW_ASSISTANT),
+                ContextCompat.RECEIVER_NOT_EXPORTED,
+            )
+            receiverRegistered = true
+        }
+        val app = application as? AndCodeApplication
+        val preferences = app?.preferences?.state?.value
+        if (preferences?.wakeWordEnabled == true) {
+            val started = WakeWordService.start(this, preferences.wakeWordModel)
+            if (!started) app.preferences.setWakeWordEnabled(false)
         }
     }
 
     override fun onShutdown() {
         ready = false
+        WakeWordService.stop(this)
+        (application as? AndCodeApplication)?.preferences?.setWakeWordEnabled(false)
+        unregisterShowReceiver()
         super.onShutdown()
     }
 
-    override fun onStartCommand(
-        intent: Intent?,
-        flags: Int,
-        startId: Int,
-    ): Int {
-        if (intent?.action == ACTION_SHOW_ASSISTANT) showAssistant()
-        return START_STICKY
+    override fun onDestroy() {
+        unregisterShowReceiver()
+        super.onDestroy()
     }
 
-    private fun showAssistant() {
+    private fun unregisterShowReceiver() {
+        if (receiverRegistered) {
+            unregisterReceiver(showReceiver)
+            receiverRegistered = false
+        }
+    }
+
+    private fun showAssistant(requestId: String?) {
         if (!ready) {
-            pendingShow = true
+            requestId?.let(WakeWordService::resumeAfterSession)
             return
         }
+        requestId?.let(WakeWordService::pauseForSession)
         runCatching {
-            showSession(Bundle(), VoiceInteractionSession.SHOW_WITH_ASSIST)
-        }.onFailure { Log.e(TAG, "Unable to show assistant", it) }
+            showSession(
+                Bundle().apply { requestId?.let { putString(EXTRA_REQUEST_ID, it) } },
+                VoiceInteractionSession.SHOW_WITH_ASSIST,
+            )
+        }.onFailure {
+            Log.e(TAG, "Unable to show assistant", it)
+            requestId?.let(WakeWordService::resumeAfterSession)
+        }
     }
 
     companion object {
         private const val TAG = "OpenCodeVoiceService"
         const val ACTION_SHOW_ASSISTANT = "com.yugahashimoto.andcode.action.SHOW_ASSISTANT"
+        const val EXTRA_REQUEST_ID = "assistant_request_id"
 
-        fun show(context: Context) {
-            context.startService(
-                Intent(context, AndCodeVoiceInteractionService::class.java).apply {
-                    action = ACTION_SHOW_ASSISTANT
-                },
+        fun show(
+            context: Context,
+            requestId: String,
+        ) {
+            context.sendBroadcast(
+                Intent(ACTION_SHOW_ASSISTANT)
+                    .setPackage(context.packageName)
+                    .putExtra(EXTRA_REQUEST_ID, requestId),
             )
         }
     }

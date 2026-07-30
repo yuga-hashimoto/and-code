@@ -34,6 +34,7 @@ fun NavGraphBuilder.settingsNavGraph(
     appVersion: String,
     onOpenDrawer: () -> Unit,
     onOpenAssistantSettings: () -> Unit,
+    assistantActive: () -> Boolean,
     onShowDiagnostics: () -> Unit,
     preferences: () -> AppPreferences,
     appPreferences: AppPreferencesRepository,
@@ -51,7 +52,7 @@ fun NavGraphBuilder.settingsNavGraph(
         var showSupportSheet by remember { mutableStateOf(false) }
 
         SettingsScreenV2(
-            assistantConfigured = settingsState.assistantRuntimeId != null,
+            assistantConfigured = assistantActive(),
             notificationsEnabled = notificationsEnabled(),
             onToggleNotifications = onToggleNotifications,
             appVersion = appVersion,
@@ -95,8 +96,22 @@ fun NavGraphBuilder.settingsNavGraph(
 
     composable(ROUTE_SETTINGS_VOICE) {
         val settingsState by settingsViewModel.state.collectAsState()
+        val androidTtsEngines =
+            remember {
+                com.yugahashimoto.andcode.feature.assistant.TTSManager.availableAndroidEngines(context)
+                    .map { it.packageName to it.label }
+            }
         VoiceSettingsScreen(
             ttsEnabled = settingsState.ttsEnabled,
+            ttsProvider = settingsState.ttsProvider,
+            ttsAndroidEngine = settingsState.ttsAndroidEngine,
+            androidTtsEngines = androidTtsEngines,
+            ttsOpenAiApiKey = settingsState.ttsOpenAiApiKey,
+            ttsOpenAiVoice = settingsState.ttsOpenAiVoice,
+            ttsOpenAiModel = settingsState.ttsOpenAiModel,
+            ttsElevenLabsApiKey = settingsState.ttsElevenLabsApiKey,
+            ttsElevenLabsVoiceId = settingsState.ttsElevenLabsVoiceId,
+            ttsElevenLabsModel = settingsState.ttsElevenLabsModel,
             continuousConversation = settingsState.continuousConversation,
             wakeWordEnabled = settingsState.wakeWordEnabled,
             wakeWordModel = settingsState.wakeWordModel,
@@ -105,20 +120,53 @@ fun NavGraphBuilder.settingsNavGraph(
             availableRuntimes = settingsState.runtimeOptions,
             assistantWorkspacePath = settingsState.assistantWorkspacePath.orEmpty(),
             onTtsChange = settingsViewModel::setTtsEnabled,
+            onTtsProviderChange = settingsViewModel::setTtsProvider,
+            onTtsAndroidEngineChange = settingsViewModel::setTtsAndroidEngine,
+            onTtsOpenAiApiKeyChange = settingsViewModel::setTtsOpenAiApiKey,
+            onTtsOpenAiVoiceChange = settingsViewModel::setTtsOpenAiVoice,
+            onTtsOpenAiModelChange = settingsViewModel::setTtsOpenAiModel,
+            onTtsElevenLabsApiKeyChange = settingsViewModel::setTtsElevenLabsApiKey,
+            onTtsElevenLabsVoiceIdChange = settingsViewModel::setTtsElevenLabsVoiceId,
+            onTtsElevenLabsModelChange = settingsViewModel::setTtsElevenLabsModel,
             onContinuousChange = settingsViewModel::setContinuousConversation,
             onWakeWordChange = { enabled ->
-                settingsViewModel.setWakeWordEnabled(enabled)
                 if (enabled) {
-                    if (hasMicrophonePermission()) {
-                        com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(context)
+                    if (!assistantActive()) {
+                        android.widget.Toast.makeText(
+                            context,
+                            com.yugahashimoto.andcode.R.string.wake_word_requires_assistant,
+                            android.widget.Toast.LENGTH_LONG,
+                        ).show()
+                        onOpenAssistantSettings()
+                    } else if (hasMicrophonePermission()) {
+                        val started =
+                            com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
+                                context,
+                                settingsState.wakeWordModel,
+                            )
+                        settingsViewModel.setWakeWordEnabled(started)
+                        if (!started) {
+                            android.widget.Toast.makeText(
+                                context,
+                                com.yugahashimoto.andcode.R.string.wake_word_start_failed,
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        }
                     } else {
                         onRequestWakeWordPermission()
                     }
                 } else {
+                    settingsViewModel.setWakeWordEnabled(false)
                     com.yugahashimoto.andcode.feature.wakeword.WakeWordService.stop(context)
                 }
             },
-            onWakeWordModelChange = settingsViewModel::setWakeWordModel,
+            onWakeWordModelChange = { model ->
+                settingsViewModel.setWakeWordModel(model)
+                if (settingsState.wakeWordEnabled) {
+                    val restarted = com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(context, model)
+                    if (!restarted) settingsViewModel.setWakeWordEnabled(false)
+                }
+            },
             onAssistantRuntimeChange = { runtimeId ->
                 settingsViewModel.setAssistantRuntimeId(runtimeId.takeIf { it.isNotBlank() })
             },

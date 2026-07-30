@@ -537,7 +537,7 @@
     <string name="section_assistant_settings">Assistant settings</string>
     <string name="section_system_settings">System settings</string>
     <string name="section_app_settings">App settings</string>
-    <string name="settings_home_assistant_row">Home assistant</string>
+    <string name="settings_home_assistant_row">Digital assistant</string>
     <string name="assistant_enabled_pill">Enabled</string>
     <string name="assistant_disabled_pill">Disabled</string>
     <string name="wake_word_row_title">Wake word</string>
