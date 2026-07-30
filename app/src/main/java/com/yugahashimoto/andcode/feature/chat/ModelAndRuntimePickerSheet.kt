@@ -168,6 +168,8 @@ fun ModelAndRuntimePickerSheet(
                     providers.flatMap { provider ->
                         provider.models.values
                             .filter { "${provider.id}/${it.id}" in favoriteModelKeys }
+                            .filter { "${provider.id}/${it.id}" !in hiddenModelKeys }
+                            .filter { it.status != "deprecated" }
                             .filter { query.isBlank() || it.name.contains(query, true) || it.id.contains(query, true) }
                             .map { FavoriteEntry(provider, it) }
                     }.sortedBy { it.model.name.lowercase() }
@@ -180,6 +182,8 @@ fun ModelAndRuntimePickerSheet(
                         val model = provider.models[modelId] ?: return@mapNotNull null
                         FavoriteEntry(provider, model)
                     }.filter { entry -> "${entry.provider.id}/${entry.model.id}" !in favoriteModelKeys }
+                        .filter { entry -> "${entry.provider.id}/${entry.model.id}" !in hiddenModelKeys }
+                        .filter { entry -> entry.model.status != "deprecated" }
                         .filter { query.isBlank() || it.model.name.contains(query, true) || it.model.id.contains(query, true) }
                         .take(MAX_RECENT_MODELS)
 

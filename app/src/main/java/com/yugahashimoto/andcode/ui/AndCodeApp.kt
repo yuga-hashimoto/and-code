@@ -57,12 +57,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.yugahashimoto.andcode.AndCodeApplication
 import com.yugahashimoto.andcode.R
-import com.yugahashimoto.andcode.core.api.OpenCodeSession
-import com.yugahashimoto.andcode.feature.activity.ActivityScreen
 import com.yugahashimoto.andcode.feature.activity.ActivityViewModel
-import com.yugahashimoto.andcode.feature.activity.SessionDetailScreen
-import com.yugahashimoto.andcode.feature.activity.SessionDetailViewModel
-import com.yugahashimoto.andcode.feature.activity.SessionImportSheet
 import com.yugahashimoto.andcode.feature.assistant.SpeechRecognizerManager
 import com.yugahashimoto.andcode.feature.assistant.SpeechResult
 import com.yugahashimoto.andcode.feature.chat.ChatHomeScreen
@@ -71,9 +66,6 @@ import com.yugahashimoto.andcode.feature.chat.SubagentInfo
 import com.yugahashimoto.andcode.feature.chat.buildHandoffPrompt
 import com.yugahashimoto.andcode.feature.onboarding.AndroidSetupScreen
 import com.yugahashimoto.andcode.feature.onboarding.OnboardingChoiceScreen
-import com.yugahashimoto.andcode.feature.schedule.ScheduleScreen
-import com.yugahashimoto.andcode.feature.schedule.ScheduleViewModel
-import com.yugahashimoto.andcode.feature.search.CommandPaletteSheet
 import com.yugahashimoto.andcode.feature.settings.DiagnosticsSheet
 import com.yugahashimoto.andcode.feature.settings.GitHubRepo
 import com.yugahashimoto.andcode.feature.settings.SettingsViewModel
@@ -84,14 +76,11 @@ import com.yugahashimoto.andcode.runtime.local.GitCloneResult
 import com.yugahashimoto.andcode.ui.components.SessionStatus
 import com.yugahashimoto.andcode.ui.navigation.ClaudeSettingsActions
 import com.yugahashimoto.andcode.ui.navigation.DRAWER_ROOT_ROUTES
-import com.yugahashimoto.andcode.ui.navigation.ROUTE_ACTIVITY
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_ANDROID_SETUP
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_CHAT
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_ONBOARDING
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_REMOTE_CONNECTION
-import com.yugahashimoto.andcode.ui.navigation.ROUTE_SCHEDULE
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_SETTINGS_PROVIDERS
-import com.yugahashimoto.andcode.ui.navigation.SESSION_DETAIL_ROUTE
 import com.yugahashimoto.andcode.ui.navigation.settingsNavGraph
 import com.yugahashimoto.andcode.ui.navigation.workspaceNavGraph
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
@@ -137,7 +126,6 @@ fun AndCodeApp(
     appTheme: AppTheme = AppTheme.DARK,
     uiFontSize: Int = 16,
     targetSessionId: String? = null,
-    deepLinkConnectionUrl: String? = null,
 ) {
     val context = LocalContext.current
     val app = context.applicationContext as AndCodeApplication
@@ -150,11 +138,8 @@ fun AndCodeApp(
     // to be selected first.
     var handoffReady by remember { mutableStateOf(false) }
     var selectedWorkspace by remember { mutableStateOf<WorkspaceRef?>(null) }
-    var selectedSession by remember { mutableStateOf<OpenCodeSession?>(null) }
     var notificationsEnabled by remember { mutableStateOf(true) }
     var showCloneDialog by remember { mutableStateOf(false) }
-    var showCommandPalette by remember { mutableStateOf(false) }
-    var showSessionImport by remember { mutableStateOf(false) }
     var showDiagnostics by remember { mutableStateOf(false) }
 
     val selectedRuntime by app.runtimeRegistry.selected.collectAsState()
@@ -190,8 +175,6 @@ fun AndCodeApp(
                     ActivityViewModel(
                         catalog = app.catalogRepository,
                         activity = app.activityRepository,
-                        registry = app.runtimeRegistry,
-                        onPermissionResolved = app.notifications::cancelPermission,
                     )
                 },
         )
@@ -463,12 +446,6 @@ fun AndCodeApp(
         }
     }
 
-    LaunchedEffect(deepLinkConnectionUrl) {
-        deepLinkConnectionUrl?.let {
-            navController.navigate(ROUTE_REMOTE_CONNECTION) { launchSingleTop = true }
-        }
-    }
-
     val onHandoff: (String) -> Unit = { targetRuntimeId ->
         val prompt = buildHandoffPrompt(chatState.messages)
         pendingHandoffPrompt = targetRuntimeId to prompt
@@ -613,13 +590,7 @@ fun AndCodeApp(
                         },
                         onNavigate = { route ->
                             closeDrawer()
-                            if (route == "command-palette") {
-                                showCommandPalette = true
-                            } else if (route == "session-import") {
-                                showSessionImport = true
-                            } else {
-                                navController.navigate(route) { launchSingleTop = true }
-                            }
+                            navController.navigate(route) { launchSingleTop = true }
                         },
                         onDeleteSession = { sessionId ->
                             voiceScope.launch {
@@ -814,6 +785,10 @@ fun AndCodeApp(
                         },
                         favoriteModelKeys = settingsState.favoriteModelKeys,
                         recentModelKeys = settingsState.recentModelKeys,
+                        hiddenModelKeys =
+                            settingsState.hiddenModelKeys.takeIf {
+                                selectedRuntime?.capabilities?.providerModelList == true
+                            }.orEmpty(),
                         onToggleFavorite = settingsViewModel::toggleFavoriteModel,
                         onSelectQuestionAnswer = chatViewModel::selectQuestionAnswer,
                         onSubmitQuestion = chatViewModel::submitQuestion,
@@ -857,25 +832,6 @@ fun AndCodeApp(
                             pendingSession = null
                             chatViewModel.openParentSession()
                         },
-                    )
-                }
-
-                composable(ROUTE_SCHEDULE) {
-                    val scheduleViewModel: ScheduleViewModel =
-                        viewModel(
-                            key = "schedule",
-                            factory = ViewModelFactory { ScheduleViewModel() },
-                        )
-                    val scheduleItems by scheduleViewModel.filteredSchedules.collectAsState()
-                    val activeOnly by scheduleViewModel.activeOnly.collectAsState()
-                    ScheduleScreen(
-                        items = scheduleItems,
-                        activeOnly = activeOnly,
-                        onActiveOnlyChange = scheduleViewModel::setActiveOnly,
-                        onToggle = scheduleViewModel::toggleSchedule,
-                        onAdd = scheduleViewModel::addSchedule,
-                        onDelete = scheduleViewModel::deleteSchedule,
-                        onOpenDrawer = { drawerScope.launch { drawerState.open() } },
                     )
                 }
 
@@ -938,52 +894,6 @@ fun AndCodeApp(
                     onShowCloneDialog = { showCloneDialog = true },
                     completeOnboardingAndGoToChat = completeOnboardingAndGoToChat,
                 )
-
-                composable(ROUTE_ACTIVITY) {
-                    ActivityScreen(
-                        state = activityState,
-                        onRefresh = activityViewModel::refresh,
-                        onInspectSession = { session ->
-                            selectedSession = session
-                            navController.navigate(SESSION_DETAIL_ROUTE)
-                        },
-                        onOpenSession = { id, title ->
-                            app.activityRepository.markSessionRead(id)
-                            pendingSession = id to title
-                            navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
-                        },
-                        onPermission = activityViewModel::respondToPermission,
-                        onRenameSession = activityViewModel::renameSession,
-                        onDeleteSession = activityViewModel::deleteSession,
-                    )
-                }
-
-                composable(SESSION_DETAIL_ROUTE) {
-                    val session = selectedSession
-                    val runtime = selectedRuntime
-                    if (session == null || runtime == null) {
-                        LaunchedEffect(Unit) { navController.popBackStack() }
-                    } else {
-                        val detailViewModel: SessionDetailViewModel =
-                            viewModel(
-                                key = "session-detail-${runtime.id}-${session.id}",
-                                factory =
-                                    ViewModelFactory {
-                                        SessionDetailViewModel(runtime, session)
-                                    },
-                            )
-                        val detailState by detailViewModel.state.collectAsState()
-                        SessionDetailScreen(
-                            state = detailState,
-                            onBack = { navController.popBackStack() },
-                            onRefresh = detailViewModel::refresh,
-                            onContinueChat = {
-                                pendingSession = session.id to session.title
-                                navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
-                            },
-                        )
-                    }
-                }
             }
         }
 
@@ -1002,33 +912,6 @@ fun AndCodeApp(
                     chatViewModel.selectWorkspace(serverPath)
                 },
                 onDismiss = { showCloneDialog = false },
-            )
-        }
-
-        if (showCommandPalette) {
-            CommandPaletteSheet(
-                onDismiss = { showCommandPalette = false },
-                onNavigate = { route ->
-                    showCommandPalette = false
-                    navController.navigate(route) { launchSingleTop = true }
-                },
-                onOpenSession = { id, title ->
-                    showCommandPalette = false
-                    app.activityRepository.markSessionRead(id)
-                    pendingSession = id to title
-                    navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
-                },
-                sessions = activityState.sessions.filter { it.parentId == null }.map { it.id to it.title.ifBlank { it.slug ?: it.id } },
-            )
-        }
-
-        if (showSessionImport) {
-            SessionImportSheet(
-                onDismiss = { showSessionImport = false },
-                onImport = { _ ->
-                    showSessionImport = false
-                    navController.navigate(ROUTE_CHAT)
-                },
             )
         }
 

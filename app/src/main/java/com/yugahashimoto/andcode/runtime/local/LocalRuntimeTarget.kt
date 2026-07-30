@@ -49,7 +49,7 @@ class LocalRuntimeTarget(
     override val agent: LocalAgent = LocalAgent.OPEN_CODE
     override val type: RuntimeType = RuntimeType.LOCAL
     override val kind: BackendKind = BackendKind.LOCAL
-    override val capabilities = RuntimeCapabilities(permissions = true)
+    override val capabilities = RuntimeCapabilities(permissions = true, providerModelList = true)
 
     private val mutableState = MutableStateFlow(mapStatus(runtimeManager.status()))
     override val state: StateFlow<RuntimeState> = mutableState.asStateFlow()
@@ -250,14 +250,14 @@ class LocalRuntimeTarget(
 
     override suspend fun disconnectMcpServer(name: String): Boolean = backend.disconnectMcpServer(name)
 
-    override suspend fun removeMcpAuth(name: String): Boolean = backend.removeMcpAuth(name)
+    override suspend fun removeMcpAuth(name: String): com.yugahashimoto.andcode.core.api.McpAuthRemoval = backend.removeMcpAuth(name)
 
-    override suspend fun mcpAuth(name: String): kotlinx.serialization.json.JsonObject = backend.mcpAuth(name)
+    override suspend fun mcpAuth(name: String): com.yugahashimoto.andcode.core.api.McpAuthStart = backend.mcpAuth(name)
 
     override suspend fun mcpAuthCallback(
         name: String,
         code: String,
-    ): Boolean = backend.mcpAuthCallback(name, code)
+    ): com.yugahashimoto.andcode.core.api.McpAuthStatus = backend.mcpAuthCallback(name, code)
 
     override suspend fun config(): kotlinx.serialization.json.JsonElement = backend.config()
 
@@ -288,8 +288,6 @@ class LocalRuntimeTarget(
     ): Boolean = backend.rejectQuestion(requestId, directory)
 
     override suspend fun pendingQuestions(directory: String?): List<QuestionRequest> = backend.pendingQuestions(directory)
-
-    override suspend fun initAgentsMd(sessionId: String): Boolean = backend.initAgentsMd(sessionId)
 
     override fun events(): Flow<OpenCodeEvent> = backend.events()
 

@@ -2,6 +2,7 @@ package com.yugahashimoto.andcode.feature.workspace
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.WrapText
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -31,6 +33,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -64,18 +67,17 @@ private val TOKEN_REGEX =
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CodeViewerScreen(
-    fileName: String,
-    content: String,
+    state: CodeViewerUiState,
     onBack: () -> Unit,
     syntaxThemeKey: String? = null,
 ) {
     val theme = remember(syntaxThemeKey) { syntaxThemeFor(syntaxThemeKey) }
-    val lines = remember(content) { content.split("\n") }
+    val lines = remember(state.content) { state.content.split("\n") }
 
-    var wrap by remember { mutableStateOf(false) }
-    var showSearch by remember { mutableStateOf(false) }
-    var searchQuery by remember { mutableStateOf("") }
-    var currentMatch by remember { mutableIntStateOf(-1) }
+    var wrap by rememberSaveable { mutableStateOf(false) }
+    var showSearch by rememberSaveable { mutableStateOf(false) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var currentMatch by rememberSaveable { mutableIntStateOf(-1) }
 
     val codeListState = rememberLazyListState()
     val numbersListState = rememberLazyListState()
@@ -105,7 +107,7 @@ fun CodeViewerScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text(fileName) },
+                title = { Text(state.filePath.substringAfterLast('/')) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.cd_back))
@@ -122,89 +124,108 @@ fun CodeViewerScreen(
             )
         },
     ) { padding ->
-        Column(
-            modifier =
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .background(CodeBackground),
-        ) {
-            if (showSearch) {
-                Row(
-                    modifier =
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
-                ) {
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true,
-                        label = { Text(stringResource(R.string.search_label)) },
-                    )
-                    IconButton(
-                        onClick = {
-                            if (matchLines.isNotEmpty()) {
-                                currentMatch = (currentMatch + 1) % matchLines.size
-                                val target = matchLines[currentMatch]
-                                scope.launch { codeListState.animateScrollToItem(target) }
-                            }
-                        },
-                    ) {
-                        Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.cd_next_match))
-                    }
-                }
-                if (searchQuery.isNotEmpty()) {
-                    Text(
-                        text =
-                            if (matchLines.isEmpty()) {
-                                stringResource(
-                                    R.string.code_no_matches,
-                                )
-                            } else {
-                                stringResource(R.string.code_match_counter, currentMatch + 1, matchLines.size)
-                            },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = LineNumberColor,
-                        modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
-                    )
-                }
+        if (state.isLoading) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding),
+                contentAlignment = androidx.compose.ui.Alignment.Center,
+            ) {
+                CircularProgressIndicator()
             }
-            Row(modifier = Modifier.fillMaxSize()) {
-                LazyColumn(
-                    state = numbersListState,
-                    userScrollEnabled = false,
-                    modifier = Modifier.padding(start = 8.dp, end = 8.dp),
-                ) {
-                    items(lines.size) { index ->
+        } else if (state.error != null || state.isBinary) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(padding).padding(24.dp),
+                contentAlignment = androidx.compose.ui.Alignment.Center,
+            ) {
+                Text(
+                    text = state.error ?: stringResource(R.string.binary_file_no_preview),
+                    color = if (state.error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                )
+            }
+        } else {
+            Column(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .background(CodeBackground),
+            ) {
+                if (showSearch) {
+                    Row(
+                        modifier =
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                    ) {
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier.weight(1f),
+                            singleLine = true,
+                            label = { Text(stringResource(R.string.search_label)) },
+                        )
+                        IconButton(
+                            onClick = {
+                                if (matchLines.isNotEmpty()) {
+                                    currentMatch = (currentMatch + 1) % matchLines.size
+                                    val target = matchLines[currentMatch]
+                                    scope.launch { codeListState.animateScrollToItem(target) }
+                                }
+                            },
+                        ) {
+                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.cd_next_match))
+                        }
+                    }
+                    if (searchQuery.isNotEmpty()) {
                         Text(
-                            text = (index + 1).toString(),
+                            text =
+                                if (matchLines.isEmpty()) {
+                                    stringResource(
+                                        R.string.code_no_matches,
+                                    )
+                                } else {
+                                    stringResource(R.string.code_match_counter, currentMatch + 1, matchLines.size)
+                                },
+                            style = MaterialTheme.typography.labelSmall,
                             color = LineNumberColor,
-                            fontSize = 12.sp,
-                            lineHeight = 18.sp,
-                            fontFamily = FontFamily.Monospace,
-                            textAlign = TextAlign.End,
-                            modifier = Modifier.width(40.dp),
+                            modifier = Modifier.padding(start = 16.dp, bottom = 4.dp),
                         )
                     }
                 }
-                LazyColumn(
-                    state = codeListState,
-                    modifier =
-                        Modifier
-                            .weight(1f)
-                            .then(if (wrap) Modifier else Modifier.horizontalScroll(hScrollState)),
-                ) {
-                    items(lines.size) { index ->
-                        Text(
-                            text = highlightLine(lines[index], theme, searchQuery),
-                            fontSize = 12.sp,
-                            lineHeight = 18.sp,
-                            fontFamily = FontFamily.Monospace,
-                            softWrap = wrap,
-                            maxLines = if (wrap) Int.MAX_VALUE else 1,
-                        )
+                Row(modifier = Modifier.fillMaxSize()) {
+                    LazyColumn(
+                        state = numbersListState,
+                        userScrollEnabled = false,
+                        modifier = Modifier.padding(start = 8.dp, end = 8.dp),
+                    ) {
+                        items(lines.size) { index ->
+                            Text(
+                                text = (index + 1).toString(),
+                                color = LineNumberColor,
+                                fontSize = 12.sp,
+                                lineHeight = 18.sp,
+                                fontFamily = FontFamily.Monospace,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier.width(40.dp),
+                            )
+                        }
+                    }
+                    LazyColumn(
+                        state = codeListState,
+                        modifier =
+                            Modifier
+                                .weight(1f)
+                                .then(if (wrap) Modifier else Modifier.horizontalScroll(hScrollState)),
+                    ) {
+                        items(lines.size) { index ->
+                            Text(
+                                text = highlightLine(lines[index], theme, searchQuery),
+                                fontSize = 12.sp,
+                                lineHeight = 18.sp,
+                                fontFamily = FontFamily.Monospace,
+                                softWrap = wrap,
+                                maxLines = if (wrap) Int.MAX_VALUE else 1,
+                            )
+                        }
                     }
                 }
             }

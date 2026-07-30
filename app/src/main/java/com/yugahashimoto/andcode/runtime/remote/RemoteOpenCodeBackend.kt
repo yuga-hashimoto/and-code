@@ -1,6 +1,9 @@
 package com.yugahashimoto.andcode.runtime.remote
 
 import com.yugahashimoto.andcode.core.api.ConfiguredProvider
+import com.yugahashimoto.andcode.core.api.McpAuthRemoval
+import com.yugahashimoto.andcode.core.api.McpAuthStart
+import com.yugahashimoto.andcode.core.api.McpAuthStatus
 import com.yugahashimoto.andcode.core.api.McpServer
 import com.yugahashimoto.andcode.core.api.OpenCodeAgent
 import com.yugahashimoto.andcode.core.api.OpenCodeApiClient
@@ -186,14 +189,14 @@ class RemoteOpenCodeBackend(
 
     override suspend fun disconnectMcpServer(name: String): Boolean = client.disconnectMcpServer(name)
 
-    override suspend fun removeMcpAuth(name: String): Boolean = client.removeMcpAuth(name)
+    override suspend fun removeMcpAuth(name: String): McpAuthRemoval = client.removeMcpAuth(name)
 
-    override suspend fun mcpAuth(name: String): JsonObject = client.mcpAuth(name)
+    override suspend fun mcpAuth(name: String): McpAuthStart = client.mcpAuth(name)
 
     override suspend fun mcpAuthCallback(
         name: String,
         code: String,
-    ): Boolean = client.mcpAuthCallback(name, code)
+    ): McpAuthStatus = client.mcpAuthCallback(name, code)
 
     override suspend fun config(): JsonElement = client.config()
 
@@ -204,8 +207,6 @@ class RemoteOpenCodeBackend(
     override suspend fun commands(): List<OpenCodeCommand> = client.commands()
 
     override suspend fun skills(): List<OpenCodeSkill> = client.skills()
-
-    override suspend fun initAgentsMd(sessionId: String): Boolean = client.initAgentsMd(sessionId)
 
     override fun events(): Flow<OpenCodeEvent> = client.events()
 }

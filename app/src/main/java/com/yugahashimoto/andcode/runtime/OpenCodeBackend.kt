@@ -1,6 +1,9 @@
 package com.yugahashimoto.andcode.runtime
 
 import com.yugahashimoto.andcode.core.api.ConfiguredProvider
+import com.yugahashimoto.andcode.core.api.McpAuthRemoval
+import com.yugahashimoto.andcode.core.api.McpAuthStart
+import com.yugahashimoto.andcode.core.api.McpAuthStatus
 import com.yugahashimoto.andcode.core.api.McpServer
 import com.yugahashimoto.andcode.core.api.OpenCodeAgent
 import com.yugahashimoto.andcode.core.api.OpenCodeCommand
@@ -185,14 +188,14 @@ interface OpenCodeBackend {
 
     suspend fun disconnectMcpServer(name: String): Boolean = unsupported("MCP disconnect")
 
-    suspend fun removeMcpAuth(name: String): Boolean = unsupported("MCP remove auth")
+    suspend fun removeMcpAuth(name: String): McpAuthRemoval = unsupported("MCP remove auth")
 
-    suspend fun mcpAuth(name: String): JsonObject = unsupported("MCP auth")
+    suspend fun mcpAuth(name: String): McpAuthStart = unsupported("MCP auth")
 
     suspend fun mcpAuthCallback(
         name: String,
         code: String,
-    ): Boolean = unsupported("MCP auth callback")
+    ): McpAuthStatus = unsupported("MCP auth callback")
 
     suspend fun config(): JsonElement = unsupported("config")
 
@@ -203,8 +206,6 @@ interface OpenCodeBackend {
     suspend fun commands(): List<OpenCodeCommand> = unsupported("commands")
 
     suspend fun skills(): List<OpenCodeSkill> = unsupported("skills")
-
-    suspend fun initAgentsMd(sessionId: String): Boolean = unsupported("init AGENTS.md")
 
     fun events(): Flow<OpenCodeEvent>
 

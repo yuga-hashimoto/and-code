@@ -2,8 +2,6 @@ package com.yugahashimoto.andcode.di
 
 import com.yugahashimoto.andcode.feature.activity.ActivityViewModel
 import com.yugahashimoto.andcode.feature.chat.ChatViewModel
-import com.yugahashimoto.andcode.feature.home.HomeViewModel
-import com.yugahashimoto.andcode.feature.schedule.ScheduleViewModel
 import com.yugahashimoto.andcode.feature.settings.SettingsViewModel
 import com.yugahashimoto.andcode.feature.workspace.WorkspaceViewModel
 import org.koin.android.ext.koin.androidContext
@@ -45,18 +43,6 @@ val viewModelModule =
             ActivityViewModel(
                 catalog = get(),
                 activity = get(),
-                registry = get(),
             )
-        }
-
-        viewModel {
-            HomeViewModel(
-                catalog = get(),
-                preferences = get(),
-            )
-        }
-
-        viewModel {
-            ScheduleViewModel()
         }
     }

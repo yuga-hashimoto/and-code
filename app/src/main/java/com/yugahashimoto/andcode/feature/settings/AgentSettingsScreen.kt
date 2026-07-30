@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -106,6 +107,7 @@ fun AntigravityAgentSettingsScreen(
 @Composable
 fun OpenCodeAgentSettingsScreen(
     onOpenProviderSettings: () -> Unit,
+    onOpenModelVisibility: () -> Unit,
     onOpenMcp: () -> Unit,
     onOpenLocalRuntime: () -> Unit,
     onBack: () -> Unit,
@@ -116,6 +118,12 @@ fun OpenCodeAgentSettingsScreen(
                 icon = Icons.Default.Key,
                 title = stringResource(R.string.provider_settings_row),
                 onClick = onOpenProviderSettings,
+            )
+            SettingsDivider()
+            SettingsRow(
+                icon = Icons.Default.Visibility,
+                title = stringResource(R.string.model_visibility_row),
+                onClick = onOpenModelVisibility,
             )
             SettingsDivider()
             SettingsRow(

@@ -81,9 +81,8 @@ object ClaudeSandboxLauncher {
         runtime: LocalRuntimeInstaller.InstalledRuntime,
         prootTmp: File,
         githubToken: String? = null,
-        accessibilityToken: String? = null,
     ): Map<String, String> =
-        localRuntimeEnvironment(runtime.commandSuite.environment(), prootTmp, githubToken, accessibilityToken) +
+        localRuntimeEnvironment(runtime.commandSuite.environment(), prootTmp, githubToken) +
             mapOf(
                 // The bundled ripgrep is a glibc build and cannot run on musl; the sandbox installs
                 // Alpine's ripgrep instead.

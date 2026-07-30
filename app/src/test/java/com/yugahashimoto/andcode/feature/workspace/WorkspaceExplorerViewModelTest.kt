@@ -31,7 +31,6 @@ import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 
@@ -65,7 +64,7 @@ class WorkspaceExplorerViewModelTest {
         }
 
     @Test
-    fun `opening a directory and file reads through backend`() =
+    fun `opening a directory changes the listed path`() =
         runTest(dispatcher) {
             val backend = FakeBackend()
             val viewModel = WorkspaceExplorerViewModel(backend, workspace())
@@ -75,14 +74,6 @@ class WorkspaceExplorerViewModelTest {
             advanceUntilIdle()
             assertEquals("src", viewModel.state.value.currentPath)
             assertEquals(listOf("Main.kt"), viewModel.state.value.files.map { it.name })
-
-            viewModel.open(viewModel.state.value.files.single())
-            advanceUntilIdle()
-            assertEquals("src/Main.kt", viewModel.state.value.selectedFilePath)
-            assertEquals("fun main() = Unit", viewModel.state.value.selectedFile?.content)
-
-            viewModel.closeFile()
-            assertNull(viewModel.state.value.selectedFile)
         }
 
     @Test

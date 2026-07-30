@@ -413,10 +413,10 @@ class LocalRuntimeInstaller(
 
     private fun installAndroidHelperScripts(rootfs: File) {
         val binDir = File(rootfs, "usr/local/bin").apply { mkdirs() }
+        File(binDir, "android-ui").delete()
         listOf(
             "android-vision.sh" to "android-vision",
             "android-screenshot.sh" to "android-screenshot",
-            "android-ui.sh" to "android-ui",
         ).forEach {
                 (assetName, scriptName) ->
             val scriptFile = File(binDir, scriptName)

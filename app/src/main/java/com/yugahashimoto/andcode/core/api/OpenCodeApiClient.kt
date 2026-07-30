@@ -341,26 +341,34 @@ class OpenCodeApiClient(
                                 else -> emptyList()
                             }
                         }.orEmpty()
-                    val serverWithoutTools = JsonObject(serverObj.filterKeys { it != "tools" })
-                    json.decodeFromJsonElement(McpServer.serializer(), serverWithoutTools).copy(name = name, tools = tools)
+                    val serverWithoutTools =
+                        JsonObject(
+                            serverObj.filterKeys { it != "tools" } + ("name" to JsonPrimitive(name)),
+                        )
+                    json.decodeFromJsonElement(McpServer.serializer(), serverWithoutTools).copy(tools = tools)
                 }
             }
         }
 
-    suspend fun addMcpServer(body: JsonObject): McpServer = post("mcp", body)
+    suspend fun addMcpServer(body: JsonObject): McpServer {
+        val statuses: Map<String, McpAuthStatus> = post("mcp", body)
+        val name = (body["name"] as? JsonPrimitive)?.content ?: error("MCP server name is missing")
+        val status = statuses[name]
+        return McpServer(name = name, status = status?.status, error = status?.error)
+    }
 
     suspend fun connectMcpServer(name: String): Boolean = post("mcp/${encodePath(name)}/connect", JsonObject(emptyMap()))
 
     suspend fun disconnectMcpServer(name: String): Boolean = post("mcp/${encodePath(name)}/disconnect", JsonObject(emptyMap()))
 
-    suspend fun removeMcpAuth(name: String): Boolean = delete("mcp/${encodePath(name)}/auth")
+    suspend fun removeMcpAuth(name: String): McpAuthRemoval = delete("mcp/${encodePath(name)}/auth")
 
-    suspend fun mcpAuth(name: String): JsonObject = post("mcp/${encodePath(name)}/auth", JsonObject(emptyMap()))
+    suspend fun mcpAuth(name: String): McpAuthStart = post("mcp/${encodePath(name)}/auth", JsonObject(emptyMap()))
 
     suspend fun mcpAuthCallback(
         name: String,
         code: String,
-    ): Boolean {
+    ): McpAuthStatus {
         val body = buildJsonObject { put("code", code) }
         return post("mcp/${encodePath(name)}/auth/callback", body)
     }
@@ -388,8 +396,6 @@ class OpenCodeApiClient(
     suspend fun commands(): List<OpenCodeCommand> = getList("command")
 
     suspend fun skills(): List<OpenCodeSkill> = getList("skill")
-
-    suspend fun initAgentsMd(sessionId: String): Boolean = post("session/${encodePath(sessionId)}/init", JsonObject(emptyMap()))
 
     suspend fun respondPermission(
         sessionId: String,

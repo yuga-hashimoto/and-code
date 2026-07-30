@@ -77,7 +77,6 @@ fun SettingsScreenV2(
     onOpenSupport: () -> Unit = {},
     onOpenMcp: () -> Unit = {},
     onOpenServerInfo: () -> Unit = {},
-    onOpenModelVisibility: () -> Unit = {},
     currentTheme: String = "dark",
     onThemeChange: (String) -> Unit = {},
     uiFontSize: Int = 16,

@@ -3,7 +3,6 @@ package com.yugahashimoto.andcode.feature.workspace
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yugahashimoto.andcode.core.api.OpenCodeFileChange
-import com.yugahashimoto.andcode.core.api.OpenCodeFileContent
 import com.yugahashimoto.andcode.core.api.OpenCodeFileNode
 import com.yugahashimoto.andcode.core.api.OpenCodeSearchMatch
 import com.yugahashimoto.andcode.core.api.OpenCodeVcsInfo
@@ -22,8 +21,6 @@ data class WorkspaceExplorerUiState(
     val workspace: WorkspaceRef,
     val currentPath: String = ".",
     val files: List<OpenCodeFileNode> = emptyList(),
-    val selectedFilePath: String? = null,
-    val selectedFile: OpenCodeFileContent? = null,
     val searchQuery: String = "",
     val textMatches: List<OpenCodeSearchMatch> = emptyList(),
     val fileMatches: List<String> = emptyList(),
@@ -55,32 +52,7 @@ class WorkspaceExplorerViewModel(
     fun open(node: OpenCodeFileNode) {
         if (node.type == "directory") {
             loadDirectory(node.path.trimEnd('/').ifBlank { "." })
-        } else {
-            openFile(node.path)
         }
-    }
-
-    fun openFile(path: String) {
-        mutableState.update {
-            it.copy(selectedFilePath = path, selectedFile = null, isLoadingFiles = true, error = null)
-        }
-        viewModelScope.launch {
-            runCatching { backend.readFile(mutableState.value.workspace.path, path) }
-                .onSuccess { content ->
-                    mutableState.update {
-                        it.copy(selectedFilePath = path, selectedFile = content, isLoadingFiles = false)
-                    }
-                }
-                .onFailure { error ->
-                    mutableState.update {
-                        it.copy(isLoadingFiles = false, error = error.safeMessage("OpenCode workspace operation failed"))
-                    }
-                }
-        }
-    }
-
-    fun closeFile() {
-        mutableState.update { it.copy(selectedFilePath = null, selectedFile = null) }
     }
 
     fun navigateUp() {
@@ -166,8 +138,6 @@ class WorkspaceExplorerViewModel(
             it.copy(
                 currentPath = path,
                 files = emptyList(),
-                selectedFilePath = null,
-                selectedFile = null,
                 isLoadingFiles = true,
                 error = null,
             )

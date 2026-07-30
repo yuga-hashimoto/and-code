@@ -26,7 +26,6 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Folder
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Source
@@ -90,7 +89,6 @@ fun WorkspaceExplorerScreen(
     onBack: () -> Unit,
     onRefresh: () -> Unit,
     onOpenNode: (OpenCodeFileNode) -> Unit,
-    onCloseFile: () -> Unit,
     onNavigateUp: () -> Unit,
     onSearch: (String) -> Unit,
     onRefreshChanges: () -> Unit,
@@ -106,7 +104,6 @@ fun WorkspaceExplorerScreen(
     onOpenTerminal: () -> Unit = {},
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
-    var showScripts by remember { mutableStateOf(false) }
     val tabs =
         listOf(
             stringResource(R.string.tab_files),
@@ -147,9 +144,6 @@ fun WorkspaceExplorerScreen(
             IconButton(onClick = onOpenTerminal) {
                 Icon(Icons.Default.Terminal, contentDescription = stringResource(R.string.tab_type_terminal))
             }
-            IconButton(onClick = { showScripts = true }) {
-                Icon(Icons.Default.PlayArrow, contentDescription = stringResource(R.string.scripts_title))
-            }
             IconButton(
                 onClick = if (selectedTab == 2) onRefreshChanges else onRefresh,
                 enabled = !state.isLoadingFiles && !state.isLoadingChanges,
@@ -175,7 +169,7 @@ fun WorkspaceExplorerScreen(
         if (tabManager != null) {
             WorkspaceTabContent(tabManager = tabManager) {
                 when (selectedTab) {
-                    0 -> FilesTab(state, onOpenNode, onCloseFile, onNavigateUp)
+                    0 -> FilesTab(state, onOpenNode, onNavigateUp)
                     1 -> SearchTab(state, onSearch)
                     2 -> ChangesTab(state, branches, onSwitchBranch, onCreateBranch, commits)
                     else -> PrTab(prTitle, prStatus, prDescription)
@@ -183,20 +177,12 @@ fun WorkspaceExplorerScreen(
             }
         } else {
             when (selectedTab) {
-                0 -> FilesTab(state, onOpenNode, onCloseFile, onNavigateUp)
+                0 -> FilesTab(state, onOpenNode, onNavigateUp)
                 1 -> SearchTab(state, onSearch)
                 2 -> ChangesTab(state, branches, onSwitchBranch, onCreateBranch, commits)
                 else -> PrTab(prTitle, prStatus, prDescription)
             }
         }
-    }
-
-    if (showScripts) {
-        WorkspaceScriptsSheet(
-            onDismiss = { showScripts = false },
-            scripts = emptyList(),
-            onRunScript = {},
-        )
     }
 }
 
@@ -371,70 +357,8 @@ private fun TerminalTabPlaceholder() {
 private fun FilesTab(
     state: WorkspaceExplorerUiState,
     onOpenNode: (OpenCodeFileNode) -> Unit,
-    onCloseFile: () -> Unit,
     onNavigateUp: () -> Unit,
 ) {
-    if (state.selectedFilePath != null) {
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    IconButton(onClick = onCloseFile) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.back_to_file_list))
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            state.selectedFilePath,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        state.selectedFile?.mimeType?.let {
-                            Text(
-                                it,
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
-                }
-            }
-
-            if (state.isLoadingFiles) {
-                item { LoadingCard(stringResource(R.string.loading_files)) }
-            } else {
-                state.selectedFile?.let { file ->
-                    item {
-                        SectionCard {
-                            if (file.type == "binary") {
-                                Text(stringResource(R.string.binary_file_no_preview))
-                            } else {
-                                SelectionContainer {
-                                    Text(
-                                        file.content,
-                                        fontFamily = FontFamily.Monospace,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        modifier = Modifier.horizontalScroll(rememberScrollState()),
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            state.error?.let { item { ErrorCard(it) } }
-            item { Spacer(Modifier.height(72.dp)) }
-        }
-        return
-    }
-
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),

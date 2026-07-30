@@ -1,6 +1,9 @@
 package com.yugahashimoto.andcode.runtime.local
 
 import com.yugahashimoto.andcode.core.api.ConfiguredProvider
+import com.yugahashimoto.andcode.core.api.McpAuthRemoval
+import com.yugahashimoto.andcode.core.api.McpAuthStart
+import com.yugahashimoto.andcode.core.api.McpAuthStatus
 import com.yugahashimoto.andcode.core.api.McpServer
 import com.yugahashimoto.andcode.core.api.OpenCodeAgent
 import com.yugahashimoto.andcode.core.api.OpenCodeCommand
@@ -217,14 +220,14 @@ class LocalOpenCodeBackend(
 
     override suspend fun disconnectMcpServer(name: String): Boolean = delegate().disconnectMcpServer(name)
 
-    override suspend fun removeMcpAuth(name: String): Boolean = delegate().removeMcpAuth(name)
+    override suspend fun removeMcpAuth(name: String): McpAuthRemoval = delegate().removeMcpAuth(name)
 
-    override suspend fun mcpAuth(name: String): JsonObject = delegate().mcpAuth(name)
+    override suspend fun mcpAuth(name: String): McpAuthStart = delegate().mcpAuth(name)
 
     override suspend fun mcpAuthCallback(
         name: String,
         code: String,
-    ): Boolean = delegate().mcpAuthCallback(name, code)
+    ): McpAuthStatus = delegate().mcpAuthCallback(name, code)
 
     override suspend fun config(): JsonElement = delegate().config()
 
@@ -235,8 +238,6 @@ class LocalOpenCodeBackend(
     override suspend fun commands(): List<OpenCodeCommand> = delegate().commands()
 
     override suspend fun skills(): List<OpenCodeSkill> = delegate().skills()
-
-    override suspend fun initAgentsMd(sessionId: String): Boolean = delegate().initAgentsMd(sessionId)
 
     override fun events(): Flow<OpenCodeEvent> = delegate().events()
 

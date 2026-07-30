@@ -439,9 +439,11 @@ class ClaudeCodeTarget(
             runtime.runInWorkspace(defaultDirectory(), ClaudeMcpParser.removeScript(name), MCP_TIMEOUT_SECONDS) != null
         }
 
-    override suspend fun removeMcpAuth(name: String): Boolean =
+    override suspend fun removeMcpAuth(name: String): com.yugahashimoto.andcode.core.api.McpAuthRemoval =
         withContext(Dispatchers.IO) {
-            runtime.runInWorkspace(defaultDirectory(), ClaudeMcpParser.logoutScript(name), MCP_TIMEOUT_SECONDS) != null
+            com.yugahashimoto.andcode.core.api.McpAuthRemoval(
+                runtime.runInWorkspace(defaultDirectory(), ClaudeMcpParser.logoutScript(name), MCP_TIMEOUT_SECONDS) != null,
+            )
         }
 
     /** Where workspace-scoped questions are asked when the caller names no session. */

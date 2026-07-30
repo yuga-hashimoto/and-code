@@ -54,6 +54,7 @@ import com.yugahashimoto.andcode.ui.components.StatusChip
 fun McpScreen(
     registry: RuntimeRegistry,
     agent: LocalAgent = LocalAgent.OPEN_CODE,
+    onOpenBrowser: (String) -> Unit,
     onBack: () -> Unit,
 ) {
     val viewModel: McpViewModel =
@@ -117,7 +118,10 @@ fun McpScreen(
                         onConnect = { viewModel.connect(server.name) },
                         onDisconnect = { viewModel.disconnect(server.name) },
                         onRemoveAuth = { viewModel.removeAuth(server.name) },
+                        onAuthenticate = { viewModel.startAuth(server.name, onOpenBrowser) },
                         supportsConnectToggle = state.supportsConnectToggle,
+                        supportsOAuth = state.supportsOAuth,
+                        isAuthenticating = state.isAuthenticating,
                     )
                 }
             }
@@ -132,6 +136,17 @@ fun McpScreen(
             onUrlChange = viewModel::updateAddUrl,
             onConfirm = viewModel::addServer,
             onDismiss = viewModel::dismissAddDialog,
+        )
+    }
+
+    if (state.oauthServerName != null) {
+        McpAuthCodeDialog(
+            serverName = state.oauthServerName,
+            code = state.oauthCode,
+            isSubmitting = state.isAuthenticating,
+            onCodeChange = viewModel::updateOAuthCode,
+            onConfirm = viewModel::completeAuth,
+            onDismiss = viewModel::dismissAuth,
         )
     }
 
@@ -155,7 +170,10 @@ private fun McpServerCard(
     onConnect: () -> Unit,
     onDisconnect: () -> Unit,
     onRemoveAuth: () -> Unit,
+    onAuthenticate: () -> Unit,
     supportsConnectToggle: Boolean,
+    supportsOAuth: Boolean,
+    isAuthenticating: Boolean,
 ) {
     val isConnected = server.status == "connected" || server.status == "running"
     Surface(
@@ -206,7 +224,11 @@ private fun McpServerCard(
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 // An agent that always connects to what it is configured with has nothing to toggle;
                 // it offers removal instead, so the label matches what the button really does.
-                if (!supportsConnectToggle) {
+                if (supportsOAuth && server.status == "needs_auth") {
+                    OutlinedButton(onClick = onAuthenticate, enabled = !isAuthenticating) {
+                        Text(stringResource(R.string.mcp_authenticate))
+                    }
+                } else if (!supportsConnectToggle) {
                     OutlinedButton(onClick = onDisconnect) {
                         Icon(
                             Icons.Default.LinkOff,
@@ -233,12 +255,55 @@ private fun McpServerCard(
                         Text(stringResource(R.string.mcp_connect))
                     }
                 }
-                OutlinedButton(onClick = onRemoveAuth) {
-                    Text(stringResource(R.string.mcp_remove_auth))
+                if (supportsOAuth) {
+                    OutlinedButton(onClick = onRemoveAuth, enabled = !isAuthenticating) {
+                        Text(stringResource(R.string.mcp_remove_auth))
+                    }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun McpAuthCodeDialog(
+    serverName: String,
+    code: String,
+    isSubmitting: Boolean,
+    onCodeChange: (String) -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.mcp_auth_title, serverName)) },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Text(stringResource(R.string.mcp_auth_help))
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = onCodeChange,
+                    label = { Text(stringResource(R.string.mcp_auth_code_hint)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onConfirm, enabled = code.isNotBlank() && !isSubmitting) {
+                if (isSubmitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                } else {
+                    Text(stringResource(R.string.mcp_auth_complete))
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
 }
 
 @Composable
@@ -284,7 +349,13 @@ private fun McpAddDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm, enabled = !state.isAdding && state.addName.isNotBlank()) {
+            TextButton(
+                onClick = onConfirm,
+                enabled =
+                    !state.isAdding &&
+                        state.addName.isNotBlank() &&
+                        (state.addCommand.isNotBlank() || state.addUrl.isNotBlank()),
+            ) {
                 if (state.isAdding) {
                     CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
                 } else {

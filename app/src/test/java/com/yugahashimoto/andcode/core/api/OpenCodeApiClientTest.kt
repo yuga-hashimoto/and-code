@@ -519,6 +519,80 @@ class OpenCodeApiClientTest {
             assertTrue(!error.message.orEmpty().contains("invalid key"))
         }
 
+    @Test
+    fun `lists MCP status map entries using map keys as names`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setBody(
+                    """{"github":{"status":"needs_auth"},"tools":{"status":"connected","tools":{"search":{}}}}""",
+                ),
+            )
+
+            val result = client().mcpServers()
+
+            assertEquals(listOf("github", "tools"), result.map { it.name })
+            assertEquals("needs_auth", result[0].status)
+            assertEquals(listOf("search"), result[1].tools)
+            assertEquals("/mcp", server.takeRequest().path)
+        }
+
+    @Test
+    fun `starts MCP OAuth with encoded server name and typed response`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setBody(
+                    """{"authorizationUrl":"https://auth.example/start","oauthState":"state-1"}""",
+                ),
+            )
+
+            val result = client().mcpAuth("remote/server")
+
+            assertEquals("https://auth.example/start", result.authorizationUrl)
+            assertEquals("state-1", result.oauthState)
+            val request = server.takeRequest()
+            assertEquals("POST", request.method)
+            assertEquals("/mcp/remote%2Fserver/auth", request.path)
+            assertEquals(emptySet<String>(), Json.parseToJsonElement(request.body.readUtf8()).jsonObject.keys)
+        }
+
+    @Test
+    fun `completes MCP OAuth with code body and typed status`() =
+        runBlocking {
+            server.enqueue(MockResponse().setBody("""{"status":"connected"}"""))
+
+            val result = client().mcpAuthCallback("server", "code-123")
+
+            assertEquals("connected", result.status)
+            val request = server.takeRequest()
+            assertEquals("/mcp/server/auth/callback", request.path)
+            assertEquals("code-123", Json.parseToJsonElement(request.body.readUtf8()).jsonObject["code"]!!.jsonPrimitive.content)
+        }
+
+    @Test
+    fun `removes MCP OAuth and decodes success wrapper`() =
+        runBlocking {
+            server.enqueue(MockResponse().setBody("""{"success":true}"""))
+
+            assertTrue(client().removeMcpAuth("server").success)
+
+            val request = server.takeRequest()
+            assertEquals("DELETE", request.method)
+            assertEquals("/mcp/server/auth", request.path)
+        }
+
+    @Test
+    fun `adds MCP server from status map response`() =
+        runBlocking {
+            server.enqueue(MockResponse().setBody("""{"tools":{"status":"connected"}}"""))
+            val body = Json.parseToJsonElement("""{"name":"tools","config":{"type":"local","command":["node"]}}""").jsonObject
+
+            val result = client().addMcpServer(body)
+
+            assertEquals("tools", result.name)
+            assertEquals("connected", result.status)
+            assertEquals("/mcp", server.takeRequest().path)
+        }
+
     private fun client(password: String? = null): OpenCodeApiClient {
         val profile =
             ConnectionProfile(

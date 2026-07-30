@@ -12,7 +12,6 @@ class LocalRuntimeProcessLauncher(
         android.os.Process.killProcess(pid.toInt())
     },
     private val githubToken: () -> String? = { null },
-    private val accessibilityToken: () -> String? = { null },
     private val beforeStart: (LocalRuntimeInstaller.InstalledRuntime) -> Unit = {},
     private val maxLogBytes: Long = 1_048_576L,
 ) {
@@ -90,7 +89,7 @@ class LocalRuntimeProcessLauncher(
                 .redirectOutput(ProcessBuilder.Redirect.appendTo(logFile))
         builder.environment().apply {
             clear()
-            putAll(localRuntimeEnvironment(suite.environment(), prootTmp, githubToken(), accessibilityToken()))
+            putAll(localRuntimeEnvironment(suite.environment(), prootTmp, githubToken()))
         }
         val started = builder.start()
         process = started
@@ -324,7 +323,6 @@ internal fun localRuntimeEnvironment(
     suiteEnvironment: Map<String, String>,
     prootTmp: File,
     githubToken: String? = null,
-    accessibilityToken: String? = null,
 ): Map<String, String> =
     buildMap {
         putAll(suiteEnvironment)
@@ -346,8 +344,5 @@ internal fun localRuntimeEnvironment(
         githubToken?.takeIf(String::isNotBlank)?.let {
             put("OPENCODE_GITHUB_TOKEN", it)
             put("GH_TOKEN", it)
-        }
-        accessibilityToken?.takeIf(String::isNotBlank)?.let {
-            put("ANDCODE_UI_TOKEN", it)
         }
     }

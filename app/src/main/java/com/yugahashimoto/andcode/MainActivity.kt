@@ -2,7 +2,6 @@ package com.yugahashimoto.andcode
 
 import android.app.role.RoleManager
 import android.content.Intent
-import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -30,7 +29,6 @@ import com.yugahashimoto.andcode.ui.AndCodeApp
 
 class MainActivity : ComponentActivity() {
     private var targetSessionId by mutableStateOf<String?>(null)
-    private var deepLinkConnectionUrl by mutableStateOf<String?>(null)
     private var showInitialStarPrompt by mutableStateOf(false)
 
     private val app: AndCodeApplication
@@ -66,7 +64,6 @@ class MainActivity : ComponentActivity() {
                 AndCodeApp(
                     onOpenAssistantSettings = ::openAssistantSettings,
                     targetSessionId = targetSessionId,
-                    deepLinkConnectionUrl = deepLinkConnectionUrl,
                 )
                 SnackbarHost(
                     hostState = snackbarHostState,
@@ -121,21 +118,6 @@ class MainActivity : ComponentActivity() {
         intent ?: return
         intent.getStringExtra("target_session_id")?.let { id ->
             targetSessionId = id
-        }
-        intent.data?.let { uri ->
-            if (uri.scheme == "opencode" && uri.host == "connect") {
-                val host = uri.getQueryParameter("host").orEmpty()
-                val port = uri.getQueryParameter("port").orEmpty()
-                val token = uri.getQueryParameter("token").orEmpty()
-                val url =
-                    buildString {
-                        append("https://")
-                        append(host)
-                        if (port.isNotBlank()) append(":").append(port)
-                        if (token.isNotBlank()) append("?token=").append(Uri.encode(token))
-                    }
-                deepLinkConnectionUrl = url
-            }
         }
     }
 

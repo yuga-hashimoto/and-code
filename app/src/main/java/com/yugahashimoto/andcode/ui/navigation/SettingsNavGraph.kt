@@ -16,6 +16,7 @@ import com.yugahashimoto.andcode.feature.settings.AgentSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.AntigravityAgentSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.ClaudeCodeAgentSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.GitHubSettingsScreen
+import com.yugahashimoto.andcode.feature.settings.ModelVisibilityScreen
 import com.yugahashimoto.andcode.feature.settings.OpenCodeAgentSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.ProviderSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.SettingsScreenV2
@@ -141,8 +142,20 @@ fun NavGraphBuilder.settingsNavGraph(
     composable(ROUTE_SETTINGS_AGENT_OPENCODE) {
         OpenCodeAgentSettingsScreen(
             onOpenProviderSettings = { navController.navigate(ROUTE_SETTINGS_PROVIDERS) },
+            onOpenModelVisibility = { navController.navigate(ROUTE_SETTINGS_MODEL_VISIBILITY) },
             onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP) },
             onOpenLocalRuntime = { navController.navigate(LOCAL_RUNTIME_MANAGEMENT_ROUTE) },
+            onBack = { navController.popBackStack() },
+        )
+    }
+
+    composable(ROUTE_SETTINGS_MODEL_VISIBILITY) {
+        val settingsState by settingsViewModel.state.collectAsState()
+        androidx.compose.runtime.LaunchedEffect(Unit) { settingsViewModel.refreshProviderAuth() }
+        ModelVisibilityScreen(
+            providers = settingsState.availableProviders.filter { it.id in settingsState.connectedProviderIds },
+            hiddenModelKeys = settingsState.hiddenModelKeys,
+            onToggleModelVisibility = settingsViewModel::toggleModelVisibility,
             onBack = { navController.popBackStack() },
         )
     }
@@ -228,6 +241,9 @@ fun NavGraphBuilder.settingsNavGraph(
         com.yugahashimoto.andcode.feature.settings.McpScreen(
             registry = runtimeRegistry,
             agent = com.yugahashimoto.andcode.runtime.LocalAgent.OPEN_CODE,
+            onOpenBrowser = { url ->
+                context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+            },
             onBack = { navController.popBackStack() },
         )
     }
@@ -236,6 +252,7 @@ fun NavGraphBuilder.settingsNavGraph(
         com.yugahashimoto.andcode.feature.settings.McpScreen(
             registry = runtimeRegistry,
             agent = com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE,
+            onOpenBrowser = {},
             onBack = { navController.popBackStack() },
         )
     }
@@ -244,6 +261,7 @@ fun NavGraphBuilder.settingsNavGraph(
         com.yugahashimoto.andcode.feature.settings.McpScreen(
             registry = runtimeRegistry,
             agent = com.yugahashimoto.andcode.runtime.LocalAgent.ANTIGRAVITY,
+            onOpenBrowser = {},
             onBack = { navController.popBackStack() },
         )
     }

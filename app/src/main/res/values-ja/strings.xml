@@ -169,31 +169,7 @@
     <string name="item_count">%1$d件</string>
     <string name="unsupported_abi">未対応ABI: %1$s</string>
 
-    <string name="tab_approvals">承認</string>
-    <string name="tab_logs">ログ</string>
-    <string name="activity_screen_title">アクティビティ</string>
-    <string name="activity_screen_subtitle">実行状況と履歴</string>
-    <string name="no_running_tasks">実行中のタスクはありません</string>
-    <string name="open_chat_button">チャットを開く</string>
-    <string name="no_pending_approvals">承認待ちはありません</string>
-    <string name="continue_chat_button">チャットを続ける</string>
-    <string name="no_event_logs">イベントログはまだありません</string>
-
-    <string name="session_info_title">セッション情報</string>
-    <string name="session_info_project">プロジェクト</string>
-    <string name="continue_this_session_chat">このセッションのチャットを続ける</string>
-    <string name="session_info_loading">セッション情報を取得しています</string>
-    <string name="session_no_todos">このセッションにTodoはありません</string>
-    <string name="session_diff_title">変更差分</string>
-    <string name="session_no_file_changes">このセッションによるファイル変更はありません</string>
-    <string name="changed_file_default">変更ファイル</string>
-    <string name="todo_status_in_progress">進行中</string>
-    <string name="todo_status_cancelled">取消</string>
-    <string name="todo_status_pending">未着手</string>
     <string name="todo_timeline_progress">%2$d 個中 %1$d 個の Todo が完了</string>
-    <string name="priority_high">高</string>
-    <string name="priority_medium">中</string>
-    <string name="priority_low">低</string>
 
     <string name="tab_files">ファイル</string>
     <string name="tab_search">検索</string>
@@ -288,12 +264,6 @@
     <string name="adb_pairing_in_progress">ペアリング中…</string>
     <string name="adb_connecting_in_progress">接続中…</string>
     <string name="adb_requires_android_11">Android 11以降が必要です</string>
-    <string name="accessibility_service_description">OpenCodeエージェントがADBなしで画面読み取り、タップ、スワイプ、テキスト入力を行えるようにします。ローカルHTTPサーバー（ポート4098）を提供します。</string>
-    <string name="accessibility_setup_title">アクセシビリティサービス</string>
-    <string name="accessibility_setup_description">ADBなしで画面読み取りとジェスチャー制御を有効にします。エージェントはcurl経由でデバイスを操作できます。</string>
-    <string name="accessibility_status_disconnected">無効</string>
-    <string name="accessibility_status_connected">アクティブ（ポート %1$d）</string>
-    <string name="accessibility_enable_button">設定で有効にする</string>
     <string name="runtime_status_not_installed">未インストール</string>
     <string name="runtime_status_setting_up">セットアップ中</string>
     <string name="runtime_status_starting">起動中</string>
@@ -509,30 +479,6 @@
     <string name="remote_test_connection_button">接続をテスト</string>
     <string name="remote_save_connection_button">この接続を保存</string>
 
-    <!-- Redesign: schedule -->
-    <string name="schedule_title">スケジュール</string>
-    <string name="schedule_subtitle">タスクの自動実行を管理します。</string>
-    <string name="filter_description">フィルター</string>
-    <string name="filter_all">すべて</string>
-    <string name="filter_enabled">有効</string>
-    <string name="filter_disabled">停止中</string>
-    <string name="new_schedule_button">+ 新規スケジュール</string>
-    <string name="schedule_create_dialog_title">新規スケジュール</string>
-    <string name="schedule_name_hint">名前</string>
-    <string name="schedule_time_hint">時刻 (例: 09:00)</string>
-    <string name="schedule_repeat_label">繰り返し</string>
-    <string name="schedule_repeat_daily">毎日</string>
-    <string name="schedule_repeat_weekly">毎週</string>
-    <string name="filter_active">アクティブ</string>
-    <string name="filter_ended">終了</string>
-    <string name="schedule_prompt_hint">プロンプト</string>
-    <string name="schedule_cron_hint">Cron式 (例: 0 9 * * *)</string>
-    <string name="schedule_workspace_hint">ワークスペース</string>
-    <string name="schedule_next_run">次回: %1$s</string>
-    <string name="schedule_delete_title">スケジュールを削除</string>
-    <string name="schedule_delete_message">「%1$s」を削除しますか？この操作は取り消せません。</string>
-    <string name="delete_button">削除</string>
-
     <!-- Redesign: settings V2 -->
     <string name="section_assistant_settings">アシスタント設定</string>
     <string name="section_system_settings">システム設定</string>
@@ -579,6 +525,11 @@
     <string name="mcp_connect">接続</string>
     <string name="mcp_disconnect">切断</string>
     <string name="mcp_remove_auth">認証を削除</string>
+    <string name="mcp_authenticate">認証</string>
+    <string name="mcp_auth_title">%1$sを認証</string>
+    <string name="mcp_auth_help">ブラウザで認証を完了し、認証コードを貼り付けてください。</string>
+    <string name="mcp_auth_code_hint">認証コード</string>
+    <string name="mcp_auth_complete">完了</string>
     <string name="mcp_remove_server">サーバーを削除</string>
     <string name="mcp_tools_count">%1$dツール</string>
     <string name="mcp_name_hint">サーバー名</string>
@@ -671,18 +622,12 @@
     <string name="cd_rollback">ロールバック</string>
     <string name="cd_tool_status">ツール状態</string>
     <string name="cd_delete_runtime">ランタイムを削除</string>
-    <string name="cd_new_schedule">新しいスケジュール</string>
-    <string name="cd_schedule">スケジュール</string>
-    <string name="cd_cron">スケジュール時刻</string>
     <string name="cd_workspace">ワークスペース</string>
-    <string name="cd_event_log">イベントログ</string>
     <string name="cd_navigate">移動</string>
     <string name="cd_cancel">キャンセル</string>
     <string name="cd_accept">承認</string>
     <string name="cd_send">送信</string>
-    <string name="cd_continue_chat">チャットを続行</string>
     <string name="cd_task_status">タスク状態</string>
-    <string name="cd_file_change">ファイル変更</string>
     <string name="cd_disconnect">切断</string>
     <string name="cd_connect">接続</string>
     <string name="cd_onboarding_option">セットアップオプション</string>
@@ -690,10 +635,8 @@
     <string name="cd_microphone">マイク</string>
     <string name="cd_file_type">ファイル</string>
     <string name="cd_repository">リポジトリ</string>
-    <string name="cd_add_script">スクリプトを追加</string>
     <string name="cd_voice_setting">音声設定</string>
     <string name="cd_settings_section">設定セクション</string>
-    <string name="cd_command">コマンド</string>
     <string name="cd_subagent_status">サブエージェント状態</string>
     <string name="cd_toggle_password">パスワード表示切替</string>
     <string name="cd_info">情報</string>
@@ -707,14 +650,8 @@
     <string name="cd_error">エラー</string>
     <string name="cd_runtime_ready">ランタイム準備完了</string>
     <string name="cd_workspaces">ワークスペース</string>
-    <string name="cd_configuration">構成</string>
-    <string name="cd_assistant_settings">アシスタント設定</string>
-    <string name="cd_provider_key">プロバイダーキー</string>
-    <string name="cd_local_runtime">ローカルランタイム</string>
-    <string name="cd_about">情報</string>
     <string name="cd_nav_item">ナビゲーション項目</string>
     <string name="cd_terminal">ターミナル</string>
-    <string name="cd_scripts">スクリプト</string>
     <string name="cd_add_tab">タブを追加</string>
     <string name="cd_back">戻る</string>
     <string name="cd_toggle_wrap">折り返し切替</string>
@@ -723,35 +660,7 @@
     <string name="cd_send_command">コマンドを送信</string>
     <string name="cd_delete">削除</string>
 
-    <!-- Command palette & search -->
-    <string name="palette_new_chat">新しいチャット</string>
-    <string name="palette_settings">設定</string>
-    <string name="palette_workspaces">ワークスペース</string>
-    <string name="palette_activity">アクティビティ</string>
     <string name="search_label">検索</string>
-    <string name="palette_section_actions">アクション</string>
-    <string name="palette_section_sessions">セッション</string>
-    <string name="global_search_empty_hint">全セッションから検索</string>
-
-    <!-- Scripts -->
-    <string name="scripts_title">スクリプト</string>
-    <string name="scripts_empty">スクリプトが設定されていません</string>
-    <string name="script_name_label">名前</string>
-    <string name="script_command_label">コマンド</string>
-    <string name="add_script">スクリプトを追加</string>
-
-    <!-- Session import -->
-    <string name="import_session_title">セッションをインポート</string>
-    <string name="session_id_label">セッションID</string>
-    <string name="import_session_hint">別のOpenCodeクライアントからセッションIDまたはresumeコマンドを入力</string>
-    <string name="import_button">インポート</string>
-
-    <!-- Activity errors -->
-    <string name="error_permission_not_accepted">権限応答が受け入れられませんでした</string>
-    <string name="error_permission_failed">権限応答に失敗しました</string>
-    <string name="error_rename_session">セッション名の変更に失敗しました</string>
-    <string name="error_delete_session">セッションの削除に失敗しました</string>
-
     <!-- Terminal -->
     <string name="terminal_banner">OpenCode ターミナル - PRoot Alpine Linux</string>
     <string name="terminal_exit_code">終了コード: %1$d</string>
@@ -844,9 +753,6 @@
     <string name="diagnostics_copy_button">診断情報をコピー</string>
 
     <!-- Session detail -->
-    <string name="session_info_id">ID</string>
-    <string name="session_info_opencode">ランタイム</string>
-    <string name="session_todo_title">Todo</string>
 
     <string name="runtime_diagnostics_failed">ローカルランタイムの診断に失敗しました</string>
     <string name="runtime_update_check_failed">OpenCodeの更新確認に失敗しました</string>

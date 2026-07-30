@@ -9,6 +9,7 @@ import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.yugahashimoto.andcode.AndCodeApplication
 import com.yugahashimoto.andcode.feature.workspace.CodeViewerScreen
+import com.yugahashimoto.andcode.feature.workspace.CodeViewerViewModel
 import com.yugahashimoto.andcode.feature.workspace.LocalRuntimeManagementScreen
 import com.yugahashimoto.andcode.feature.workspace.LocalRuntimeManagementViewModel
 import com.yugahashimoto.andcode.feature.workspace.RemoteConnectionScreen
@@ -154,8 +155,13 @@ fun NavGraphBuilder.workspaceNavGraph(
                 state = explorerState,
                 onBack = { navController.popBackStack() },
                 onRefresh = explorerViewModel::refresh,
-                onOpenNode = explorerViewModel::open,
-                onCloseFile = explorerViewModel::closeFile,
+                onOpenNode = { node ->
+                    if (node.type == "directory") {
+                        explorerViewModel.open(node)
+                    } else {
+                        navController.navigate(codeViewerRoute(runtime.id, workspace.path, node.path))
+                    }
+                },
                 onNavigateUp = explorerViewModel::navigateUp,
                 onSearch = explorerViewModel::search,
                 onRefreshChanges = explorerViewModel::refreshChanges,
@@ -182,12 +188,31 @@ fun NavGraphBuilder.workspaceNavGraph(
         )
     }
 
-    composable("$ROUTE_CODE_VIEWER?filePath={filePath}") { backStack ->
-        val filePath = backStack.arguments?.getString("filePath").orEmpty()
-        CodeViewerScreen(
-            fileName = filePath.substringAfterLast('/'),
-            content = "",
-            onBack = { navController.popBackStack() },
-        )
+    composable(CODE_VIEWER_ROUTE_PATTERN) { backStack ->
+        val arguments =
+            runCatching {
+                Triple(
+                    decodeRouteArg(requireNotNull(backStack.arguments?.getString("runtimeId"))),
+                    decodeRouteArg(requireNotNull(backStack.arguments?.getString("workspacePath"))),
+                    decodeRouteArg(requireNotNull(backStack.arguments?.getString("filePath"))),
+                )
+            }.getOrNull()
+        val runtime = arguments?.first?.let { app.runtimeRegistry.target(it) }
+        if (arguments == null || runtime == null) {
+            LaunchedEffect(Unit) { navController.popBackStack() }
+        } else {
+            val viewerViewModel: CodeViewerViewModel =
+                viewModel(
+                    key = "code-viewer-${backStack.id}",
+                    factory = ViewModelFactory { CodeViewerViewModel(runtime, arguments.second, arguments.third) },
+                )
+            val viewerState by viewerViewModel.state.collectAsState()
+            val preferences by app.preferences.state.collectAsState()
+            CodeViewerScreen(
+                state = viewerState,
+                syntaxThemeKey = preferences.syntaxTheme,
+                onBack = { navController.popBackStack() },
+            )
+        }
     }
 }

@@ -337,6 +337,23 @@ data class McpServer(
 )
 
 @Serializable
+data class McpAuthStart(
+    val authorizationUrl: String,
+    val oauthState: String,
+)
+
+@Serializable
+data class McpAuthStatus(
+    val status: String,
+    val error: String? = null,
+)
+
+@Serializable
+data class McpAuthRemoval(
+    val success: Boolean,
+)
+
+@Serializable
 data class OpenCodeConfig(
     val config: JsonElement? = null,
 )

@@ -89,7 +89,7 @@ fun ModelVisibilityScreen(
             providers.forEach { provider ->
                 val models =
                     provider.models.values
-                        .filter { it.status == null || it.status == "active" }
+                        .filter { it.status != "deprecated" }
                         .filter { query.isBlank() || it.name.contains(query, true) || it.id.contains(query, true) }
                         .sortedBy { it.name.lowercase() }
 

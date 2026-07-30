@@ -169,31 +169,7 @@
     <string name="item_count">%1$d عناصر</string>
     <string name="unsupported_abi">ABI غير مدعوم: %1$s</string>
 
-    <string name="tab_approvals">الموافقات</string>
-    <string name="tab_logs">السجلات</string>
-    <string name="activity_screen_title">النشاط</string>
-    <string name="activity_screen_subtitle">حالة التنفيذ والسجل</string>
-    <string name="no_running_tasks">لا توجد مهام قيد التشغيل</string>
-    <string name="open_chat_button">فتح الدردشة</string>
-    <string name="no_pending_approvals">لا توجد موافقات معلقة</string>
-    <string name="continue_chat_button">متابعة الدردشة</string>
-    <string name="no_event_logs">لا توجد سجلات أحداث بعد</string>
-
-    <string name="session_info_title">معلومات الجلسة</string>
-    <string name="session_info_project">المشروع</string>
-    <string name="continue_this_session_chat">متابعة دردشة هذه الجلسة</string>
-    <string name="session_info_loading">جارٍ جلب معلومات الجلسة</string>
-    <string name="session_no_todos">لا توجد مهام في هذه الجلسة</string>
-    <string name="session_diff_title">تغييرات الملفات</string>
-    <string name="session_no_file_changes">لا توجد تغييرات ملفات في هذه الجلسة</string>
-    <string name="changed_file_default">ملف تم تغييره</string>
-    <string name="todo_status_in_progress">قيد التقدم</string>
-    <string name="todo_status_cancelled">ملغى</string>
-    <string name="todo_status_pending">لم يبدأ</string>
     <string name="todo_timeline_progress">اكتمل %1$d من %2$d Todo</string>
-    <string name="priority_high">عالية</string>
-    <string name="priority_medium">متوسطة</string>
-    <string name="priority_low">منخفضة</string>
 
     <string name="tab_files">الملفات</string>
     <string name="tab_search">بحث</string>
@@ -288,12 +264,6 @@
     <string name="adb_pairing_in_progress">جارٍ الإقران…</string>
     <string name="adb_connecting_in_progress">جارٍ الاتصال…</string>
     <string name="adb_requires_android_11">يتطلب Android 11 أو أحدث</string>
-    <string name="accessibility_service_description">يتيح لوكيل OpenCode قراءة الشاشة والنقر والتمرير وإدخال النص بدون ADB. يوفر خادم HTTP محلي على المنفذ 4098.</string>
-    <string name="accessibility_setup_title">خدمة إمكانية الوصول</string>
-    <string name="accessibility_setup_description">تفعيل قراءة الشاشة والتحكم بالإيماءات بدون ADB. يمكن للوكيل استخدام curl للتفاعل مع الجهاز.</string>
-    <string name="accessibility_status_disconnected">غير مفعّل</string>
-    <string name="accessibility_status_connected">نشط (المنفذ %1$d)</string>
-    <string name="accessibility_enable_button">تفعيل في الإعدادات</string>
     <string name="runtime_status_not_installed">غير مثبت</string>
     <string name="runtime_status_setting_up">جارٍ الإعداد</string>
     <string name="runtime_status_starting">جارٍ البدء</string>
@@ -498,29 +468,6 @@
     <string name="remote_test_connection_button">اختبار الاتصال</string>
     <string name="remote_save_connection_button">حفظ هذا الاتصال</string>
 
-    <string name="schedule_title">الجدولة</string>
-    <string name="schedule_subtitle">إدارة عمليات تشغيل المهام الآلية.</string>
-    <string name="filter_description">تصفية</string>
-    <string name="filter_all">الكل</string>
-    <string name="filter_enabled">مفعل</string>
-    <string name="filter_disabled">معطل</string>
-    <string name="new_schedule_button">+ جدولة جديدة</string>
-    <string name="schedule_create_dialog_title">جدولة جديدة</string>
-    <string name="schedule_name_hint">الاسم</string>
-    <string name="schedule_time_hint">الوقت (مثال: 09:00)</string>
-    <string name="schedule_repeat_label">تكرار</string>
-    <string name="schedule_repeat_daily">يومي</string>
-    <string name="schedule_repeat_weekly">أسبوعي</string>
-    <string name="filter_active">نشط</string>
-    <string name="filter_ended">منتهٍ</string>
-    <string name="schedule_prompt_hint">المطالبة</string>
-    <string name="schedule_cron_hint">تعبير Cron (مثال: 0 9 * * *)</string>
-    <string name="schedule_workspace_hint">مساحة العمل</string>
-    <string name="schedule_next_run">التالي: %1$s</string>
-    <string name="schedule_delete_title">حذف الجدولة</string>
-    <string name="schedule_delete_message">حذف \"%1$s\"؟ لا يمكن التراجع عن هذا.</string>
-    <string name="delete_button">حذف</string>
-
     <string name="section_assistant_settings">إعدادات المساعد</string>
     <string name="section_system_settings">إعدادات النظام</string>
     <string name="section_app_settings">إعدادات التطبيق</string>
@@ -564,6 +511,11 @@
     <string name="mcp_connect">اتصال</string>
     <string name="mcp_disconnect">قطع الاتصال</string>
     <string name="mcp_remove_auth">إزالة المصادقة</string>
+    <string name="mcp_authenticate">مصادقة</string>
+    <string name="mcp_auth_title">مصادقة %1$s</string>
+    <string name="mcp_auth_help">أكمل المصادقة في المتصفح، ثم ألصق رمز التفويض.</string>
+    <string name="mcp_auth_code_hint">رمز التفويض</string>
+    <string name="mcp_auth_complete">إكمال</string>
     <string name="mcp_remove_server">إزالة الخادم</string>
     <string name="mcp_tools_count">%1$d أدوات</string>
     <string name="mcp_name_hint">اسم الخادم</string>
@@ -657,18 +609,12 @@
     <string name="cd_rollback">Rollback</string>
     <string name="cd_tool_status">Tool status</string>
     <string name="cd_delete_runtime">Delete runtime</string>
-    <string name="cd_new_schedule">New schedule</string>
-    <string name="cd_schedule">Schedule</string>
-    <string name="cd_cron">Schedule time</string>
     <string name="cd_workspace">Workspace</string>
-    <string name="cd_event_log">Event log</string>
     <string name="cd_navigate">Navigate</string>
     <string name="cd_cancel">Cancel</string>
     <string name="cd_accept">Accept</string>
     <string name="cd_send">Send</string>
-    <string name="cd_continue_chat">Continue chat</string>
     <string name="cd_task_status">Task status</string>
-    <string name="cd_file_change">File change</string>
     <string name="cd_disconnect">Disconnect</string>
     <string name="cd_connect">Connect</string>
     <string name="cd_onboarding_option">Setup option</string>
@@ -676,10 +622,8 @@
     <string name="cd_microphone">Microphone</string>
     <string name="cd_file_type">File</string>
     <string name="cd_repository">Repository</string>
-    <string name="cd_add_script">Add script</string>
     <string name="cd_voice_setting">Voice setting</string>
     <string name="cd_settings_section">Settings section</string>
-    <string name="cd_command">Command</string>
     <string name="cd_subagent_status">Subagent status</string>
     <string name="cd_toggle_password">Toggle password visibility</string>
     <string name="cd_info">Info</string>
@@ -693,14 +637,8 @@
     <string name="cd_error">Error</string>
     <string name="cd_runtime_ready">Runtime ready</string>
     <string name="cd_workspaces">Workspaces</string>
-    <string name="cd_configuration">Configuration</string>
-    <string name="cd_assistant_settings">Assistant settings</string>
-    <string name="cd_provider_key">Provider key</string>
-    <string name="cd_local_runtime">Local runtime</string>
-    <string name="cd_about">About</string>
     <string name="cd_nav_item">Navigation item</string>
     <string name="cd_terminal">Terminal</string>
-    <string name="cd_scripts">Scripts</string>
     <string name="cd_add_tab">Add tab</string>
     <string name="cd_back">Back</string>
     <string name="cd_toggle_wrap">Toggle wrap</string>
@@ -710,34 +648,7 @@
     <string name="cd_delete">Delete</string>
 
     <!-- Command palette & search -->
-    <string name="palette_new_chat">New Chat</string>
-    <string name="palette_settings">Settings</string>
-    <string name="palette_workspaces">Workspaces</string>
-    <string name="palette_activity">Activity</string>
     <string name="search_label">Search</string>
-    <string name="palette_section_actions">Actions</string>
-    <string name="palette_section_sessions">Sessions</string>
-    <string name="global_search_empty_hint">Search across all sessions</string>
-
-    <!-- Scripts -->
-    <string name="scripts_title">Scripts</string>
-    <string name="scripts_empty">No scripts configured</string>
-    <string name="script_name_label">Name</string>
-    <string name="script_command_label">Command</string>
-    <string name="add_script">Add Script</string>
-
-    <!-- Session import -->
-    <string name="import_session_title">Import Session</string>
-    <string name="session_id_label">Session ID</string>
-    <string name="import_session_hint">Enter the session ID or resume command from another OpenCode client</string>
-    <string name="import_button">Import</string>
-
-    <!-- Activity errors -->
-    <string name="error_permission_not_accepted">Permission response was not accepted</string>
-    <string name="error_permission_failed">Permission response failed</string>
-    <string name="error_rename_session">Failed to rename session</string>
-    <string name="error_delete_session">Failed to delete session</string>
-
     <!-- Terminal -->
     <string name="terminal_banner">OpenCode Terminal - PRoot Alpine Linux</string>
     <string name="terminal_exit_code">exit code: %1$d</string>
@@ -830,9 +741,6 @@
     <string name="diagnostics_copy_button">Copy Diagnostics</string>
 
     <!-- Session detail -->
-    <string name="session_info_id">ID</string>
-    <string name="session_info_opencode">بيئة التشغيل</string>
-    <string name="session_todo_title">Todo</string>
 
     <string name="runtime_diagnostics_failed">Failed to diagnose the local runtime</string>
     <string name="runtime_update_check_failed">Failed to check for OpenCode updates</string>

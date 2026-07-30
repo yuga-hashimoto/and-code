@@ -169,31 +169,7 @@
     <string name="item_count">%1$d itens</string>
     <string name="unsupported_abi">ABI não suportada: %1$s</string>
 
-    <string name="tab_approvals">Aprovações</string>
-    <string name="tab_logs">Registros</string>
-    <string name="activity_screen_title">Atividade</string>
-    <string name="activity_screen_subtitle">Status e histórico de execução</string>
-    <string name="no_running_tasks">Nenhuma tarefa em execução</string>
-    <string name="open_chat_button">Abrir chat</string>
-    <string name="no_pending_approvals">Nenhuma aprovação pendente</string>
-    <string name="continue_chat_button">Continuar chat</string>
-    <string name="no_event_logs">Nenhum registro de eventos ainda</string>
-
-    <string name="session_info_title">Informações da sessão</string>
-    <string name="session_info_project">Projeto</string>
-    <string name="continue_this_session_chat">Continuar o chat desta sessão</string>
-    <string name="session_info_loading">Buscando informações da sessão</string>
-    <string name="session_no_todos">Nenhuma tarefa nesta sessão</string>
-    <string name="session_diff_title">Alterações de arquivos</string>
-    <string name="session_no_file_changes">Nenhuma alteração de arquivo nesta sessão</string>
-    <string name="changed_file_default">Arquivo alterado</string>
-    <string name="todo_status_in_progress">Em andamento</string>
-    <string name="todo_status_cancelled">Cancelado</string>
-    <string name="todo_status_pending">Não iniciado</string>
     <string name="todo_timeline_progress">%1$d de %2$d Todo concluído</string>
-    <string name="priority_high">Alta</string>
-    <string name="priority_medium">Média</string>
-    <string name="priority_low">Baixa</string>
 
     <string name="tab_files">Arquivos</string>
     <string name="tab_search">Pesquisar</string>
@@ -288,12 +264,6 @@
     <string name="adb_pairing_in_progress">Pareando…</string>
     <string name="adb_connecting_in_progress">Conectando…</string>
     <string name="adb_requires_android_11">Requer Android 11 ou posterior</string>
-    <string name="accessibility_service_description">Permite que o agente OpenCode leia a tela, toque, deslize e digite texto sem ADB. Expõe uma API HTTP local na porta 4098.</string>
-    <string name="accessibility_setup_title">Serviço de acessibilidade</string>
-    <string name="accessibility_setup_description">Ativa leitura de tela e controle por gestos sem ADB. O agente pode usar curl para interagir com o dispositivo.</string>
-    <string name="accessibility_status_disconnected">Não ativado</string>
-    <string name="accessibility_status_connected">Ativo (porta %1$d)</string>
-    <string name="accessibility_enable_button">Ativar nas Configurações</string>
     <string name="runtime_status_not_installed">Não instalado</string>
     <string name="runtime_status_setting_up">Configurando</string>
     <string name="runtime_status_starting">Iniciando</string>
@@ -498,29 +468,6 @@
     <string name="remote_test_connection_button">Testar conexão</string>
     <string name="remote_save_connection_button">Salvar esta conexão</string>
 
-    <string name="schedule_title">Agendamento</string>
-    <string name="schedule_subtitle">Gerencie execuções de tarefas automatizadas.</string>
-    <string name="filter_description">Filtrar</string>
-    <string name="filter_all">Todos</string>
-    <string name="filter_enabled">Ativado</string>
-    <string name="filter_disabled">Desativado</string>
-    <string name="new_schedule_button">+ Novo agendamento</string>
-    <string name="schedule_create_dialog_title">Novo agendamento</string>
-    <string name="schedule_name_hint">Nome</string>
-    <string name="schedule_time_hint">Hora (ex. 09:00)</string>
-    <string name="schedule_repeat_label">Repetir</string>
-    <string name="schedule_repeat_daily">Diário</string>
-    <string name="schedule_repeat_weekly">Semanal</string>
-    <string name="filter_active">Ativo</string>
-    <string name="filter_ended">Encerrado</string>
-    <string name="schedule_prompt_hint">Prompt</string>
-    <string name="schedule_cron_hint">Expressão Cron (ex. 0 9 * * *)</string>
-    <string name="schedule_workspace_hint">Espaço de trabalho</string>
-    <string name="schedule_next_run">Próximo: %1$s</string>
-    <string name="schedule_delete_title">Excluir agendamento</string>
-    <string name="schedule_delete_message">Excluir \"%1$s\"? Isso não pode ser desfeito.</string>
-    <string name="delete_button">Excluir</string>
-
     <string name="section_assistant_settings">Configurações do assistente</string>
     <string name="section_system_settings">Configurações do sistema</string>
     <string name="section_app_settings">Configurações do aplicativo</string>
@@ -564,6 +511,11 @@
     <string name="mcp_connect">Conectar</string>
     <string name="mcp_disconnect">Desconectar</string>
     <string name="mcp_remove_auth">Remover autenticação</string>
+    <string name="mcp_authenticate">Autenticar</string>
+    <string name="mcp_auth_title">Autenticar %1$s</string>
+    <string name="mcp_auth_help">Conclua a autenticação no navegador e cole o código de autorização.</string>
+    <string name="mcp_auth_code_hint">Código de autorização</string>
+    <string name="mcp_auth_complete">Concluir</string>
     <string name="mcp_remove_server">Remover servidor</string>
     <string name="mcp_tools_count">%1$d ferramentas</string>
     <string name="mcp_name_hint">Nome do servidor</string>
@@ -657,18 +609,12 @@
     <string name="cd_rollback">Rollback</string>
     <string name="cd_tool_status">Tool status</string>
     <string name="cd_delete_runtime">Delete runtime</string>
-    <string name="cd_new_schedule">New schedule</string>
-    <string name="cd_schedule">Schedule</string>
-    <string name="cd_cron">Schedule time</string>
     <string name="cd_workspace">Workspace</string>
-    <string name="cd_event_log">Event log</string>
     <string name="cd_navigate">Navigate</string>
     <string name="cd_cancel">Cancel</string>
     <string name="cd_accept">Accept</string>
     <string name="cd_send">Send</string>
-    <string name="cd_continue_chat">Continue chat</string>
     <string name="cd_task_status">Task status</string>
-    <string name="cd_file_change">File change</string>
     <string name="cd_disconnect">Disconnect</string>
     <string name="cd_connect">Connect</string>
     <string name="cd_onboarding_option">Setup option</string>
@@ -676,10 +622,8 @@
     <string name="cd_microphone">Microphone</string>
     <string name="cd_file_type">File</string>
     <string name="cd_repository">Repository</string>
-    <string name="cd_add_script">Add script</string>
     <string name="cd_voice_setting">Voice setting</string>
     <string name="cd_settings_section">Settings section</string>
-    <string name="cd_command">Command</string>
     <string name="cd_subagent_status">Subagent status</string>
     <string name="cd_toggle_password">Toggle password visibility</string>
     <string name="cd_info">Info</string>
@@ -693,14 +637,8 @@
     <string name="cd_error">Error</string>
     <string name="cd_runtime_ready">Runtime ready</string>
     <string name="cd_workspaces">Workspaces</string>
-    <string name="cd_configuration">Configuration</string>
-    <string name="cd_assistant_settings">Assistant settings</string>
-    <string name="cd_provider_key">Provider key</string>
-    <string name="cd_local_runtime">Local runtime</string>
-    <string name="cd_about">About</string>
     <string name="cd_nav_item">Navigation item</string>
     <string name="cd_terminal">Terminal</string>
-    <string name="cd_scripts">Scripts</string>
     <string name="cd_add_tab">Add tab</string>
     <string name="cd_back">Back</string>
     <string name="cd_toggle_wrap">Toggle wrap</string>
@@ -710,34 +648,7 @@
     <string name="cd_delete">Delete</string>
 
     <!-- Command palette & search -->
-    <string name="palette_new_chat">New Chat</string>
-    <string name="palette_settings">Settings</string>
-    <string name="palette_workspaces">Workspaces</string>
-    <string name="palette_activity">Activity</string>
     <string name="search_label">Search</string>
-    <string name="palette_section_actions">Actions</string>
-    <string name="palette_section_sessions">Sessions</string>
-    <string name="global_search_empty_hint">Search across all sessions</string>
-
-    <!-- Scripts -->
-    <string name="scripts_title">Scripts</string>
-    <string name="scripts_empty">No scripts configured</string>
-    <string name="script_name_label">Name</string>
-    <string name="script_command_label">Command</string>
-    <string name="add_script">Add Script</string>
-
-    <!-- Session import -->
-    <string name="import_session_title">Import Session</string>
-    <string name="session_id_label">Session ID</string>
-    <string name="import_session_hint">Enter the session ID or resume command from another OpenCode client</string>
-    <string name="import_button">Import</string>
-
-    <!-- Activity errors -->
-    <string name="error_permission_not_accepted">Permission response was not accepted</string>
-    <string name="error_permission_failed">Permission response failed</string>
-    <string name="error_rename_session">Failed to rename session</string>
-    <string name="error_delete_session">Failed to delete session</string>
-
     <!-- Terminal -->
     <string name="terminal_banner">OpenCode Terminal - PRoot Alpine Linux</string>
     <string name="terminal_exit_code">exit code: %1$d</string>
@@ -830,9 +741,6 @@
     <string name="diagnostics_copy_button">Copy Diagnostics</string>
 
     <!-- Session detail -->
-    <string name="session_info_id">ID</string>
-    <string name="session_info_opencode">Ambiente</string>
-    <string name="session_todo_title">Todo</string>
 
     <string name="runtime_diagnostics_failed">Failed to diagnose the local runtime</string>
     <string name="runtime_update_check_failed">Failed to check for OpenCode updates</string>
