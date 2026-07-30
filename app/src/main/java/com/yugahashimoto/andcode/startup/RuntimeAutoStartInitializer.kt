@@ -5,6 +5,7 @@ import androidx.startup.Initializer
 import com.yugahashimoto.andcode.AndCodeApplication
 import com.yugahashimoto.andcode.hasUsableRuntimeSetup
 import com.yugahashimoto.andcode.runtime.LocalRuntimeStatus
+import com.yugahashimoto.andcode.runtime.local.AdbConnectionState
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -45,6 +46,13 @@ class RuntimeAutoStartInitializer : Initializer<RuntimeAutoStartInitializer.Resu
                     // while the local runtime is still coming up, and Ready is re-emitted on every
                     // watchdog tick — selecting on each one would pull them back to the phone.
                     app.runtimeRegistry.selectIfUnset(LOCAL_RUNTIME_ID)
+                    // The adb server is reborn with the Linux runtime, so restore the persisted
+                    // wireless-debugging link as soon as it is reachable. Guarded by the current
+                    // state because Ready re-emits on every watchdog tick and a redundant
+                    // `adb connect` would spawn a proot process each time.
+                    if (app.adbConnectionManager.state.value !is AdbConnectionState.Connected) {
+                        scope.launch { app.adbConnectionManager.restoreAndReconnect() }
+                    }
                     if (app.runtimeRegistry.selected.value?.id != LOCAL_RUNTIME_ID) return@collect
                     warmupJob?.cancel()
                     warmupJob =

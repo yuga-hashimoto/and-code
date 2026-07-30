@@ -2,8 +2,12 @@
 # Capture an annotated screenshot with numbered UI element labels.
 # Outputs a JSON array of elements and saves an annotated PNG.
 # Usage: android-vision [output_dir]
-# Requires: adb connected, python3, py3-pillow
+# Requires: adb connected (see ADB setup in Local runtime settings), python3, py3-pillow
 set -e
+adb get-state >/dev/null 2>&1 || {
+    echo "android: adb has no connected device. Enable wireless debugging and connect via AndCode -> Settings -> Local runtime -> ADB." >&2
+    exit 1
+}
 OUTDIR="${1:-/tmp/android-vision}"
 mkdir -p "$OUTDIR"
 SHOT="$OUTDIR/screenshot.png"

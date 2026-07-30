@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Palette
 import androidx.compose.material.icons.filled.Router
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.HorizontalDivider
@@ -235,6 +236,12 @@ fun SettingsScreenV2(
                     icon = Icons.Default.Build,
                     title = stringResource(R.string.server_info_settings_row),
                     onClick = onOpenServerInfo,
+                )
+                SettingsDivider()
+                SettingsRow(
+                    icon = Icons.Default.Terminal,
+                    title = stringResource(R.string.settings_local_runtime_row),
+                    onClick = onOpenLocalRuntime,
                 )
                 SettingsDivider()
                 SettingsRow(

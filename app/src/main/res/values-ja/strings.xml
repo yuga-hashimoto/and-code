@@ -191,16 +191,16 @@
     <string name="loading_changes">変更を取得しています</string>
     <string name="no_uncommitted_changes">未コミットの変更はありません</string>
 
-    <string name="local_runtime_screen_title">ローカルOpenCode</string>
+    <string name="local_runtime_screen_title">ローカルランタイム</string>
     <string name="refresh_diagnostics_description">診断と更新情報を再取得</string>
     <string name="operation_failed_title">操作に失敗しました</string>
     <string name="update_confirm_title">OpenCode %1$sへ更新しますか？</string>
-    <string name="update_confirm_body1">更新中はローカルOpenCodeを停止し、検証後に再起動します。</string>
+    <string name="update_confirm_body1">更新中はローカルランタイムを停止し、検証後に再起動します。</string>
     <string name="update_confirm_body2">失敗した場合は現在のOpenCode %1$sへ自動復旧します。</string>
     <string name="required_free_space">必要な空き容量: %1$s</string>
     <string name="update_confirm_button">更新する</string>
     <string name="rollback_confirm_title">OpenCode %1$sへ戻しますか？</string>
-    <string name="rollback_confirm_body">現在のローカルOpenCodeを停止し、保存されている直前バージョンへ切り替えて再起動します。起動できない場合は現在のバージョンへ復旧します。</string>
+    <string name="rollback_confirm_body">現在のローカルランタイムを停止し、保存されている直前バージョンへ切り替えて再起動します。起動できない場合は現在のバージョンへ復旧します。</string>
     <string name="rollback_button">ロールバック</string>
     <string name="delete_runtime_confirm_title">ローカルランタイムを削除しますか？</string>
     <string name="delete_runtime_confirm_body">導入済みのエージェント、Linux環境、キャッシュ、ログ、アプリ内のローカル作業フォルダが削除されます。PC接続設定は保持されます。</string>
@@ -341,15 +341,15 @@
     <string name="speech_error_start">開始エラー: %1$s</string>
 
     <string name="notification_runtime_not_installed">ローカルランタイムは未導入です</string>
-    <string name="notification_runtime_setting_up">ローカルOpenCodeをセットアップ中</string>
-    <string name="notification_runtime_starting">ローカルOpenCodeを起動中</string>
-    <string name="notification_runtime_updating">ローカルOpenCodeを更新中</string>
-    <string name="notification_runtime_stopped">ローカルOpenCodeは停止中</string>
-    <string name="notification_runtime_ready">ローカルOpenCodeが稼働中</string>
+    <string name="notification_runtime_setting_up">ローカルランタイムをセットアップ中</string>
+    <string name="notification_runtime_starting">ローカルランタイムを起動中</string>
+    <string name="notification_runtime_updating">ローカルランタイムを更新中</string>
+    <string name="notification_runtime_stopped">ローカルランタイムは停止中</string>
+    <string name="notification_runtime_ready">ローカルランタイムが稼働中</string>
     <string name="notification_runtime_ready_detail">OpenCode %1$s · 127.0.0.1:%2$d</string>
-    <string name="notification_runtime_broken">ローカルOpenCodeで問題が発生</string>
+    <string name="notification_runtime_broken">ローカルランタイムで問題が発生</string>
     <string name="notification_runtime_unsupported_device">この端末では利用できません</string>
-    <string name="notification_channel_local_runtime_description">Android端末内で実行するOpenCodeの状態</string>
+    <string name="notification_channel_local_runtime_description">Android端末内で実行するローカルランタイムの状態</string>
 
     <string name="install_step_preparing_command_env">Androidコマンド環境を準備しています</string>
     <string name="install_step_downloading_alpine">Alpine Linuxをダウンロードしています</string>
@@ -358,7 +358,7 @@
     <string name="install_step_extracting_opencode">OpenCodeを展開しています</string>
     <string name="install_step_installing_dev_tools">Gitと開発ツールを導入しています</string>
     <string name="install_step_activating_runtime">ランタイムを有効化しています</string>
-    <string name="install_step_done">ローカルOpenCodeを導入しました</string>
+    <string name="install_step_done">ローカルランタイムを導入しました</string>
 
     <!-- Redesign: drawer -->
     <string name="menu_description">メニュー</string>
@@ -768,8 +768,8 @@
     <string name="agent_antigravity_name">Antigravity</string>
     <string name="runtime_error_install_failed">ローカルランタイムの導入に失敗しました</string>
     <string name="runtime_error_reinstall_failed">ローカルランタイムの再導入に失敗しました</string>
-    <string name="runtime_error_start_failed">ローカルOpenCodeを起動できません</string>
-    <string name="runtime_error_stop_failed">ローカルOpenCodeを停止できません</string>
+    <string name="runtime_error_start_failed">ローカルランタイムを起動できません</string>
+    <string name="runtime_error_stop_failed">ローカルランタイムを停止できません</string>
     <string name="runtime_error_delete_failed">ローカルランタイムを削除できません</string>
     <string name="runtime_error_delete_incomplete">ローカルランタイムを完全に削除できませんでした</string>
     <string name="runtime_error_missing_files">ローカルランタイムのファイルが不足しています</string>

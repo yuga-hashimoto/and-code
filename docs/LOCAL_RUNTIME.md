@@ -167,6 +167,32 @@ OpenCodeがOAuthの `auto` 方式を返した場合、Androidはブラウザを�
 
 接続または切断が成功すると、プロバイダーとモデルのカタログを自動的に再取得する。
 
+## ADB連携（無線デバッグ）
+
+ランタイム内の `adb` から、この端末自身へ無線デバッグ接続できる。接続すると、ランタイム内のツールが端末の画面キャプチャ・UI自動操作・アプリインストール・Instrumentation Testを実行できる。ADB接続は特定のエージェントではなく、OpenCode・Claude Code・Antigravityが共有するランタイム全体の設定である。
+
+### セットアップ
+
+1. 端末の開発者オプションで「無線デバッグ」を有効にする。
+2. 設定 →「ローカルランタイム」→「Android Debug Bridge (ADB)」カードを開く。
+3. 「ペアリング」で、無線デバッグ画面のペアリングポートと6桁コードを入力する。
+4. 「接続」をタップする。
+
+### 再接続の自動化
+
+- 接続済みポートは暗号化設定へ永続化される。ペアリング鍵はrootfsの `/root/.android` に保存され、再インストール時も引き継がれるため、再ペアリングは不要である。
+- アプリ起動時とランタイムReady時に、永続化済みポートへ自動で `adb connect` を再実行する。adbサーバーはPRoot内でランタイムと共に再起動するため、再接続は毎回必要である。
+- 30秒ごとのヘルスチェックが接続断を検知し、永続化済みポートがあれば自動再接続する。ポート未設定の場合は何もしない。
+
+### ヘルパースクリプト
+
+ランタイムの `/usr/local/bin` に次が配置される（Alpine・Debian両rootfs）。
+
+- `android-screenshot` — 画面キャプチャ
+- `android-vision` — UI要素ラベル付きアノテーション画像とJSON
+- `android-app` — 他アプリの install / launch / stop / clear / logcat / list
+- `android-instrument` — `am instrument` によるInstrumentation Test実行
+
 ## Android上の制約
 
 Androidローカル実行はPCの完全な代替ではない。
@@ -184,7 +210,9 @@ Androidローカル実行はPCの完全な代替ではない。
 - Docker
 - Android Emulatorの内側から別のAndroid Emulatorを動かすこと
 - iOSビルド
-- 大規模なGradle・Flutterビルド
+- Gradle・Kotlin/Javaコンパイル・JVM単体テスト（規模を問わない）
 - 長時間の高負荷処理
+
+PRootはptraceでsyscallをエミュレートするため、JVMが初期化に要求する実行可能メモリページ（`mprotect(PROT_EXEC)`）を確保できない。このためランタイム内ではJVMを使う処理が一切動作しない。AndroidアプリのビルドとInstrumentation Testは、PC等でビルドしたAPKを `android-app install` で端末へ入れ、`android-instrument` で実行する。
 
 重い作業はPCリモート実行へ切り替える。

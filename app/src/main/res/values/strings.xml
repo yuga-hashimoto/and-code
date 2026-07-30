@@ -191,16 +191,16 @@
     <string name="loading_changes">Loading changes</string>
     <string name="no_uncommitted_changes">No uncommitted changes</string>
 
-    <string name="local_runtime_screen_title">Local OpenCode</string>
+    <string name="local_runtime_screen_title">Local runtime</string>
     <string name="refresh_diagnostics_description">Refresh diagnostics and update info</string>
     <string name="operation_failed_title">Operation failed</string>
     <string name="update_confirm_title">Update to OpenCode %1$s?</string>
-    <string name="update_confirm_body1">Local OpenCode will stop during the update and restart after verification.</string>
+    <string name="update_confirm_body1">Local runtime will stop during the update and restart after verification.</string>
     <string name="update_confirm_body2">If it fails, it automatically reverts to the current OpenCode %1$s.</string>
     <string name="required_free_space">Free space needed: %1$s</string>
     <string name="update_confirm_button">Update</string>
     <string name="rollback_confirm_title">Revert to OpenCode %1$s?</string>
-    <string name="rollback_confirm_body">Local OpenCode will stop and switch to the saved previous version, then restart. If it can\'t start, it reverts to the current version.</string>
+    <string name="rollback_confirm_body">Local runtime will stop and switch to the saved previous version, then restart. If it can\'t start, it reverts to the current version.</string>
     <string name="rollback_button">Rollback</string>
     <string name="delete_runtime_confirm_title">Delete the local runtime?</string>
     <string name="delete_runtime_confirm_body">The installed agents, the Linux environment, cache, logs, and the in-app local workspace will be deleted. PC connection settings are kept.</string>
@@ -341,15 +341,15 @@
     <string name="speech_error_start">Start error: %1$s</string>
 
     <string name="notification_runtime_not_installed">Local runtime is not installed</string>
-    <string name="notification_runtime_setting_up">Setting up local OpenCode</string>
-    <string name="notification_runtime_starting">Starting local OpenCode</string>
-    <string name="notification_runtime_updating">Updating local OpenCode</string>
-    <string name="notification_runtime_stopped">Local OpenCode is stopped</string>
-    <string name="notification_runtime_ready">Local OpenCode is running</string>
+    <string name="notification_runtime_setting_up">Setting up local runtime</string>
+    <string name="notification_runtime_starting">Starting local runtime</string>
+    <string name="notification_runtime_updating">Updating local runtime</string>
+    <string name="notification_runtime_stopped">Local runtime is stopped</string>
+    <string name="notification_runtime_ready">Local runtime is running</string>
     <string name="notification_runtime_ready_detail">OpenCode %1$s · 127.0.0.1:%2$d</string>
-    <string name="notification_runtime_broken">Local OpenCode has a problem</string>
+    <string name="notification_runtime_broken">Local runtime has a problem</string>
     <string name="notification_runtime_unsupported_device">Not available on this device</string>
-    <string name="notification_channel_local_runtime_description">Status of OpenCode running on this Android device</string>
+    <string name="notification_channel_local_runtime_description">Status of the local runtime on this Android device</string>
 
     <string name="install_step_preparing_command_env">Preparing the Android command environment</string>
     <string name="install_step_downloading_alpine">Downloading Alpine Linux</string>
@@ -358,7 +358,7 @@
     <string name="install_step_extracting_opencode">Extracting OpenCode</string>
     <string name="install_step_installing_dev_tools">Installing Git and development tools</string>
     <string name="install_step_activating_runtime">Activating the runtime</string>
-    <string name="install_step_done">Local OpenCode installed</string>
+    <string name="install_step_done">Local runtime installed</string>
 
     <!-- Redesign: drawer -->
     <string name="menu_description">Menu</string>
@@ -768,8 +768,8 @@
     <string name="agent_antigravity_name">Antigravity</string>
     <string name="runtime_error_install_failed">Could not install the local runtime</string>
     <string name="runtime_error_reinstall_failed">Could not reinstall the local runtime</string>
-    <string name="runtime_error_start_failed">Could not start local OpenCode</string>
-    <string name="runtime_error_stop_failed">Could not stop local OpenCode</string>
+    <string name="runtime_error_start_failed">Could not start local runtime</string>
+    <string name="runtime_error_stop_failed">Could not stop local runtime</string>
     <string name="runtime_error_delete_failed">Could not delete the local runtime</string>
     <string name="runtime_error_delete_incomplete">The local runtime could not be fully deleted</string>
     <string name="runtime_error_missing_files">Local runtime files are missing</string>

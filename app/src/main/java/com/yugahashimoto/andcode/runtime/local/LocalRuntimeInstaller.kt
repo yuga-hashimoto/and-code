@@ -417,6 +417,8 @@ class LocalRuntimeInstaller(
         listOf(
             "android-vision.sh" to "android-vision",
             "android-screenshot.sh" to "android-screenshot",
+            "android-instrument.sh" to "android-instrument",
+            "android-app.sh" to "android-app",
         ).forEach {
                 (assetName, scriptName) ->
             val scriptFile = File(binDir, scriptName)

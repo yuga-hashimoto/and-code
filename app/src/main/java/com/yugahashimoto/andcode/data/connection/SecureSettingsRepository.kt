@@ -6,8 +6,9 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.yugahashimoto.andcode.data.repository.UnreadSessionStore
 import com.yugahashimoto.andcode.runtime.RuntimeConnectionStore
+import com.yugahashimoto.andcode.runtime.local.AdbConnectionStore
 
-class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, UnreadSessionStore {
+class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, UnreadSessionStore, AdbConnectionStore {
     private val masterKey =
         MasterKey.Builder(context)
             .setKeyScheme(MasterKey.KeyScheme.AES256_GCM)
@@ -53,6 +54,24 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         }
 
     fun selectedConnection(): ConnectionProfile? = selectedConnectionId?.let { selected -> connections().firstOrNull { it.id == selected } }
+
+    @Synchronized
+    override fun saveConnectedPort(port: Int) {
+        preferences.edit().putInt(KEY_ADB_CONNECTION_PORT, port).apply()
+    }
+
+    @Synchronized
+    override fun loadConnectedPort(): Int? =
+        if (preferences.contains(KEY_ADB_CONNECTION_PORT)) {
+            preferences.getInt(KEY_ADB_CONNECTION_PORT, 0)
+        } else {
+            null
+        }
+
+    @Synchronized
+    override fun clearConnectedPort() {
+        preferences.edit().remove(KEY_ADB_CONNECTION_PORT).apply()
+    }
 
     var ttsEnabled: Boolean
         get() = preferences.getBoolean(KEY_TTS_ENABLED, true)
@@ -332,6 +351,7 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         private const val PREFS_NAME = "opencode_android_secure_settings"
         private const val KEY_CONNECTIONS = "connections"
         private const val KEY_SELECTED_CONNECTION = "selected_connection"
+        private const val KEY_ADB_CONNECTION_PORT = "adb_connection_port"
         private const val KEY_TTS_ENABLED = "tts_enabled"
         private const val KEY_TTS_PROVIDER = "tts_provider"
         private const val KEY_TTS_ANDROID_ENGINE = "tts_android_engine"

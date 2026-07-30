@@ -1,6 +1,8 @@
 package com.yugahashimoto.andcode
 
 import android.app.Application
+import android.content.Context
+import android.net.nsd.NsdManager
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -17,6 +19,7 @@ import com.yugahashimoto.andcode.feature.support.GitHubStarCoordinator
 import com.yugahashimoto.andcode.feature.support.GitHubStarService
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 import com.yugahashimoto.andcode.runtime.local.AdbConnectionManager
+import com.yugahashimoto.andcode.runtime.local.AdbShellRunner
 import com.yugahashimoto.andcode.runtime.local.AndroidClaudeMessages
 import com.yugahashimoto.andcode.runtime.local.AndroidLocalRuntimeMessages
 import com.yugahashimoto.andcode.runtime.local.AntigravityController
@@ -239,7 +242,16 @@ class AndCodeApplication : Application() {
                 commandExecutor = commandRunner::run,
             )
         localRuntimeController = LocalRuntimeServiceController(this)
-        adbConnectionManager = AdbConnectionManager(this, commandRunner)
+        adbConnectionManager =
+            AdbConnectionManager(
+                shellRunner = AdbShellRunner { command, timeoutSeconds -> commandRunner.runShell(command, timeoutSeconds) },
+                connectionStore = settings,
+                nsdManagerProvider = { getSystemService(Context.NSD_SERVICE) as? NsdManager },
+            )
+        // Keep the persisted wireless-debugging link alive for the whole process lifetime. The
+        // loop is a cheap no-op until the user has connected once, and it self-heals the link
+        // whenever the adb server inside the Linux runtime is restarted.
+        adbConnectionManager.startAutoReconnect(applicationScope)
         runtimeRegistry =
             RuntimeRegistry(
                 store = settings,
