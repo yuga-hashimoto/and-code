@@ -287,18 +287,21 @@ fun AndCodeApp(
                 startOrStopVoiceInput()
             } else if (granted && startWakeWordAfterPermission) {
                 startWakeWordAfterPermission = false
-                val started =
-                    com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
-                        context,
-                        preferences.wakeWordModel,
-                    )
-                settingsViewModel.setWakeWordEnabled(started)
-                if (!started) {
-                    android.widget.Toast.makeText(
-                        context,
-                        R.string.wake_word_start_failed,
-                        android.widget.Toast.LENGTH_SHORT,
-                    ).show()
+                settingsViewModel.setWakeWordEnabled(true)
+                if (assistantActive) {
+                    val started =
+                        com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
+                            context,
+                            preferences.wakeWordModel,
+                        )
+                    if (!started) {
+                        settingsViewModel.setWakeWordEnabled(false)
+                        android.widget.Toast.makeText(
+                            context,
+                            R.string.wake_word_start_failed,
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
                 }
             } else if (!granted) {
                 startVoiceAfterPermission = false
@@ -378,13 +381,7 @@ fun AndCodeApp(
                     model = preferences.wakeWordModel,
                 )
             if (!started) settingsViewModel.setWakeWordEnabled(false)
-        } else if (preferences.wakeWordEnabled && !assistantActive) {
-            settingsViewModel.setWakeWordEnabled(false)
-            com.yugahashimoto.andcode.feature.wakeword.WakeWordService.stop(context)
-        } else if (preferences.wakeWordEnabled && !hasMicrophonePermission()) {
-            settingsViewModel.setWakeWordEnabled(false)
-            com.yugahashimoto.andcode.feature.wakeword.WakeWordService.stop(context)
-        } else if (!preferences.wakeWordEnabled) {
+        } else {
             com.yugahashimoto.andcode.feature.wakeword.WakeWordService.stop(context)
         }
     }

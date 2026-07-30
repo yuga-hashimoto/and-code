@@ -132,26 +132,29 @@ fun NavGraphBuilder.settingsNavGraph(
             onContinuousChange = settingsViewModel::setContinuousConversation,
             onWakeWordChange = { enabled ->
                 if (enabled) {
-                    if (!assistantActive()) {
-                        android.widget.Toast.makeText(
-                            context,
-                            com.yugahashimoto.andcode.R.string.wake_word_requires_assistant,
-                            android.widget.Toast.LENGTH_LONG,
-                        ).show()
-                        onOpenAssistantSettings()
-                    } else if (hasMicrophonePermission()) {
-                        val started =
-                            com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
-                                context,
-                                settingsState.wakeWordModel,
-                            )
-                        settingsViewModel.setWakeWordEnabled(started)
-                        if (!started) {
+                    if (hasMicrophonePermission()) {
+                        settingsViewModel.setWakeWordEnabled(true)
+                        if (!assistantActive()) {
                             android.widget.Toast.makeText(
                                 context,
-                                com.yugahashimoto.andcode.R.string.wake_word_start_failed,
-                                android.widget.Toast.LENGTH_SHORT,
+                                com.yugahashimoto.andcode.R.string.wake_word_requires_assistant,
+                                android.widget.Toast.LENGTH_LONG,
                             ).show()
+                            onOpenAssistantSettings()
+                        } else {
+                            val started =
+                                com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
+                                    context,
+                                    settingsState.wakeWordModel,
+                                )
+                            if (!started) {
+                                settingsViewModel.setWakeWordEnabled(false)
+                                android.widget.Toast.makeText(
+                                    context,
+                                    com.yugahashimoto.andcode.R.string.wake_word_start_failed,
+                                    android.widget.Toast.LENGTH_SHORT,
+                                ).show()
+                            }
                         }
                     } else {
                         onRequestWakeWordPermission()
