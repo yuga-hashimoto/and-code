@@ -136,6 +136,7 @@ fun TimelineEntryRow(
     when (entry) {
         is TimelineEntry.UserMessage -> MessageBubble(entry.message)
         is TimelineEntry.Body -> MarkdownText(entry.part.text)
+        is TimelineEntry.Image -> ImagePartView(entry.part)
         is TimelineEntry.Activity ->
             AssistantActivityRow(
                 parts = entry.parts,
@@ -390,6 +391,63 @@ private fun MarkdownText(
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
                     )
+            }
+        }
+    }
+}
+
+internal data class DataImage(val mime: String, val base64: String)
+
+internal fun parseDataImageUri(url: String): DataImage? {
+    if (!url.startsWith("data:")) return null
+    val payload = url.removePrefix("data:")
+    val comma = payload.indexOf(',')
+    if (comma < 0) return null
+    val meta = payload.substring(0, comma)
+    if (!meta.endsWith(";base64")) return null
+    val mime = meta.removeSuffix(";base64")
+    if (!mime.startsWith("image/")) return null
+    return DataImage(mime, payload.substring(comma + 1))
+}
+
+private fun decodeDataImage(url: String): android.graphics.Bitmap? {
+    val data = parseDataImageUri(url) ?: return null
+    return runCatching {
+        val bytes = android.util.Base64.decode(data.base64, android.util.Base64.DEFAULT)
+        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    }.getOrNull()
+}
+
+@Composable
+private fun ImagePartView(part: ChatPart.Image) {
+    val bitmap = remember(part.url) { decodeDataImage(part.url) }
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = part.filename ?: stringResource(R.string.cd_image_preview),
+            modifier =
+                Modifier
+                    .widthIn(max = 320.dp)
+                    .heightIn(max = 320.dp),
+            contentScale = ContentScale.Fit,
+        )
+    } else {
+        Surface(
+            shape = RoundedCornerShape(10.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(10.dp),
+            ) {
+                Icon(androidx.compose.material.icons.filled.Image, contentDescription = null)
+                Text(
+                    text = part.filename ?: part.mime,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }

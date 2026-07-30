@@ -271,4 +271,26 @@ class AssistantActivityGroupTest {
         assertEquals(1, entries.size)
         assertTrue(entries.single() is TimelineEntry.Activity)
     }
+
+    @Test
+    fun `image parts get their own entry and split the surrounding run`() {
+        val entries =
+            groupConversationTimeline(
+                listOf(
+                    assistant(
+                        "m1",
+                        tool("t1", "read"),
+                        ChatPart.Image("i1", "image/png", "data:image/png;base64,abc"),
+                        ChatPart.Text("x1", "see above"),
+                    ),
+                ),
+            )
+
+        assertEquals(3, entries.size)
+        assertEquals(listOf("t1"), (entries[0] as TimelineEntry.Activity).parts.map { it.id })
+        val image = entries[1] as TimelineEntry.Image
+        assertEquals("i1", image.part.id)
+        assertEquals("image:i1", image.id)
+        assertEquals("see above", (entries[2] as TimelineEntry.Body).part.text)
+    }
 }

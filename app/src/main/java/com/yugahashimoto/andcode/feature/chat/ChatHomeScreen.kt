@@ -359,6 +359,7 @@ fun ChatHomeScreen(
                                     when (entry) {
                                         is TimelineEntry.UserMessage -> entry.message.id to entry.message.text
                                         is TimelineEntry.Body -> entry.messageId to entry.part.text
+                                        is TimelineEntry.Image -> null
                                         is TimelineEntry.Activity -> null
                                         is TimelineEntry.Todo -> null
                                         is TimelineEntry.Footer -> null

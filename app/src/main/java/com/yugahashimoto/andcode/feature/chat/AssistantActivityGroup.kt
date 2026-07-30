@@ -17,6 +17,10 @@ sealed interface TimelineEntry {
         override val id: String get() = "body:${part.id}"
     }
 
+    data class Image(val messageId: String, val part: ChatPart.Image) : TimelineEntry {
+        override val id: String get() = "image:${part.id}"
+    }
+
     data class Activity(override val id: String, val parts: List<ChatPart>) : TimelineEntry
 
     data class Todo(override val id: String, val todos: List<TodoItem>) : TimelineEntry
@@ -113,6 +117,10 @@ fun groupConversationTimeline(messages: List<ChatMessage>): List<TimelineEntry> 
                     flush()
                     entries += TimelineEntry.Todo("todo:${part.id}", part.todos)
                 }
+                part is ChatPart.Image -> {
+                    flush()
+                    entries += TimelineEntry.Image(message.id, part)
+                }
                 part !is ChatPart.Text -> pending += part
                 part.text.isNotBlank() -> {
                     flush()
@@ -162,6 +170,7 @@ fun summarizeActivity(parts: List<ChatPart>): ActivitySummary {
                 }
             }
             is ChatPart.Text -> Unit
+            is ChatPart.Image -> Unit
         }
     }
     return ActivitySummary(counts = counts, reasoningCount = reasoning, running = running, hasError = hasError)

@@ -67,6 +67,13 @@ sealed interface ChatPart {
     ) : ChatPart
 
     data class Patch(override val id: String, val files: List<String>) : ChatPart
+
+    data class Image(
+        override val id: String,
+        val mime: String,
+        val url: String,
+        val filename: String? = null,
+    ) : ChatPart
 }
 
 data class ChatMessage(
@@ -116,12 +123,21 @@ private const val TRANSIENT_RECOVERY_DELAY_MS = 5000L
 private const val HEALTH_CHECK_ATTEMPTS = 15
 private const val HEALTH_CHECK_DELAY_MS = 2000L
 
-private fun OpenCodePart.toChatPart(): ChatPart? {
+internal fun OpenCodePart.toChatPart(): ChatPart? {
     val partId = id ?: return null
     val stateMap = state.orEmpty()
     return when (type) {
         "text" -> ChatPart.Text(partId, text.orEmpty())
         "reasoning" -> ChatPart.Reasoning(partId, text.orEmpty())
+        "file" -> {
+            val partMime = mime.orEmpty()
+            val partUrl = url.orEmpty()
+            if (partMime.startsWith("image/") && partUrl.isNotBlank()) {
+                ChatPart.Image(id = partId, mime = partMime, url = partUrl, filename = filename)
+            } else {
+                null
+            }
+        }
         "tool" -> {
             val inputText = formatToolInput(stateMap["input"])
             val rawOutput = stateMap["output"]?.jsonPrimitiveOrNull()

@@ -179,6 +179,7 @@ fun AssistantActivitySheet(
                     is ChatPart.Tool -> ToolCard(part)
                     is ChatPart.Patch -> PatchCard(part)
                     is ChatPart.Text -> Unit
+                    is ChatPart.Image -> Unit
                 }
             }
             item { Column(modifier = Modifier.padding(bottom = 32.dp)) {} }
