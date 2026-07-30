@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Image as ImageIcon
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -441,7 +442,7 @@ private fun ImagePartView(part: ChatPart.Image) {
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 modifier = Modifier.padding(10.dp),
             ) {
-                Icon(androidx.compose.material.icons.filled.Image, contentDescription = null)
+                Icon(Icons.Default.ImageIcon, contentDescription = null)
                 Text(
                     text = part.filename ?: part.mime,
                     style = MaterialTheme.typography.bodySmall,
