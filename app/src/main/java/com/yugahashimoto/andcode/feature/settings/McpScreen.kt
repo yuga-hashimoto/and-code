@@ -139,9 +139,10 @@ fun McpScreen(
         )
     }
 
-    if (state.oauthServerName != null) {
+    val oauthServerName = state.oauthServerName
+    if (oauthServerName != null) {
         McpAuthCodeDialog(
-            serverName = state.oauthServerName,
+            serverName = oauthServerName,
             code = state.oauthCode,
             isSubmitting = state.isAuthenticating,
             onCodeChange = viewModel::updateOAuthCode,
