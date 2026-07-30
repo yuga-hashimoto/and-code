@@ -54,7 +54,6 @@
     <string name="wake_word_notification_title">Palabra de activación activa</string>
     <string name="wake_word_notification_text">Escuchando \"hey Mycroft\"…</string>
     <string name="wake_word_notification_stop">Detener</string>
-    <string name="assistant_setup_hint">Elige AndCode como tu asistente digital predeterminado.</string>
     <string name="wake_word_requires_assistant">Establece AndCode como asistente predeterminado antes de activar la palabra de activación.</string>
     <string name="wake_word_start_failed">No se pudo iniciar la detección de la palabra de activación.</string>
 </resources>

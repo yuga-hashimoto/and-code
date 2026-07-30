@@ -54,7 +54,6 @@
     <string name="wake_word_notification_title">كلمة التنبيه نشطة</string>
     <string name="wake_word_notification_text">جارٍ الاستماع إلى \"hey Mycroft\"…</string>
     <string name="wake_word_notification_stop">إيقاف</string>
-    <string name="assistant_setup_hint">اختر AndCode كمساعدك الرقمي الافتراضي.</string>
     <string name="wake_word_requires_assistant">عيّن AndCode كمساعد افتراضي قبل تفعيل كلمة التنبيه.</string>
     <string name="wake_word_start_failed">تعذر بدء اكتشاف كلمة التنبيه.</string>
 </resources>

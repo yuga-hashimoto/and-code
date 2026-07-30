@@ -54,7 +54,6 @@
     <string name="wake_word_notification_title">Ключевое слово активно</string>
     <string name="wake_word_notification_text">Слушаю «hey Mycroft»…</string>
     <string name="wake_word_notification_stop">Остановить</string>
-    <string name="assistant_setup_hint">Выберите AndCode в качестве цифрового помощника по умолчанию.</string>
     <string name="wake_word_requires_assistant">Назначьте AndCode помощником по умолчанию перед включением ключевого слова.</string>
     <string name="wake_word_start_failed">Не удалось запустить обнаружение ключевого слова.</string>
 </resources>

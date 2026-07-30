@@ -54,7 +54,6 @@
     <string name="wake_word_notification_title">Mot de réveil actif</string>
     <string name="wake_word_notification_text">Écoute de « hey Mycroft »…</string>
     <string name="wake_word_notification_stop">Arrêter</string>
-    <string name="assistant_setup_hint">Choisissez AndCode comme assistant numérique par défaut.</string>
     <string name="wake_word_requires_assistant">Définissez AndCode comme assistant par défaut avant d’activer le mot de réveil.</string>
     <string name="wake_word_start_failed">Impossible de démarrer la détection du mot de réveil.</string>
 </resources>

@@ -54,7 +54,6 @@
     <string name="wake_word_notification_title">Wake word active</string>
     <string name="wake_word_notification_text">Listening for \"hey Mycroft\"…</string>
     <string name="wake_word_notification_stop">Stop</string>
-    <string name="assistant_setup_hint">Choose AndCode as your default digital assistant.</string>
     <string name="wake_word_requires_assistant">Set AndCode as the default assistant before enabling the wake word.</string>
     <string name="wake_word_start_failed">Wake-word detection could not start.</string>
 </resources>

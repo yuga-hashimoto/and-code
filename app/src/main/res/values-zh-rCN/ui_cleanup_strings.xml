@@ -54,7 +54,6 @@
     <string name="wake_word_notification_title">唤醒词已激活</string>
     <string name="wake_word_notification_text">正在监听"hey Mycroft"…</string>
     <string name="wake_word_notification_stop">停止</string>
-    <string name="assistant_setup_hint">选择 AndCode 作为默认数字助理。</string>
     <string name="wake_word_requires_assistant">启用唤醒词前，请将 AndCode 设为默认助理。</string>
     <string name="wake_word_start_failed">无法启动唤醒词检测。</string>
 </resources>

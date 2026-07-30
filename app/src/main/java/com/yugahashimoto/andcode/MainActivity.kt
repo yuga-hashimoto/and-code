@@ -1,8 +1,6 @@
 package com.yugahashimoto.andcode
 
-import android.app.role.RoleManager
 import android.content.Intent
-import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.widget.Toast
@@ -133,24 +131,6 @@ class MainActivity : ComponentActivity() {
             AndCodeVoiceInteractionService.show(this, UUID.randomUUID().toString())
             return
         }
-        Toast.makeText(this, R.string.assistant_setup_hint, Toast.LENGTH_LONG).show()
-        val roleOpened =
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val roleManager = getSystemService(RoleManager::class.java)
-                if (roleManager?.isRoleAvailable(RoleManager.ROLE_ASSISTANT) == true) {
-                    runCatching {
-                        startActivity(roleManager.createRequestRoleIntent(RoleManager.ROLE_ASSISTANT))
-                        true
-                    }.getOrDefault(false)
-                } else {
-                    false
-                }
-            } else {
-                false
-            }
-
-        if (roleOpened) return
-
         val opened =
             listOf(
                 Intent(Settings.ACTION_VOICE_INPUT_SETTINGS),

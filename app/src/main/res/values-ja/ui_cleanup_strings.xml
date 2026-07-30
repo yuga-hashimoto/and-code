@@ -54,7 +54,6 @@
     <string name="wake_word_notification_title">ウェイクワード有効</string>
     <string name="wake_word_notification_text">「hey Mycroft」を待機中…</string>
     <string name="wake_word_notification_stop">停止</string>
-    <string name="assistant_setup_hint">AndCodeをデジタルアシスタントの既定に設定してください。</string>
     <string name="wake_word_requires_assistant">ウェイクワードを有効にする前に、AndCodeを既定のアシスタントに設定してください。</string>
     <string name="wake_word_start_failed">ウェイクワード検出を開始できませんでした。</string>
 </resources>
