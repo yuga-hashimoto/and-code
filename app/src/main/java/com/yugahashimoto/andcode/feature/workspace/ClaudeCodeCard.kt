@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.OpenInNew
@@ -65,11 +66,13 @@ fun ClaudeCodeCard(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
             is ClaudeInstallStatus.Failed -> {
-                Text(
-                    text = install.message,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.error,
-                )
+                SelectionContainer {
+                    Text(
+                        text = install.message,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
                 if (showInstallActions) {
                     Button(onClick = onInstall, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Default.Build, contentDescription = null)

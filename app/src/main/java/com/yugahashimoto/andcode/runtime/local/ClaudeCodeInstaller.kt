@@ -56,6 +56,28 @@ object ClaudeCodeInstaller {
         $CLAUDE_BINARY --version
         """.trimIndent()
 
+    private val INSTALL_DIAGNOSTICS_SCRIPT =
+        """
+        echo '--- and-code apk diagnostics ---'
+        echo '-- df -h / --'
+        df -h / 2>&1 || true
+        echo '-- apk add -s claude-code util-linux --'
+        /sbin/apk add -s claude-code util-linux 2>&1 || true
+        echo '-- apk policy claude-code --'
+        /sbin/apk policy claude-code 2>&1 || true
+        """.trimIndent()
+
+    private val UPDATE_DIAGNOSTICS_SCRIPT =
+        """
+        echo '--- and-code apk diagnostics ---'
+        echo '-- df -h / --'
+        df -h / 2>&1 || true
+        echo '-- apk add -s --upgrade claude-code --'
+        /sbin/apk add -s --upgrade claude-code 2>&1 || true
+        echo '-- apk policy claude-code --'
+        /sbin/apk policy claude-code 2>&1 || true
+        """.trimIndent()
+
     /** Steps reported while [installInto] runs, so the UI can show more than a spinner. */
     enum class Step {
         ADDING_REPOSITORY,
@@ -85,9 +107,10 @@ object ClaudeCodeInstaller {
         onStep(Step.DOWNLOADING_PACKAGE)
         val exitCode = runInRootfs(INSTALL_SCRIPT, rootfs, suite, runtimeDirectory, log, timeoutMinutes)
         onStep(Step.VERIFYING)
-        check(exitCode == 0) {
-            "Claude Code installation failed (exit $exitCode): ${log.takeIf(File::isFile)?.readText()?.takeLast(2_000).orEmpty()}"
+        if (exitCode != 0) {
+            collectDiagnostics(INSTALL_DIAGNOSTICS_SCRIPT, rootfs, suite, runtimeDirectory, log, timeoutMinutes)
         }
+        check(exitCode == 0) { failureMessage("installation", exitCode, log) }
         check(File(rootfs, CLAUDE_BINARY.removePrefix("/")).isFile) {
             "Claude Code reported success but $CLAUDE_BINARY is missing"
         }
@@ -129,9 +152,10 @@ object ClaudeCodeInstaller {
                 delete()
             }
         val exitCode = runInRootfs(UPDATE_SCRIPT, rootfs, suite, runtimeDirectory, log, timeoutMinutes)
-        check(exitCode == 0) {
-            "Claude Code update failed (exit $exitCode): ${log.takeIf(File::isFile)?.readText()?.takeLast(2_000).orEmpty()}"
+        if (exitCode != 0) {
+            collectDiagnostics(UPDATE_DIAGNOSTICS_SCRIPT, rootfs, suite, runtimeDirectory, log, timeoutMinutes)
         }
+        check(exitCode == 0) { failureMessage("update", exitCode, log) }
     }
 
     fun isInstalledIn(rootfs: File): Boolean = File(rootfs, CLAUDE_BINARY.removePrefix("/")).isFile
@@ -143,6 +167,7 @@ object ClaudeCodeInstaller {
         runtimeDirectory: File,
         log: File,
         timeoutMinutes: Long,
+        append: Boolean = false,
     ): Int {
         val prootTmp = File(runtimeDirectory, "proot-tmp").apply { mkdirs() }
         val process =
@@ -171,7 +196,9 @@ object ClaudeCodeInstaller {
                     script,
                 ),
             ).redirectErrorStream(true)
-                .redirectOutput(ProcessBuilder.Redirect.to(log))
+                .redirectOutput(
+                    if (append) ProcessBuilder.Redirect.appendTo(log) else ProcessBuilder.Redirect.to(log),
+                )
                 .apply {
                     environment().clear()
                     environment().putAll(localRuntimeEnvironment(suite.environment(), prootTmp))
@@ -184,4 +211,55 @@ object ClaudeCodeInstaller {
         }
         return process.exitValue()
     }
+
+    private fun collectDiagnostics(
+        script: String,
+        rootfs: File,
+        suite: EmbeddedCommandSuite.Paths,
+        runtimeDirectory: File,
+        log: File,
+        timeoutMinutes: Long,
+    ) {
+        runCatching {
+            runInRootfs(script, rootfs, suite, runtimeDirectory, log, timeoutMinutes, append = true)
+        }
+    }
+
+    private val APK_ERROR_PATTERN =
+        Regex("(?i)\\b(error|warning|fatal|conflict|overwrite|unsatisfiable|masked|untrusted|denied|no space left|not found|failed to)\\b")
+
+    internal fun failureMessage(operation: String, exitCode: Int, log: File): String {
+        val text = log.takeIf(File::isFile)?.readText().orEmpty()
+        val errors = extractApkErrors(text)
+        val tail = text.takeLast(2_000)
+        val primary =
+            errors.lineSequence().firstOrNull()
+                ?: tail.lineSequence().map(String::trim).firstOrNull { it.isNotBlank() }.orEmpty()
+        return buildString {
+            append("Claude Code ")
+            append(operation)
+            append(" failed (exit ")
+            append(exitCode)
+            append("): ")
+            append(primary)
+            if (errors.isNotBlank()) {
+                append('\n')
+                append(errors)
+            }
+            append("\n--- log tail ---\n")
+            append(tail)
+        }
+    }
+
+    internal fun extractApkErrors(text: String): String =
+        text.lineSequence()
+            .map(String::trim)
+            .filter { it.isNotEmpty() }
+            .filter { line ->
+                !line.startsWith("fetch ") &&
+                    !line.startsWith("(") &&
+                    APK_ERROR_PATTERN.containsMatchIn(line)
+            }
+            .take(40)
+            .joinToString("\n")
 }
