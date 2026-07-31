@@ -228,7 +228,11 @@ object ClaudeCodeInstaller {
     private val APK_ERROR_PATTERN =
         Regex("(?i)\\b(error|warning|fatal|conflict|overwrite|unsatisfiable|masked|untrusted|denied|no space left|not found|failed to)\\b")
 
-    internal fun failureMessage(operation: String, exitCode: Int, log: File): String {
+    internal fun failureMessage(
+        operation: String,
+        exitCode: Int,
+        log: File,
+    ): String {
         val text = log.takeIf(File::isFile)?.readText().orEmpty()
         val errors = extractApkErrors(text)
         val tail = text.takeLast(2_000)
