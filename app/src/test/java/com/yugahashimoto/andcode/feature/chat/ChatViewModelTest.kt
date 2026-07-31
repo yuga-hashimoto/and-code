@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runCurrent
@@ -42,6 +43,7 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
+import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatViewModelTest {
@@ -87,6 +89,61 @@ class ChatViewModelTest {
             assertEquals("Hello", viewModel.uiState.value.messages.single().text)
             assertTrue(viewModel.uiState.value.messages.single().isUser)
             assertEquals("Hello", backend.sentPrompts.single().second.text)
+        }
+
+    @Test
+    fun `recovers connection after a transient send failure once the runtime is reachable again`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+            backend.failCreateSession = true
+
+            viewModel.sendMessage("Hello")
+            runCurrent()
+
+            assertEquals(
+                ChatErrorKind.TRANSIENT_CONNECTION,
+                classifyChatError(viewModel.uiState.value.error),
+            )
+
+            backend.failCreateSession = false
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.error)
+            assertTrue(viewModel.uiState.value.isConnected)
+        }
+
+    @Test
+    fun `keeps retrying recovery while the runtime stays unreachable`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+            backend.failCreateSession = true
+            backend.healthFailuresRemaining = 2
+
+            viewModel.sendMessage("Hello")
+
+            // Initial probe fails; the reconnecting card stays up and another probe is scheduled.
+            advanceTimeBy(TRANSIENT_RECOVERY_DELAY_MS)
+            assertEquals(
+                ChatErrorKind.TRANSIENT_CONNECTION,
+                classifyChatError(viewModel.uiState.value.error),
+            )
+
+            // Second probe fails too, still no recovery and no error masking.
+            advanceTimeBy(TRANSIENT_RECOVERY_RETRY_DELAY_MS)
+            assertEquals(
+                ChatErrorKind.TRANSIENT_CONNECTION,
+                classifyChatError(viewModel.uiState.value.error),
+            )
+
+            // Runtime comes back; the next probe succeeds and clears the error.
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.error)
+            assertTrue(viewModel.uiState.value.isConnected)
         }
 
     @Test
@@ -818,8 +875,16 @@ class ChatViewModelTest {
         val sentPrompts = mutableListOf<Pair<String, PromptRequest>>()
         val permissionResponses = mutableListOf<PermissionRecord>()
         val abortedSessions = mutableListOf<String>()
+        var healthFailuresRemaining = 0
+        var failCreateSession = false
 
-        override suspend fun health(): OpenCodeHealth = OpenCodeHealth(true, "test")
+        override suspend fun health(): OpenCodeHealth {
+            if (healthFailuresRemaining > 0) {
+                healthFailuresRemaining--
+                throw IOException("connection refused")
+            }
+            return OpenCodeHealth(true, "test")
+        }
 
         override suspend fun listSessions(directory: String?): List<OpenCodeSession> = sessionsById.values.toList()
 
@@ -830,6 +895,7 @@ class ChatViewModelTest {
             title: String?,
             directory: String?,
         ): OpenCodeSession {
+            if (failCreateSession) throw IOException("connection refused")
             createSessionCalls++
             lastCreateDirectory = directory
             return OpenCodeSession(

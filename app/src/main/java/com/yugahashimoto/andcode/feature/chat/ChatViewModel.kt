@@ -119,7 +119,10 @@ data class PendingQuestionUi(
 private const val MAX_TOOL_OUTPUT_CHARS = 4000
 private const val RESPONSE_POLL_INTERVAL_MS = 3000L
 private const val RESPONSE_POLL_TIMEOUT_MS = 120_000L
-private const val TRANSIENT_RECOVERY_DELAY_MS = 5000L
+internal const val TRANSIENT_RECOVERY_DELAY_MS = 5000L
+internal const val TRANSIENT_RECOVERY_RETRY_DELAY_MS = 3000L
+private const val TRANSIENT_RECOVERY_MAX_BACKOFF_MS = 30_000L
+private const val TRANSIENT_RECOVERY_MAX_ATTEMPTS = 20
 private const val HEALTH_CHECK_ATTEMPTS = 15
 private const val HEALTH_CHECK_DELAY_MS = 2000L
 
@@ -297,6 +300,7 @@ class ChatViewModel(
     private var eventJob: Job? = null
     private var tts: TextToSpeech? = null
     private var contextLimit: Long = 0L
+    private var recoveringTransiently = false
     private val streamedParts = mutableMapOf<String, LinkedHashMap<String, ChatPart>>()
 
     /** Message id to role, learned from `message.updated`, so user echoes can be skipped. */
@@ -1368,35 +1372,74 @@ class ChatViewModel(
         }
     }
 
+    /**
+     * Keeps probing the runtime until it is reachable again. The previous implementation ran a
+     * single health check five seconds after the failure and then stopped, so a runtime that came
+     * back any later was never noticed: the "reconnecting" card stayed up forever even though no
+     * reconnection was happening.
+     */
     private fun scheduleTransientRecovery() {
+        if (recoveringTransiently) return
+        recoveringTransiently = true
         viewModelScope.launch {
-            delay(TRANSIENT_RECOVERY_DELAY_MS)
-            val currentBackend = backend ?: return@launch
-            if (classifyChatError(_uiState.value.error) != ChatErrorKind.TRANSIENT_CONNECTION) return@launch
-            runCatching { currentBackend.health() }
-                .onSuccess { health ->
-                    if (health.healthy) {
-                        val session = _uiState.value.sessionId
-                        if (session != null) {
-                            runCatching { currentBackend.listMessages(session) }
-                                .onSuccess { messages ->
-                                    streamedParts.clear()
-                                    _uiState.update {
-                                        it.copy(
-                                            messages = messages.mapNotNull(::toUiMessage),
-                                            error = null,
-                                            isConnected = true,
-                                        )
-                                    }
-                                }
-                                .onFailure { _uiState.update { s -> s.copy(error = null) } }
-                        } else {
-                            _uiState.update { it.copy(error = null, isConnected = true) }
-                        }
-                        drainOfflineQueue()
-                    }
+            try {
+                delay(TRANSIENT_RECOVERY_DELAY_MS)
+                val currentBackend = backend ?: return@launch
+                if (!stillDisconnected()) return@launch
+                var backoffMs = TRANSIENT_RECOVERY_RETRY_DELAY_MS
+                repeat(TRANSIENT_RECOVERY_MAX_ATTEMPTS) {
+                    val recovered =
+                        runCatching { currentBackend.health() }.getOrNull()?.healthy == true &&
+                            restoreConnection(currentBackend)
+                    if (recovered) return@launch
+                    // A successful stream reconnect (ServerConnected), a fresh send, or a non
+                    // transient error superseding the failure all mean the recovery is over.
+                    if (!stillDisconnected()) return@launch
+                    delay(backoffMs)
+                    backoffMs = (backoffMs * 2).coerceAtMost(TRANSIENT_RECOVERY_MAX_BACKOFF_MS)
                 }
+            } finally {
+                recoveringTransiently = false
+            }
         }
+    }
+
+    /**
+     * True while the chat is still reporting the transient disconnect that triggered recovery.
+     *
+     * [ChatUiState.isConnected] is deliberately not consulted: it is a sticky "has ever connected"
+     * flag that stays true after a mid-run send failure, so keying on it would stop recovery before
+     * the runtime is actually reachable again.
+     */
+    private fun stillDisconnected(): Boolean {
+        val error = _uiState.value.error ?: return false
+        return classifyChatError(error) == ChatErrorKind.TRANSIENT_CONNECTION
+    }
+
+    /**
+     * Re-syncs the transcript after the runtime is healthy again. Returns false when the transcript
+     * is not reachable yet, in which case the reconnecting card is left up and recovery retries.
+     */
+    private suspend fun restoreConnection(currentBackend: OpenCodeBackend): Boolean {
+        val session = _uiState.value.sessionId
+        val refreshed =
+            if (session != null) {
+                runCatching { currentBackend.listMessages(session) }
+                    .onSuccess { messages ->
+                        streamedParts.clear()
+                        _uiState.update {
+                            it.copy(messages = messages.mapNotNull(::toUiMessage))
+                        }
+                    }
+                    .isSuccess
+            } else {
+                true
+            }
+        if (refreshed) {
+            _uiState.update { it.copy(error = null, isConnected = true) }
+            drainOfflineQueue()
+        }
+        return refreshed
     }
 }
 

@@ -109,6 +109,14 @@ class ChatErrorPresentationTest {
     }
 
     @Test
+    fun `classifies connection refused as transient`() {
+        assertEquals(
+            ChatErrorKind.TRANSIENT_CONNECTION,
+            classifyChatError("Failed to connect to /127.0.0.1:5040: Connection refused"),
+        )
+    }
+
+    @Test
     fun `classifies non-HTTP throwable by message`() {
         assertEquals(
             ChatErrorKind.TRANSIENT_CONNECTION,
