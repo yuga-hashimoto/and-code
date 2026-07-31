@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -282,7 +283,7 @@ fun SettingsScreenV2(
         if (isTablet) {
             Row(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
-                    modifier = Modifier.width(320.dp),
+                    modifier = Modifier.width(320.dp).navigationBarsPadding(),
                     contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 28.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
@@ -295,7 +296,7 @@ fun SettingsScreenV2(
             }
         } else {
             LazyColumn(
-                modifier = Modifier.fillMaxSize(),
+                modifier = Modifier.fillMaxSize().navigationBarsPadding(),
                 contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 28.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
