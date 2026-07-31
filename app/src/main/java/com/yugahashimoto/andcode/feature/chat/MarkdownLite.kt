@@ -1,17 +1,19 @@
 package com.yugahashimoto.andcode.feature.chat
 
 sealed interface MarkdownInline {
-    data class Plain(val text: String) : MarkdownInline
+    val text: String
 
-    data class Bold(val text: String) : MarkdownInline
+    data class Plain(override val text: String) : MarkdownInline
 
-    data class Italic(val text: String) : MarkdownInline
+    data class Bold(override val text: String) : MarkdownInline
 
-    data class Strikethrough(val text: String) : MarkdownInline
+    data class Italic(override val text: String) : MarkdownInline
 
-    data class Code(val text: String) : MarkdownInline
+    data class Strikethrough(override val text: String) : MarkdownInline
 
-    data class Link(val text: String, val url: String) : MarkdownInline
+    data class Code(override val text: String) : MarkdownInline
+
+    data class Link(override val text: String, val url: String) : MarkdownInline
 }
 
 sealed interface MarkdownBlock {
@@ -140,7 +142,7 @@ object MarkdownLite {
             .split("|")
             .map { it.trim() }
 
-    private fun parseInline(text: String): List<MarkdownInline> {
+    internal fun parseInline(text: String): List<MarkdownInline> {
         val result = mutableListOf<MarkdownInline>()
         var lastIndex = 0
         for (match in inlineRegex.findAll(text)) {
@@ -161,7 +163,7 @@ object MarkdownLite {
                 linkText != null && linkUrl != null -> result += MarkdownInline.Link(linkText, linkUrl)
                 italic != null -> result += MarkdownInline.Italic(italic)
                 bareUrl != null -> {
-                    val url = bareUrl.trimEnd('.', ',', '!', '?', ':', ';', ')', ']', '}')
+                    val url = trimUrlTail(bareUrl)
                     result += MarkdownInline.Link(url, url)
                     if (url.length < bareUrl.length) {
                         result += MarkdownInline.Plain(bareUrl.substring(url.length))
@@ -177,5 +179,17 @@ object MarkdownLite {
             result += MarkdownInline.Plain(text)
         }
         return result
+    }
+
+    private fun trimUrlTail(raw: String): String {
+        var s = raw
+        while (s.isNotEmpty()) {
+            when {
+                s.last() in ".,!?;:]}" -> s = s.dropLast(1)
+                s.last() == ')' && s.count { it == '(' } < s.count { it == ')' } -> s = s.dropLast(1)
+                else -> break
+            }
+        }
+        return s
     }
 }

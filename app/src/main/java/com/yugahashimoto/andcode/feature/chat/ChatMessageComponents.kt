@@ -25,6 +25,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -121,7 +122,10 @@ fun MessageBubble(message: ChatMessage) {
                         }
                     }
                     if (displayText.isNotBlank()) {
-                        Text(text = displayText)
+                        LinkedText(
+                            text = displayText,
+                            linkColor = MaterialTheme.colorScheme.onPrimary,
+                        )
                     }
                 }
             }
@@ -246,6 +250,52 @@ private fun InlineText(
             onTextLayout = { layoutResult = it },
         )
     }
+}
+
+@Composable
+private fun LinkedText(
+    text: String,
+    linkColor: Color,
+) {
+    val context = LocalContext.current
+    val style = LocalTextStyle.current
+    val inlines = remember(text) { MarkdownLite.parseInline(text) }
+    val annotated =
+        remember(inlines, linkColor) {
+            buildAnnotatedString {
+                inlines.forEach { inline ->
+                    if (inline is MarkdownInline.Link) {
+                        val start = length
+                        withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
+                            append(inline.text)
+                        }
+                        addStringAnnotation("link", inline.url, start, length)
+                    } else {
+                        append(inline.text)
+                    }
+                }
+            }
+        }
+    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
+    Text(
+        text = annotated,
+        style = style,
+        modifier =
+            Modifier.pointerInput(annotated) {
+                detectTapGestures { offset ->
+                    layoutResult?.let { layout ->
+                        val position = layout.getOffsetForPosition(offset)
+                        annotated.getStringAnnotations("link", position, position)
+                            .firstOrNull()?.let { ann ->
+                                runCatching {
+                                    context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(ann.item)))
+                                }
+                            }
+                    }
+                }
+            },
+        onTextLayout = { layoutResult = it },
+    )
 }
 
 @Composable
@@ -460,15 +510,24 @@ private fun annotateFilePaths(
     source: AnnotatedString,
     linkColor: Color,
 ): AnnotatedString {
+    val excludeRanges =
+        source.getStringAnnotations("link", 0, source.text.length) +
+            source.getStringAnnotations("code", 0, source.text.length)
     return buildAnnotatedString {
         append(source)
         FILE_PATH_REGEX.findAll(source.text).forEach { match ->
-            addStyle(
-                SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
-                match.range.first,
-                match.range.last + 1,
-            )
-            addStringAnnotation("filepath", match.value, match.range.first, match.range.last + 1)
+            val overlapsProtected =
+                excludeRanges.any { ann ->
+                    match.range.first < ann.end && match.range.last + 1 > ann.start
+                }
+            if (!overlapsProtected) {
+                addStyle(
+                    SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
+                    match.range.first,
+                    match.range.last + 1,
+                )
+                addStringAnnotation("filepath", match.value, match.range.first, match.range.last + 1)
+            }
         }
     }
 }
@@ -488,10 +547,13 @@ private fun renderInline(
                     withStyle(
                         SpanStyle(textDecoration = TextDecoration.LineThrough),
                     ) { append(inline.text) }
-                is MarkdownInline.Code ->
+                is MarkdownInline.Code -> {
+                    val start = length
                     withStyle(
                         SpanStyle(fontFamily = FontFamily.Monospace, background = codeBackground),
                     ) { append(inline.text) }
+                    addStringAnnotation("code", inline.text, start, length)
+                }
                 is MarkdownInline.Link -> {
                     val start = length
                     withStyle(

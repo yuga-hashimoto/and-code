@@ -122,4 +122,85 @@ class MarkdownLiteTest {
         assertTrue(blocks[3] is MarkdownBlock.CodeBlock)
         assertTrue(blocks[4] is MarkdownBlock.Paragraph)
     }
+
+    @Test
+    fun `bare url with balanced parentheses is preserved`() {
+        val paragraph =
+            MarkdownLite.parse("See https://en.wikipedia.org/wiki/Foo_(bar) for details")
+                .single() as MarkdownBlock.Paragraph
+        assertEquals(
+            listOf(
+                MarkdownInline.Plain("See "),
+                MarkdownInline.Link(
+                    "https://en.wikipedia.org/wiki/Foo_(bar)",
+                    "https://en.wikipedia.org/wiki/Foo_(bar)",
+                ),
+                MarkdownInline.Plain(" for details"),
+            ),
+            paragraph.inlines,
+        )
+    }
+
+    @Test
+    fun `bare url wrapped in parentheses trims closing paren`() {
+        val paragraph =
+            MarkdownLite.parse("(https://example.com)")
+                .single() as MarkdownBlock.Paragraph
+        assertEquals(
+            listOf(
+                MarkdownInline.Plain("("),
+                MarkdownInline.Link("https://example.com", "https://example.com"),
+                MarkdownInline.Plain(")"),
+            ),
+            paragraph.inlines,
+        )
+    }
+
+    @Test
+    fun `bare url with trailing comma is trimmed`() {
+        val paragraph =
+            MarkdownLite.parse("Visit https://example.com, then continue")
+                .single() as MarkdownBlock.Paragraph
+        assertEquals(
+            listOf(
+                MarkdownInline.Plain("Visit "),
+                MarkdownInline.Link("https://example.com", "https://example.com"),
+                MarkdownInline.Plain(","),
+                MarkdownInline.Plain(" then continue"),
+            ),
+            paragraph.inlines,
+        )
+    }
+
+    @Test
+    fun `markdown link is parsed`() {
+        val paragraph =
+            MarkdownLite.parse("See [docs](https://example.com/docs) for info")
+                .single() as MarkdownBlock.Paragraph
+        assertEquals(
+            listOf(
+                MarkdownInline.Plain("See "),
+                MarkdownInline.Link("docs", "https://example.com/docs"),
+                MarkdownInline.Plain(" for info"),
+            ),
+            paragraph.inlines,
+        )
+    }
+
+    @Test
+    fun `multiple bare urls are all linked`() {
+        val paragraph =
+            MarkdownLite.parse("Go to https://a.com and https://b.com today")
+                .single() as MarkdownBlock.Paragraph
+        assertEquals(
+            listOf(
+                MarkdownInline.Plain("Go to "),
+                MarkdownInline.Link("https://a.com", "https://a.com"),
+                MarkdownInline.Plain(" and "),
+                MarkdownInline.Link("https://b.com", "https://b.com"),
+                MarkdownInline.Plain(" today"),
+            ),
+            paragraph.inlines,
+        )
+    }
 }
