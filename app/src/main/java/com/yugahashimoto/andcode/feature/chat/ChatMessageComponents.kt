@@ -59,6 +59,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
+import com.yugahashimoto.andcode.BuildConfig
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.runtime.PermissionResponse
@@ -519,24 +520,42 @@ private fun decodeDataImage(url: String): android.graphics.Bitmap? {
     }.getOrNull()
 }
 
+internal fun imageFileCandidates(
+    url: String,
+    workspaceHostDir: File,
+): List<File> {
+    if (url.startsWith("data:") || url.startsWith("http://") || url.startsWith("https://")) {
+        return emptyList()
+    }
+    val raw = if (url.startsWith("file://")) url.removePrefix("file://") else url
+    return buildList {
+        when {
+            raw == "/workspace" -> add(workspaceHostDir)
+            raw.startsWith("/workspace/") -> add(File(workspaceHostDir, raw.removePrefix("/workspace/")))
+        }
+        add(File(raw))
+        if (!raw.startsWith("/")) add(File(workspaceHostDir, raw))
+    }
+        .distinctBy { it.path }
+}
+
 internal fun resolveImageFile(
     url: String,
     workspaceHostDir: File,
-): File? {
-    if (url.startsWith("data:") || url.startsWith("http://") || url.startsWith("https://")) {
-        return null
-    }
-    val raw = if (url.startsWith("file://")) url.removePrefix("file://") else url
-    val candidates =
-        buildList {
-            when {
-                raw == "/workspace" -> add(workspaceHostDir)
-                raw.startsWith("/workspace/") -> add(File(workspaceHostDir, raw.removePrefix("/workspace/")))
-            }
-            add(File(raw))
-            if (!raw.startsWith("/")) add(File(workspaceHostDir, raw))
+): File? = imageFileCandidates(url, workspaceHostDir).firstOrNull { it.exists() }
+
+internal fun debugImageResolution(
+    url: String,
+    workspaceHostDir: File,
+): String {
+    val candidates = imageFileCandidates(url, workspaceHostDir)
+    val detail =
+        if (candidates.isEmpty()) {
+            "(non-file url)"
+        } else {
+            candidates.joinToString("; ") { "${it.path}=${it.exists()}" }
         }
-    return candidates.distinctBy { it.path }.firstOrNull { it.exists() }
+    return "url=$url | $detail"
 }
 
 internal fun decodeImageFromUrlOrPath(
@@ -580,6 +599,7 @@ private fun MarkdownImageView(image: MarkdownInline.Image) {
                 }
         }
     val bitmap = bitmapState.value
+    val debugInfo = if (BuildConfig.DEBUG) debugImageResolution(image.url, workspaceHostDir) else null
     if (bitmap != null) {
         Image(
             bitmap = bitmap.asImageBitmap(),
@@ -604,10 +624,10 @@ private fun MarkdownImageView(image: MarkdownInline.Image) {
             ) {
                 Icon(Icons.Default.ImageIcon, contentDescription = null)
                 Text(
-                    text = image.text.ifBlank { image.url },
+                    text = debugInfo ?: image.text.ifBlank { image.url },
                     style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                    maxLines = if (debugInfo != null) Int.MAX_VALUE else 1,
+                    overflow = if (debugInfo != null) TextOverflow.Clip else TextOverflow.Ellipsis,
                 )
             }
         }
