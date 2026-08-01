@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,6 +63,9 @@ import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.ui.theme.AndCodeWarning
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -356,6 +360,8 @@ private fun MarkdownText(
                     )
                 is MarkdownBlock.Paragraph -> {
                     val currentInlines = mutableListOf<MarkdownInline>()
+
+                    @Composable
                     fun flushInlines() {
                         if (currentInlines.isNotEmpty()) {
                             InlineText(
@@ -513,18 +519,19 @@ private fun decodeDataImage(url: String): android.graphics.Bitmap? {
     }.getOrNull()
 }
 
-internal fun decodeImageFromUrlOrPath(url: String): android.graphics.Bitmap? {
+internal fun decodeImageFromUrlOrPath(url: String): Bitmap? {
     if (url.startsWith("data:")) {
         return decodeDataImage(url)
     }
     val rawPath = if (url.startsWith("file://")) url.removePrefix("file://") else url
     val path = if (rawPath.startsWith("/")) rawPath else "/$rawPath"
-    if (!java.io.File(path).exists()) return null
+    if (!File(path).exists()) return null
     return runCatching {
-        val options = android.graphics.BitmapFactory.Options().apply {
-            inJustDecodeBounds = true
-        }
-        android.graphics.BitmapFactory.decodeFile(path, options)
+        val options =
+            BitmapFactory.Options().apply {
+                inJustDecodeBounds = true
+            }
+        BitmapFactory.decodeFile(path, options)
         if (options.outWidth <= 0 || options.outHeight <= 0) return null
 
         val maxDim = 1024
@@ -532,20 +539,23 @@ internal fun decodeImageFromUrlOrPath(url: String): android.graphics.Bitmap? {
         while (options.outWidth / sampleSize > maxDim || options.outHeight / sampleSize > maxDim) {
             sampleSize *= 2
         }
-        val decodeOptions = android.graphics.BitmapFactory.Options().apply {
-            inSampleSize = sampleSize
-        }
-        android.graphics.BitmapFactory.decodeFile(path, decodeOptions)
+        val decodeOptions =
+            BitmapFactory.Options().apply {
+                inSampleSize = sampleSize
+            }
+        BitmapFactory.decodeFile(path, decodeOptions)
     }.getOrNull()
 }
 
 @Composable
 private fun MarkdownImageView(image: MarkdownInline.Image) {
-    val bitmapState = androidx.compose.runtime.produceState<android.graphics.Bitmap?>(initialValue = null, key1 = image.url) {
-        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-            decodeImageFromUrlOrPath(image.url)
+    val bitmapState =
+        produceState<Bitmap?>(initialValue = null, key1 = image.url) {
+            value =
+                withContext(Dispatchers.IO) {
+                    decodeImageFromUrlOrPath(image.url)
+                }
         }
-    }
     val bitmap = bitmapState.value
     if (bitmap != null) {
         Image(
