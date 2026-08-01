@@ -901,6 +901,9 @@
     <string name="schedule_recurring">Recurrente</string>
     <string name="schedule_run_now_started">La programación se está ejecutando.</string>
     <string name="schedule_edit_menu">Editar</string>
+    <string name="schedule_exact_alarm_title">Permitir alarmas y recordatorios</string>
+    <string name="schedule_exact_alarm_body">Sin este permiso, Android impide que se inicien las ejecuciones programadas.</string>
+    <string name="schedule_exact_alarm_action">Permitir</string>
     <string name="schedule_auto_accept_default">Por defecto</string>
     <string name="schedule_timing_daily_label">Diario %1$s</string>
     <string name="schedule_timing_weekly_label">Semanal %1$s %2$s</string>

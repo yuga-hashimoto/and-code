@@ -901,6 +901,9 @@
     <string name="schedule_recurring">Повторяющееся</string>
     <string name="schedule_run_now_started">Расписание выполняется.</string>
     <string name="schedule_edit_menu">Изменить</string>
+    <string name="schedule_exact_alarm_title">Разрешить будильники и напоминания</string>
+    <string name="schedule_exact_alarm_body">Без этого разрешения Android не даёт запускать задачи по расписанию.</string>
+    <string name="schedule_exact_alarm_action">Разрешить</string>
     <string name="schedule_auto_accept_default">По умолчанию</string>
     <string name="schedule_timing_daily_label">Ежедневно %1$s</string>
     <string name="schedule_timing_weekly_label">Еженедельно %1$s %2$s</string>

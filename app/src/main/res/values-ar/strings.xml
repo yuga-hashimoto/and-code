@@ -901,6 +901,9 @@
     <string name="schedule_recurring">متكرر</string>
     <string name="schedule_run_now_started">الجدول قيد التشغيل.</string>
     <string name="schedule_edit_menu">تعديل</string>
+    <string name="schedule_exact_alarm_title">السماح بالمنبهات والتذكيرات</string>
+    <string name="schedule_exact_alarm_body">بدون هذا الإذن يمنع Android بدء عمليات التشغيل المجدولة.</string>
+    <string name="schedule_exact_alarm_action">السماح</string>
     <string name="schedule_auto_accept_default">الافتراضي</string>
     <string name="schedule_timing_daily_label">يوميًا %1$s</string>
     <string name="schedule_timing_weekly_label">أسبوعيًا %1$s %2$s</string>

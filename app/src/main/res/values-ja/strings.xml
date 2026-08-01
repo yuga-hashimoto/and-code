@@ -914,6 +914,9 @@
     <string name="schedule_recurring">繰り返し</string>
     <string name="schedule_run_now_started">スケジュールを実行しています。</string>
     <string name="schedule_edit_menu">編集</string>
+    <string name="schedule_exact_alarm_title">「アラームとリマインダー」を許可</string>
+    <string name="schedule_exact_alarm_body">許可しないと Android がスケジュール実行の開始をブロックします。</string>
+    <string name="schedule_exact_alarm_action">許可</string>
 
     <string name="schedule_timing_daily_label">毎日 %1$s</string>
     <string name="schedule_timing_weekly_label">毎週%1$s %2$s</string>

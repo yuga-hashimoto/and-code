@@ -970,6 +970,10 @@ fun AndCodeApp(
                         },
                         onDelete = scheduleViewModel::delete,
                         onToggleEnabled = scheduleViewModel::setEnabled,
+                        exactAlarmsAllowed = app.scheduleManager::exactAlarmsAllowed,
+                        // Alarms armed while the permission was missing are inexact; granting it
+                        // only takes effect once they are re-armed.
+                        onExactAlarmsGranted = app.scheduleManager::rescheduleAll,
                     )
                 }
 

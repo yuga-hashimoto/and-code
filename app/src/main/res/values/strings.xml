@@ -914,6 +914,9 @@
     <string name="schedule_recurring">Recurring</string>
     <string name="schedule_run_now_started">The schedule is running.</string>
     <string name="schedule_edit_menu">Edit</string>
+    <string name="schedule_exact_alarm_title">Allow alarms &amp; reminders</string>
+    <string name="schedule_exact_alarm_body">Android blocks scheduled runs from starting without it.</string>
+    <string name="schedule_exact_alarm_action">Allow</string>
 
     <string name="schedule_timing_daily_label">Daily %1$s</string>
     <string name="schedule_timing_weekly_label">Weekly %1$s %2$s</string>

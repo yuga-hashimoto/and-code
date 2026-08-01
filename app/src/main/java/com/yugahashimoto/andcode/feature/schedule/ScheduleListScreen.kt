@@ -1,5 +1,7 @@
 package com.yugahashimoto.andcode.feature.schedule
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -41,6 +43,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -67,8 +70,18 @@ fun ScheduleListScreen(
     onRunNow: (String) -> Unit,
     onDelete: (String) -> Unit,
     onToggleEnabled: (String, Boolean) -> Unit,
+    exactAlarmsAllowed: () -> Boolean,
+    onExactAlarmsGranted: () -> Unit,
 ) {
     var pendingDelete by remember { mutableStateOf<Schedule?>(null) }
+    val context = LocalContext.current
+    // Re-read on the way back from settings: granting is what makes scheduled runs able to start.
+    var alarmsAreExact by remember { mutableStateOf(exactAlarmsAllowed()) }
+    val exactAlarmSettings =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
+            alarmsAreExact = exactAlarmsAllowed()
+            if (alarmsAreExact) onExactAlarmsGranted()
+        }
 
     Scaffold(
         topBar = {
@@ -100,46 +113,59 @@ fun ScheduleListScreen(
         },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
-        if (schedules.isEmpty()) {
-            Column(
-                modifier =
-                    Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .padding(horizontal = 24.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Icon(
-                    Icons.Default.Schedule,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(40.dp),
-                )
-                Text(
-                    text = stringResource(R.string.schedule_empty),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            if (!alarmsAreExact) {
+                ExactAlarmBanner(
+                    onAllow = {
+                        // The dedicated screen is missing on some builds, so fall through the
+                        // candidates until one of them opens.
+                        exactAlarmSettingsIntents(context).any { intent ->
+                            runCatching { exactAlarmSettings.launch(intent) }.isSuccess
+                        }
+                    },
                 )
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                items(schedules, key = { it.id }) { schedule ->
-                    ScheduleRow(
-                        schedule = schedule,
-                        lastRun = runs.firstOrNull { it.scheduleId == schedule.id },
-                        nextFireAt = nextFireAt(schedule),
-                        runtimeTargets = runtimeTargets,
-                        onOpen = { onOpenSchedule(schedule.id) },
-                        onEdit = { onEdit(schedule.id) },
-                        onRunNow = { onRunNow(schedule.id) },
-                        onDelete = { pendingDelete = schedule },
-                        onToggleEnabled = { enabled -> onToggleEnabled(schedule.id, enabled) },
+            if (schedules.isEmpty()) {
+                Column(
+                    modifier =
+                        Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                            .padding(horizontal = 24.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Icon(
+                        Icons.Default.Schedule,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(40.dp),
                     )
+                    Text(
+                        text = stringResource(R.string.schedule_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    items(schedules, key = { it.id }) { schedule ->
+                        ScheduleRow(
+                            schedule = schedule,
+                            lastRun = runs.firstOrNull { it.scheduleId == schedule.id },
+                            nextFireAt = nextFireAt(schedule),
+                            runtimeTargets = runtimeTargets,
+                            onOpen = { onOpenSchedule(schedule.id) },
+                            onEdit = { onEdit(schedule.id) },
+                            onRunNow = { onRunNow(schedule.id) },
+                            onDelete = { pendingDelete = schedule },
+                            onToggleEnabled = { enabled -> onToggleEnabled(schedule.id, enabled) },
+                        )
+                    }
                 }
             }
         }
@@ -164,6 +190,52 @@ fun ScheduleListScreen(
                 }
             },
         )
+    }
+}
+
+/**
+ * Asks for the alarms & reminders permission, without which Android refuses to let a scheduled
+ * run start at all.
+ */
+@Composable
+private fun ExactAlarmBanner(onAllow: () -> Unit) {
+    Surface(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.errorContainer,
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 12.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Default.Schedule,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.schedule_exact_alarm_title),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+                Text(
+                    text = stringResource(R.string.schedule_exact_alarm_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                )
+            }
+            TextButton(onClick = onAllow) {
+                Text(
+                    text = stringResource(R.string.schedule_exact_alarm_action),
+                    color = MaterialTheme.colorScheme.onErrorContainer,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+        }
     }
 }
 

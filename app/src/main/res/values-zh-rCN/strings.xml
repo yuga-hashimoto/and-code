@@ -901,6 +901,9 @@
     <string name="schedule_recurring">重复</string>
     <string name="schedule_run_now_started">计划正在运行。</string>
     <string name="schedule_edit_menu">编辑</string>
+    <string name="schedule_exact_alarm_title">允许闹钟和提醒</string>
+    <string name="schedule_exact_alarm_body">未授予该权限时，Android 会阻止计划运行启动。</string>
+    <string name="schedule_exact_alarm_action">允许</string>
     <string name="schedule_auto_accept_default">默认</string>
     <string name="schedule_timing_daily_label">每天 %1$s</string>
     <string name="schedule_timing_weekly_label">每周%1$s %2$s</string>
