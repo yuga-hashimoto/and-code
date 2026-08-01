@@ -69,24 +69,29 @@ class AntigravityController(
      * forever even though the binary is already in the guest.
      */
     fun refresh() {
-        scope.launch {
-            val installed = installer.installedRuntime()
-            val rootfs = installed?.antigravityRootfs
-            val binaryInstalled = rootfs?.resolve("usr/local/bin/agy")?.let { it.isFile && it.canExecute() } == true
-            if (!binaryInstalled) return@launch
-            val version = target.runtime.version()
-            mutableState.value =
-                mutableState.value.copy(
-                    installed = true,
-                    version = version,
-                    install = version?.let(AntigravityInstallStatus::Ready) ?: AntigravityInstallStatus.Idle,
-                )
-            // The token lives in the guest rootfs, so a restarted app is still signed in even
-            // though the in-memory coordinator starts at Idle. `models()` answers that and fills
-            // the picker's catalogue in the same launch - asking twice would mean two agy runs,
-            // and two of those overlapping is what previously hung both of them.
-            if (target.runtime.models().isNotEmpty()) target.auth.markSignedIn()
-        }
+        // Reading the environment on disk can fail on a half-installed or damaged runtime, and
+        // this launch has nothing to catch what it throws: an unhandled exception here takes the
+        // whole app down. Rehydration is best-effort, so a failure just leaves the state as is.
+        scope.launch { runCatching { rehydrate() } }
+    }
+
+    private suspend fun rehydrate() {
+        val installed = installer.installedRuntime()
+        val rootfs = installed?.antigravityRootfs
+        val binaryInstalled = rootfs?.resolve("usr/local/bin/agy")?.let { it.isFile && it.canExecute() } == true
+        if (!binaryInstalled) return
+        val version = target.runtime.version()
+        mutableState.value =
+            mutableState.value.copy(
+                installed = true,
+                version = version,
+                install = version?.let(AntigravityInstallStatus::Ready) ?: AntigravityInstallStatus.Idle,
+            )
+        // The token lives in the guest rootfs, so a restarted app is still signed in even though
+        // the in-memory coordinator starts at Idle. `models()` answers that and fills the picker's
+        // catalogue in the same launch - asking twice would mean two agy runs, and two of those
+        // overlapping is what previously hung both of them.
+        if (target.runtime.models().isNotEmpty()) target.auth.markSignedIn()
     }
 
     /**

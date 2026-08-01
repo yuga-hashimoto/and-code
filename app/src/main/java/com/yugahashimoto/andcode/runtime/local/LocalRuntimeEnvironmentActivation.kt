@@ -2,8 +2,12 @@ package com.yugahashimoto.andcode.runtime.local
 
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
+import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
+import java.nio.file.attribute.BasicFileAttributes
 
 internal fun activateRuntimeEnvironment(
     active: File,
@@ -63,17 +67,41 @@ internal fun normalizeRuntimeSymlinks(environment: File) {
             current.resolveSibling("environment.rollback"),
             current.resolveSibling("environment.failed"),
         )
-    Files.walk(current).use { paths ->
-        paths.filter(Files::isSymbolicLink).forEach { link ->
-            val target = Files.readSymbolicLink(link)
-            if (!target.isAbsolute) return@forEach
-            val normalizedTarget = target.normalize()
-            val oldRoot = possibleRoots.firstOrNull(normalizedTarget::startsWith) ?: return@forEach
-            val targetInCurrent = current.resolve(oldRoot.relativize(normalizedTarget))
-            replaceSymlink(link, link.parent.relativize(targetInCurrent))
-        }
-    }
+    // A guest rootfs carries directories the app's own uid cannot open - PRoot's bind-mount points
+    // come out of the tarball with no permissions at all. Walking with a visitor lets those be
+    // skipped; Files.walk would abort the whole traversal with an UncheckedIOException instead.
+    Files.walkFileTree(
+        current,
+        object : SimpleFileVisitor<Path>() {
+            override fun visitFile(
+                file: Path,
+                attributes: BasicFileAttributes,
+            ): FileVisitResult {
+                if (attributes.isSymbolicLink) relativizeSymlink(file, current, possibleRoots)
+                return FileVisitResult.CONTINUE
+            }
+
+            override fun visitFileFailed(
+                file: Path,
+                error: IOException,
+            ): FileVisitResult = FileVisitResult.CONTINUE
+        },
+    )
     marker.writeText("normalized\n")
+}
+
+/** Rewrites [link] to point inside [current] when it still targets an older environment root. */
+private fun relativizeSymlink(
+    link: Path,
+    current: Path,
+    possibleRoots: List<Path>,
+) {
+    val target = Files.readSymbolicLink(link)
+    if (!target.isAbsolute) return
+    val normalizedTarget = target.normalize()
+    val oldRoot = possibleRoots.firstOrNull(normalizedTarget::startsWith) ?: return
+    val targetInCurrent = current.resolve(oldRoot.relativize(normalizedTarget))
+    replaceSymlink(link, link.parent.relativize(targetInCurrent))
 }
 
 private fun replaceSymlink(

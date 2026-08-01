@@ -5,6 +5,7 @@ import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -201,6 +202,34 @@ class LocalRuntimeEnvironmentActivationTest {
         )
 
         normalizeRuntimeSymlinks(active)
+
+        assertFalse(Files.readSymbolicLink(executable.toPath()).isAbsolute)
+        assertEquals("binary", executable.readText())
+        assertTrue(active.resolve(".internal-symlinks-relative").isFile)
+    }
+
+    @Test
+    fun `normalization skips directories it cannot open`() {
+        val root = temporaryFolder.newFolder("runtime-unreadable")
+        val active = root.resolve("environment").apply { mkdirs() }
+        val rootfs = active.resolve("rootfs").apply { mkdirs() }
+        // PRoot's bind-mount points come out of the guest tarball with no permissions at all, and
+        // the app's own uid cannot open them either. Walking must skip them, not give up.
+        val mountPoint = rootfs.resolve("system").apply { mkdirs() }
+        assumeTrue(mountPoint.setReadable(false, false) && !mountPoint.canRead())
+        val bin = rootfs.resolve("usr/bin").apply { mkdirs() }
+        val backing = bin.resolve(".l2s.unzip.0002").apply { writeText("binary") }
+        val executable = bin.resolve("unzip")
+        Files.createSymbolicLink(
+            executable.toPath(),
+            root.resolve("environment.staging").toPath().toAbsolutePath().resolve("rootfs/usr/bin/${backing.name}"),
+        )
+
+        try {
+            normalizeRuntimeSymlinks(active)
+        } finally {
+            mountPoint.setReadable(true, false)
+        }
 
         assertFalse(Files.readSymbolicLink(executable.toPath()).isAbsolute)
         assertEquals("binary", executable.readText())

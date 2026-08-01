@@ -68,7 +68,9 @@ class ClaudeCodeController(
     /** Reads the sandbox to find out whether Claude Code is installed and signed in. */
     fun refresh() {
         if (installJob?.isActive == true) return
-        scope.launch { refreshBlocking() }
+        // Reading a damaged environment on disk must not reach the uncaught-exception handler and
+        // take the app down; this refresh is best-effort, so a failure leaves the state as is.
+        scope.launch { runCatching { refreshBlocking() } }
     }
 
     /**
