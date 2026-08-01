@@ -40,6 +40,5 @@ class ScheduleViewModel(
         manager.runNow(scheduleId)
     }
 
-    fun runsFor(scheduleId: String): List<ScheduleRun> =
-        repository.runs.value.filter { it.scheduleId == scheduleId }
+    fun runsFor(scheduleId: String): List<ScheduleRun> = repository.runs.value.filter { it.scheduleId == scheduleId }
 }

@@ -95,12 +95,13 @@ class ScheduleRepository(context: Context) {
     fun updateRun(run: ScheduleRun) {
         mutableRuns.update { current ->
             val existing = current.firstOrNull { it.id == run.id }
-            val updated = existing?.copy(
-                sessionId = run.sessionId.takeIf(String::isNotBlank) ?: existing.sessionId,
-                finishedAt = run.finishedAt ?: existing.finishedAt,
-                status = run.status,
-                error = run.error,
-            )
+            val updated =
+                existing?.copy(
+                    sessionId = run.sessionId.takeIf(String::isNotBlank) ?: existing.sessionId,
+                    finishedAt = run.finishedAt ?: existing.finishedAt,
+                    status = run.status,
+                    error = run.error,
+                )
             if (updated == null) {
                 (listOf(run) + current).take(MAX_RUNS)
             } else {
@@ -112,14 +113,11 @@ class ScheduleRepository(context: Context) {
 
     /** True while a run for [scheduleId] is still in flight; used to avoid overlapping runs. */
     @Synchronized
-    fun hasActiveRun(scheduleId: String): Boolean =
-        mutableRuns.value.any { it.scheduleId == scheduleId && it.isActive }
+    fun hasActiveRun(scheduleId: String): Boolean = mutableRuns.value.any { it.scheduleId == scheduleId && it.isActive }
 
-    private fun loadSchedules(): List<Schedule> =
-        ScheduleCodec.decodeSchedules(preferences.getString(KEY_SCHEDULES, null).orEmpty())
+    private fun loadSchedules(): List<Schedule> = ScheduleCodec.decodeSchedules(preferences.getString(KEY_SCHEDULES, null).orEmpty())
 
-    private fun loadRuns(): List<ScheduleRun> =
-        ScheduleCodec.decodeRuns(preferences.getString(KEY_RUNS, null).orEmpty())
+    private fun loadRuns(): List<ScheduleRun> = ScheduleCodec.decodeRuns(preferences.getString(KEY_RUNS, null).orEmpty())
 
     private fun persistSchedules() {
         preferences.edit().putString(KEY_SCHEDULES, ScheduleCodec.encodeSchedules(mutableSchedules.value)).apply()

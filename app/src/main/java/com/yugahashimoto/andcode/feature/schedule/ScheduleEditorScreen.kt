@@ -27,7 +27,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -133,7 +132,18 @@ fun ScheduleEditorScreen(
                 actions = {
                     TextButton(
                         onClick = {
-                            val built = buildSchedule(existing, timingState, name, prompt, runtimeId, providerId, modelId, workspacePath, autoAcceptMode)
+                            val built =
+                                buildSchedule(
+                                    existing,
+                                    timingState,
+                                    name,
+                                    prompt,
+                                    runtimeId,
+                                    providerId,
+                                    modelId,
+                                    workspacePath,
+                                    autoAcceptMode,
+                                )
                             if (built != null) onSave(built)
                         },
                     ) {
@@ -289,10 +299,11 @@ fun ScheduleEditorScreen(
                         }
                     }
                 }
-                TimingMode.DAILY -> TimePickerButton(
-                    label = timingState.dailyTime?.format(TIME_FORMAT) ?: stringResource(R.string.schedule_time),
-                    onClick = { showTimePicker = true },
-                )
+                TimingMode.DAILY ->
+                    TimePickerButton(
+                        label = timingState.dailyTime?.format(TIME_FORMAT) ?: stringResource(R.string.schedule_time),
+                        onClick = { showTimePicker = true },
+                    )
                 TimingMode.WEEKLY -> {
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         DayOfWeek.entries.forEach { day ->
@@ -404,7 +415,8 @@ fun ScheduleEditorScreen(
     }
 
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = timingState.onceDate?.toEpochDay()?.let { it * 86_400_000L })
+        val datePickerState =
+            rememberDatePickerState(initialSelectedDateMillis = timingState.onceDate?.toEpochDay()?.let { it * 86_400_000L })
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {

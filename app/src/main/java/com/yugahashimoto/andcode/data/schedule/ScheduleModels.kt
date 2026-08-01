@@ -4,7 +4,6 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.time.Instant
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.ZoneId
@@ -39,9 +38,10 @@ data class Schedule(
     val updatedAt: Long = System.currentTimeMillis(),
 ) {
     val displayName: String
-        get() = name.trim().takeIf(String::isNotEmpty)
-            ?: prompt.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
-                .ifBlank { id.take(8) }
+        get() =
+            name.trim().takeIf(String::isNotEmpty)
+                ?: prompt.lineSequence().firstOrNull { it.isNotBlank() }?.trim().orEmpty()
+                    .ifBlank { id.take(8) }
 
     val isRecurring: Boolean get() = cron != null
 }
@@ -76,12 +76,16 @@ class CronExpression private constructor(
 ) {
     /** Sorted values for the "minute" field. */
     val minutes: List<Int> get() = minutesField.ints
+
     /** Sorted values for the "hour" field. */
     val hours: List<Int> get() = hoursField.ints
+
     /** Sorted values for the "day-of-month" field. */
     val daysOfMonth: List<Int> get() = daysOfMonthField.ints
+
     /** Sorted values for the "month" field. */
     val months: List<Int> get() = monthsField.ints
+
     /** Sorted values for the "day-of-week" field (0 = Sunday). */
     val daysOfWeek: List<Int> get() = daysOfWeekField.ints
 
@@ -148,7 +152,11 @@ class CronExpression private constructor(
         fun contains(value: Int): Boolean = value in values
 
         companion object {
-            fun parse(raw: String, min: Int, max: Int): Field? {
+            fun parse(
+                raw: String,
+                min: Int,
+                max: Int,
+            ): Field? {
                 var restricted = raw != "*"
                 val values = mutableSetOf<Int>()
                 for (part in raw.split(',')) {
@@ -206,11 +214,9 @@ object ScheduleCodec {
 
     fun encodeSchedules(schedules: List<Schedule>): String = json.encodeToString(schedules)
 
-    fun decodeSchedules(encoded: String): List<Schedule> =
-        if (encoded.isBlank()) emptyList() else json.decodeFromString(encoded)
+    fun decodeSchedules(encoded: String): List<Schedule> = if (encoded.isBlank()) emptyList() else json.decodeFromString(encoded)
 
     fun encodeRuns(runs: List<ScheduleRun>): String = json.encodeToString(runs)
 
-    fun decodeRuns(encoded: String): List<ScheduleRun> =
-        if (encoded.isBlank()) emptyList() else json.decodeFromString(encoded)
+    fun decodeRuns(encoded: String): List<ScheduleRun> = if (encoded.isBlank()) emptyList() else json.decodeFromString(encoded)
 }

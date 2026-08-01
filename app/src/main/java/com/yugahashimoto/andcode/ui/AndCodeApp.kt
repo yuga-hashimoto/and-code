@@ -87,11 +87,11 @@ import com.yugahashimoto.andcode.ui.navigation.ROUTE_ANDROID_SETUP
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_CHAT
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_ONBOARDING
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_REMOTE_CONNECTION
-import com.yugahashimoto.andcode.ui.navigation.ROUTE_SCHEDULE_EDIT
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_SCHEDULES
+import com.yugahashimoto.andcode.ui.navigation.ROUTE_SCHEDULE_EDIT
+import com.yugahashimoto.andcode.ui.navigation.ROUTE_SETTINGS_PROVIDERS
 import com.yugahashimoto.andcode.ui.navigation.SCHEDULE_DETAIL_ROUTE_PATTERN
 import com.yugahashimoto.andcode.ui.navigation.SCHEDULE_EDIT_ROUTE_PATTERN
-import com.yugahashimoto.andcode.ui.navigation.ROUTE_SETTINGS_PROVIDERS
 import com.yugahashimoto.andcode.ui.navigation.decodeRouteArg
 import com.yugahashimoto.andcode.ui.navigation.scheduleDetailRoute
 import com.yugahashimoto.andcode.ui.navigation.scheduleEditRoute

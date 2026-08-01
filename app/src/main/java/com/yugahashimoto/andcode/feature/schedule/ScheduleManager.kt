@@ -62,8 +62,7 @@ class ScheduleManager(
             else -> null
         }
 
-    private fun canScheduleExactAlarms(): Boolean =
-        Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
+    private fun canScheduleExactAlarms(): Boolean = Build.VERSION.SDK_INT < Build.VERSION_CODES.S || alarmManager.canScheduleExactAlarms()
 
     private fun pendingIntent(scheduleId: String): PendingIntent =
         PendingIntent.getBroadcast(

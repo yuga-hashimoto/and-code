@@ -6,7 +6,6 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.ZoneId
 
@@ -89,7 +88,13 @@ class ScheduleModelsTest {
     fun `codec round trips schedules and runs`() {
         val schedules =
             listOf(
-                Schedule(name = "nightly", runtimeId = "local-android", workspacePath = "/workspace", cron = "0 2 * * *", prompt = "run tests"),
+                Schedule(
+                    name = "nightly",
+                    runtimeId = "local-android",
+                    workspacePath = "/workspace",
+                    cron = "0 2 * * *",
+                    prompt = "run tests",
+                ),
                 Schedule(name = "one shot", oneTimeAt = 12345L, prompt = "greet"),
             )
         val encoded = ScheduleCodec.encodeSchedules(schedules)
@@ -114,8 +119,7 @@ class ScheduleModelsTest {
         )
     }
 
-    private fun at(isoDateTime: String): Long =
-        LocalDateTime.parse(isoDateTime).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    private fun at(isoDateTime: String): Long = LocalDateTime.parse(isoDateTime).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
 
     private fun assertNextAt(
         expectedMillis: Long,
