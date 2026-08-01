@@ -570,7 +570,8 @@ internal fun decodeImageFromUrlOrPath(
 
 @Composable
 private fun MarkdownImageView(image: MarkdownInline.Image) {
-    val workspaceHostDir = remember { File(LocalContext.current.filesDir, "runtime/workspace") }
+    val context = LocalContext.current
+    val workspaceHostDir = remember { File(context.filesDir, "runtime/workspace") }
     val bitmapState =
         produceState<Bitmap?>(initialValue = null, key1 = image.url) {
             value =
