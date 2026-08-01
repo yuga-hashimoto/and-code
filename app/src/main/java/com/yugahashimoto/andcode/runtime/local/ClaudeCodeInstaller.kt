@@ -51,6 +51,16 @@ object ClaudeCodeInstaller {
     private val UPDATE_SCRIPT =
         """
         set -e
+        # Refresh the signing key on every update so a rotated or expired key cannot strand an
+        # upgrade behind an untrusted repository (every version then resolves as masked in: stable).
+        # If the download fails, keep the existing key so a transient outage does not block an
+        # otherwise-valid update; only abort when there is no key to fall back to.
+        if /usr/bin/wget -qO $SIGNING_KEY_PATH.new $SIGNING_KEY_URL; then
+          mv -f $SIGNING_KEY_PATH.new $SIGNING_KEY_PATH
+        elif [ ! -s $SIGNING_KEY_PATH ]; then
+          echo "claude-code signing key is missing and could not be downloaded" >&2
+          exit 1
+        fi
         /sbin/apk update
         /sbin/apk add --no-cache --upgrade claude-code
         $CLAUDE_BINARY --version
@@ -235,7 +245,12 @@ object ClaudeCodeInstaller {
     ): String {
         val text = log.takeIf(File::isFile)?.readText().orEmpty()
         val errors = extractApkErrors(text)
+        val head = text.take(1_500)
         val tail = text.takeLast(2_000)
+        // The tail is often filled by the post-failure `apk policy` diagnostics, which pushes the
+        // `apk update` WARNING/ERROR lines (emitted early) out of view. Include the head, skipping it
+        // only when the log is short enough that head and tail already overlap.
+        val showHead = text.length > head.length + tail.length
         val primary =
             errors.lineSequence().firstOrNull()
                 ?: tail.lineSequence().map(String::trim).firstOrNull { it.isNotBlank() }.orEmpty()
@@ -249,6 +264,10 @@ object ClaudeCodeInstaller {
             if (errors.isNotBlank()) {
                 append('\n')
                 append(errors)
+            }
+            if (showHead) {
+                append("\n--- log head ---\n")
+                append(head)
             }
             append("\n--- log tail ---\n")
             append(tail)
