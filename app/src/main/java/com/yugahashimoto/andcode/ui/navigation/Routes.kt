@@ -41,8 +41,7 @@ const val CODE_VIEWER_ROUTE_PATTERN = "$ROUTE_CODE_VIEWER/{runtimeId}/{workspace
 
 fun scheduleDetailRoute(scheduleId: String): String = "$ROUTE_SCHEDULE_DETAIL/${encodeRouteArg(scheduleId)}"
 
-fun scheduleEditRoute(scheduleId: String): String =
-    "$ROUTE_SCHEDULE_EDIT?$SCHEDULE_EDIT_ARG_ID=${encodeRouteArg(scheduleId)}"
+fun scheduleEditRoute(scheduleId: String): String = "$ROUTE_SCHEDULE_EDIT?$SCHEDULE_EDIT_ARG_ID=${encodeRouteArg(scheduleId)}"
 
 fun codeViewerRoute(
     runtimeId: String,
