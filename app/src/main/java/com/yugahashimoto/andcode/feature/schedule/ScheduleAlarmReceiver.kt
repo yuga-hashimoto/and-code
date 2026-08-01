@@ -18,7 +18,16 @@ class ScheduleAlarmReceiver : BroadcastReceiver() {
         when (intent.action) {
             ACTION_RUN_SCHEDULE -> {
                 val scheduleId = intent.getStringExtra(EXTRA_SCHEDULE_ID) ?: return
-                ScheduleExecutionService.start(context, scheduleId)
+                if (!ScheduleExecutionService.start(context, scheduleId)) {
+                    // The system refused the background foreground-service start; leave a trace in
+                    // the run history so the schedule does not look silently stuck.
+                    app.scheduleRepository.schedule(scheduleId)?.let { schedule ->
+                        app.scheduleRepository.recordRunSkipped(schedule, SKIP_REASON_BLOCKED)
+                    }
+                }
+                // A cron alarm is one-shot: the next one is normally armed once the run settles,
+                // so re-arm here too or a run that never started would end the whole series.
+                app.scheduleManager.rescheduleAll()
             }
             Intent.ACTION_BOOT_COMPLETED,
             Intent.ACTION_MY_PACKAGE_REPLACED,
@@ -30,5 +39,6 @@ class ScheduleAlarmReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_RUN_SCHEDULE = "com.yugahashimoto.andcode.RUN_SCHEDULE"
         const val EXTRA_SCHEDULE_ID = "schedule_id"
+        private const val SKIP_REASON_BLOCKED = "background start blocked by the system"
     }
 }

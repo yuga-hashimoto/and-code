@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.yugahashimoto.andcode.AndCodeApplication
@@ -41,12 +42,20 @@ import kotlinx.coroutines.withTimeoutOrNull
 class ScheduleExecutionService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var app: AndCodeApplication
+    private var inForeground = false
 
     override fun onCreate() {
         super.onCreate()
         app = application as AndCodeApplication
         createChannel()
-        startForeground(NOTIFICATION_ID, notification(app.getString(R.string.schedule_notification_starting)))
+        // Android 14+ can still reject the foreground promotion here even though the start itself
+        // was accepted. Bailing out is the only safe answer: a service that cannot enter the
+        // foreground is killed with a crash by the system anyway.
+        inForeground =
+            runCatching {
+                startForeground(NOTIFICATION_ID, notification(app.getString(R.string.schedule_notification_starting)))
+            }.onFailure { error -> Log.w(TAG, "Could not enter the foreground", error) }
+                .isSuccess
     }
 
     override fun onStartCommand(
@@ -55,7 +64,7 @@ class ScheduleExecutionService : Service() {
         startId: Int,
     ): Int {
         val scheduleId = intent?.getStringExtra(EXTRA_SCHEDULE_ID)
-        if (scheduleId == null) {
+        if (scheduleId == null || !inForeground) {
             stopSelf()
             return START_NOT_STICKY
         }
@@ -280,19 +289,35 @@ class ScheduleExecutionService : Service() {
 
     companion object {
         const val EXTRA_SCHEDULE_ID = "schedule_id"
+        private const val TAG = "ScheduleExecution"
         private const val CHANNEL_ID = "andcode_schedule_runs"
         private const val NOTIFICATION_ID = 4201
         private const val LOCAL_RUNTIME_START_TIMEOUT_MS = 5 * 60_000L
 
+        /**
+         * Starts a run, returning false when the platform refused the foreground start.
+         *
+         * Android 12+ only lets a background app start a foreground service when it is exempt,
+         * and an alarm grants that exemption only when it was scheduled exactly. Devices that
+         * withhold the exact-alarm permission therefore wake us through an inexact alarm with no
+         * exemption, and the start throws ForegroundServiceStartNotAllowedException - callers
+         * have to handle the refusal instead of letting it crash the app.
+         */
         fun start(
             context: Context,
             scheduleId: String,
-        ) {
+        ): Boolean {
             val intent =
                 Intent(context, ScheduleExecutionService::class.java).apply {
                     putExtra(EXTRA_SCHEDULE_ID, scheduleId)
                 }
-            ContextCompat.startForegroundService(context, intent)
+            return try {
+                ContextCompat.startForegroundService(context, intent)
+                true
+            } catch (error: Exception) {
+                Log.w(TAG, "Foreground start refused for schedule $scheduleId", error)
+                false
+            }
         }
     }
 }

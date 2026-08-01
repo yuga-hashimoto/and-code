@@ -487,18 +487,33 @@ private fun TimePickerButton(
     }
 }
 
-/** Mutable timing form state that turns itself back into cron/one-time fields on save. */
+/**
+ * Mutable timing form state that turns itself back into cron/one-time fields on save.
+ *
+ * Every field is snapshot state: the editor reads them during composition, so plain vars would
+ * leave the timing chips, the date/time buttons and the cron field frozen at their initial values.
+ */
 private class TimingState(
-    var mode: TimingMode,
-    var onceDate: LocalDate?,
-    var onceTime: LocalTime?,
-    var dailyTime: LocalTime?,
-    var weeklyDay: DayOfWeek?,
-    var weeklyTime: LocalTime?,
-    var monthlyDay: Int?,
-    var monthlyTime: LocalTime?,
-    var cronText: String,
+    mode: TimingMode,
+    onceDate: LocalDate?,
+    onceTime: LocalTime?,
+    dailyTime: LocalTime?,
+    weeklyDay: DayOfWeek?,
+    weeklyTime: LocalTime?,
+    monthlyDay: Int?,
+    monthlyTime: LocalTime?,
+    cronText: String,
 ) {
+    var mode by mutableStateOf(mode)
+    var onceDate by mutableStateOf(onceDate)
+    var onceTime by mutableStateOf(onceTime)
+    var dailyTime by mutableStateOf(dailyTime)
+    var weeklyDay by mutableStateOf(weeklyDay)
+    var weeklyTime by mutableStateOf(weeklyTime)
+    var monthlyDay by mutableStateOf(monthlyDay)
+    var monthlyTime by mutableStateOf(monthlyTime)
+    var cronText by mutableStateOf(cronText)
+
     fun pendingTime(): LocalTime? =
         when (mode) {
             TimingMode.ONCE -> onceTime

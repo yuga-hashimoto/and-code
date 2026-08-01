@@ -91,6 +91,7 @@ import com.yugahashimoto.andcode.ui.navigation.ROUTE_SCHEDULES
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_SCHEDULE_EDIT
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_SETTINGS_PROVIDERS
 import com.yugahashimoto.andcode.ui.navigation.SCHEDULE_DETAIL_ROUTE_PATTERN
+import com.yugahashimoto.andcode.ui.navigation.SCHEDULE_EDIT_ARG_ID
 import com.yugahashimoto.andcode.ui.navigation.SCHEDULE_EDIT_ROUTE_PATTERN
 import com.yugahashimoto.andcode.ui.navigation.decodeRouteArg
 import com.yugahashimoto.andcode.ui.navigation.scheduleDetailRoute
@@ -1011,7 +1012,7 @@ fun AndCodeApp(
                     route = SCHEDULE_EDIT_ROUTE_PATTERN,
                     arguments =
                         listOf(
-                            navArgument("scheduleId") {
+                            navArgument(SCHEDULE_EDIT_ARG_ID) {
                                 type = NavType.StringType
                                 nullable = true
                                 defaultValue = null
@@ -1019,7 +1020,7 @@ fun AndCodeApp(
                         ),
                 ) { backStackEntry ->
                     val scheduleId =
-                        backStackEntry.arguments?.getString("scheduleId")
+                        backStackEntry.arguments?.getString(SCHEDULE_EDIT_ARG_ID)
                             ?.takeIf(String::isNotBlank)
                             ?.let(::decodeRouteArg)
                     ScheduleEditorScreen(

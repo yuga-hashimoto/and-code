@@ -26,8 +26,14 @@ const val ROUTE_SCHEDULES = "schedules"
 const val ROUTE_SCHEDULE_DETAIL = "schedule-detail"
 const val SCHEDULE_DETAIL_ROUTE_PATTERN = "$ROUTE_SCHEDULE_DETAIL/{scheduleId}"
 const val ROUTE_SCHEDULE_EDIT = "schedule-edit"
-const val ROUTE_SCHEDULE_EDIT_NEW = ROUTE_SCHEDULE_EDIT
-const val SCHEDULE_EDIT_ROUTE_PATTERN = "$ROUTE_SCHEDULE_EDIT/{scheduleId}"
+
+/**
+ * The editor doubles as the "new schedule" screen, so [SCHEDULE_EDIT_ARG_ID] has to be optional.
+ * Navigation only treats query parameters as optional - as a path segment it would be required and
+ * navigating to the bare [ROUTE_SCHEDULE_EDIT] would not match any destination.
+ */
+const val SCHEDULE_EDIT_ARG_ID = "scheduleId"
+const val SCHEDULE_EDIT_ROUTE_PATTERN = "$ROUTE_SCHEDULE_EDIT?$SCHEDULE_EDIT_ARG_ID={$SCHEDULE_EDIT_ARG_ID}"
 const val ROUTE_CODE_VIEWER = "code-viewer"
 const val ROUTE_TERMINAL = "terminal"
 
@@ -35,7 +41,8 @@ const val CODE_VIEWER_ROUTE_PATTERN = "$ROUTE_CODE_VIEWER/{runtimeId}/{workspace
 
 fun scheduleDetailRoute(scheduleId: String): String = "$ROUTE_SCHEDULE_DETAIL/${encodeRouteArg(scheduleId)}"
 
-fun scheduleEditRoute(scheduleId: String): String = "$ROUTE_SCHEDULE_EDIT/${encodeRouteArg(scheduleId)}"
+fun scheduleEditRoute(scheduleId: String): String =
+    "$ROUTE_SCHEDULE_EDIT?$SCHEDULE_EDIT_ARG_ID=${encodeRouteArg(scheduleId)}"
 
 fun codeViewerRoute(
     runtimeId: String,
