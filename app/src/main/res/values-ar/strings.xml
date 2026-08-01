@@ -904,6 +904,11 @@
     <string name="schedule_exact_alarm_title">السماح بالمنبهات والتذكيرات</string>
     <string name="schedule_exact_alarm_body">بدون هذا الإذن يمنع Android بدء عمليات التشغيل المجدولة.</string>
     <string name="schedule_exact_alarm_action">السماح</string>
+    <string name="crash_report_title">تعطل التطبيق</string>
+    <string name="crash_report_body">انسخ هذا التقرير وأرسله إلى المطور.</string>
+    <string name="crash_report_copy">نسخ</string>
+    <string name="crash_report_dismiss">إغلاق</string>
+    <string name="diagnostics_section_last_crash">آخر تعطل</string>
     <string name="schedule_auto_accept_default">الافتراضي</string>
     <string name="schedule_timing_daily_label">يوميًا %1$s</string>
     <string name="schedule_timing_weekly_label">أسبوعيًا %1$s %2$s</string>

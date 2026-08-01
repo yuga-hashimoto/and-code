@@ -904,6 +904,11 @@
     <string name="schedule_exact_alarm_title">Permitir alarmas y recordatorios</string>
     <string name="schedule_exact_alarm_body">Sin este permiso, Android impide que se inicien las ejecuciones programadas.</string>
     <string name="schedule_exact_alarm_action">Permitir</string>
+    <string name="crash_report_title">La aplicación se ha cerrado</string>
+    <string name="crash_report_body">Copia este informe y envíaselo al desarrollador.</string>
+    <string name="crash_report_copy">Copiar</string>
+    <string name="crash_report_dismiss">Cerrar</string>
+    <string name="diagnostics_section_last_crash">Último fallo</string>
     <string name="schedule_auto_accept_default">Por defecto</string>
     <string name="schedule_timing_daily_label">Diario %1$s</string>
     <string name="schedule_timing_weekly_label">Semanal %1$s %2$s</string>

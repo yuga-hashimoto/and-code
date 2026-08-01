@@ -17,12 +17,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.BuildConfig
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.core.diagnostics.CrashLog
 import com.yugahashimoto.andcode.ui.components.LabelValueRow
 import com.yugahashimoto.andcode.ui.components.SectionCard
 
@@ -46,6 +49,11 @@ fun DiagnosticsSheet(
     val availableBytes = statFs.availableBytes
     val totalBytes = statFs.totalBytes
 
+    val context = LocalContext.current
+    // The dialog shown at launch is easy to close by accident, so the record stays reachable here
+    // until it has been copied.
+    val lastCrash = remember { CrashLog.read(context) }
+
     val markdown =
         buildString {
             appendLine("# AndCode Diagnostics")
@@ -66,6 +74,13 @@ fun DiagnosticsSheet(
             appendLine("## Storage")
             appendLine("- Available: ${formatBytes(availableBytes)}")
             appendLine("- Total: ${formatBytes(totalBytes)}")
+            if (lastCrash != null) {
+                appendLine()
+                appendLine("## Last crash")
+                appendLine("```")
+                appendLine(lastCrash)
+                appendLine("```")
+            }
         }
 
     ModalBottomSheet(onDismissRequest = onDismiss) {
@@ -115,6 +130,20 @@ fun DiagnosticsSheet(
                 }
             }
 
+            if (lastCrash != null) {
+                SectionCard {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        DiagnosticsSectionHeader(stringResource(R.string.diagnostics_section_last_crash))
+                        Text(
+                            text = lastCrash.lineSequence().take(CRASH_PREVIEW_LINES).joinToString("\n"),
+                            style = MaterialTheme.typography.bodySmall,
+                            fontFamily = FontFamily.Monospace,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
             Button(
                 onClick = {
                     clipboard.setText(AnnotatedString(markdown))
@@ -139,6 +168,8 @@ private fun DiagnosticsSectionHeader(title: String) {
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
+
+private const val CRASH_PREVIEW_LINES = 12
 
 private fun formatBytes(bytes: Long): String {
     val gb = bytes / (1024.0 * 1024.0 * 1024.0)

@@ -917,6 +917,11 @@
     <string name="schedule_exact_alarm_title">「アラームとリマインダー」を許可</string>
     <string name="schedule_exact_alarm_body">許可しないと Android がスケジュール実行の開始をブロックします。</string>
     <string name="schedule_exact_alarm_action">許可</string>
+    <string name="crash_report_title">アプリがクラッシュしました</string>
+    <string name="crash_report_body">このレポートをコピーして開発者に送ってください。</string>
+    <string name="crash_report_copy">コピー</string>
+    <string name="crash_report_dismiss">閉じる</string>
+    <string name="diagnostics_section_last_crash">前回のクラッシュ</string>
 
     <string name="schedule_timing_daily_label">毎日 %1$s</string>
     <string name="schedule_timing_weekly_label">毎週%1$s %2$s</string>

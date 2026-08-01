@@ -7,6 +7,7 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.startup.AppInitializer
+import com.yugahashimoto.andcode.core.diagnostics.CrashLog
 import com.yugahashimoto.andcode.core.notification.RuntimeNotificationHelper
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
 import com.yugahashimoto.andcode.data.repository.ProviderCatalogCache
@@ -132,6 +133,8 @@ class AndCodeApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        // First, so a crash in the rest of this method is recorded too.
+        CrashLog.install(this)
         startKoin {
             androidContext(this@AndCodeApplication)
             modules(appModule, viewModelModule)

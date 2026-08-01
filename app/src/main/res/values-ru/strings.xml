@@ -904,6 +904,11 @@
     <string name="schedule_exact_alarm_title">Разрешить будильники и напоминания</string>
     <string name="schedule_exact_alarm_body">Без этого разрешения Android не даёт запускать задачи по расписанию.</string>
     <string name="schedule_exact_alarm_action">Разрешить</string>
+    <string name="crash_report_title">Приложение аварийно завершилось</string>
+    <string name="crash_report_body">Скопируйте этот отчёт и отправьте разработчику.</string>
+    <string name="crash_report_copy">Копировать</string>
+    <string name="crash_report_dismiss">Закрыть</string>
+    <string name="diagnostics_section_last_crash">Последний сбой</string>
     <string name="schedule_auto_accept_default">По умолчанию</string>
     <string name="schedule_timing_daily_label">Ежедневно %1$s</string>
     <string name="schedule_timing_weekly_label">Еженедельно %1$s %2$s</string>

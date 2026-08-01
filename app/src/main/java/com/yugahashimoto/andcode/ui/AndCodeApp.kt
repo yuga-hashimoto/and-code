@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Lock
@@ -44,9 +46,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -60,6 +65,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.yugahashimoto.andcode.AndCodeApplication
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.core.diagnostics.CrashLog
 import com.yugahashimoto.andcode.feature.activity.ActivityViewModel
 import com.yugahashimoto.andcode.feature.assistant.SpeechRecognizerManager
 import com.yugahashimoto.andcode.feature.assistant.SpeechResult
@@ -223,6 +229,21 @@ fun AndCodeApp(
         )
     val schedules by scheduleViewModel.schedules.collectAsState()
     val scheduleRuns by scheduleViewModel.runs.collectAsState()
+
+    // A crash the user hit while away from a computer is only recoverable from here. Copying is
+    // what discards the record; closing the dialog only hides it, and the diagnostics sheet still
+    // has it until it has been copied or a later crash replaces it.
+    var lastCrash by remember { mutableStateOf(CrashLog.read(context)) }
+    lastCrash?.let { report ->
+        CrashReportDialog(
+            report = report,
+            onCopied = {
+                CrashLog.clear(context)
+                lastCrash = null
+            },
+            onDismiss = { lastCrash = null },
+        )
+    }
 
     // Which chat the user is actually looking at. A run that finishes while they are elsewhere has
     // to stay unread, so this is tracked separately from the chat view model's own session.
@@ -1249,6 +1270,50 @@ private fun GithubCloneDialog(
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isCloning) {
                 Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
+/** Shows the stack trace of the crash the app came back from, so it can be reported by hand. */
+@Composable
+private fun CrashReportDialog(
+    report: String,
+    onCopied: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val clipboard = LocalClipboardManager.current
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.crash_report_title)) },
+        text = {
+            Column(
+                modifier = Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.crash_report_body),
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Text(
+                    text = report,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontFamily = FontFamily.Monospace,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                clipboard.setText(AnnotatedString(report))
+                onCopied()
+            }) {
+                Text(stringResource(R.string.crash_report_copy))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.crash_report_dismiss))
             }
         },
     )

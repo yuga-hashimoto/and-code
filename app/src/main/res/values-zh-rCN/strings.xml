@@ -904,6 +904,11 @@
     <string name="schedule_exact_alarm_title">允许闹钟和提醒</string>
     <string name="schedule_exact_alarm_body">未授予该权限时，Android 会阻止计划运行启动。</string>
     <string name="schedule_exact_alarm_action">允许</string>
+    <string name="crash_report_title">应用已崩溃</string>
+    <string name="crash_report_body">请复制此报告并发送给开发者。</string>
+    <string name="crash_report_copy">复制</string>
+    <string name="crash_report_dismiss">关闭</string>
+    <string name="diagnostics_section_last_crash">上次崩溃</string>
     <string name="schedule_auto_accept_default">默认</string>
     <string name="schedule_timing_daily_label">每天 %1$s</string>
     <string name="schedule_timing_weekly_label">每周%1$s %2$s</string>
