@@ -2,6 +2,8 @@ package com.yugahashimoto.andcode.runtime.local
 
 import java.io.File
 import java.io.FileOutputStream
+import java.nio.file.Files
+import java.nio.file.Path
 
 internal fun activateRuntimeEnvironment(
     active: File,
@@ -13,6 +15,7 @@ internal fun activateRuntimeEnvironment(
     require(staging.isDirectory) { "Runtime staging environment is missing" }
     requireSameParent(active, staging, rollback)
     deleteRecursivelyRequired(rollback)
+    normalizeRuntimeSymlinks(staging)
 
     var previousMoved = false
     var stagingActivated = false
@@ -38,6 +41,47 @@ internal fun activateRuntimeEnvironment(
         }
         throw error
     }
+}
+
+/**
+ * Makes PRoot's hard-link emulation survive an atomic environment directory move.
+ *
+ * `--link2symlink` represents hard links as absolute host paths. Packages installed while the
+ * rootfs is staged therefore retain `environment.staging` in their link targets after activation.
+ * Convert those links to relative paths, and also repair environments created by older releases.
+ */
+internal fun normalizeRuntimeSymlinks(environment: File) {
+    if (!environment.isDirectory) return
+    val marker = File(environment, ".internal-symlinks-relative")
+    if (marker.isFile) return
+
+    val current = environment.toPath().toAbsolutePath().normalize()
+    val possibleRoots =
+        listOf(
+            current,
+            current.resolveSibling("environment.staging"),
+            current.resolveSibling("environment.rollback"),
+            current.resolveSibling("environment.failed"),
+        )
+    Files.walk(current).use { paths ->
+        paths.filter(Files::isSymbolicLink).forEach { link ->
+            val target = Files.readSymbolicLink(link)
+            if (!target.isAbsolute) return@forEach
+            val normalizedTarget = target.normalize()
+            val oldRoot = possibleRoots.firstOrNull(normalizedTarget::startsWith) ?: return@forEach
+            val targetInCurrent = current.resolve(oldRoot.relativize(normalizedTarget))
+            replaceSymlink(link, link.parent.relativize(targetInCurrent))
+        }
+    }
+    marker.writeText("normalized\n")
+}
+
+private fun replaceSymlink(
+    link: Path,
+    target: Path,
+) {
+    Files.delete(link)
+    Files.createSymbolicLink(link, target)
 }
 
 internal fun recoverInterruptedRuntimeEnvironment(

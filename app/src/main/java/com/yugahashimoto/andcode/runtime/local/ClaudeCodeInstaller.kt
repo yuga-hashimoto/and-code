@@ -62,6 +62,10 @@ object ClaudeCodeInstaller {
           exit 1
         fi
         /sbin/apk update
+        # Older runtime activations left PRoot's emulated hard links for unzip pointing at the
+        # removed staging directory. The host repairs those links before this script runs; clear
+        # apk's persisted broken-files flag so it no longer makes every package operation exit 1.
+        /sbin/apk fix unzip
         /sbin/apk add --no-cache --upgrade claude-code
         $CLAUDE_BINARY --version
         """.trimIndent()

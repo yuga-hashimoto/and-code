@@ -8,6 +8,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.nio.file.Files
 
 class LocalRuntimeEnvironmentActivationTest {
     private val json =
@@ -160,6 +161,50 @@ class LocalRuntimeEnvironmentActivationTest {
         assertEquals("new", active.resolve("marker.txt").readText())
         assertFalse(rollback.exists())
         assertFalse(staging.exists())
+    }
+
+    @Test
+    fun `activation converts proot hard link symlinks to relative paths`() {
+        val root = temporaryFolder.newFolder("runtime-links")
+        val active = root.resolve("environment")
+        val staging = root.resolve("environment.staging").apply { mkdirs() }
+        val bin = staging.resolve("rootfs/usr/bin").apply { mkdirs() }
+        val backing = bin.resolve(".l2s.unzip.0002").apply { writeText("binary") }
+        val intermediary = bin.resolve(".l2s.unzip")
+        val executable = bin.resolve("unzip")
+        Files.createSymbolicLink(intermediary.toPath(), backing.toPath().toAbsolutePath())
+        Files.createSymbolicLink(executable.toPath(), intermediary.toPath().toAbsolutePath())
+
+        activateRuntimeEnvironment(
+            active = active,
+            staging = staging,
+            rollback = root.resolve("environment.rollback"),
+            finalizeActivation = {},
+        )
+
+        val activatedExecutable = active.resolve("rootfs/usr/bin/unzip")
+        assertFalse(Files.readSymbolicLink(activatedExecutable.toPath()).isAbsolute)
+        assertEquals("binary", activatedExecutable.readText())
+    }
+
+    @Test
+    fun `normalization repairs links left behind by an older staging activation`() {
+        val root = temporaryFolder.newFolder("runtime-stale-links")
+        val active = root.resolve("environment").apply { mkdirs() }
+        val bin = active.resolve("rootfs/usr/bin").apply { mkdirs() }
+        val backing = bin.resolve(".l2s.unzip.0002").apply { writeText("binary") }
+        val staleRoot = root.resolve("environment.staging").toPath().toAbsolutePath()
+        val executable = bin.resolve("unzip")
+        Files.createSymbolicLink(
+            executable.toPath(),
+            staleRoot.resolve("rootfs/usr/bin/${backing.name}"),
+        )
+
+        normalizeRuntimeSymlinks(active)
+
+        assertFalse(Files.readSymbolicLink(executable.toPath()).isAbsolute)
+        assertEquals("binary", executable.readText())
+        assertTrue(active.resolve(".internal-symlinks-relative").isFile)
     }
 
     private fun metadata(version: String) =

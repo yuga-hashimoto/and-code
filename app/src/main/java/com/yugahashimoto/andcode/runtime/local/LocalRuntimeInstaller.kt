@@ -212,19 +212,20 @@ class LocalRuntimeInstaller(
      * complete, usable runtime and callers that need OpenCode check [InstalledRuntime.openCode].
      */
     fun installedRuntime(): InstalledRuntime? =
-        accessCoordinator.read {
+        accessCoordinator.write {
             val active = File(runtimeDirectory, "environment")
+            normalizeRuntimeSymlinks(active)
             val metadataFile = File(runtimeDirectory, METADATA_FILE)
             val rootfs = File(active, "rootfs")
-            if (!metadataFile.isFile || !rootfs.isDirectory) return@read null
+            if (!metadataFile.isFile || !rootfs.isDirectory) return@write null
             val metadata =
                 runCatching {
                     json.decodeFromString<LocalRuntimeMetadata>(metadataFile.readText())
-                }.getOrNull() ?: return@read null
+                }.getOrNull() ?: return@write null
             val commandSuite =
                 runCatching {
                     EmbeddedCommandSuite(context, runtimeDirectory, abi).ensureInstalled()
-                }.getOrNull() ?: return@read null
+                }.getOrNull() ?: return@write null
             InstalledRuntime(
                 metadata,
                 commandSuite,
