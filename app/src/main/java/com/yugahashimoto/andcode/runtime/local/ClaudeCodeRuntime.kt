@@ -6,6 +6,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeMessageInfo
 import com.yugahashimoto.andcode.core.api.OpenCodePart
 import com.yugahashimoto.andcode.core.api.OpenCodeTime
 import com.yugahashimoto.andcode.core.api.OpenCodeTodo
+import com.yugahashimoto.andcode.core.api.PromptAttachment
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -193,12 +194,13 @@ class ClaudeCodeRuntime(
         permissionMode: ClaudePermissionMode,
         model: String?,
         effort: String?,
+        attachments: List<PromptAttachment> = emptyList(),
     ): Result<Unit> =
         runCatching {
             val session = ensureProcess(sessionId, directory.ifBlank { "/workspace" }, permissionMode, model, effort)
-            recordUserMessage(sessionId, prompt)
+            recordUserMessage(sessionId, prompt, attachments)
             session.process.outputStream.apply {
-                write((json.encodeToString(JsonObject.serializer(), userMessage(prompt)) + "\n").toByteArray())
+                write((json.encodeToString(JsonObject.serializer(), userMessage(prompt, attachments)) + "\n").toByteArray())
                 flush()
             }
             Unit
@@ -343,29 +345,75 @@ class ClaudeCodeRuntime(
             }
         }
 
-    private fun userMessage(prompt: String): JsonObject =
-        JsonObject(
+    /**
+     * Builds one stream-json user turn.
+     *
+     * The content array follows the Anthropic Messages API shape the CLI expects on stdin: any
+     * attachments become `image`/`document` blocks and the typed text follows them. Attachments the
+     * model cannot ingest inline (anything that is not an image or a PDF) are dropped here rather than
+     * sent as unusable blocks that would make the CLI reject the whole turn.
+     */
+    private fun userMessage(
+        prompt: String,
+        attachments: List<PromptAttachment>,
+    ): JsonObject {
+        val content =
+            buildList {
+                attachments.forEach { attachment -> attachmentBlock(attachment)?.let(::add) }
+                // Keep the text block even when blank so an attachment-only turn is still well-formed.
+                if (prompt.isNotEmpty() || isEmpty()) {
+                    add(
+                        JsonObject(
+                            mapOf(
+                                "type" to JsonPrimitive("text"),
+                                "text" to JsonPrimitive(prompt),
+                            ),
+                        ),
+                    )
+                }
+            }
+        return JsonObject(
             mapOf(
                 "type" to JsonPrimitive("user"),
                 "message" to
                     JsonObject(
                         mapOf(
                             "role" to JsonPrimitive("user"),
-                            "content" to
-                                JsonArray(
-                                    listOf(
-                                        JsonObject(
-                                            mapOf(
-                                                "type" to JsonPrimitive("text"),
-                                                "text" to JsonPrimitive(prompt),
-                                            ),
-                                        ),
-                                    ),
-                                ),
+                            "content" to JsonArray(content),
                         ),
                     ),
             ),
         )
+    }
+
+    /**
+     * Turns a `data:` attachment URL into the block the Messages API inlines it as, or null when the
+     * type cannot be inlined. [AttachmentImporter] always emits base64 data URLs, so this parses that
+     * shape and reuses the recorded [PromptAttachment.mime].
+     */
+    private fun attachmentBlock(attachment: PromptAttachment): JsonObject? {
+        val base64 = attachment.url.substringAfter("base64,", missingDelimiterValue = "")
+        if (base64.isEmpty()) return null
+        val kind =
+            when {
+                attachment.mime.startsWith("image/") -> "image"
+                attachment.mime == "application/pdf" -> "document"
+                else -> return null
+            }
+        return JsonObject(
+            mapOf(
+                "type" to JsonPrimitive(kind),
+                "source" to
+                    JsonObject(
+                        mapOf(
+                            "type" to JsonPrimitive("base64"),
+                            "media_type" to JsonPrimitive(attachment.mime),
+                            "data" to JsonPrimitive(base64),
+                        ),
+                    ),
+            ),
+        )
+    }
 
     private fun handleLine(
         sessionId: String,
@@ -430,9 +478,27 @@ class ClaudeCodeRuntime(
     private fun recordUserMessage(
         sessionId: String,
         prompt: String,
+        attachments: List<PromptAttachment>,
     ) {
         val timestamp = System.currentTimeMillis()
         val messageId = "user-${UUID.randomUUID()}"
+        val parts =
+            buildList {
+                add(OpenCodePart("$messageId-text", sessionId, messageId, "text", text = prompt))
+                attachments.forEachIndexed { index, attachment ->
+                    add(
+                        OpenCodePart(
+                            id = "$messageId-file-$index",
+                            sessionId = sessionId,
+                            messageId = messageId,
+                            type = "file",
+                            filename = attachment.filename,
+                            mime = attachment.mime,
+                            url = attachment.url,
+                        ),
+                    )
+                }
+            }
         messageStore.upsert(
             sessionId,
             OpenCodeMessage(
@@ -443,7 +509,7 @@ class ClaudeCodeRuntime(
                         role = "user",
                         time = OpenCodeTime(timestamp, timestamp),
                     ),
-                parts = listOf(OpenCodePart("$messageId-text", sessionId, messageId, "text", text = prompt)),
+                parts = parts,
             ),
         )
     }

@@ -256,6 +256,7 @@ class ClaudeCodeTarget(
                 permissionMode = ClaudePermissionMode.fromCliValue(record.permissionMode),
                 model = model,
                 effort = effort,
+                attachments = request.attachments,
             ).getOrThrow()
         }
     }

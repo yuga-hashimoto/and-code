@@ -746,9 +746,24 @@ class ChatViewModel(
                                 }
                             if (!sessionCompleted && !hasResponse) return@onSuccess
                             streamedParts.clear()
+                            // Re-attach the in-memory previews the same way the polling loop does:
+                            // the final reload otherwise drops them, and a runtime whose attachment
+                            // URLs are not inlineable data URLs would lose the just-sent image the
+                            // moment the send completed.
+                            val previewsById =
+                                _uiState.value.messages.associate { it.id to it.imagePreviews }
+                            val uiMessages =
+                                serverMessages.mapNotNull(::toUiMessage).map { message ->
+                                    val previews =
+                                        previewsById[message.id].orEmpty().ifEmpty {
+                                            message.attachments
+                                                .mapNotNull { pendingPreviewsByFilename[it.filename] }
+                                        }
+                                    message.copy(imagePreviews = previews)
+                                }
                             _uiState.update {
                                 it.copy(
-                                    messages = serverMessages.mapNotNull(::toUiMessage),
+                                    messages = uiMessages,
                                     isRunning = false,
                                     isThinking = false,
                                 )

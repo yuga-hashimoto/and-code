@@ -1,6 +1,9 @@
 package com.yugahashimoto.andcode.feature.chat
 
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.util.Base64
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
@@ -91,9 +94,20 @@ fun MessageBubble(message: ChatMessage) {
                 contentColor = MaterialTheme.colorScheme.onPrimary,
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    message.imagePreviews.forEach { preview ->
+                    // Images persist in the transcript as base64 data-URL file parts, so once the
+                    // message is recorded they render straight from the attachment and survive the
+                    // reload that follows a completed send. The transient imagePreviews bitmaps only
+                    // stand in for the optimistic echo before the message reaches the transcript, or
+                    // for runtimes whose attachment URLs are not inlineable data URLs.
+                    val decodedImages =
+                        remember(message.attachments) {
+                            message.attachments
+                                .filter { it.mime.startsWith("image/") }
+                                .mapNotNull { decodeDataUrlImage(it.url) }
+                        }
+                    (decodedImages.ifEmpty { message.imagePreviews }).forEach { bitmap ->
                         Image(
-                            bitmap = preview.asImageBitmap(),
+                            bitmap = bitmap.asImageBitmap(),
                             contentDescription = stringResource(R.string.cd_image_preview),
                             modifier =
                                 Modifier
@@ -126,6 +140,20 @@ fun MessageBubble(message: ChatMessage) {
             }
         }
     }
+}
+
+/**
+ * Decodes a base64 `data:` image URL into a bitmap, or null when the URL is not an inlineable data
+ * URL (e.g. a remote runtime returned a plain http/file reference). Failures are swallowed so a
+ * single unreadable attachment never crashes the transcript.
+ */
+private fun decodeDataUrlImage(url: String): Bitmap? {
+    val base64 = url.substringAfter("base64,", missingDelimiterValue = "")
+    if (base64.isEmpty()) return null
+    return runCatching {
+        val bytes = Base64.decode(base64, Base64.DEFAULT)
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+    }.getOrNull()
 }
 
 @Composable
