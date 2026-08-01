@@ -354,14 +354,30 @@ private fun MarkdownText(
                         codeBackground = codeInlineBackground,
                         onFilePathClick = onFilePathClick,
                     )
-                is MarkdownBlock.Paragraph ->
-                    InlineText(
-                        inlines = block.inlines,
-                        style = bodyStyle,
-                        linkColor = linkColor,
-                        codeBackground = codeInlineBackground,
-                        onFilePathClick = onFilePathClick,
-                    )
+                is MarkdownBlock.Paragraph -> {
+                    val currentInlines = mutableListOf<MarkdownInline>()
+                    fun flushInlines() {
+                        if (currentInlines.isNotEmpty()) {
+                            InlineText(
+                                inlines = currentInlines.toList(),
+                                style = bodyStyle,
+                                linkColor = linkColor,
+                                codeBackground = codeInlineBackground,
+                                onFilePathClick = onFilePathClick,
+                            )
+                            currentInlines.clear()
+                        }
+                    }
+                    block.inlines.forEach { inline ->
+                        if (inline is MarkdownInline.Image) {
+                            flushInlines()
+                            MarkdownImageView(inline)
+                        } else {
+                            currentInlines += inline
+                        }
+                    }
+                    flushInlines()
+                }
                 is MarkdownBlock.CodeBlock ->
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
@@ -497,6 +513,74 @@ private fun decodeDataImage(url: String): android.graphics.Bitmap? {
     }.getOrNull()
 }
 
+internal fun decodeImageFromUrlOrPath(url: String): android.graphics.Bitmap? {
+    if (url.startsWith("data:")) {
+        return decodeDataImage(url)
+    }
+    val rawPath = if (url.startsWith("file://")) url.removePrefix("file://") else url
+    val path = if (rawPath.startsWith("/")) rawPath else "/$rawPath"
+    if (!java.io.File(path).exists()) return null
+    return runCatching {
+        val options = android.graphics.BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+        android.graphics.BitmapFactory.decodeFile(path, options)
+        if (options.outWidth <= 0 || options.outHeight <= 0) return null
+
+        val maxDim = 1024
+        var sampleSize = 1
+        while (options.outWidth / sampleSize > maxDim || options.outHeight / sampleSize > maxDim) {
+            sampleSize *= 2
+        }
+        val decodeOptions = android.graphics.BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+        }
+        android.graphics.BitmapFactory.decodeFile(path, decodeOptions)
+    }.getOrNull()
+}
+
+@Composable
+private fun MarkdownImageView(image: MarkdownInline.Image) {
+    val bitmapState = androidx.compose.runtime.produceState<android.graphics.Bitmap?>(initialValue = null, key1 = image.url) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            decodeImageFromUrlOrPath(image.url)
+        }
+    }
+    val bitmap = bitmapState.value
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = image.text.ifBlank { stringResource(R.string.cd_image_preview) },
+            modifier =
+                Modifier
+                    .widthIn(max = 320.dp)
+                    .heightIn(max = 320.dp)
+                    .padding(vertical = 4.dp),
+            contentScale = ContentScale.Fit,
+        )
+    } else {
+        Surface(
+            shape = RoundedCornerShape(10.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+            modifier = Modifier.padding(vertical = 4.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.padding(10.dp),
+            ) {
+                Icon(Icons.Default.ImageIcon, contentDescription = null)
+                Text(
+                    text = image.text.ifBlank { image.url },
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun ImagePartView(part: ChatPart.Image) {
     val bitmap = remember(part.url) { decodeDataImage(part.url) }
@@ -587,6 +671,13 @@ private fun renderInline(
                     withStyle(
                         SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
                     ) { append(inline.text) }
+                    addStringAnnotation("link", inline.url, start, length)
+                }
+                is MarkdownInline.Image -> {
+                    val start = length
+                    withStyle(
+                        SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
+                    ) { append(inline.text.ifBlank { "[Image]" }) }
                     addStringAnnotation("link", inline.url, start, length)
                 }
             }
