@@ -517,16 +517,36 @@ internal fun decodeImageFromUrlOrPath(url: String): android.graphics.Bitmap? {
     if (url.startsWith("data:")) {
         return decodeDataImage(url)
     }
-    val path = if (url.startsWith("file://")) url.substring(7) else url
-    if (path.startsWith("/")) {
-        return runCatching { android.graphics.BitmapFactory.decodeFile(path) }.getOrNull()
-    }
-    return null
+    val rawPath = if (url.startsWith("file://")) url.removePrefix("file://") else url
+    val path = if (rawPath.startsWith("/")) rawPath else "/$rawPath"
+    if (!java.io.File(path).exists()) return null
+    return runCatching {
+        val options = android.graphics.BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+        android.graphics.BitmapFactory.decodeFile(path, options)
+        if (options.outWidth <= 0 || options.outHeight <= 0) return null
+
+        val maxDim = 1024
+        var sampleSize = 1
+        while (options.outWidth / sampleSize > maxDim || options.outHeight / sampleSize > maxDim) {
+            sampleSize *= 2
+        }
+        val decodeOptions = android.graphics.BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+        }
+        android.graphics.BitmapFactory.decodeFile(path, decodeOptions)
+    }.getOrNull()
 }
 
 @Composable
 private fun MarkdownImageView(image: MarkdownInline.Image) {
-    val bitmap = remember(image.url) { decodeImageFromUrlOrPath(image.url) }
+    val bitmapState = androidx.compose.runtime.produceState<android.graphics.Bitmap?>(initialValue = null, key1 = image.url) {
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            decodeImageFromUrlOrPath(image.url)
+        }
+    }
+    val bitmap = bitmapState.value
     if (bitmap != null) {
         Image(
             bitmap = bitmap.asImageBitmap(),
@@ -651,6 +671,13 @@ private fun renderInline(
                     withStyle(
                         SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
                     ) { append(inline.text) }
+                    addStringAnnotation("link", inline.url, start, length)
+                }
+                is MarkdownInline.Image -> {
+                    val start = length
+                    withStyle(
+                        SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
+                    ) { append(inline.text.ifBlank { "[Image]" }) }
                     addStringAnnotation("link", inline.url, start, length)
                 }
             }
