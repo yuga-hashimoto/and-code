@@ -3,8 +3,8 @@ package com.yugahashimoto.andcode.feature.chat
 import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.util.Base64
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
@@ -63,8 +64,6 @@ import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.ui.theme.AndCodeWarning
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -77,7 +76,10 @@ private val TOOL_CALL_ECHO_REGEX =
 private fun String.hideToolCallEcho(): String = TOOL_CALL_ECHO_REGEX.replace(this, "").replace(Regex("[ \t]+\n"), "\n").trim()
 
 @Composable
-fun MessageBubble(message: ChatMessage) {
+fun MessageBubble(
+    message: ChatMessage,
+    onImageClick: (ChatImageSource) -> Unit = {},
+) {
     val displayText = remember(message.text) { message.text.hideToolCallEcho() }
     Box(
         modifier = Modifier.fillMaxWidth(),
@@ -105,23 +107,29 @@ fun MessageBubble(message: ChatMessage) {
                     // reload that follows a completed send. The transient imagePreviews bitmaps only
                     // stand in for the optimistic echo before the message reaches the transcript, or
                     // for runtimes whose attachment URLs are not inlineable data URLs.
-                    val decodedImages =
-                        remember(message.attachments) {
-                            message.attachments
-                                .filter { it.mime.startsWith("image/") }
-                                .mapNotNull { decodeDataUrlImage(it.url) }
-                        }
-                    (decodedImages.ifEmpty { message.imagePreviews }).forEach { bitmap ->
-                        Image(
-                            bitmap = bitmap.asImageBitmap(),
-                            contentDescription = stringResource(R.string.cd_image_preview),
-                            modifier =
-                                Modifier
-                                    .widthIn(max = 280.dp)
-                                    .heightIn(max = 220.dp)
-                                    .padding(bottom = 8.dp),
-                            contentScale = ContentScale.Fit,
+                    val imageAttachments = message.attachments.filter { it.mime.startsWith("image/") }
+                    imageAttachments.forEachIndexed { index, attachment ->
+                        ChatImageThumbnail(
+                            source =
+                                ChatImageSource(
+                                    attachment.url,
+                                    attachment.mime,
+                                    attachment.filename,
+                                    message.imagePreviews.getOrNull(index),
+                                ),
+                            modifier = Modifier.widthIn(max = 280.dp).heightIn(max = 220.dp).padding(bottom = 8.dp),
+                            onImageClick = onImageClick,
                         )
+                    }
+                    if (imageAttachments.isEmpty()) {
+                        message.imagePreviews.forEachIndexed { index, bitmap ->
+                            val source = ChatImageSource("preview:${message.id}:$index", "image/jpeg", preview = bitmap)
+                            ChatImageThumbnail(
+                                source = source,
+                                modifier = Modifier.widthIn(max = 280.dp).heightIn(max = 220.dp).padding(bottom = 8.dp),
+                                onImageClick = onImageClick,
+                            )
+                        }
                     }
                     message.attachments.forEach { attachment ->
                         if (attachment.mime.startsWith("image/")) return@forEach
@@ -151,29 +159,16 @@ fun MessageBubble(message: ChatMessage) {
     }
 }
 
-/**
- * Decodes a base64 `data:` image URL into a bitmap, or null when the URL is not an inlineable data
- * URL (e.g. a remote runtime returned a plain http/file reference). Failures are swallowed so a
- * single unreadable attachment never crashes the transcript.
- */
-private fun decodeDataUrlImage(url: String): Bitmap? {
-    val base64 = url.substringAfter("base64,", missingDelimiterValue = "")
-    if (base64.isEmpty()) return null
-    return runCatching {
-        val bytes = Base64.decode(base64, Base64.DEFAULT)
-        BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
-    }.getOrNull()
-}
-
 @Composable
 fun TimelineEntryRow(
     entry: TimelineEntry,
     onOpenActivity: (String) -> Unit = {},
+    onImageClick: (ChatImageSource) -> Unit = {},
 ) {
     when (entry) {
-        is TimelineEntry.UserMessage -> MessageBubble(entry.message)
-        is TimelineEntry.Body -> MarkdownText(entry.part.text)
-        is TimelineEntry.Image -> ImagePartView(entry.part)
+        is TimelineEntry.UserMessage -> MessageBubble(entry.message, onImageClick)
+        is TimelineEntry.Body -> MarkdownText(entry.part.text, onImageClick = onImageClick)
+        is TimelineEntry.Image -> ImagePartView(entry.part, onImageClick)
         is TimelineEntry.Activity ->
             AssistantActivityRow(
                 parts = entry.parts,
@@ -334,6 +329,7 @@ private fun LinkedText(
 private fun MarkdownText(
     text: String,
     onFilePathClick: (String) -> Unit = {},
+    onImageClick: (ChatImageSource) -> Unit = {},
 ) {
     val blocks = remember(text) { MarkdownLite.parse(text) }
     val codeInlineBackground = MaterialTheme.colorScheme.surfaceVariant
@@ -377,7 +373,7 @@ private fun MarkdownText(
                     block.inlines.forEach { inline ->
                         if (inline is MarkdownInline.Image) {
                             flushInlines()
-                            MarkdownImageView(inline)
+                            MarkdownImageView(inline, onImageClick)
                         } else {
                             currentInlines += inline
                         }
@@ -579,91 +575,53 @@ internal fun decodeImageFromUrlOrPath(
 }
 
 @Composable
-private fun MarkdownImageView(image: MarkdownInline.Image) {
-    val context = LocalContext.current
-    val workspaceHostDir = remember { File(context.filesDir, "runtime/workspace") }
-    val rootfsDirs =
-        remember {
-            listOf(
-                File(context.filesDir, "runtime/environment/antigravity-rootfs"),
-                File(context.filesDir, "runtime/environment/rootfs"),
-            )
-        }
-    val bitmapState =
-        produceState<Bitmap?>(initialValue = null, key1 = image.url) {
-            value =
-                withContext(Dispatchers.IO) {
-                    decodeImageFromUrlOrPath(image.url, workspaceHostDir, rootfsDirs)
-                }
-        }
-    val bitmap = bitmapState.value
-    if (bitmap != null) {
-        Image(
-            bitmap = bitmap.asImageBitmap(),
-            contentDescription = image.text.ifBlank { stringResource(R.string.cd_image_preview) },
-            modifier =
-                Modifier
-                    .widthIn(max = 320.dp)
-                    .heightIn(max = 320.dp)
-                    .padding(vertical = 4.dp),
-            contentScale = ContentScale.Fit,
-        )
-    } else {
-        Surface(
-            shape = RoundedCornerShape(10.dp),
-            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-            modifier = Modifier.padding(vertical = 4.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                modifier = Modifier.padding(10.dp),
-            ) {
-                Icon(Icons.Default.ImageIcon, contentDescription = null)
-                Text(
-                    text = image.text.ifBlank { image.url },
-                    style = MaterialTheme.typography.bodySmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-    }
+private fun MarkdownImageView(
+    image: MarkdownInline.Image,
+    onImageClick: (ChatImageSource) -> Unit,
+) {
+    ChatImageThumbnail(
+        source = ChatImageSource(image.url, "image/*", image.text.ifBlank { null }),
+        modifier = Modifier.widthIn(max = 320.dp).heightIn(max = 320.dp).padding(vertical = 4.dp),
+        onImageClick = onImageClick,
+    )
 }
 
 @Composable
-private fun ImagePartView(part: ChatPart.Image) {
+private fun ImagePartView(
+    part: ChatPart.Image,
+    onImageClick: (ChatImageSource) -> Unit,
+) {
+    ChatImageThumbnail(
+        source = ChatImageSource(part.url, part.mime, part.filename),
+        modifier = Modifier.widthIn(max = 320.dp).heightIn(max = 320.dp),
+        onImageClick = onImageClick,
+    )
+}
+
+@Composable
+private fun ChatImageThumbnail(
+    source: ChatImageSource,
+    modifier: Modifier,
+    onImageClick: (ChatImageSource) -> Unit,
+) {
     val context = LocalContext.current
-    val workspaceHostDir = remember { File(context.filesDir, "runtime/workspace") }
-    val rootfsDirs =
-        remember {
-            listOf(
-                File(context.filesDir, "runtime/environment/antigravity-rootfs"),
-                File(context.filesDir, "runtime/environment/rootfs"),
-            )
-        }
     val bitmapState =
-        produceState<Bitmap?>(initialValue = null, key1 = part.url) {
-            value =
-                withContext(Dispatchers.IO) {
-                    decodeImageFromUrlOrPath(part.url, workspaceHostDir, rootfsDirs)
-                }
+        produceState(initialValue = source.preview, source.url) {
+            value = loadChatImageBitmap(context, source)
         }
     val bitmap = bitmapState.value
     if (bitmap != null) {
         Image(
             bitmap = bitmap.asImageBitmap(),
-            contentDescription = part.filename ?: stringResource(R.string.cd_image_preview),
-            modifier =
-                Modifier
-                    .widthIn(max = 320.dp)
-                    .heightIn(max = 320.dp),
+            contentDescription = source.filename ?: stringResource(R.string.cd_image_preview),
+            modifier = modifier.testTag("chat-image-thumbnail").clickable { onImageClick(source.copy(preview = bitmap)) },
             contentScale = ContentScale.Fit,
         )
     } else {
         Surface(
             shape = RoundedCornerShape(10.dp),
             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+            modifier = modifier.testTag("chat-image-thumbnail").clickable { onImageClick(source) },
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -672,7 +630,7 @@ private fun ImagePartView(part: ChatPart.Image) {
             ) {
                 Icon(Icons.Default.ImageIcon, contentDescription = null)
                 Text(
-                    text = part.filename ?: part.mime,
+                    text = source.filename ?: source.mime,
                     style = MaterialTheme.typography.bodySmall,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,

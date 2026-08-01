@@ -92,6 +92,38 @@ data class ChatMessage(
         get() = parts.filterIsInstance<ChatPart.Text>().joinToString("") { it.text }
 }
 
+/** Keeps optimistic image data when a runtime replaces the transcript with its persisted copy. */
+internal fun mergeReloadedMessages(
+    reloaded: List<ChatMessage>,
+    existing: List<ChatMessage>,
+    previewsByFilename: Map<String, Bitmap> = emptyMap(),
+): List<ChatMessage> {
+    val usedExisting = mutableSetOf<Int>()
+    return reloaded.map { message ->
+        val existingIndex =
+            existing.indices.firstOrNull { it !in usedExisting && existing[it].id == message.id }
+                ?: existing.indices.firstOrNull { index ->
+                    val candidate = existing[index]
+                    index !in usedExisting &&
+                        message.isUser && candidate.isUser &&
+                        candidate.text == message.text &&
+                        (message.text.isNotBlank() || candidate.attachments.isNotEmpty())
+                }
+        val previous = existingIndex?.let { index -> existing[index].also { usedExisting += index } }
+        val reloadedImageNames = message.attachments.filter { it.mime.startsWith("image/") }.map { it.filename }.toSet()
+        val missingImages =
+            previous?.attachments.orEmpty().filter {
+                it.mime.startsWith("image/") && it.filename !in reloadedImageNames
+            }
+        val attachments = message.attachments + missingImages
+        val previews =
+            previous?.imagePreviews.orEmpty().ifEmpty {
+                attachments.mapNotNull { previewsByFilename[it.filename] }
+            }
+        message.copy(attachments = attachments, imagePreviews = previews)
+    }
+}
+
 data class PendingQuestionUi(
     val request: QuestionRequest,
     val selectedAnswers: List<List<String>>,
@@ -127,6 +159,12 @@ private const val TRANSIENT_RECOVERY_MAX_BACKOFF_MS = 30_000L
 private const val TRANSIENT_RECOVERY_MAX_ATTEMPTS = 20
 private const val HEALTH_CHECK_ATTEMPTS = 15
 private const val HEALTH_CHECK_DELAY_MS = 2000L
+
+private data class QueuedPrompt(
+    val text: String,
+    val attachments: List<PromptAttachment>,
+    val imagePreviews: List<Bitmap>,
+)
 
 internal fun OpenCodePart.toChatPart(): ChatPart? {
     val partId = id ?: return null
@@ -298,8 +336,8 @@ class ChatViewModel(
     private val _workspaceTitleSource = MutableStateFlow("title")
     val workspaceTitleSource: StateFlow<String> = _workspaceTitleSource.asStateFlow()
 
-    private val messageQueue = MutableStateFlow<List<String>>(emptyList())
-    private val offlineMessageQueue = MutableStateFlow<List<String>>(emptyList())
+    private val messageQueue = MutableStateFlow<List<QueuedPrompt>>(emptyList())
+    private val offlineMessageQueue = MutableStateFlow<List<QueuedPrompt>>(emptyList())
 
     private var eventJob: Job? = null
     private var tts: TextToSpeech? = null
@@ -553,7 +591,7 @@ class ChatViewModel(
                     _uiState.update {
                         it.copy(
                             isLoadingHistory = false,
-                            messages = messages.mapNotNull(::toUiMessage),
+                            messages = mergeReloadedMessages(messages.mapNotNull(::toUiMessage), it.messages),
                             selectedProviderId = selectedModel?.providerId ?: it.selectedProviderId,
                             selectedModelId = selectedModel?.modelId ?: it.selectedModelId,
                         )
@@ -652,17 +690,23 @@ class ChatViewModel(
         }
 
         if (!_uiState.value.isConnected) {
-            offlineMessageQueue.update { it + normalized }
+            offlineMessageQueue.update {
+                it + QueuedPrompt(normalized, pendingAttachments, _uiState.value.imagePreviews)
+            }
             val userMessage =
                 ChatMessage(
                     isUser = true,
                     parts = listOf(ChatPart.Text(id = UUID.randomUUID().toString(), text = normalized)),
+                    attachments = pendingAttachments,
+                    imagePreviews = _uiState.value.imagePreviews,
                 )
             _uiState.update {
                 it.copy(
                     messages = it.messages + userMessage,
                     offlineQueue = it.offlineQueue + normalized,
                     isOfflineQueued = true,
+                    attachments = emptyList(),
+                    imagePreviews = emptyList(),
                 )
             }
             return
@@ -673,7 +717,10 @@ class ChatViewModel(
         // request, which surfaced as a crash. See RuntimeCapabilities.forcesQueue.
         val mustQueue = (currentBackend as? RuntimeTarget)?.capabilities?.forcesQueue == true
         if ((_sendBehavior.value == "queue" || mustQueue) && _uiState.value.isRunning) {
-            messageQueue.update { it + normalized }
+            messageQueue.update {
+                it + QueuedPrompt(normalized, pendingAttachments, _uiState.value.imagePreviews)
+            }
+            _uiState.update { it.copy(attachments = emptyList(), imagePreviews = emptyList()) }
             return
         }
 
@@ -762,18 +809,12 @@ class ChatViewModel(
                             runCatching { currentBackend.listMessages(targetSessionId) }
                                 .onSuccess { serverMessages ->
                                     if (!isStillActive()) return@onSuccess
-                                    val previewsById =
-                                        _uiState.value.messages
-                                            .associate { it.id to it.imagePreviews }
                                     val uiMessages =
-                                        serverMessages.mapNotNull(::toUiMessage).map { message ->
-                                            val previews =
-                                                previewsById[message.id].orEmpty().ifEmpty {
-                                                    message.attachments
-                                                        .mapNotNull { pendingPreviewsByFilename[it.filename] }
-                                                }
-                                            message.copy(imagePreviews = previews)
-                                        }
+                                        mergeReloadedMessages(
+                                            serverMessages.mapNotNull(::toUiMessage),
+                                            _uiState.value.messages,
+                                            pendingPreviewsByFilename,
+                                        )
                                     if (uiMessages.isNotEmpty() && uiMessages != _uiState.value.messages) {
                                         _uiState.update { it.copy(messages = uiMessages) }
                                     }
@@ -804,17 +845,12 @@ class ChatViewModel(
                             // the final reload otherwise drops them, and a runtime whose attachment
                             // URLs are not inlineable data URLs would lose the just-sent image the
                             // moment the send completed.
-                            val previewsById =
-                                _uiState.value.messages.associate { it.id to it.imagePreviews }
                             val uiMessages =
-                                serverMessages.mapNotNull(::toUiMessage).map { message ->
-                                    val previews =
-                                        previewsById[message.id].orEmpty().ifEmpty {
-                                            message.attachments
-                                                .mapNotNull { pendingPreviewsByFilename[it.filename] }
-                                        }
-                                    message.copy(imagePreviews = previews)
-                                }
+                                mergeReloadedMessages(
+                                    serverMessages.mapNotNull(::toUiMessage),
+                                    _uiState.value.messages,
+                                    pendingPreviewsByFilename,
+                                )
                             _uiState.update {
                                 it.copy(
                                     messages = uiMessages,
@@ -861,7 +897,7 @@ class ChatViewModel(
         val messageIdsBeforeSend = _uiState.value.messages.map { it.id }.toSet()
 
         if (!_uiState.value.isConnected) {
-            offlineMessageQueue.update { it + displayText }
+            offlineMessageQueue.update { it + QueuedPrompt(displayText, emptyList(), emptyList()) }
             val userMessage =
                 ChatMessage(
                     isUser = true,
@@ -879,7 +915,7 @@ class ChatViewModel(
 
         val mustQueue = (currentBackend as? RuntimeTarget)?.capabilities?.forcesQueue == true
         if ((_sendBehavior.value == "queue" || mustQueue) && _uiState.value.isRunning) {
-            messageQueue.update { it + displayText }
+            messageQueue.update { it + QueuedPrompt(displayText, emptyList(), emptyList()) }
             return
         }
 
@@ -949,7 +985,11 @@ class ChatViewModel(
                             runCatching { currentBackend.listMessages(targetSessionId) }
                                 .onSuccess { serverMessages ->
                                     if (!isStillActive()) return@onSuccess
-                                    val uiMessages = serverMessages.mapNotNull(::toUiMessage)
+                                    val uiMessages =
+                                        mergeReloadedMessages(
+                                            serverMessages.mapNotNull(::toUiMessage),
+                                            _uiState.value.messages,
+                                        )
                                     if (uiMessages.isNotEmpty() && uiMessages != _uiState.value.messages) {
                                         _uiState.update { it.copy(messages = uiMessages) }
                                     }
@@ -972,7 +1012,11 @@ class ChatViewModel(
                             streamedParts.clear()
                             _uiState.update {
                                 it.copy(
-                                    messages = serverMessages.mapNotNull(::toUiMessage),
+                                    messages =
+                                        mergeReloadedMessages(
+                                            serverMessages.mapNotNull(::toUiMessage),
+                                            it.messages,
+                                        ),
                                     isRunning = false,
                                     isThinking = false,
                                 )
@@ -1281,7 +1325,7 @@ class ChatViewModel(
                                 streamedParts.clear()
                                 _uiState.update {
                                     it.copy(
-                                        messages = messages.mapNotNull(::toUiMessage),
+                                        messages = mergeReloadedMessages(messages.mapNotNull(::toUiMessage), it.messages),
                                     )
                                 }
                             }
@@ -1420,7 +1464,7 @@ class ChatViewModel(
         viewModelScope.launch {
             runCatching { currentBackend.listMessages(sessionId) }
                 .onSuccess { messages ->
-                    val uiMessages = messages.mapNotNull(::toUiMessage)
+                    val uiMessages = mergeReloadedMessages(messages.mapNotNull(::toUiMessage), _uiState.value.messages)
                     if (uiMessages.isNotEmpty()) {
                         _uiState.update { it.copy(messages = uiMessages) }
                     }
@@ -1564,7 +1608,15 @@ class ChatViewModel(
         val queued = messageQueue.value
         if (queued.isEmpty()) return
         messageQueue.value = emptyList()
-        queued.forEach { sendMessage(it) }
+        queued.forEach { queuedPrompt ->
+            _uiState.update {
+                it.copy(
+                    attachments = queuedPrompt.attachments,
+                    imagePreviews = queuedPrompt.imagePreviews,
+                )
+            }
+            sendMessage(queuedPrompt.text)
+        }
     }
 
     private fun drainOfflineQueue() {
@@ -1572,7 +1624,15 @@ class ChatViewModel(
         if (queued.isEmpty()) return
         offlineMessageQueue.value = emptyList()
         _uiState.update { it.copy(offlineQueue = emptyList(), isOfflineQueued = false) }
-        queued.forEach { sendMessage(it) }
+        queued.forEach { queuedPrompt ->
+            _uiState.update {
+                it.copy(
+                    attachments = queuedPrompt.attachments,
+                    imagePreviews = queuedPrompt.imagePreviews,
+                )
+            }
+            sendMessage(queuedPrompt.text)
+        }
     }
 
     override fun onCleared() {
@@ -1656,7 +1716,7 @@ class ChatViewModel(
                     .onSuccess { messages ->
                         streamedParts.clear()
                         _uiState.update {
-                            it.copy(messages = messages.mapNotNull(::toUiMessage))
+                            it.copy(messages = mergeReloadedMessages(messages.mapNotNull(::toUiMessage), it.messages))
                         }
                     }
                     .isSuccess

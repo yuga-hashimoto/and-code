@@ -6,6 +6,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeMessageInfo
 import com.yugahashimoto.andcode.core.api.OpenCodeModelReference
 import com.yugahashimoto.andcode.core.api.OpenCodePart
 import com.yugahashimoto.andcode.core.api.OpenCodeTime
+import com.yugahashimoto.andcode.core.api.PromptAttachment
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -15,6 +16,7 @@ import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.util.Base64
 
 @Serializable
 data class AntigravitySessionRecord(
@@ -152,12 +154,21 @@ class AntigravityRuntime(
         model: String? = null,
         variant: String? = null,
         permissionMode: AntigravityPermissionMode = AntigravityPermissionMode.DEFAULT,
+        attachments: List<PromptAttachment> = emptyList(),
     ): Result<String> =
         withContext(Dispatchers.IO) {
             runCatching {
                 val runtime = installedRuntimeProvider() ?: error("Linux environment is not installed")
                 require(isInstalled()) { "Antigravity is not installed" }
                 AntigravityGuestSettings.repair(runtime)
+                val promptWithAttachments =
+                    prepareAntigravityPrompt(
+                        runtimeDirectory,
+                        sessionId,
+                        records[sessionId]?.lastStep ?: 0,
+                        prompt,
+                        attachments,
+                    )
                 // Normally unreachable now that the app always queues a send behind a running
                 // Antigravity turn (see RuntimeCapabilities.forcesQueue) - kept as a safety net for
                 // e.g. two clients racing the same session. Marking the kill as intentional here is
@@ -185,7 +196,7 @@ class AntigravityRuntime(
                             addAll(AntigravityModels.cliArgs(model, variant))
                             addAll(permissionMode.cliArgs)
                             add("--print")
-                            add(prompt)
+                            add(promptWithAttachments)
                         }
                     val stderrLog = File(runtimeDirectory, "logs/agy-stderr.log").also { it.parentFile?.mkdirs() }
                     val process =
@@ -226,7 +237,22 @@ class AntigravityRuntime(
                             OpenCodeMessageInfo(userId, sessionId, "user", OpenCodeTime(turnNow, turnNow, turnNow)),
                             // A part without an id is dropped when the chat maps the transcript for
                             // display, so an id-less part is invisible however well the run went.
-                            listOf(OpenCodePart(id = "$userId-text", type = "text", text = prompt)),
+                            buildList {
+                                add(OpenCodePart(id = "$userId-text", type = "text", text = prompt))
+                                attachments.forEachIndexed { index, attachment ->
+                                    add(
+                                        OpenCodePart(
+                                            id = "$userId-file-$index",
+                                            sessionId = sessionId,
+                                            messageId = userId,
+                                            type = "file",
+                                            filename = attachment.filename,
+                                            mime = attachment.mime,
+                                            url = attachment.url,
+                                        ),
+                                    )
+                                }
+                            },
                         ),
                     )
                     persist()
@@ -330,6 +356,8 @@ class AntigravityRuntime(
         abort(sessionId)
         val removed = records.remove(sessionId) != null
         messages.remove(sessionId)
+        val safeSession = sessionId.replace(Regex("[^A-Za-z0-9._-]"), "_")
+        File(runtimeDirectory, "workspace/.andcode-attachments/$safeSession").deleteRecursively()
         persist()
         return removed
     }
@@ -486,8 +514,55 @@ class AntigravityRuntime(
     private fun persist() {
         runCatching {
             recordsFile.parentFile?.mkdirs()
-            recordsFile.writeText(json.encodeToString(records.values.toList()))
-            messagesFile.writeText(json.encodeToString(messages.mapValues { it.value.toList() }))
+            writeAtomically(recordsFile, json.encodeToString(records.values.toList()))
+            writeAtomically(messagesFile, json.encodeToString(messages.mapValues { it.value.toList() }))
         }
     }
 }
+
+private fun writeAtomically(
+    destination: File,
+    content: String,
+) {
+    val temporary = File(destination.parentFile, ".${destination.name}.tmp")
+    temporary.writeText(content)
+    check(temporary.renameTo(destination)) { "Cannot replace ${destination.name}" }
+}
+
+/**
+ * Materializes inline attachments in the shared workspace and references them through agy's native
+ * `@path` context syntax. This is the non-interactive equivalent of attaching a file in its TUI.
+ */
+internal fun prepareAntigravityPrompt(
+    runtimeDirectory: File,
+    sessionId: String,
+    turn: Long,
+    prompt: String,
+    attachments: List<PromptAttachment>,
+): String {
+    if (attachments.isEmpty()) return prompt
+    val safeSession = sessionId.replace(Regex("[^A-Za-z0-9._-]"), "_")
+    val attachmentDir =
+        File(runtimeDirectory, "workspace/.andcode-attachments/$safeSession/$turn").apply {
+            check(mkdirs() || isDirectory) { "Cannot create Antigravity attachment directory" }
+        }
+    val references =
+        attachments.mapIndexed { index, attachment ->
+            require(attachment.mime.startsWith("image/") || attachment.mime == "application/pdf") {
+                "Antigravity cannot attach ${attachment.mime}"
+            }
+            val marker = ";base64,"
+            val encoded = attachment.url.substringAfter(marker, missingDelimiterValue = "")
+            require(attachment.url.startsWith("data:") && encoded.isNotEmpty()) {
+                "Antigravity requires an inline attachment"
+            }
+            require(encoded.length <= MAX_ANTIGRAVITY_ATTACHMENT_BASE64_CHARS) { "Antigravity attachment is too large" }
+            val safeName = attachment.filename.replace(Regex("[^A-Za-z0-9._-]"), "_").ifBlank { "attachment-$index" }
+            val file = File(attachmentDir, "$index-$safeName")
+            file.writeBytes(Base64.getDecoder().decode(encoded))
+            "@/workspace/.andcode-attachments/$safeSession/$turn/${file.name}"
+        }
+    return (references + prompt).joinToString("\n")
+}
+
+private const val MAX_ANTIGRAVITY_ATTACHMENT_BASE64_CHARS = 34_952_536

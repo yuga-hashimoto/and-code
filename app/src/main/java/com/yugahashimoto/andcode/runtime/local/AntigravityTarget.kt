@@ -151,7 +151,16 @@ class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarge
             AntigravityPermissionMode.fromAgentId(request.agent)
                 ?.also { runtime.setSessionMode(sessionId, it) }
                 ?: AntigravityPermissionMode.fromCliValue(record.permissionMode)
-        runtime.send(sessionId, record.workspace, request.text, record.conversationId, model, variant, permissionMode).getOrThrow()
+        runtime.send(
+            sessionId,
+            record.workspace,
+            request.text,
+            record.conversationId,
+            model,
+            variant,
+            permissionMode,
+            request.attachments,
+        ).getOrThrow()
         // Claude Code summarises while its answer is still streaming; here it has to wait for the
         // send to finish, because two concurrent `agy` processes hang each other. Failure is silent:
         // the prompt-derived name set above is already in the drawer and simply stays.

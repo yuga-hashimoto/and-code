@@ -3,6 +3,7 @@ package com.yugahashimoto.andcode.feature.chat
 import android.Manifest
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -200,6 +201,8 @@ fun ChatHomeScreen(
     val isAtBottom = remember { mutableStateOf(true) }
     var showActionSheet by remember { mutableStateOf<Pair<String, String>?>(null) }
     var activityGroupId by remember { mutableStateOf<String?>(null) }
+    var selectedImage by remember { mutableStateOf<ChatImageSource?>(null) }
+    var legacyDownload by remember { mutableStateOf<ChatImageSource?>(null) }
     val timelineEntries = remember(state.messages) { groupConversationTimeline(state.messages) }
     val clipboardManager = LocalClipboardManager.current
     val coroutineScope = rememberCoroutineScope()
@@ -212,6 +215,21 @@ fun ChatHomeScreen(
         }
     }
     val context = androidx.compose.ui.platform.LocalContext.current
+    val imageSaveLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/*")) { uri ->
+            val source = legacyDownload
+            legacyDownload = null
+            if (uri != null && source != null) {
+                coroutineScope.launch {
+                    val saved = saveChatImageToUri(context, source, uri)
+                    android.widget.Toast.makeText(
+                        context,
+                        if (saved) R.string.image_saved else R.string.image_save_failed,
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                }
+            }
+        }
 
     val cameraLauncher =
         rememberLauncherForActivityResult(
@@ -408,7 +426,11 @@ fun ChatHomeScreen(
                                             )
                                         },
                                 ) {
-                                    TimelineEntryRow(entry, onOpenActivity = { activityGroupId = it })
+                                    TimelineEntryRow(
+                                        entry,
+                                        onOpenActivity = { activityGroupId = it },
+                                        onImageClick = { selectedImage = it },
+                                    )
                                 }
                             }
                             if (state.isRunning && timelineEntries.isNotEmpty()) {
@@ -659,6 +681,28 @@ fun ChatHomeScreen(
                 )
             }
         }
+    }
+
+    selectedImage?.let { source ->
+        ChatImageViewerDialog(
+            source = source,
+            onDismiss = { selectedImage = null },
+            onDownload = {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    coroutineScope.launch {
+                        val saved = saveChatImageToPictures(context, it)
+                        android.widget.Toast.makeText(
+                            context,
+                            if (saved) R.string.image_saved else R.string.image_save_failed,
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                } else {
+                    legacyDownload = it
+                    imageSaveLauncher.launch(safeImageFilename(it))
+                }
+            },
+        )
     }
 }
 
