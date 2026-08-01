@@ -43,10 +43,10 @@ class LocalRuntimeProcessLauncherTest {
     }
 
     @Test
-    fun `guest OpenCode context identifies the Android host environment`() {
+    fun `guest agent context is copied to each agent's instruction path`() {
         val rootfs = temporaryFolder.newFolder("rootfs")
 
-        ensureAndCodeAgentContext(rootfs)
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
 
         listOf(
             "root/.config/opencode/and-code-context.md",
@@ -54,10 +54,14 @@ class LocalRuntimeProcessLauncherTest {
             "root/.gemini/GEMINI.md",
         ).forEach { relativePath ->
             val context = File(rootfs, relativePath).readText()
-            assertTrue(context.contains("and-code (AndCode)"))
-            assertTrue(context.contains("Android/PRoot"))
-            assertTrue(context.contains("/workspace"))
+            assertEquals(AGENT_CONTEXT_FIXTURE, context)
         }
+    }
+
+    private companion object {
+        const val AGENT_CONTEXT_FIXTURE =
+            "You are running inside and-code (AndCode), a native Android application.\n" +
+                "This is an Android/PRoot environment with a /workspace mount."
     }
 
     @Test
