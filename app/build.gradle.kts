@@ -98,8 +98,8 @@ android {
         applicationId = "com.yugahashimoto.andcode"
         minSdk = 26
         targetSdk = 35
-        versionCode = 31
-        versionName = "1.1.16"
+        versionCode = 32
+        versionName = "1.1.17"
         buildConfigField("String", "GITHUB_CLIENT_ID", "\"$githubClientId\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
