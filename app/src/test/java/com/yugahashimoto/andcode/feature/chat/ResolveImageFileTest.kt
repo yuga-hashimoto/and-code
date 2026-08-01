@@ -18,6 +18,17 @@ class ResolveImageFileTest {
     }
 
     @Test
+    fun `guest rootfs path maps to rootfs directory`() {
+        val rootfs = folder.newFolder("antigravity-rootfs")
+        val image =
+            File(rootfs, "tmp/rabbit.png").apply {
+                parentFile.mkdirs()
+                writeText("x")
+            }
+        assertEquals(image, resolveImageFile("/tmp/rabbit.png", folder.root, listOf(rootfs)))
+    }
+
+    @Test
     fun `absolute host path is resolved as-is`() {
         val image = folder.newFile("host.png").apply { writeText("x") }
         assertEquals(image, resolveImageFile(image.absolutePath, folder.root))

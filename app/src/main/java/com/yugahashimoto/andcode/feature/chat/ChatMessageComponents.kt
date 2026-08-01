@@ -59,7 +59,6 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import com.yugahashimoto.andcode.BuildConfig
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.runtime.PermissionResponse
@@ -523,6 +522,7 @@ private fun decodeDataImage(url: String): android.graphics.Bitmap? {
 internal fun imageFileCandidates(
     url: String,
     workspaceHostDir: File,
+    rootfsDirs: List<File> = emptyList(),
 ): List<File> {
     if (url.startsWith("data:") || url.startsWith("http://") || url.startsWith("https://")) {
         return emptyList()
@@ -533,6 +533,9 @@ internal fun imageFileCandidates(
             raw == "/workspace" -> add(workspaceHostDir)
             raw.startsWith("/workspace/") -> add(File(workspaceHostDir, raw.removePrefix("/workspace/")))
         }
+        if (raw.startsWith("/")) {
+            rootfsDirs.forEach { rootfs -> add(File(rootfs, raw.removePrefix("/"))) }
+        }
         add(File(raw))
         if (!raw.startsWith("/")) add(File(workspaceHostDir, raw))
     }
@@ -542,30 +545,18 @@ internal fun imageFileCandidates(
 internal fun resolveImageFile(
     url: String,
     workspaceHostDir: File,
-): File? = imageFileCandidates(url, workspaceHostDir).firstOrNull { it.exists() }
-
-internal fun debugImageResolution(
-    url: String,
-    workspaceHostDir: File,
-): String {
-    val candidates = imageFileCandidates(url, workspaceHostDir)
-    val detail =
-        if (candidates.isEmpty()) {
-            "(non-file url)"
-        } else {
-            candidates.joinToString("; ") { "${it.path}=${it.exists()}" }
-        }
-    return "url=$url | $detail"
-}
+    rootfsDirs: List<File> = emptyList(),
+): File? = imageFileCandidates(url, workspaceHostDir, rootfsDirs).firstOrNull { it.exists() }
 
 internal fun decodeImageFromUrlOrPath(
     url: String,
     workspaceHostDir: File,
+    rootfsDirs: List<File> = emptyList(),
 ): Bitmap? {
     if (url.startsWith("data:")) {
         return decodeDataImage(url)
     }
-    val path = resolveImageFile(url, workspaceHostDir)?.absolutePath ?: return null
+    val path = resolveImageFile(url, workspaceHostDir, rootfsDirs)?.absolutePath ?: return null
     return runCatching {
         val options =
             BitmapFactory.Options().apply {
@@ -591,15 +582,21 @@ internal fun decodeImageFromUrlOrPath(
 private fun MarkdownImageView(image: MarkdownInline.Image) {
     val context = LocalContext.current
     val workspaceHostDir = remember { File(context.filesDir, "runtime/workspace") }
+    val rootfsDirs =
+        remember {
+            listOf(
+                File(context.filesDir, "runtime/environment/antigravity-rootfs"),
+                File(context.filesDir, "runtime/environment/rootfs"),
+            )
+        }
     val bitmapState =
         produceState<Bitmap?>(initialValue = null, key1 = image.url) {
             value =
                 withContext(Dispatchers.IO) {
-                    decodeImageFromUrlOrPath(image.url, workspaceHostDir)
+                    decodeImageFromUrlOrPath(image.url, workspaceHostDir, rootfsDirs)
                 }
         }
     val bitmap = bitmapState.value
-    val debugInfo = if (BuildConfig.DEBUG) debugImageResolution(image.url, workspaceHostDir) else null
     if (bitmap != null) {
         Image(
             bitmap = bitmap.asImageBitmap(),
@@ -624,10 +621,10 @@ private fun MarkdownImageView(image: MarkdownInline.Image) {
             ) {
                 Icon(Icons.Default.ImageIcon, contentDescription = null)
                 Text(
-                    text = debugInfo ?: image.text.ifBlank { image.url },
+                    text = image.text.ifBlank { image.url },
                     style = MaterialTheme.typography.bodySmall,
-                    maxLines = if (debugInfo != null) Int.MAX_VALUE else 1,
-                    overflow = if (debugInfo != null) TextOverflow.Clip else TextOverflow.Ellipsis,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
@@ -636,7 +633,23 @@ private fun MarkdownImageView(image: MarkdownInline.Image) {
 
 @Composable
 private fun ImagePartView(part: ChatPart.Image) {
-    val bitmap = remember(part.url) { decodeDataImage(part.url) }
+    val context = LocalContext.current
+    val workspaceHostDir = remember { File(context.filesDir, "runtime/workspace") }
+    val rootfsDirs =
+        remember {
+            listOf(
+                File(context.filesDir, "runtime/environment/antigravity-rootfs"),
+                File(context.filesDir, "runtime/environment/rootfs"),
+            )
+        }
+    val bitmapState =
+        produceState<Bitmap?>(initialValue = null, key1 = part.url) {
+            value =
+                withContext(Dispatchers.IO) {
+                    decodeImageFromUrlOrPath(part.url, workspaceHostDir, rootfsDirs)
+                }
+        }
+    val bitmap = bitmapState.value
     if (bitmap != null) {
         Image(
             bitmap = bitmap.asImageBitmap(),
