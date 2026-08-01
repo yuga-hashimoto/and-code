@@ -36,6 +36,28 @@ class LocalRuntimeProcessLauncherTest {
         assertEquals("/android/proot-tmp", environment["PROOT_TMP_DIR"])
         assertEquals("/native/lib", environment["LD_LIBRARY_PATH"])
         assertTrue(environment["OPENCODE_DISABLE_AUTOUPDATE"] == "true")
+        assertEquals(
+            "{\"instructions\":[\"/root/.config/opencode/and-code-context.md\"]}",
+            environment["OPENCODE_CONFIG_CONTENT"],
+        )
+    }
+
+    @Test
+    fun `guest OpenCode context identifies the Android host environment`() {
+        val rootfs = temporaryFolder.newFolder("rootfs")
+
+        ensureAndCodeAgentContext(rootfs)
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            val context = File(rootfs, relativePath).readText()
+            assertTrue(context.contains("and-code (AndCode)"))
+            assertTrue(context.contains("Android/PRoot"))
+            assertTrue(context.contains("/workspace"))
+        }
     }
 
     @Test
