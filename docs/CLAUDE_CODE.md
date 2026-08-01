@@ -25,6 +25,7 @@ existing rootfs, then installs the package:
 wget -qO /etc/apk/keys/claude-code.rsa.pub https://downloads.claude.ai/keys/claude-code.rsa.pub
 # https://downloads.claude.ai/claude-code/apk/stable appended to /etc/apk/repositories, once
 /sbin/apk update
+/sbin/apk fix
 /sbin/apk add --no-cache claude-code util-linux
 ```
 
@@ -38,6 +39,32 @@ Two details are load-bearing and were wrong in earlier revisions:
 
 Updates use `apk add --no-cache --upgrade claude-code`. `USE_BUILTIN_RIPGREP=0` is set because the
 bundled ripgrep is a glibc build that cannot run on musl; the sandbox provides Alpine's ripgrep.
+
+### Broken packages poison every later apk run
+
+A package whose files or scripts failed to extract keeps an `f:f` / `f:s` flag in
+`/lib/apk/db/installed` — which is how a package broken by PRoot's hard-link emulation was recorded.
+apk counts one error per flagged package in **every** transaction it commits afterwards, even a `-s`
+simulation and even when the flagged package has nothing to do with the request. The transaction then
+exits non-zero having printed only:
+
+```text
+1 error; 2322.8 MiB in 392 packages
+```
+
+That is why an up-to-date sandbox could still fail to update, with no error naming anything. Two
+consequences for these scripts:
+
+- **`apk fix` runs with no arguments**, so it reinstalls exactly the flagged packages. `apk fix <pkg>`
+  reinstalls that one and still trips over everybody else's flag, so it can never clear the failure —
+  and under `set -e` its own exit code aborted the update before the upgrade was attempted.
+- **A non-zero `apk` status is not by itself a failure.** The scripts verify what was asked for
+  instead: `apk info -e` for a fresh install, and `apk version -q -l '<' claude-code` (a read-only
+  query, so broken flags cannot skew it) for an update. Only if that check fails, or `claude
+  --version` does not run, is the operation reported as failed.
+
+The failure diagnostics list the flagged packages, since apk names a package when it breaks it but
+never when it later refuses to work because of the flag.
 
 ## Execution
 

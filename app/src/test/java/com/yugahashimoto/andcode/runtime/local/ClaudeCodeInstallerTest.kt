@@ -2,11 +2,18 @@ package com.yugahashimoto.andcode.runtime.local
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 class ClaudeCodeInstallerTest {
+    @get:Rule
+    val temporaryFolder = TemporaryFolder()
+
     @Test
     fun `extractApkErrors keeps ERROR and WARNING and summary lines`() {
         val log =
@@ -58,5 +65,177 @@ class ClaudeCodeInstallerTest {
             firstLine.startsWith("Claude Code installation failed (exit 1): ERROR: unable to select packages:"),
         )
         assertTrue(message.contains("--- log tail ---"))
+    }
+
+    @Test
+    fun `failureMessage prefers a real error over apk's bare error count`() {
+        val log =
+            File.createTempFile("claude-update", ".log").apply {
+                deleteOnExit()
+                writeText(
+                    "1 error; 2322.8 MiB in 392 packages\nERROR: unable to select packages:\n",
+                )
+            }
+        val message = ClaudeCodeInstaller.failureMessage("update", 1, log)
+        assertTrue(
+            message.lineSequence().first().endsWith("ERROR: unable to select packages:"),
+        )
+    }
+
+    @Test
+    fun `assembled scripts abort on the first failure and end with the package work`() {
+        listOf(ClaudeCodeInstaller.INSTALL_SCRIPT, ClaudeCodeInstaller.UPDATE_SCRIPT).forEach { script ->
+            assertEquals("set -e", script.lineSequence().first())
+            assertEquals("${ClaudeCodeInstaller.CLAUDE_BINARY} --version", script.lineSequence().last())
+            assertTrue(script.contains("/sbin/apk fix ||"))
+        }
+    }
+
+    @Test
+    fun `update reinstalls every broken package rather than naming one`() {
+        val run = runPackageCommands(ClaudeCodeInstaller::updatePackageCommands)
+
+        assertEquals(0, run.exitCode)
+        // `apk fix <pkg>` reinstalls that package and still trips over every other package's broken
+        // flag, so the repair has to be the unqualified form.
+        assertTrue(run.apkInvocations.contains("fix"))
+    }
+
+    @Test
+    fun `update survives an apk exit code caused by an unrelated broken package`() {
+        // apk counts one error per package flagged broken in its database, in every transaction it
+        // commits -- so `apk add` exits non-zero even when claude-code itself upgraded cleanly.
+        val run =
+            runPackageCommands(ClaudeCodeInstaller::updatePackageCommands, "ADD_STATUS" to "1")
+
+        assertEquals(0, run.exitCode)
+        assertTrue(run.output.contains("claude-code is up to date"))
+        assertTrue(run.claudeRan)
+    }
+
+    @Test
+    fun `update fails when apk fails and claude-code is still behind the repository`() {
+        val run =
+            runPackageCommands(
+                ClaudeCodeInstaller::updatePackageCommands,
+                "ADD_STATUS" to "1",
+                "PENDING_UPGRADE" to "1",
+            )
+
+        assertNotEquals(0, run.exitCode)
+        assertTrue(run.output.contains("still behind the repository"))
+    }
+
+    @Test
+    fun `update still upgrades when the broken-package repair itself fails`() {
+        val run =
+            runPackageCommands(ClaudeCodeInstaller::updatePackageCommands, "FIX_STATUS" to "1")
+
+        assertEquals(0, run.exitCode)
+        assertTrue(run.apkInvocations.contains("add --no-cache --upgrade claude-code"))
+    }
+
+    @Test
+    fun `update fails when the installed binary cannot run`() {
+        val run =
+            runPackageCommands(ClaudeCodeInstaller::updatePackageCommands, "CLAUDE_STATUS" to "1")
+
+        assertNotEquals(0, run.exitCode)
+    }
+
+    @Test
+    fun `install survives an apk exit code once both packages are installed`() {
+        val run =
+            runPackageCommands(
+                ClaudeCodeInstaller::installPackageCommands,
+                "ADD_STATUS" to "1",
+                "INSTALLED" to "claude-code util-linux",
+            )
+
+        assertEquals(0, run.exitCode)
+        assertTrue(run.claudeRan)
+    }
+
+    @Test
+    fun `install fails when apk fails and a requested package is missing`() {
+        val run =
+            runPackageCommands(
+                ClaudeCodeInstaller::installPackageCommands,
+                "ADD_STATUS" to "1",
+                "INSTALLED" to "claude-code",
+            )
+
+        assertNotEquals(0, run.exitCode)
+        assertTrue(run.output.contains("requested packages are not installed"))
+    }
+
+    private class ScriptRun(val exitCode: Int, val output: String, val apkInvocations: List<String>) {
+        val claudeRan: Boolean get() = output.contains(CLAUDE_VERSION)
+    }
+
+    /**
+     * Runs the package-manager half of a script against stub `apk` and `claude` binaries.
+     *
+     * The stubs report whatever [variables] ask them to, which is the only way to exercise the
+     * branches that matter here: apk failing for reasons that have nothing to do with claude-code.
+     */
+    private fun runPackageCommands(
+        commands: (String, String) -> String,
+        vararg variables: Pair<String, String>,
+    ): ScriptRun {
+        val bin = temporaryFolder.newFolder("bin")
+        val apkLog = File(bin, "apk.log")
+        val apk = stub(bin, "apk", APK_STUB.replace("@LOG@", apkLog.absolutePath))
+        val claude = stub(bin, "claude", CLAUDE_STUB)
+        val process =
+            ProcessBuilder("sh", "-c", "set -e\n" + commands(apk.absolutePath, claude.absolutePath))
+                .redirectErrorStream(true)
+                .apply { environment().putAll(variables.toMap()) }
+                .start()
+        val output = process.inputStream.bufferedReader().readText()
+        assertTrue("stub script timed out", process.waitFor(60, TimeUnit.SECONDS))
+        return ScriptRun(
+            exitCode = process.exitValue(),
+            output = output,
+            apkInvocations = apkLog.takeIf(File::isFile)?.readLines().orEmpty(),
+        )
+    }
+
+    private fun stub(
+        directory: File,
+        name: String,
+        body: String,
+    ): File =
+        File(directory, name).apply {
+            writeText(body)
+            check(setExecutable(true))
+        }
+
+    private companion object {
+        const val CLAUDE_VERSION = "2.1.212 (Claude Code)"
+
+        val APK_STUB =
+            """
+            #!/bin/sh
+            echo "${'$'}*" >> '@LOG@'
+            case "${'$'}1" in
+              fix) exit "${'$'}{FIX_STATUS:-0}" ;;
+              add) exit "${'$'}{ADD_STATUS:-0}" ;;
+              info)
+                case " ${'$'}{INSTALLED:-} " in *" ${'$'}3 "*) echo "${'$'}3" ;; esac
+                ;;
+              version)
+                [ -z "${'$'}{PENDING_UPGRADE:-}" ] || echo claude-code
+                ;;
+            esac
+            exit 0
+            """.trimIndent()
+
+        val CLAUDE_STUB =
+            """
+            #!/bin/sh
+            echo '$CLAUDE_VERSION'
+            exit "${'$'}{CLAUDE_STATUS:-0}"
+            """.trimIndent()
     }
 }

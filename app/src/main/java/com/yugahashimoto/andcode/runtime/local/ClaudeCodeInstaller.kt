@@ -29,6 +29,77 @@ object ClaudeCodeInstaller {
     private const val REPOSITORY = "https://downloads.claude.ai/claude-code/apk/stable"
     private const val SIGNING_KEY_URL = "https://downloads.claude.ai/keys/claude-code.rsa.pub"
     private const val SIGNING_KEY_PATH = "/etc/apk/keys/claude-code.rsa.pub"
+    private const val APK = "/sbin/apk"
+    private const val INSTALLED_DB = "/lib/apk/db/installed"
+
+    /** `$` in a shell snippet, spelled out because these scripts live in Kotlin raw strings. */
+    private const val S = "$"
+
+    /**
+     * Reinstalls every package apk has flagged as broken, best effort.
+     *
+     * A package whose extraction failed keeps an `f:f` (broken files) or `f:s` (broken script) flag
+     * in [INSTALLED_DB], and apk then counts one error per flagged package in *every* transaction it
+     * commits afterwards — including ones that touch nothing else, and including `-s` simulations.
+     * The transaction exits non-zero having printed nothing but `1 error; <size> in <n> packages`,
+     * which is exactly the opaque failure updates were dying with in the field: the flag was left on
+     * a package broken by PRoot's hard-link emulation, and every later `apk add` inherited it.
+     *
+     * `apk fix` without arguments is the only form that clears this: it reinstalls precisely the
+     * packages carrying a flag. Naming one package instead (the previous `apk fix unzip`) reinstalls
+     * that package and still trips over every other package's flag, so it cannot succeed — and under
+     * `set -e` its exit code aborted the update before the upgrade was even attempted.
+     *
+     * Failure here is not fatal: a package that cannot be reinstalled must not block an upgrade that
+     * would otherwise work, so the verification below decides the outcome instead.
+     */
+    private fun repairBrokenPackages(apk: String) = "$apk fix || echo 'and-code: apk fix could not clear every broken package' >&2"
+
+    /**
+     * Package-manager half of the install, split out so tests can drive it with a stub `apk`.
+     *
+     * Both paths deliberately outlive a non-zero `apk` status: it covers the whole transaction, and a
+     * package flagged broken before this run fails that transaction even when everything asked for
+     * here succeeded. The requested packages, not the exit code, decide the outcome.
+     */
+    internal fun installPackageCommands(
+        apk: String = APK,
+        claude: String = CLAUDE_BINARY,
+    ) = """
+        $apk update
+        ${repairBrokenPackages(apk)}
+        if ! $apk add --no-cache claude-code util-linux; then
+          if [ -z "$S($apk info -e claude-code)" ] || [ -z "$S($apk info -e util-linux)" ]; then
+            echo 'and-code: apk failed and the requested packages are not installed' >&2
+            exit 1
+          fi
+          echo 'and-code: apk reported errors from unrelated packages; requested packages are installed' >&2
+        fi
+        $claude --version
+        """.trimIndent()
+
+    /**
+     * Package-manager half of the update.
+     *
+     * `apk version` reads the database without committing anything, so unlike `apk add` it is
+     * unaffected by broken-package flags: an empty result means the repository has nothing newer than
+     * what is installed, which is all this operation was asked to achieve.
+     */
+    internal fun updatePackageCommands(
+        apk: String = APK,
+        claude: String = CLAUDE_BINARY,
+    ) = """
+        $apk update
+        ${repairBrokenPackages(apk)}
+        if ! $apk add --no-cache --upgrade claude-code; then
+          if [ -n "$S($apk version -q -l '<' claude-code)" ]; then
+            echo 'and-code: apk failed and claude-code is still behind the repository' >&2
+            exit 1
+          fi
+          echo 'and-code: apk reported errors from unrelated packages; claude-code is up to date' >&2
+        fi
+        $claude --version
+        """.trimIndent()
 
     /**
      * Shell that adds the signing key and repository, then installs the package.
@@ -36,61 +107,63 @@ object ClaudeCodeInstaller {
      * Written so that a failure at any stage aborts instead of leaving a repository line the sandbox
      * cannot verify, and so that re-running it on an already-configured rootfs is a no-op.
      */
-    private val INSTALL_SCRIPT =
-        """
-        set -e
-        /usr/bin/wget -qO $SIGNING_KEY_PATH $SIGNING_KEY_URL
-        if ! grep -qxF '$REPOSITORY' /etc/apk/repositories; then
-          printf '%s\n' '$REPOSITORY' >> /etc/apk/repositories
-        fi
-        /sbin/apk update
-        /sbin/apk add --no-cache claude-code util-linux
-        $CLAUDE_BINARY --version
-        """.trimIndent()
+    internal val INSTALL_SCRIPT =
+        script(
+            """
+            set -e
+            /usr/bin/wget -qO $SIGNING_KEY_PATH $SIGNING_KEY_URL
+            if ! grep -qxF '$REPOSITORY' /etc/apk/repositories; then
+              printf '%s\n' '$REPOSITORY' >> /etc/apk/repositories
+            fi
+            """,
+            installPackageCommands(),
+        )
 
-    private val UPDATE_SCRIPT =
-        """
-        set -e
-        # Refresh the signing key on every update so a rotated or expired key cannot strand an
-        # upgrade behind an untrusted repository (every version then resolves as masked in: stable).
-        # If the download fails, keep the existing key so a transient outage does not block an
-        # otherwise-valid update; only abort when there is no key to fall back to.
-        if /usr/bin/wget -qO $SIGNING_KEY_PATH.new $SIGNING_KEY_URL; then
-          mv -f $SIGNING_KEY_PATH.new $SIGNING_KEY_PATH
-        elif [ ! -s $SIGNING_KEY_PATH ]; then
-          echo "claude-code signing key is missing and could not be downloaded" >&2
-          exit 1
-        fi
-        /sbin/apk update
-        # Older runtime activations left PRoot's emulated hard links for unzip pointing at the
-        # removed staging directory. The host repairs those links before this script runs; clear
-        # apk's persisted broken-files flag so it no longer makes every package operation exit 1.
-        /sbin/apk fix unzip
-        /sbin/apk add --no-cache --upgrade claude-code
-        $CLAUDE_BINARY --version
-        """.trimIndent()
+    internal val UPDATE_SCRIPT =
+        script(
+            """
+            set -e
+            # Refresh the signing key on every update so a rotated or expired key cannot strand an
+            # upgrade behind an untrusted repository (every version then resolves as masked in:
+            # stable). If the download fails, keep the existing key so a transient outage does not
+            # block an otherwise-valid update; only abort when there is no key to fall back to.
+            if /usr/bin/wget -qO $SIGNING_KEY_PATH.new $SIGNING_KEY_URL; then
+              mv -f $SIGNING_KEY_PATH.new $SIGNING_KEY_PATH
+            elif [ ! -s $SIGNING_KEY_PATH ]; then
+              echo "claude-code signing key is missing and could not be downloaded" >&2
+              exit 1
+            fi
+            """,
+            updatePackageCommands(),
+        )
 
-    private val INSTALL_DIAGNOSTICS_SCRIPT =
+    /** Joins script sections, trimming each so they can be indented to match their surroundings. */
+    private fun script(vararg sections: String) = sections.joinToString("\n") { it.trimIndent().trim() }
+
+    /**
+     * Diagnostics appended to the log when [simulation] — the failed operation, re-run with `-s` —
+     * is worth capturing alongside the sandbox's package state.
+     *
+     * The broken-package listing is here because apk names a package only when it breaks it, never
+     * when it later refuses to work because of the flag it left behind; without the listing that
+     * failure reads as a bare error count with nothing to act on.
+     */
+    private fun diagnosticsScript(simulation: String) =
         """
         echo '--- and-code apk diagnostics ---'
         echo '-- df -h / --'
         df -h / 2>&1 || true
-        echo '-- apk add -s claude-code util-linux --'
-        /sbin/apk add -s claude-code util-linux 2>&1 || true
+        echo '-- packages flagged broken in apk database --'
+        /usr/bin/awk '/^P:/{p=substr(${S}0,3)} /^f:/{print p, ${S}0}' $INSTALLED_DB 2>&1 || true
+        echo '-- apk $simulation --'
+        $APK $simulation 2>&1 || true
         echo '-- apk policy claude-code --'
-        /sbin/apk policy claude-code 2>&1 || true
+        $APK policy claude-code 2>&1 || true
         """.trimIndent()
 
-    private val UPDATE_DIAGNOSTICS_SCRIPT =
-        """
-        echo '--- and-code apk diagnostics ---'
-        echo '-- df -h / --'
-        df -h / 2>&1 || true
-        echo '-- apk add -s --upgrade claude-code --'
-        /sbin/apk add -s --upgrade claude-code 2>&1 || true
-        echo '-- apk policy claude-code --'
-        /sbin/apk policy claude-code 2>&1 || true
-        """.trimIndent()
+    private val INSTALL_DIAGNOSTICS_SCRIPT = diagnosticsScript("add -s claude-code util-linux")
+
+    private val UPDATE_DIAGNOSTICS_SCRIPT = diagnosticsScript("add -s --upgrade claude-code")
 
     /** Steps reported while [installInto] runs, so the UI can show more than a spinner. */
     enum class Step {
@@ -239,6 +312,8 @@ object ClaudeCodeInstaller {
         }
     }
 
+    private val APK_ERROR_SUMMARY_PATTERN = Regex("^\\d+ errors?;")
+
     private val APK_ERROR_PATTERN =
         Regex("(?i)\\b(error|warning|fatal|conflict|overwrite|unsatisfiable|masked|untrusted|denied|no space left|not found|failed to)\\b")
 
@@ -255,8 +330,11 @@ object ClaudeCodeInstaller {
         // `apk update` WARNING/ERROR lines (emitted early) out of view. Include the head, skipping it
         // only when the log is short enough that head and tail already overlap.
         val showHead = text.length > head.length + tail.length
+        // apk's `N errors; <size> in <n> packages` summary says nothing about what went wrong, so it
+        // is the headline only when the log holds no message that does.
         val primary =
-            errors.lineSequence().firstOrNull()
+            errors.lineSequence().firstOrNull { !APK_ERROR_SUMMARY_PATTERN.containsMatchIn(it) }
+                ?: errors.lineSequence().firstOrNull()
                 ?: tail.lineSequence().map(String::trim).firstOrNull { it.isNotBlank() }.orEmpty()
         return buildString {
             append("Claude Code ")
