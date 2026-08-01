@@ -285,8 +285,25 @@ fun ChatHomeScreen(
             Modifier
                 .fillMaxSize()
                 .pointerInput(showSidePanel) {
+                    val edgeWidthPx = 48.dp.toPx()
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
+                        if (!showSidePanel && down.position.x <= edgeWidthPx) {
+                            var overSlop = 0f
+                            awaitHorizontalTouchSlopOrCancellation(down.id) { change, over ->
+                                overSlop = over
+                                if (over > 0f) change.consume()
+                            } ?: return@awaitEachGesture
+                            if (overSlop <= 0f) return@awaitEachGesture
+                            onOpenDrawer()
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                                if (!change.pressed) break
+                                change.consume()
+                            }
+                            return@awaitEachGesture
+                        }
                         val onRightEdge = down.position.x > size.width - 80f || showSidePanel
                         if (!onRightEdge) return@awaitEachGesture
                         awaitHorizontalTouchSlopOrCancellation(down.id) { change, _ ->
