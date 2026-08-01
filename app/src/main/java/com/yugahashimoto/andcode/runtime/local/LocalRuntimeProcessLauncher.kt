@@ -48,7 +48,6 @@ class LocalRuntimeProcessLauncher(
         beforeStart(runtime)
         val rootfs = runtime.rootfs
         val suite = runtime.commandSuite
-        ensureAndCodeAgentContext(rootfs)
         val logs = File(runtimeDirectory, "logs").apply { mkdirs() }
         val logFile = File(logs, "opencode-local.log")
         truncateLogFile(logFile, maxLogBytes)
