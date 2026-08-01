@@ -584,6 +584,12 @@
     <string name="cd_session">Session</string>
     <string name="cd_attachment">Attachment</string>
     <string name="cd_image_preview">Image preview</string>
+    <string name="cd_close_image">Fermer l\'image</string>
+    <string name="cd_download_image">Telecharger l\'image</string>
+    <string name="image_loading">Chargement de l\'image...</string>
+    <string name="image_load_failed">Impossible de charger l\'image</string>
+    <string name="image_saved">Image enregistree dans Pictures/AndCode</string>
+    <string name="image_save_failed">Impossible d\'enregistrer l\'image</string>
     <string name="cd_reasoning">Reasoning</string>
     <string name="cd_tool">Tool</string>
     <string name="cd_file_changes">File changes</string>
