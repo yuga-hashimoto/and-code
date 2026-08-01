@@ -203,4 +203,19 @@ class MarkdownLiteTest {
             paragraph.inlines,
         )
     }
+
+    @Test
+    fun `markdown image is parsed`() {
+        val paragraph =
+            MarkdownLite.parse("Look at ![rabbit](/path/to/rabbit.png) image")
+                .single() as MarkdownBlock.Paragraph
+        assertEquals(
+            listOf(
+                MarkdownInline.Plain("Look at "),
+                MarkdownInline.Image("rabbit", "/path/to/rabbit.png"),
+                MarkdownInline.Plain(" image"),
+            ),
+            paragraph.inlines,
+        )
+    }
 }

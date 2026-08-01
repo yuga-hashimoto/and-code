@@ -14,6 +14,8 @@ sealed interface MarkdownInline {
     data class Code(override val text: String) : MarkdownInline
 
     data class Link(override val text: String, val url: String) : MarkdownInline
+
+    data class Image(override val text: String, val url: String) : MarkdownInline
 }
 
 sealed interface MarkdownBlock {
@@ -40,6 +42,7 @@ object MarkdownLite {
             "`([^`]+)`" +
                 "|\\*\\*([^*]+)\\*\\*" +
                 "|~~([^~]+)~~" +
+                "|!\\[([^\\]]*)\\]\\(([^)\\s]+)\\)" +
                 "|\\[([^\\]]+)\\]\\(([^)\\s]+)\\)" +
                 "|\\*([^*]+)\\*" +
                 "|(?<![\\w@])(https?://[A-Za-z0-9][A-Za-z0-9._~:/?#\\[\\]@!&'()*+,;=%-]*)",
@@ -152,14 +155,17 @@ object MarkdownLite {
             val code = match.groups[1]?.value
             val bold = match.groups[2]?.value
             val strike = match.groups[3]?.value
-            val linkText = match.groups[4]?.value
-            val linkUrl = match.groups[5]?.value
-            val italic = match.groups[6]?.value
-            val bareUrl = match.groups[7]?.value
+            val imageAlt = match.groups[4]?.value
+            val imageUrl = match.groups[5]?.value
+            val linkText = match.groups[6]?.value
+            val linkUrl = match.groups[7]?.value
+            val italic = match.groups[8]?.value
+            val bareUrl = match.groups[9]?.value
             when {
                 code != null -> result += MarkdownInline.Code(code)
                 bold != null -> result += MarkdownInline.Bold(bold)
                 strike != null -> result += MarkdownInline.Strikethrough(strike)
+                imageAlt != null && imageUrl != null -> result += MarkdownInline.Image(imageAlt, imageUrl)
                 linkText != null && linkUrl != null -> result += MarkdownInline.Link(linkText, linkUrl)
                 italic != null -> result += MarkdownInline.Italic(italic)
                 bareUrl != null -> {
