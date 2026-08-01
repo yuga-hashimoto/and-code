@@ -519,13 +519,34 @@ private fun decodeDataImage(url: String): android.graphics.Bitmap? {
     }.getOrNull()
 }
 
-internal fun decodeImageFromUrlOrPath(url: String): Bitmap? {
+internal fun resolveImageFile(
+    url: String,
+    workspaceHostDir: File,
+): File? {
+    if (url.startsWith("data:") || url.startsWith("http://") || url.startsWith("https://")) {
+        return null
+    }
+    val raw = if (url.startsWith("file://")) url.removePrefix("file://") else url
+    val candidates =
+        buildList {
+            when {
+                raw == "/workspace" -> add(workspaceHostDir)
+                raw.startsWith("/workspace/") -> add(File(workspaceHostDir, raw.removePrefix("/workspace/")))
+            }
+            add(File(raw))
+            if (!raw.startsWith("/")) add(File(workspaceHostDir, raw))
+        }
+    return candidates.distinctBy { it.path }.firstOrNull { it.exists() }
+}
+
+internal fun decodeImageFromUrlOrPath(
+    url: String,
+    workspaceHostDir: File,
+): Bitmap? {
     if (url.startsWith("data:")) {
         return decodeDataImage(url)
     }
-    val rawPath = if (url.startsWith("file://")) url.removePrefix("file://") else url
-    val path = if (rawPath.startsWith("/")) rawPath else "/$rawPath"
-    if (!File(path).exists()) return null
+    val path = resolveImageFile(url, workspaceHostDir)?.absolutePath ?: return null
     return runCatching {
         val options =
             BitmapFactory.Options().apply {
@@ -549,11 +570,12 @@ internal fun decodeImageFromUrlOrPath(url: String): Bitmap? {
 
 @Composable
 private fun MarkdownImageView(image: MarkdownInline.Image) {
+    val workspaceHostDir = remember { File(LocalContext.current.filesDir, "runtime/workspace") }
     val bitmapState =
         produceState<Bitmap?>(initialValue = null, key1 = image.url) {
             value =
                 withContext(Dispatchers.IO) {
-                    decodeImageFromUrlOrPath(image.url)
+                    decodeImageFromUrlOrPath(image.url, workspaceHostDir)
                 }
         }
     val bitmap = bitmapState.value
