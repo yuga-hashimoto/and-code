@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.AlertDialog
@@ -252,6 +253,11 @@ fun AppDrawerContent(
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.42f))
+            DrawerDestinationRow(
+                icon = Icons.Default.Schedule,
+                label = stringResource(R.string.nav_schedules),
+                onClick = { onNavigate("schedules") },
+            )
             DrawerDestinationRow(
                 icon = Icons.Default.Settings,
                 label = stringResource(R.string.nav_settings),

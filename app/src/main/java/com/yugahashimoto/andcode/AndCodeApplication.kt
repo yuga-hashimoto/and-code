@@ -12,9 +12,11 @@ import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
 import com.yugahashimoto.andcode.data.repository.ProviderCatalogCache
 import com.yugahashimoto.andcode.data.repository.RuntimeActivityRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeCatalogRepository
+import com.yugahashimoto.andcode.data.schedule.ScheduleRepository
 import com.yugahashimoto.andcode.data.settings.AppPreferencesRepository
 import com.yugahashimoto.andcode.di.appModule
 import com.yugahashimoto.andcode.di.viewModelModule
+import com.yugahashimoto.andcode.feature.schedule.ScheduleManager
 import com.yugahashimoto.andcode.feature.support.GitHubStarCoordinator
 import com.yugahashimoto.andcode.feature.support.GitHubStarService
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
@@ -84,6 +86,12 @@ class AndCodeApplication : Application() {
         private set
 
     lateinit var notifications: RuntimeNotificationHelper
+        private set
+
+    lateinit var scheduleRepository: ScheduleRepository
+        private set
+
+    lateinit var scheduleManager: ScheduleManager
         private set
 
     lateinit var providerCredentials: LocalProviderCredentialStore
@@ -301,6 +309,10 @@ class AndCodeApplication : Application() {
                 unreadStore = settings,
             )
         githubStarCoordinator.refresh()
+        scheduleRepository = ScheduleRepository(this)
+        scheduleManager = ScheduleManager(this, scheduleRepository)
+        // Re-arm alarms for schedules that were saved in a previous process lifetime.
+        scheduleManager.rescheduleAll()
         scheduleDeferredInitialization()
     }
 

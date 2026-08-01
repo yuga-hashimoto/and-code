@@ -22,10 +22,20 @@ const val ROUTE_SETTINGS_SERVER_INFO = "settings-server-info"
 const val ROUTE_WORKSPACES = "workspaces"
 const val WORKSPACE_DETAIL_ROUTE = "workspace-detail"
 const val LOCAL_RUNTIME_MANAGEMENT_ROUTE = "local-runtime-management"
+const val ROUTE_SCHEDULES = "schedules"
+const val ROUTE_SCHEDULE_DETAIL = "schedule-detail"
+const val SCHEDULE_DETAIL_ROUTE_PATTERN = "$ROUTE_SCHEDULE_DETAIL/{scheduleId}"
+const val ROUTE_SCHEDULE_EDIT = "schedule-edit"
+const val ROUTE_SCHEDULE_EDIT_NEW = ROUTE_SCHEDULE_EDIT
+const val SCHEDULE_EDIT_ROUTE_PATTERN = "$ROUTE_SCHEDULE_EDIT/{scheduleId}"
 const val ROUTE_CODE_VIEWER = "code-viewer"
 const val ROUTE_TERMINAL = "terminal"
 
 const val CODE_VIEWER_ROUTE_PATTERN = "$ROUTE_CODE_VIEWER/{runtimeId}/{workspacePath}/{filePath}"
+
+fun scheduleDetailRoute(scheduleId: String): String = "$ROUTE_SCHEDULE_DETAIL/${encodeRouteArg(scheduleId)}"
+
+fun scheduleEditRoute(scheduleId: String): String = "$ROUTE_SCHEDULE_EDIT/${encodeRouteArg(scheduleId)}"
 
 fun codeViewerRoute(
     runtimeId: String,
@@ -38,4 +48,4 @@ fun decodeRouteArg(value: String): String = String(Base64.getUrlDecoder().decode
 private fun encodeRouteArg(value: String): String =
     Base64.getUrlEncoder().withoutPadding().encodeToString(value.toByteArray(Charsets.UTF_8))
 
-val DRAWER_ROOT_ROUTES = setOf(ROUTE_CHAT, ROUTE_SETTINGS)
+val DRAWER_ROOT_ROUTES = setOf(ROUTE_CHAT, ROUTE_SETTINGS, ROUTE_SCHEDULES)

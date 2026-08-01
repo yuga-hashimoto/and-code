@@ -52,10 +52,12 @@ import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.yugahashimoto.andcode.AndCodeApplication
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.feature.activity.ActivityViewModel
@@ -67,6 +69,10 @@ import com.yugahashimoto.andcode.feature.chat.SubagentInfo
 import com.yugahashimoto.andcode.feature.chat.buildHandoffPrompt
 import com.yugahashimoto.andcode.feature.onboarding.AndroidSetupScreen
 import com.yugahashimoto.andcode.feature.onboarding.OnboardingChoiceScreen
+import com.yugahashimoto.andcode.feature.schedule.ScheduleEditorScreen
+import com.yugahashimoto.andcode.feature.schedule.ScheduleListScreen
+import com.yugahashimoto.andcode.feature.schedule.ScheduleRunsScreen
+import com.yugahashimoto.andcode.feature.schedule.ScheduleViewModel
 import com.yugahashimoto.andcode.feature.settings.DiagnosticsSheet
 import com.yugahashimoto.andcode.feature.settings.GitHubRepo
 import com.yugahashimoto.andcode.feature.settings.SettingsViewModel
@@ -81,7 +87,14 @@ import com.yugahashimoto.andcode.ui.navigation.ROUTE_ANDROID_SETUP
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_CHAT
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_ONBOARDING
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_REMOTE_CONNECTION
+import com.yugahashimoto.andcode.ui.navigation.ROUTE_SCHEDULE_EDIT
+import com.yugahashimoto.andcode.ui.navigation.ROUTE_SCHEDULES
+import com.yugahashimoto.andcode.ui.navigation.SCHEDULE_DETAIL_ROUTE_PATTERN
+import com.yugahashimoto.andcode.ui.navigation.SCHEDULE_EDIT_ROUTE_PATTERN
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_SETTINGS_PROVIDERS
+import com.yugahashimoto.andcode.ui.navigation.decodeRouteArg
+import com.yugahashimoto.andcode.ui.navigation.scheduleDetailRoute
+import com.yugahashimoto.andcode.ui.navigation.scheduleEditRoute
 import com.yugahashimoto.andcode.ui.navigation.settingsNavGraph
 import com.yugahashimoto.andcode.ui.navigation.workspaceNavGraph
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
@@ -198,6 +211,17 @@ fun AndCodeApp(
                 },
         )
     val settingsState by settingsViewModel.state.collectAsState()
+
+    val scheduleViewModel: ScheduleViewModel =
+        viewModel(
+            key = "schedules",
+            factory =
+                ViewModelFactory {
+                    ScheduleViewModel(app.scheduleRepository, app.scheduleManager)
+                },
+        )
+    val schedules by scheduleViewModel.schedules.collectAsState()
+    val scheduleRuns by scheduleViewModel.runs.collectAsState()
 
     // Which chat the user is actually looking at. A run that finishes while they are elsewhere has
     // to stay unread, so this is tracked separately from the chat view model's own session.
@@ -563,6 +587,20 @@ fun AndCodeApp(
         drawerScope.launch { drawerState.close() }
     }
 
+    /** Opens a chat for [sessionId], switching to its runtime first like the drawer does. */
+    fun openSessionInChat(
+        sessionId: String,
+        title: String,
+        runtimeId: String?,
+    ) {
+        if (runtimeId != null && runtimeId != selectedRuntime?.id) {
+            app.runtimeRegistry.select(runtimeId)
+        }
+        app.activityRepository.markSessionRead(sessionId)
+        pendingSession = sessionId to title
+        navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
+    }
+
     LaunchedEffect(drawerState.isOpen) {
         if (drawerState.isOpen) keyboardController?.hide()
     }
@@ -608,12 +646,7 @@ fun AndCodeApp(
                             closeDrawer()
                             // The list spans every agent, so the chat may belong to one that is not
                             // selected; opening it has to move to its runtime first.
-                            if (runtimeId != null && runtimeId != selectedRuntime?.id) {
-                                app.runtimeRegistry.select(runtimeId)
-                            }
-                            app.activityRepository.markSessionRead(id)
-                            pendingSession = id to title
-                            navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
+                            openSessionInChat(id, title, runtimeId)
                         },
                         onNavigate = { route ->
                             closeDrawer()
@@ -911,6 +944,100 @@ fun AndCodeApp(
                         microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                     },
                 )
+
+                composable(ROUTE_SCHEDULES) {
+                    ScheduleListScreen(
+                        schedules = schedules,
+                        runs = scheduleRuns,
+                        runtimeTargets = runtimeTargets,
+                        nextFireAt = app.scheduleManager::nextFireAt,
+                        onOpenDrawer = { openDrawer() },
+                        onNewSchedule = { navController.navigate(ROUTE_SCHEDULE_EDIT) { launchSingleTop = true } },
+                        onOpenSchedule = { scheduleId ->
+                            navController.navigate(scheduleDetailRoute(scheduleId)) { launchSingleTop = true }
+                        },
+                        onEdit = { scheduleId ->
+                            navController.navigate(scheduleEditRoute(scheduleId)) { launchSingleTop = true }
+                        },
+                        onRunNow = { scheduleId ->
+                            scheduleViewModel.runNow(scheduleId)
+                            android.widget.Toast.makeText(
+                                context,
+                                R.string.schedule_run_now_started,
+                                android.widget.Toast.LENGTH_SHORT,
+                            ).show()
+                        },
+                        onDelete = scheduleViewModel::delete,
+                        onToggleEnabled = scheduleViewModel::setEnabled,
+                    )
+                }
+
+                composable(
+                    route = SCHEDULE_DETAIL_ROUTE_PATTERN,
+                    arguments = listOf(navArgument("scheduleId") { type = NavType.StringType }),
+                ) { backStackEntry ->
+                    val scheduleId = decodeRouteArg(backStackEntry.arguments?.getString("scheduleId").orEmpty())
+                    val schedule = schedules.firstOrNull { it.id == scheduleId }
+                    if (schedule == null) {
+                        // Deleted while on screen; drop back to the list.
+                        LaunchedEffect(Unit) { navController.popBackStack() }
+                    } else {
+                        ScheduleRunsScreen(
+                            schedule = schedule,
+                            runs = scheduleRuns.filter { it.scheduleId == scheduleId },
+                            titleForSession = { sessionId ->
+                                allSessions
+                                    .firstOrNull { it.session.id == sessionId }
+                                    ?.session?.title?.ifBlank { null }
+                            },
+                            onBack = { navController.popBackStack() },
+                            onEdit = { id -> navController.navigate(scheduleEditRoute(id)) { launchSingleTop = true } },
+                            onRunNow = { id ->
+                                scheduleViewModel.runNow(id)
+                                android.widget.Toast.makeText(
+                                    context,
+                                    R.string.schedule_run_now_started,
+                                    android.widget.Toast.LENGTH_SHORT,
+                                ).show()
+                            },
+                            onOpenSession = { run ->
+                                openSessionInChat(run.sessionId, schedule.displayName, run.runtimeId)
+                            },
+                        )
+                    }
+                }
+
+                composable(
+                    route = SCHEDULE_EDIT_ROUTE_PATTERN,
+                    arguments =
+                        listOf(
+                            navArgument("scheduleId") {
+                                type = NavType.StringType
+                                nullable = true
+                                defaultValue = null
+                            },
+                        ),
+                ) { backStackEntry ->
+                    val scheduleId =
+                        backStackEntry.arguments?.getString("scheduleId")
+                            ?.takeIf(String::isNotBlank)
+                            ?.let(::decodeRouteArg)
+                    ScheduleEditorScreen(
+                        existing = scheduleId?.let { id -> schedules.firstOrNull { it.id == id } },
+                        runtimeTargets = runtimeTargets,
+                        providers = settingsState.providers,
+                        workspaces = workspaceState.workspaces,
+                        onSave = { built ->
+                            if (scheduleId != null) {
+                                scheduleViewModel.update(built)
+                            } else {
+                                scheduleViewModel.create(built)
+                            }
+                            navController.popBackStack()
+                        },
+                        onBack = { navController.popBackStack() },
+                    )
+                }
 
                 workspaceNavGraph(
                     navController = navController,
