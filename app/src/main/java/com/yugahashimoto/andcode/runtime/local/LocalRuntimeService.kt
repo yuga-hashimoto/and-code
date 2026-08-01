@@ -7,6 +7,7 @@ import android.app.Service
 import android.content.Context
 import android.content.Intent
 import android.os.IBinder
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
 import com.yugahashimoto.andcode.AndCodeApplication
@@ -112,12 +113,19 @@ class LocalRuntimeService : Service() {
     @Volatile private var autoRestartEnabled = false
     private lateinit var manager: LocalRuntimeManager
     private val backoff = RestartBackoff()
+    private var inForeground = false
 
     override fun onCreate() {
         super.onCreate()
         manager = (application as AndCodeApplication).localRuntimeManager
         createChannel()
-        startForeground(NOTIFICATION_ID, notification(manager.status()))
+        // The platform can refuse the foreground promotion for a service the app started while it
+        // was in the background. Giving up beats being killed for never calling startForeground.
+        inForeground =
+            runCatching { startForeground(NOTIFICATION_ID, notification(manager.status())) }
+                .onFailure { error -> Log.w(TAG, "Could not enter the foreground", error) }
+                .isSuccess
+        if (!inForeground) return
         scope.launch {
             manager.state.collectLatest { status ->
                 getSystemService(NotificationManager::class.java)
@@ -147,6 +155,10 @@ class LocalRuntimeService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
+        if (!inForeground) {
+            stopSelf()
+            return START_NOT_STICKY
+        }
         when (localRuntimeServiceCommand(intent?.action)) {
             LocalRuntimeServiceCommand.InstallAndStart -> {
                 autoRestartEnabled = true
@@ -332,6 +344,7 @@ class LocalRuntimeService : Service() {
     )
 
     companion object {
+        private const val TAG = "LocalRuntimeService"
         private const val CHANNEL_ID = "local_opencode_runtime"
         private const val NOTIFICATION_ID = 4107
         private const val WATCHDOG_INTERVAL_MILLIS = 5_000L
@@ -347,6 +360,15 @@ class LocalRuntimeService : Service() {
         /** Ids of the agents an install should provision; see [LocalRuntimeInstaller.install]. */
         const val EXTRA_AGENTS = "com.yugahashimoto.andcode.local.AGENTS"
 
+        /**
+         * Sends a command to the runtime service, starting it when it is not running yet.
+         *
+         * Android 12+ only lets an app start a foreground service from the background when it is
+         * exempt, and the app is woken in the background by things it does not drive: a schedule's
+         * alarm, a widget update. The auto-start on process creation then reaches this from a
+         * process that holds no exemption, so a refusal has to stay a refusal rather than take the
+         * app down - the runtime comes up on the next start that is allowed.
+         */
         fun send(
             context: Context,
             action: String,
@@ -354,7 +376,8 @@ class LocalRuntimeService : Service() {
         ) {
             val intent = Intent(context, LocalRuntimeService::class.java).setAction(action)
             if (agents.isNotEmpty()) intent.putExtra(EXTRA_AGENTS, agents.map(LocalAgent::id).toTypedArray())
-            ContextCompat.startForegroundService(context, intent)
+            runCatching { ContextCompat.startForegroundService(context, intent) }
+                .onFailure { error -> Log.w(TAG, "Foreground start refused for $action", error) }
         }
     }
 }
