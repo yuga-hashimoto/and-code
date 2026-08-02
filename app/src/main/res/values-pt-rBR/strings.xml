@@ -88,6 +88,8 @@
     <string name="workspace_folder_picker_empty">Nenhuma subpasta aqui.</string>
     <string name="workspace_folder_picker_select">Usar esta pasta</string>
     <string name="workspace_folder_picker_unavailable">Configure primeiro o ambiente no dispositivo — ainda não há nada para navegar.</string>
+    <string name="workspace_device_storage_row">Permitir acesso aos arquivos do dispositivo</string>
+    <string name="workspace_device_storage_hint">O AndCode só enxerga as próprias pastas. Conceda acesso a todos os arquivos para abrir os que já estão no seu telefone.</string>
 
     <string name="recent_sessions">Sessões recentes</string>
     <string name="view_all">Ver tudo</string>

@@ -88,6 +88,8 @@
     <string name="workspace_folder_picker_empty">サブフォルダはありません。</string>
     <string name="workspace_folder_picker_select">このフォルダを使う</string>
     <string name="workspace_folder_picker_unavailable">先にオンデバイス実行環境をセットアップしてください。参照できる環境がまだありません。</string>
+    <string name="workspace_device_storage_row">端末のファイルへのアクセスを許可</string>
+    <string name="workspace_device_storage_hint">AndCode はアプリ自身のフォルダしか参照できません。全ファイルへのアクセスを許可すると、端末内にあるファイルをそのまま開けます。</string>
 
     <string name="recent_sessions">最近のセッション</string>
     <string name="view_all">すべて表示</string>

@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.runtime.local
 
+import com.yugahashimoto.andcode.core.storage.DeviceStorage
 import java.io.File
 import java.util.concurrent.TimeUnit
 
@@ -72,6 +73,9 @@ class LocalRuntimeProcessLauncher(
                 add("/system")
                 add("-b")
                 add("${workspace.absolutePath}:/workspace")
+                // Nothing while all-files access is ungranted, so the sandbox stays exactly as
+                // narrow as it was until the user opens the device up to it.
+                addAll(DeviceStorage.bindArguments())
                 add("-w")
                 add("/workspace")
                 add("/usr/local/bin/opencode")

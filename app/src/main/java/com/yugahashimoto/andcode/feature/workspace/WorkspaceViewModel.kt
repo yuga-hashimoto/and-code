@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yugahashimoto.andcode.core.api.OpenCodeApiClient
 import com.yugahashimoto.andcode.core.api.OpenCodeHealth
+import com.yugahashimoto.andcode.core.storage.DeviceStorage
 import com.yugahashimoto.andcode.data.connection.ConnectionProfile
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeCatalogRepository
@@ -67,13 +68,19 @@ data class WorkspaceFolderActions(
     val failed: Set<String> = emptySet(),
 )
 
-/** Browsing state for picking an existing folder out of the on-device Linux environment. */
+/** Browsing state for picking an existing folder out of what the on-device sandbox can see. */
 data class FolderPickerState(
     val visible: Boolean = false,
     val path: String = WorkspaceFolders.GUEST_ROOT,
     val directories: List<String> = emptyList(),
     val isLoading: Boolean = false,
     val unavailable: Boolean = false,
+    /**
+     * False while the phone's own files are still out of reach, which is what the picker offers to
+     * fix: without all-files access the listing is the sandbox's private directories and nothing
+     * else, and a user looking for a folder they can see in a file manager finds no trace of it.
+     */
+    val deviceStorageAvailable: Boolean = false,
 )
 
 class WorkspaceViewModel(
@@ -84,8 +91,13 @@ class WorkspaceViewModel(
     private val settings: SecureSettingsRepository,
     private val workspaceHostDir: File,
     private val claudeCode: ClaudeCodeController? = null,
+    private val deviceStorage: () -> DeviceStorage.Mounts = DeviceStorage::mounts,
     private val folderBrowser: RuntimeFolderBrowser =
-        RuntimeFolderBrowser(File(workspaceHostDir.absoluteFile.parentFile, RUNTIME_ROOTFS_PATH), workspaceHostDir),
+        RuntimeFolderBrowser(
+            File(workspaceHostDir.absoluteFile.parentFile, RUNTIME_ROOTFS_PATH),
+            workspaceHostDir,
+            deviceStorage,
+        ),
 ) : ViewModel() {
     private val registeredTick = MutableStateFlow(0)
     private val claudeState: StateFlow<ClaudeCodeUiState> =
@@ -232,11 +244,20 @@ class WorkspaceViewModel(
     }
 
     fun openFolderPicker() {
+        // Re-read on every open, not once at construction: the user leaves for the system settings
+        // screen to grant all-files access and comes back to this same picker.
+        val deviceStorageAvailable = !deviceStorage().isEmpty
         if (!folderBrowser.isAvailable()) {
-            folderPicker.value = FolderPickerState(visible = true, unavailable = true)
+            folderPicker.value =
+                FolderPickerState(visible = true, unavailable = true, deviceStorageAvailable = deviceStorageAvailable)
             return
         }
-        folderPicker.value = FolderPickerState(visible = true, path = WorkspaceFolders.GUEST_ROOT)
+        folderPicker.value =
+            FolderPickerState(
+                visible = true,
+                path = WorkspaceFolders.GUEST_ROOT,
+                deviceStorageAvailable = deviceStorageAvailable,
+            )
         browseFolder(WorkspaceFolders.GUEST_ROOT)
     }
 
@@ -268,6 +289,19 @@ class WorkspaceViewModel(
 
     fun dismissFolderPicker() {
         folderPicker.value = FolderPickerState()
+    }
+
+    /**
+     * Called when the user returns from the system screen that grants all-files access.
+     *
+     * A running runtime is restarted because PRoot binds are fixed at process start: the server
+     * that was already serving has no `/sdcard` in its view of the filesystem and would keep
+     * reporting "no such directory" for the very folder the picker has just started listing.
+     */
+    fun onDeviceStorageAccessChanged() {
+        if (deviceStorage().isEmpty) return
+        if (state.value.localStatus is LocalRuntimeStatus.Ready) restartLocalRuntime()
+        if (folderPicker.value.visible) openFolderPicker()
     }
 
     fun selectRuntime(id: String) {

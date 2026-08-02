@@ -75,6 +75,7 @@ fun NavGraphBuilder.workspaceNavGraph(
             onBrowseFolderUp = workspaceViewModel::browseFolderUp,
             onConfirmFolder = { workspaceViewModel.confirmFolderPicker() },
             onDismissFolderPicker = workspaceViewModel::dismissFolderPicker,
+            onDeviceStorageAccessChanged = workspaceViewModel::onDeviceStorageAccessChanged,
             onRemoveProject = workspaceViewModel::removeProject,
             onDeleteProjectFiles = workspaceViewModel::deleteProjectFiles,
             onDismissDeleteFailure = workspaceViewModel::dismissDeleteFailure,

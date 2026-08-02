@@ -88,6 +88,8 @@
     <string name="workspace_folder_picker_empty">Aquí no hay subcarpetas.</string>
     <string name="workspace_folder_picker_select">Usar esta carpeta</string>
     <string name="workspace_folder_picker_unavailable">Configura primero el entorno en el dispositivo: aún no hay nada que explorar.</string>
+    <string name="workspace_device_storage_row">Permitir el acceso a los archivos del dispositivo</string>
+    <string name="workspace_device_storage_hint">AndCode solo ve sus propias carpetas. Concede el acceso a todos los archivos para abrir los que ya están en tu teléfono.</string>
 
     <string name="recent_sessions">Sesiones recientes</string>
     <string name="view_all">Ver todo</string>

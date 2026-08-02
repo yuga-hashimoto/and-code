@@ -88,6 +88,8 @@
     <string name="workspace_folder_picker_empty">Aucun sous-dossier ici.</string>
     <string name="workspace_folder_picker_select">Utiliser ce dossier</string>
     <string name="workspace_folder_picker_unavailable">Configurez d\'abord l\'environnement sur l\'appareil : il n\'y a encore rien à parcourir.</string>
+    <string name="workspace_device_storage_row">Autoriser l\'accès aux fichiers de l\'appareil</string>
+    <string name="workspace_device_storage_hint">AndCode ne voit que ses propres dossiers. Autorisez l\'accès à tous les fichiers pour ouvrir ceux qui se trouvent déjà sur votre téléphone.</string>
 
     <string name="recent_sessions">Sessions récentes</string>
     <string name="view_all">Voir tout</string>

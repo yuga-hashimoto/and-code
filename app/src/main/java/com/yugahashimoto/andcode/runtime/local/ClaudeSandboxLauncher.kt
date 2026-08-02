@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.runtime.local
 
+import com.yugahashimoto.andcode.core.storage.DeviceStorage
 import java.io.File
 
 /**
@@ -56,26 +57,28 @@ object ClaudeSandboxLauncher {
         workspaceHostDir: File,
         workingDirectory: String,
     ): List<String> =
-        listOf(
-            runtime.commandSuite.proot.absolutePath,
-            "--kill-on-exit",
-            "--link2symlink",
-            "-0",
-            "-r",
-            runtime.rootfs.absolutePath,
-            "-b",
-            "/dev",
-            "-b",
-            "/proc",
-            "-b",
-            "/sys",
-            "-b",
-            "/system",
-            "-b",
-            "${workspaceHostDir.absolutePath}:/workspace",
-            "-w",
-            workingDirectory,
-        )
+        buildList {
+            add(runtime.commandSuite.proot.absolutePath)
+            add("--kill-on-exit")
+            add("--link2symlink")
+            add("-0")
+            add("-r")
+            add(runtime.rootfs.absolutePath)
+            add("-b")
+            add("/dev")
+            add("-b")
+            add("/proc")
+            add("-b")
+            add("/sys")
+            add("-b")
+            add("/system")
+            add("-b")
+            add("${workspaceHostDir.absolutePath}:/workspace")
+            // Empty until the user grants all-files access, so the sandbox is unchanged without it.
+            addAll(DeviceStorage.bindArguments())
+            add("-w")
+            add(workingDirectory)
+        }
 
     fun environment(
         runtime: LocalRuntimeInstaller.InstalledRuntime,

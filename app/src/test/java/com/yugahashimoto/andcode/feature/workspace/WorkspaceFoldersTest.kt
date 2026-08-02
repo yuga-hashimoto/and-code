@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.feature.workspace
 
+import com.yugahashimoto.andcode.core.storage.DeviceStorage
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -78,6 +79,33 @@ class WorkspaceFoldersTest {
         )
         assertEquals(rootfs.canonicalFile, WorkspaceFolders.hostDirectory(rootfs, workspace, "/")?.canonicalFile)
         assertNull(WorkspaceFolders.hostDirectory(rootfs, workspace, "/../outside"))
+    }
+
+    @Test
+    fun `browsing maps device storage to the phone's own directories`() {
+        val rootfs = temporaryFolder.newFolder("rootfs")
+        val workspace = temporaryFolder.newFolder("workspace")
+        val shared = temporaryFolder.newFolder("emulated")
+        val mounts = DeviceStorage.Mounts(sharedStorage = shared, volumes = temporaryFolder.newFolder("volumes"))
+
+        assertEquals(
+            File(shared, "Download/repo").canonicalFile,
+            WorkspaceFolders.hostDirectory(rootfs, workspace, "/sdcard/Download/repo", mounts)?.canonicalFile,
+        )
+        // A same-named directory inside the rootfs must not stand in for the real mount.
+        File(rootfs, "sdcard/decoy").mkdirs()
+        assertEquals(
+            shared.canonicalFile,
+            WorkspaceFolders.hostDirectory(rootfs, workspace, "/sdcard", mounts)?.canonicalFile,
+        )
+    }
+
+    @Test
+    fun `device storage stays unreachable until access is granted`() {
+        val rootfs = temporaryFolder.newFolder("rootfs")
+        val workspace = temporaryFolder.newFolder("workspace")
+
+        assertNull(WorkspaceFolders.hostDirectory(rootfs, workspace, "/sdcard/Download"))
     }
 
     @Test

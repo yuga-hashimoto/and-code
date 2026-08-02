@@ -11,6 +11,8 @@ import com.yugahashimoto.andcode.core.api.GitHubApiClient
 import com.yugahashimoto.andcode.core.diagnostics.CrashLog
 import com.yugahashimoto.andcode.core.locale.AppLanguage
 import com.yugahashimoto.andcode.core.notification.RuntimeNotificationHelper
+import com.yugahashimoto.andcode.core.storage.DeviceStorage
+import com.yugahashimoto.andcode.core.storage.DeviceStorageAccess
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
 import com.yugahashimoto.andcode.data.repository.ProviderCatalogCache
 import com.yugahashimoto.andcode.data.repository.PullRequestStatusRepository
@@ -137,6 +139,9 @@ class AndCodeApplication : Application() {
     lateinit var pullRequestStatusRepository: PullRequestStatusRepository
         private set
 
+    lateinit var deviceStorageAccess: DeviceStorageAccess
+        private set
+
     override fun attachBaseContext(newBase: Context) {
         super.attachBaseContext(AppLanguage.applyTo(newBase))
     }
@@ -151,6 +156,10 @@ class AndCodeApplication : Application() {
         }
         settings = SecureSettingsRepository(this)
         preferences = AppPreferencesRepository(settings)
+        deviceStorageAccess = DeviceStorageAccess(this)
+        // Asked on every sandbox launch rather than captured once: the user can grant all-files
+        // access from system settings and come straight back without the process restarting.
+        DeviceStorage.install { deviceStorageAccess.mounts() }
         notifications = RuntimeNotificationHelper(this)
         providerCredentials = LocalProviderCredentialStore(settings)
         val httpClient = OkHttpClient()

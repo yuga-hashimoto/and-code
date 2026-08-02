@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.feature.workspace
 
+import com.yugahashimoto.andcode.core.storage.DeviceStorage
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import java.io.File
 
@@ -81,18 +82,25 @@ object WorkspaceFolders {
     /**
      * The host directory behind a sandbox path, for browsing.
      *
-     * `/workspace` is a bind mount of the app's workspace directory; everything else lives in the
-     * Linux rootfs the runtimes are unpacked into, which is a plain directory tree this app owns.
+     * `/workspace` is a bind mount of the app's workspace directory, `/sdcard` and `/storage` are
+     * bind mounts of the device's own storage, and everything else lives in the Linux rootfs the
+     * runtimes are unpacked into, which is a plain directory tree this app owns.
      */
     fun hostDirectory(
         rootfsHostDir: File?,
         workspaceHostDir: File,
         path: String,
+        deviceStorage: DeviceStorage.Mounts = DeviceStorage.Mounts.None,
     ): File? {
         val normalized = normalize(path)
         if (normalized == WORKSPACE_ROOT) return workspaceHostDir
         if (isInsideWorkspaceRoot(normalized)) {
             return containedIn(workspaceHostDir, normalized.removePrefix(WORKSPACE_ROOT).trim('/'))
+        }
+        // Ahead of the rootfs, so a `/sdcard` directory that happens to exist inside the rootfs
+        // cannot shadow the device's own files once the mount is there.
+        if (DeviceStorage.isDeviceStoragePath(normalized)) {
+            return DeviceStorage.hostDirectory(deviceStorage, normalized)
         }
         val rootfs = rootfsHostDir ?: return null
         val relative = normalized.trim('/')

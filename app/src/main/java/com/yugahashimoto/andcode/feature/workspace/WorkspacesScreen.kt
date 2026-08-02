@@ -3,6 +3,7 @@ package com.yugahashimoto.andcode.feature.workspace
 import android.content.Context
 import android.net.nsd.NsdManager
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,6 +30,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.WifiFind
@@ -68,6 +70,7 @@ import com.journeyapps.barcodescanner.ScanOptions
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.OpenCodeHealth
 import com.yugahashimoto.andcode.core.security.ConnectionQrPayload
+import com.yugahashimoto.andcode.core.storage.DeviceStorageAccess
 import com.yugahashimoto.andcode.runtime.LocalAgent
 import com.yugahashimoto.andcode.runtime.LocalRuntimeStatus
 import com.yugahashimoto.andcode.runtime.RuntimeState
@@ -98,6 +101,7 @@ fun WorkspacesScreen(
     onBrowseFolderUp: () -> Unit = {},
     onConfirmFolder: () -> Unit = {},
     onDismissFolderPicker: () -> Unit = {},
+    onDeviceStorageAccessChanged: () -> Unit = {},
     onRemoveProject: (String) -> Unit = {},
     onDeleteProjectFiles: (String) -> Unit = {},
     onDismissDeleteFailure: (String) -> Unit = {},
@@ -526,6 +530,7 @@ fun WorkspacesScreen(
             onUp = onBrowseFolderUp,
             onConfirm = onConfirmFolder,
             onDismiss = onDismissFolderPicker,
+            onDeviceStorageAccessChanged = onDeviceStorageAccessChanged,
         )
     }
 }
@@ -544,8 +549,10 @@ private fun FolderPickerDialog(
     onUp: () -> Unit,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    onDeviceStorageAccessChanged: () -> Unit = {},
 ) {
     val atRoot = picker.path == WorkspaceFolders.GUEST_ROOT
+    val requestDeviceStorage = rememberDeviceStorageRequest(onDeviceStorageAccessChanged)
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -575,6 +582,23 @@ private fun FolderPickerDialog(
                                 label = stringResource(R.string.workspace_folder_picker_up),
                                 onClick = onUp,
                             )
+                        }
+                    }
+                    // Only at the root: that is where the device's own storage would be listed, so
+                    // it is where its absence is the thing the user is looking at.
+                    if (atRoot && !picker.deviceStorageAvailable) {
+                        item {
+                            FolderPickerRow(
+                                icon = Icons.Default.PhoneAndroid,
+                                label = stringResource(R.string.workspace_device_storage_row),
+                                onClick = requestDeviceStorage,
+                            )
+                            Text(
+                                stringResource(R.string.workspace_device_storage_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            Spacer(Modifier.height(8.dp))
                         }
                     }
                     items(picker.directories, key = { it }) { name ->
@@ -609,6 +633,33 @@ private fun FolderPickerDialog(
             }
         },
     )
+}
+
+/**
+ * Sends the user wherever this Android release grants all-files access, and reports back when they
+ * return so the caller can list what has just become reachable.
+ *
+ * Android 11 moved the grant from a permission dialog to a settings screen, so which of the two is
+ * launched depends on the platform rather than on anything the caller knows.
+ */
+@Composable
+private fun rememberDeviceStorageRequest(onChanged: () -> Unit): () -> Unit {
+    val context = LocalContext.current
+    val access = remember(context) { DeviceStorageAccess(context) }
+    val settingsLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { onChanged() }
+    val permissionLauncher =
+        rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { onChanged() }
+    return {
+        val permission = access.runtimePermissions().firstOrNull()
+        if (permission != null) {
+            permissionLauncher.launch(permission)
+        } else {
+            // A few devices ship without the per-app screen; the full app list still has the toggle.
+            runCatching { settingsLauncher.launch(access.settingsIntent()) }
+                .onFailure { runCatching { settingsLauncher.launch(access.settingsFallbackIntent()) } }
+        }
+    }
 }
 
 @Composable

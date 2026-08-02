@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.runtime.local
 
+import com.yugahashimoto.andcode.core.storage.DeviceStorage
 import java.io.File
 
 object AntigravitySandboxLauncher {
@@ -36,6 +37,8 @@ object AntigravitySandboxLauncher {
             add("/system")
             add("-b")
             add("$workspaceHostDir:/workspace")
+            // Empty until the user grants all-files access, so the sandbox is unchanged without it.
+            addAll(DeviceStorage.bindArguments())
             add("-w")
             add("/workspace")
             if (pty) {

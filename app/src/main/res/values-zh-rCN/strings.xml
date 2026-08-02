@@ -88,6 +88,8 @@
     <string name="workspace_folder_picker_empty">此处没有子文件夹。</string>
     <string name="workspace_folder_picker_select">使用此文件夹</string>
     <string name="workspace_folder_picker_unavailable">请先设置设备端运行环境——目前还没有可浏览的环境。</string>
+    <string name="workspace_device_storage_row">允许访问设备文件</string>
+    <string name="workspace_device_storage_hint">AndCode 目前只能看到自己的文件夹。授予所有文件访问权限后即可直接打开手机上的文件。</string>
 
     <string name="recent_sessions">最近的会话</string>
     <string name="view_all">查看全部</string>

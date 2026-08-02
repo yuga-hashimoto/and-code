@@ -88,6 +88,8 @@
     <string name="workspace_folder_picker_empty">Здесь нет вложенных папок.</string>
     <string name="workspace_folder_picker_select">Использовать эту папку</string>
     <string name="workspace_folder_picker_unavailable">Сначала настройте среду на устройстве — просматривать пока нечего.</string>
+    <string name="workspace_device_storage_row">Разрешить доступ к файлам устройства</string>
+    <string name="workspace_device_storage_hint">AndCode видит только собственные папки. Разрешите доступ ко всем файлам, чтобы открывать файлы, которые уже есть на телефоне.</string>
 
     <string name="recent_sessions">Недавние сессии</string>
     <string name="view_all">Показать все</string>

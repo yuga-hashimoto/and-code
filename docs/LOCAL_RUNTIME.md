@@ -125,8 +125,27 @@ opencode / metadata.json と候補を同一ファイルシステム上で切り�
 
 API 36 ARM64エミュレーターでは、`targetContext.filesDir`上で実ファイルの更新切り替え、metadata更新、直前版保持、再ロールバック、ジャーナル確定をInstrumentation Testで確認している。
 
+## 端末ストレージへのアクセス
+
+サンドボックスが元々見えていたのはアプリ専用ディレクトリだけ（Alpine rootfsと`/workspace`マウント）で、端末内のファイルは一切見えなかった。唯一の経路はSAF取り込みで、これはツリーをアプリ領域へ**コピー**するため、エージェントは元ファイルから切り離された複製を編集していた。
+
+全ファイルアクセス（`MANAGE_EXTERNAL_STORAGE`）を許可すると、端末のストレージがそのままサンドボックスへbindされる。
+
+| ゲストパス | ホストパス | 用途 |
+| --- | --- | --- |
+| `/sdcard` | `Environment.getExternalStorageDirectory()` | 内部共有ストレージ。Androidが使う別名と同じ |
+| `/storage` | `/storage` | SDカード・USBドライブを含む全ボリューム。端末固有のID（`/storage/1A2B-3C4D`）はプラットフォームと同じ綴りでしか意味を持たないため、同一パスへbindする |
+
+- 権限が未許可の間、`DeviceStorage.bindArguments()`は空を返し、サンドボックスは従来どおり狭いまま
+- bindはPRootプロセス起動時に固定されるため、許可直後に稼働中のランタイムは再起動する（`WorkspaceViewModel.onDeviceStorageAccessChanged`）
+- フォルダ選択ダイアログのルートに`/sdcard`と`/storage`が並び、そのままワークスペースとして登録できる
+- Android 10では`MANAGE_EXTERNAL_STORAGE`が存在しないため、`READ_EXTERNAL_STORAGE`と`requestLegacyExternalStorage`で代替する
+
+OSの制約として、他アプリの`Android/data`と`Android/obb`は全ファイルアクセスでも読めない。また共有ストレージはFUSE上にあり、実行ビットやシンボリックリンクを保持しないため、リポジトリを`/sdcard`に置くとgitの一部操作が期待どおりに動かないことがある。恒常的な作業には`/workspace`を勧める。
+
 ## セキュリティ
 
+- 端末ストレージのbindはユーザーが全ファイルアクセスを許可した場合にだけ行う
 - 初回セットアップではダウンロード先URL、期待サイズ、SHA-256をマニフェストへ固定する
 - OpenCode更新では公式GitHub Release APIの対象assetだけを選び、HTTPS URL・サイズ・`sha256:` digestを必須とする
 - 不一致のファイルは展開・有効化しない

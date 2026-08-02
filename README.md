@@ -41,6 +41,7 @@ On-device agents run inside an Alpine Linux environment via PRoot. Google Antigr
 - **Native Android GUI** — Touch-first interface for coding agents; no CLI or terminal required
 - **On-device runtime** — Alpine Linux, Git, bash, curl, ripgrep, and coding agents auto-installed on your Android device via PRoot
 - **Repository & workspace** — Open and work within git repositories on-device
+- **Device files** — Grant all-files access and the whole phone (`/sdcard`, SD cards, USB drives) becomes browsable in the folder picker and reachable by the agent, opened in place instead of copied into the app
 - **Git support** — Stage, diff, commit, and manage branches from the GUI
 - **Diff viewer** — Review code changes inline before accepting
 - **Pull request badges** — Pull requests opened in a chat stay pinned above the composer with their diff size and state (draft, open, conflict, merged, closed); tap to open them on GitHub

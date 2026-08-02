@@ -4,6 +4,22 @@
 
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.INTERNET" />
+    <!--
+        The agent works on files the user points it at, and those live all over the device: a
+        repository under Download, notes in Documents, a folder synced from a PC. Scoped storage
+        offers no way to hand a whole tree to a Linux process as ordinary paths, so all-files
+        access is what lets the sandbox open those folders in place instead of copying them into
+        app storage. Nothing is read until the user grants it from system settings.
+    -->
+    <uses-permission
+        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
+        tools:ignore="ScopedStorage" />
+    <uses-permission
+        android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32" />
+    <uses-permission
+        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
+        android:maxSdkVersion="29" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
@@ -26,6 +42,11 @@
         </intent>
     </queries>
 
+    <!--
+        `requestLegacyExternalStorage` covers Android 10, the one release where
+        READ_EXTERNAL_STORAGE alone stopped giving plain path access to shared storage and
+        MANAGE_EXTERNAL_STORAGE did not exist yet. It is ignored from Android 11 on.
+    -->
     <application
         android:name=".AndCodeApplication"
         android:allowBackup="false"
@@ -35,6 +56,7 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
+        android:requestLegacyExternalStorage="true"
         android:theme="@style/Theme.AndCode"
         android:networkSecurityConfig="@xml/network_security_config"
         tools:targetApi="34">
