@@ -92,6 +92,72 @@ class ClaudeCodeInstallerTest {
     }
 
     @Test
+    fun `both scripts point the sandbox at the latest channel before apk reads the index`() {
+        listOf(ClaudeCodeInstaller.INSTALL_SCRIPT, ClaudeCodeInstaller.UPDATE_SCRIPT).forEach { script ->
+            assertTrue(script.contains("https://downloads.claude.ai/claude-code/apk/latest"))
+            // The repository has to be in place before the index is refreshed, or the first update
+            // after a channel change still resolves against the old channel.
+            assertTrue(script.indexOf("apk/latest") < script.indexOf("/sbin/apk update"))
+        }
+    }
+
+    @Test
+    fun `repository configuration moves an existing sandbox off the stable channel`() {
+        // A sandbox provisioned by an earlier build carries the stable line, and nothing else in the
+        // update rewrites it -- so without this the channel change would only reach fresh installs.
+        val repositories =
+            temporaryFolder.newFile("repositories").apply {
+                writeText(
+                    """
+                    https://dl-cdn.alpinelinux.org/alpine/v3.24/main
+                    https://downloads.claude.ai/claude-code/apk/stable
+                    """.trimIndent() + "\n",
+                )
+            }
+
+        configureRepository(repositories)
+
+        assertEquals(
+            listOf(
+                "https://dl-cdn.alpinelinux.org/alpine/v3.24/main",
+                "https://downloads.claude.ai/claude-code/apk/latest",
+            ),
+            repositories.readLines(),
+        )
+    }
+
+    @Test
+    fun `repository configuration adds the channel to a sandbox that has none`() {
+        val repositories =
+            temporaryFolder.newFile("repositories").apply {
+                writeText("https://dl-cdn.alpinelinux.org/alpine/v3.24/main\n")
+            }
+
+        configureRepository(repositories)
+
+        assertEquals(
+            listOf(
+                "https://dl-cdn.alpinelinux.org/alpine/v3.24/main",
+                "https://downloads.claude.ai/claude-code/apk/latest",
+            ),
+            repositories.readLines(),
+        )
+    }
+
+    @Test
+    fun `repository configuration leaves a single channel line when it runs again`() {
+        val repositories =
+            temporaryFolder.newFile("repositories").apply {
+                writeText("https://dl-cdn.alpinelinux.org/alpine/v3.24/main\n")
+            }
+
+        configureRepository(repositories)
+        configureRepository(repositories)
+
+        assertEquals(1, repositories.readLines().count { it.contains("downloads.claude.ai") })
+    }
+
+    @Test
     fun `update reinstalls every broken package rather than naming one`() {
         val run = runPackageCommands(ClaudeCodeInstaller::updatePackageCommands)
 
@@ -167,6 +233,17 @@ class ClaudeCodeInstallerTest {
 
         assertNotEquals(0, run.exitCode)
         assertTrue(run.output.contains("requested packages are not installed"))
+    }
+
+    /** Runs the repository half of a script against a stand-in for `/etc/apk/repositories`. */
+    private fun configureRepository(repositories: File) {
+        val process =
+            ProcessBuilder("sh", "-c", "set -e\n" + ClaudeCodeInstaller.configureRepositoryCommands(repositories.absolutePath))
+                .redirectErrorStream(true)
+                .start()
+        val output = process.inputStream.bufferedReader().readText()
+        assertTrue("stub script timed out", process.waitFor(60, TimeUnit.SECONDS))
+        assertEquals(output, 0, process.exitValue())
     }
 
     private class ScriptRun(val exitCode: Int, val output: String, val apkInvocations: List<String>) {

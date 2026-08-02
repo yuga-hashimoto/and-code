@@ -26,7 +26,19 @@ object ClaudeCodeInstaller {
      */
     const val DNS_PRELOAD = "/usr/local/share/claude-setdns.js"
 
-    private const val REPOSITORY = "https://downloads.claude.ai/claude-code/apk/stable"
+    /**
+     * The `latest` channel, not `stable`.
+     *
+     * Anthropic publishes both: `stable` deliberately lags — "typically about one week old" per the
+     * install docs, and in practice it sat on 2.1.212 for over two weeks while `latest` moved eight
+     * releases ahead. Pinned to `stable`, the update button had nothing to fetch no matter how often
+     * it was pressed, and the card truthfully — but uselessly — reported the agent as up to date.
+     */
+    private const val REPOSITORY = "https://downloads.claude.ai/claude-code/apk/latest"
+
+    /** Matches any channel of [REPOSITORY], so a sandbox on an older one can be rewritten. */
+    private const val REPOSITORY_MARKER = "downloads.claude.ai/claude-code/apk/"
+    private const val REPOSITORIES = "/etc/apk/repositories"
     private const val SIGNING_KEY_URL = "https://downloads.claude.ai/keys/claude-code.rsa.pub"
     private const val SIGNING_KEY_PATH = "/etc/apk/keys/claude-code.rsa.pub"
     private const val APK = "/sbin/apk"
@@ -54,6 +66,28 @@ object ClaudeCodeInstaller {
      * would otherwise work, so the verification below decides the outcome instead.
      */
     private fun repairBrokenPackages(apk: String) = "$apk fix || echo 'and-code: apk fix could not clear every broken package' >&2"
+
+    /**
+     * Points [repositories] at [REPOSITORY], replacing whichever channel is configured there.
+     *
+     * Every sandbox provisioned before this switched to `latest` carries the `stable` line, and the
+     * update path never rewrote that file — appending only when the exact line was missing — so a
+     * channel change would otherwise have reached fresh installs alone. Deleting by [REPOSITORY_MARKER]
+     * and re-appending covers both directions and stays idempotent when nothing changed.
+     *
+     * `grep -v` rather than `sed -i` because BSD sed reads the argument after `-i` as a backup
+     * suffix, which would make this untestable on a macOS host. `|| true` because grep exits 1 when
+     * it selects nothing, which under `set -e` would abort on a repositories file holding only the
+     * Claude Code line.
+     */
+    internal fun configureRepositoryCommands(repositories: String = REPOSITORIES) =
+        """
+        if [ -f "$repositories" ]; then
+          grep -v '$REPOSITORY_MARKER' "$repositories" > "$repositories.tmp" || true
+          mv -f "$repositories.tmp" "$repositories"
+        fi
+        printf '%s\n' '$REPOSITORY' >> "$repositories"
+        """.trimIndent()
 
     /**
      * Package-manager half of the install, split out so tests can drive it with a stub `apk`.
@@ -112,10 +146,8 @@ object ClaudeCodeInstaller {
             """
             set -e
             /usr/bin/wget -qO $SIGNING_KEY_PATH $SIGNING_KEY_URL
-            if ! grep -qxF '$REPOSITORY' /etc/apk/repositories; then
-              printf '%s\n' '$REPOSITORY' >> /etc/apk/repositories
-            fi
             """,
+            configureRepositoryCommands(),
             installPackageCommands(),
         )
 
@@ -125,7 +157,7 @@ object ClaudeCodeInstaller {
             set -e
             # Refresh the signing key on every update so a rotated or expired key cannot strand an
             # upgrade behind an untrusted repository (every version then resolves as masked in:
-            # stable). If the download fails, keep the existing key so a transient outage does not
+            # latest). If the download fails, keep the existing key so a transient outage does not
             # block an otherwise-valid update; only abort when there is no key to fall back to.
             if /usr/bin/wget -qO $SIGNING_KEY_PATH.new $SIGNING_KEY_URL; then
               mv -f $SIGNING_KEY_PATH.new $SIGNING_KEY_PATH
@@ -134,6 +166,9 @@ object ClaudeCodeInstaller {
               exit 1
             fi
             """,
+            // Repeated on every update, not just at install: a sandbox provisioned before the switch
+            // to the `latest` channel is still on `stable`, and this is the only path that reaches it.
+            configureRepositoryCommands(),
             updatePackageCommands(),
         )
 
