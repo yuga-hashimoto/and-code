@@ -3,6 +3,7 @@ package com.yugahashimoto.andcode.data.settings
 import com.yugahashimoto.andcode.core.api.OpenCodeAgent
 import com.yugahashimoto.andcode.core.api.ProviderCatalog
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
+import com.yugahashimoto.andcode.feature.assistant.TtsTuning
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,12 +16,15 @@ data class AppPreferences(
     val ttsEnabled: Boolean = true,
     val ttsProvider: String = "android",
     val ttsAndroidEngine: String? = null,
+    val ttsSpeechRate: Float = 1.0f,
+    val ttsPitch: Float = 1.0f,
     val ttsOpenAiApiKey: String = "",
     val ttsOpenAiVoice: String = "alloy",
     val ttsOpenAiModel: String = "gpt-4o-mini-tts",
     val ttsElevenLabsApiKey: String = "",
     val ttsElevenLabsVoiceId: String = "",
     val ttsElevenLabsModel: String = "eleven_multilingual_v2",
+    val ttsBargeInEnabled: Boolean = true,
     val continuousConversation: Boolean = false,
     val wakeWordEnabled: Boolean = false,
     val wakeWordModel: String = "hey_mycroft",
@@ -54,12 +58,15 @@ class AppPreferencesRepository(
                 ttsEnabled = settings.ttsEnabled,
                 ttsProvider = settings.ttsProvider,
                 ttsAndroidEngine = settings.ttsAndroidEngine,
+                ttsSpeechRate = settings.ttsSpeechRate,
+                ttsPitch = settings.ttsPitch,
                 ttsOpenAiApiKey = settings.ttsOpenAiApiKey,
                 ttsOpenAiVoice = settings.ttsOpenAiVoice,
                 ttsOpenAiModel = settings.ttsOpenAiModel,
                 ttsElevenLabsApiKey = settings.ttsElevenLabsApiKey,
                 ttsElevenLabsVoiceId = settings.ttsElevenLabsVoiceId,
                 ttsElevenLabsModel = settings.ttsElevenLabsModel,
+                ttsBargeInEnabled = settings.ttsBargeInEnabled,
                 continuousConversation = settings.continuousConversation,
                 wakeWordEnabled = settings.wakeWordEnabled,
                 wakeWordModel = settings.wakeWordModel,
@@ -164,6 +171,20 @@ class AppPreferencesRepository(
         mutableState.update { it.copy(ttsAndroidEngine = engine) }
     }
 
+    // Clamped on the way in as well as on the way out: a value the sliders cannot produce would
+    // otherwise sit in storage until the voice session tries to build a config from it and throws.
+    fun setTtsSpeechRate(rate: Float) {
+        val clamped = TtsTuning.rate(rate)
+        settings.ttsSpeechRate = clamped
+        mutableState.update { it.copy(ttsSpeechRate = clamped) }
+    }
+
+    fun setTtsPitch(pitch: Float) {
+        val clamped = TtsTuning.pitch(pitch)
+        settings.ttsPitch = clamped
+        mutableState.update { it.copy(ttsPitch = clamped) }
+    }
+
     fun setTtsOpenAiApiKey(apiKey: String) {
         settings.ttsOpenAiApiKey = apiKey
         mutableState.update { it.copy(ttsOpenAiApiKey = apiKey) }
@@ -192,6 +213,11 @@ class AppPreferencesRepository(
     fun setTtsElevenLabsModel(model: String) {
         settings.ttsElevenLabsModel = model
         mutableState.update { it.copy(ttsElevenLabsModel = model) }
+    }
+
+    fun setTtsBargeInEnabled(enabled: Boolean) {
+        settings.ttsBargeInEnabled = enabled
+        mutableState.update { it.copy(ttsBargeInEnabled = enabled) }
     }
 
     fun setContinuousConversation(enabled: Boolean) {

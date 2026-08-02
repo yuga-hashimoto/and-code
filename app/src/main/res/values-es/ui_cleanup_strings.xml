@@ -46,6 +46,13 @@
     <string name="tts_provider_android">Texto a voz de Android</string>
     <string name="tts_engine_label">Motor de voz de Android</string>
     <string name="tts_engine_system_default">Predeterminado del sistema</string>
+    <string name="tts_speech_rate_label">Velocidad de lectura</string>
+    <string name="tts_pitch_label">Tono</string>
+    <string name="tts_preview_label">Reproducción de prueba</string>
+    <string name="tts_preview_play">Reproducir</string>
+    <string name="tts_preview_stop">Detener</string>
+    <string name="tts_preview_failed">No se pudo reproducir. Revisa los ajustes del proveedor de voz.</string>
+    <string name="tts_preview_sample">Así es como AndCode lee una respuesta en voz alta.</string>
     <string name="tts_api_key_label">Clave API</string>
     <string name="tts_voice_label">Voz</string>
     <string name="tts_voice_id_label">ID de voz</string>
@@ -53,6 +60,8 @@
     <string name="wake_word_section_title">Invocación</string>
     <string name="wake_word_pack_required">El paquete opcional de palabra de activación aún no está instalado.</string>
     <string name="wake_word_description">Escucha \"hey Mycroft\" para iniciar el asistente en modo manos libres.</string>
+    <string name="wake_word_barge_in">Interrumpir la lectura</string>
+    <string name="wake_word_barge_in_description">Di la palabra de activación para cortar una respuesta en voz alta.</string>
     <string name="wake_word_notification_channel">Detección de palabra de activación</string>
     <string name="wake_word_notification_title">Palabra de activación activa</string>
     <string name="wake_word_notification_text">Escuchando \"hey Mycroft\"…</string>

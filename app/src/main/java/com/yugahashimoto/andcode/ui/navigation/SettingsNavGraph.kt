@@ -2,16 +2,21 @@ package com.yugahashimoto.andcode.ui.navigation
 
 import android.content.Context
 import android.content.Intent
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
+import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.data.settings.AppPreferences
 import com.yugahashimoto.andcode.data.settings.AppPreferencesRepository
+import com.yugahashimoto.andcode.feature.assistant.TtsPreview
 import com.yugahashimoto.andcode.feature.settings.AgentSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.AntigravityAgentSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.ClaudeCodeAgentSettingsScreen
@@ -113,17 +118,28 @@ fun NavGraphBuilder.settingsNavGraph(
                 com.yugahashimoto.andcode.feature.assistant.TTSManager.availableAndroidEngines(context)
                     .map { it.packageName to it.label }
             }
+        // Held for as long as the screen is: building a TTS engine is slow enough that doing it on
+        // the press would put the delay between the button and the first word.
+        val previewScope = rememberCoroutineScope()
+        val preview = remember(previewScope) { TtsPreview(context, previewScope) }
+        val previewState by preview.state.collectAsState()
+        val previewSample = stringResource(R.string.tts_preview_sample)
+        DisposableEffect(preview) { onDispose(preview::release) }
         VoiceSettingsScreen(
             ttsEnabled = settingsState.ttsEnabled,
             ttsProvider = settingsState.ttsProvider,
             ttsAndroidEngine = settingsState.ttsAndroidEngine,
             androidTtsEngines = androidTtsEngines,
+            ttsSpeechRate = settingsState.ttsSpeechRate,
+            ttsPitch = settingsState.ttsPitch,
+            ttsPreviewState = previewState,
             ttsOpenAiApiKey = settingsState.ttsOpenAiApiKey,
             ttsOpenAiVoice = settingsState.ttsOpenAiVoice,
             ttsOpenAiModel = settingsState.ttsOpenAiModel,
             ttsElevenLabsApiKey = settingsState.ttsElevenLabsApiKey,
             ttsElevenLabsVoiceId = settingsState.ttsElevenLabsVoiceId,
             ttsElevenLabsModel = settingsState.ttsElevenLabsModel,
+            ttsBargeInEnabled = settingsState.ttsBargeInEnabled,
             continuousConversation = settingsState.continuousConversation,
             wakeWordEnabled = settingsState.wakeWordEnabled,
             wakeWordModel = settingsState.wakeWordModel,
@@ -137,12 +153,16 @@ fun NavGraphBuilder.settingsNavGraph(
             onTtsChange = settingsViewModel::setTtsEnabled,
             onTtsProviderChange = settingsViewModel::setTtsProvider,
             onTtsAndroidEngineChange = settingsViewModel::setTtsAndroidEngine,
+            onTtsSpeechRateChange = settingsViewModel::setTtsSpeechRate,
+            onTtsPitchChange = settingsViewModel::setTtsPitch,
+            onTtsPreview = { preview.press(settingsViewModel.ttsSettings(), previewSample) },
             onTtsOpenAiApiKeyChange = settingsViewModel::setTtsOpenAiApiKey,
             onTtsOpenAiVoiceChange = settingsViewModel::setTtsOpenAiVoice,
             onTtsOpenAiModelChange = settingsViewModel::setTtsOpenAiModel,
             onTtsElevenLabsApiKeyChange = settingsViewModel::setTtsElevenLabsApiKey,
             onTtsElevenLabsVoiceIdChange = settingsViewModel::setTtsElevenLabsVoiceId,
             onTtsElevenLabsModelChange = settingsViewModel::setTtsElevenLabsModel,
+            onTtsBargeInChange = settingsViewModel::setTtsBargeInEnabled,
             onContinuousChange = settingsViewModel::setContinuousConversation,
             onWakeWordChange = { enabled ->
                 if (enabled) {

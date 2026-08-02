@@ -44,6 +44,13 @@ class WakeWordService : Service() {
     @Volatile private var assistantRequestId: String? = null
     private var assistantTimeoutJob: Job? = null
 
+    // Barge-in state. A session owns the microphone through its own recogniser for everything
+    // except the stretch where it is reading an answer out, which is the only window detection may
+    // reclaim it in.
+    @Volatile private var sessionActive = false
+
+    @Volatile private var speaking = false
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -145,16 +152,28 @@ class WakeWordService : Service() {
         }
     }
 
+    /**
+     * @param resetSession clears the session this service is waiting on. False when detection is
+     *   being resumed *inside* a live session for barge-in, where forgetting the session would
+     *   turn the next hit into a second assistant on top of the running one.
+     */
     @Synchronized
-    private fun startListening(model: String) {
+    private fun startListening(
+        model: String,
+        resetSession: Boolean = true,
+    ) {
         if (listenJob?.isActive == true && currentModel == model) return
 
         val previousJob = listenJob
         currentModel = model
         stopAudioRecord()
         previousJob?.cancel()
-        assistantTimeoutJob?.cancel()
-        assistantRequestId = null
+        if (resetSession) {
+            assistantTimeoutJob?.cancel()
+            assistantRequestId = null
+            sessionActive = false
+            speaking = false
+        }
 
         listenJob =
             scope.launch {
@@ -247,9 +266,25 @@ class WakeWordService : Service() {
                     wakeLock = null
                     Log.i(TAG, "Wake word listening stopped")
                 }
-                if (detected && isActive) requestAssistant()
+                if (detected && isActive) onDetected()
             }
     }
+
+    private fun onDetected() {
+        when (BargeInPolicy.outcomeFor(sessionActive, speaking, bargeInEnabled())) {
+            WakeWordOutcome.START_SESSION -> requestAssistant()
+            WakeWordOutcome.INTERRUPT_SPEECH -> {
+                // Detection has already stopped, and stays stopped: the session hands the
+                // microphone back through speechStarted if it has more to read out.
+                speaking = false
+                Log.i(TAG, "Wake word interrupted playback")
+                interruptListener?.invoke()
+            }
+            WakeWordOutcome.IGNORE -> Unit
+        }
+    }
+
+    private fun bargeInEnabled(): Boolean = (application as? AndCodeApplication)?.preferences?.state?.value?.ttsBargeInEnabled ?: true
 
     private fun requestAssistant() {
         if (!AssistantStatus.isActive(this)) {
@@ -275,7 +310,23 @@ class WakeWordService : Service() {
     @Synchronized
     private fun pauseForSessionInternal(requestId: String) {
         assistantRequestId = requestId
+        sessionActive = true
+        speaking = false
         stopListening()
+    }
+
+    @Synchronized
+    private fun setSpeakingInternal(
+        requestId: String,
+        isSpeaking: Boolean,
+    ) {
+        if (assistantRequestId != requestId) return
+        speaking = isSpeaking
+        if (BargeInPolicy.shouldListenDuringSession(isSpeaking, bargeInEnabled())) {
+            startListening(currentModel, resetSession = false)
+        } else {
+            stopListening()
+        }
     }
 
     @Synchronized
@@ -291,6 +342,11 @@ class WakeWordService : Service() {
         assistantRequestId = null
         assistantTimeoutJob?.cancel()
         assistantTimeoutJob = null
+        sessionActive = false
+        speaking = false
+        // Barge-in may have left a listen job running for this very model, which startListening
+        // would take as "already listening" and return from without clearing the session state.
+        stopListening()
         startListening(currentModel)
     }
 
@@ -324,6 +380,26 @@ class WakeWordService : Service() {
         private const val ASSISTANT_SHOW_TIMEOUT_MS = 5_000L
 
         @Volatile private var activeInstance: WakeWordService? = null
+
+        /**
+         * Called on the voice session when the wake word lands mid-playback.
+         *
+         * A direct callback rather than a broadcast: both live in this process, and an interrupt
+         * that arrives after the sentence has finished is worse than none at all.
+         */
+        @Volatile private var interruptListener: (() -> Unit)? = null
+
+        fun setInterruptListener(listener: (() -> Unit)?) {
+            interruptListener = listener
+        }
+
+        /** Tells the service whether the assistant is reading an answer out right now. */
+        fun setSpeaking(
+            requestId: String,
+            speaking: Boolean,
+        ) {
+            activeInstance?.setSpeakingInternal(requestId, speaking)
+        }
 
         fun pauseForSession(requestId: String) {
             activeInstance?.pauseForSessionInternal(requestId)

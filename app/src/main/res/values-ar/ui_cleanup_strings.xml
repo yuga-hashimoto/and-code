@@ -46,6 +46,13 @@
     <string name="tts_provider_android">تحويل النص إلى كلام في Android</string>
     <string name="tts_engine_label">محرك الكلام في Android</string>
     <string name="tts_engine_system_default">الإعداد الافتراضي للنظام</string>
+    <string name="tts_speech_rate_label">سرعة القراءة</string>
+    <string name="tts_pitch_label">طبقة الصوت</string>
+    <string name="tts_preview_label">تشغيل تجريبي</string>
+    <string name="tts_preview_play">تشغيل</string>
+    <string name="tts_preview_stop">إيقاف</string>
+    <string name="tts_preview_failed">تعذّر التشغيل. تحقّق من إعدادات مزوّد الصوت.</string>
+    <string name="tts_preview_sample">هكذا يقرأ AndCode الردود بصوت مسموع.</string>
     <string name="tts_api_key_label">مفتاح API</string>
     <string name="tts_voice_label">الصوت</string>
     <string name="tts_voice_id_label">معرّف الصوت</string>
@@ -53,6 +60,8 @@
     <string name="wake_word_section_title">الاستدعاء</string>
     <string name="wake_word_pack_required">لم يتم تثبيت حزمة كلمة التنبيه الاختيارية بعد.</string>
     <string name="wake_word_description">استمع إلى \"hey Mycroft\" لبدء المساعد بدون استخدام اليدين.</string>
+    <string name="wake_word_barge_in">المقاطعة أثناء القراءة</string>
+    <string name="wake_word_barge_in_description">قل كلمة التنبيه لإيقاف الإجابة المقروءة.</string>
     <string name="wake_word_notification_channel">كشف كلمة التنبيه</string>
     <string name="wake_word_notification_title">كلمة التنبيه نشطة</string>
     <string name="wake_word_notification_text">جارٍ الاستماع إلى \"hey Mycroft\"…</string>

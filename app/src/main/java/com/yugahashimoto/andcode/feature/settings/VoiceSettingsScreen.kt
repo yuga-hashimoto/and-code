@@ -19,7 +19,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Mic
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RecordVoiceOver
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.VoiceChat
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
@@ -32,7 +34,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -56,11 +60,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.OpenCodeProvider
+import com.yugahashimoto.andcode.feature.assistant.TtsPreviewState
+import com.yugahashimoto.andcode.feature.assistant.TtsTuning
 import com.yugahashimoto.andcode.feature.chat.ModelAndRuntimePickerSheet
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.ui.runtimeAgentIcon
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
+import java.util.Locale
 
 /** Voice settings with explicit wake-word capability status. */
 @Composable
@@ -69,12 +76,16 @@ fun VoiceSettingsScreen(
     ttsProvider: String = "android",
     ttsAndroidEngine: String? = null,
     androidTtsEngines: List<Pair<String, String>> = emptyList(),
+    ttsSpeechRate: Float = TtsTuning.DEFAULT_RATE,
+    ttsPitch: Float = TtsTuning.DEFAULT_PITCH,
+    ttsPreviewState: TtsPreviewState = TtsPreviewState.IDLE,
     ttsOpenAiApiKey: String = "",
     ttsOpenAiVoice: String = "alloy",
     ttsOpenAiModel: String = "gpt-4o-mini-tts",
     ttsElevenLabsApiKey: String = "",
     ttsElevenLabsVoiceId: String = "",
     ttsElevenLabsModel: String = "eleven_multilingual_v2",
+    ttsBargeInEnabled: Boolean = true,
     continuousConversation: Boolean,
     wakeWordEnabled: Boolean,
     wakeWordModel: String = "hey_mycroft",
@@ -88,12 +99,16 @@ fun VoiceSettingsScreen(
     onTtsChange: (Boolean) -> Unit,
     onTtsProviderChange: (String) -> Unit = {},
     onTtsAndroidEngineChange: (String?) -> Unit = {},
+    onTtsSpeechRateChange: (Float) -> Unit = {},
+    onTtsPitchChange: (Float) -> Unit = {},
+    onTtsPreview: () -> Unit = {},
     onTtsOpenAiApiKeyChange: (String) -> Unit = {},
     onTtsOpenAiVoiceChange: (String) -> Unit = {},
     onTtsOpenAiModelChange: (String) -> Unit = {},
     onTtsElevenLabsApiKeyChange: (String) -> Unit = {},
     onTtsElevenLabsVoiceIdChange: (String) -> Unit = {},
     onTtsElevenLabsModelChange: (String) -> Unit = {},
+    onTtsBargeInChange: (Boolean) -> Unit = {},
     onContinuousChange: (Boolean) -> Unit,
     onWakeWordChange: (Boolean) -> Unit,
     onWakeWordModelChange: (String) -> Unit = {},
@@ -161,53 +176,30 @@ fun VoiceSettingsScreen(
                                 ),
                             onSelect = onTtsProviderChange,
                         )
-                        when (ttsProvider) {
-                            "android" -> {
-                                VoiceDivider()
-                                ChoiceDropdown(
-                                    label = stringResource(R.string.tts_engine_label),
-                                    selected = ttsAndroidEngine.orEmpty(),
-                                    options = listOf("" to stringResource(R.string.tts_engine_system_default)) + androidTtsEngines,
-                                    onSelect = { onTtsAndroidEngineChange(it.takeIf(String::isNotBlank)) },
-                                )
-                            }
-                            "openai" -> {
-                                VoiceDivider()
-                                SecretTextField(
-                                    label = stringResource(R.string.tts_api_key_label),
-                                    value = ttsOpenAiApiKey,
-                                    onValueChange = onTtsOpenAiApiKeyChange,
-                                )
-                                VoiceTextField(
-                                    label = stringResource(R.string.tts_voice_label),
-                                    value = ttsOpenAiVoice,
-                                    onValueChange = onTtsOpenAiVoiceChange,
-                                )
-                                VoiceTextField(
-                                    label = stringResource(R.string.tts_model_label),
-                                    value = ttsOpenAiModel,
-                                    onValueChange = onTtsOpenAiModelChange,
-                                )
-                            }
-                            "elevenlabs" -> {
-                                VoiceDivider()
-                                SecretTextField(
-                                    label = stringResource(R.string.tts_api_key_label),
-                                    value = ttsElevenLabsApiKey,
-                                    onValueChange = onTtsElevenLabsApiKeyChange,
-                                )
-                                VoiceTextField(
-                                    label = stringResource(R.string.tts_voice_id_label),
-                                    value = ttsElevenLabsVoiceId,
-                                    onValueChange = onTtsElevenLabsVoiceIdChange,
-                                )
-                                VoiceTextField(
-                                    label = stringResource(R.string.tts_model_label),
-                                    value = ttsElevenLabsModel,
-                                    onValueChange = onTtsElevenLabsModelChange,
-                                )
-                            }
-                        }
+                        TtsProviderSection(
+                            ttsProvider = ttsProvider,
+                            ttsAndroidEngine = ttsAndroidEngine,
+                            androidTtsEngines = androidTtsEngines,
+                            ttsSpeechRate = ttsSpeechRate,
+                            ttsPitch = ttsPitch,
+                            ttsOpenAiApiKey = ttsOpenAiApiKey,
+                            ttsOpenAiVoice = ttsOpenAiVoice,
+                            ttsOpenAiModel = ttsOpenAiModel,
+                            ttsElevenLabsApiKey = ttsElevenLabsApiKey,
+                            ttsElevenLabsVoiceId = ttsElevenLabsVoiceId,
+                            ttsElevenLabsModel = ttsElevenLabsModel,
+                            onTtsAndroidEngineChange = onTtsAndroidEngineChange,
+                            onTtsSpeechRateChange = onTtsSpeechRateChange,
+                            onTtsPitchChange = onTtsPitchChange,
+                            onTtsOpenAiApiKeyChange = onTtsOpenAiApiKeyChange,
+                            onTtsOpenAiVoiceChange = onTtsOpenAiVoiceChange,
+                            onTtsOpenAiModelChange = onTtsOpenAiModelChange,
+                            onTtsElevenLabsApiKeyChange = onTtsElevenLabsApiKeyChange,
+                            onTtsElevenLabsVoiceIdChange = onTtsElevenLabsVoiceIdChange,
+                            onTtsElevenLabsModelChange = onTtsElevenLabsModelChange,
+                        )
+                        VoiceDivider()
+                        TtsPreviewRow(state = ttsPreviewState, onPress = onTtsPreview)
                     }
                     VoiceDivider()
                     VoiceToggleRow(
@@ -237,6 +229,16 @@ fun VoiceSettingsScreen(
                             onSelect = onWakeWordModelChange,
                         )
                     }
+                    if (wakeWordEnabled) {
+                        VoiceDivider()
+                        VoiceToggleRow(
+                            icon = Icons.Default.Stop,
+                            title = stringResource(R.string.wake_word_barge_in),
+                            description = stringResource(R.string.wake_word_barge_in_description),
+                            checked = ttsBargeInEnabled,
+                            onCheckedChange = onTtsBargeInChange,
+                        )
+                    }
                 }
             }
 
@@ -257,6 +259,188 @@ fun VoiceSettingsScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+/**
+ * The fields belonging to the chosen speech provider.
+ *
+ * Rate and pitch sit under the Android engine rather than above the provider choice because
+ * [com.yugahashimoto.andcode.feature.assistant.TTSProviderConfig] only carries them for that
+ * engine - the cloud providers voice their own defaults, and showing sliders that quietly do
+ * nothing would be worse than not offering them.
+ */
+@Composable
+private fun TtsProviderSection(
+    ttsProvider: String,
+    ttsAndroidEngine: String?,
+    androidTtsEngines: List<Pair<String, String>>,
+    ttsSpeechRate: Float,
+    ttsPitch: Float,
+    ttsOpenAiApiKey: String,
+    ttsOpenAiVoice: String,
+    ttsOpenAiModel: String,
+    ttsElevenLabsApiKey: String,
+    ttsElevenLabsVoiceId: String,
+    ttsElevenLabsModel: String,
+    onTtsAndroidEngineChange: (String?) -> Unit,
+    onTtsSpeechRateChange: (Float) -> Unit,
+    onTtsPitchChange: (Float) -> Unit,
+    onTtsOpenAiApiKeyChange: (String) -> Unit,
+    onTtsOpenAiVoiceChange: (String) -> Unit,
+    onTtsOpenAiModelChange: (String) -> Unit,
+    onTtsElevenLabsApiKeyChange: (String) -> Unit,
+    onTtsElevenLabsVoiceIdChange: (String) -> Unit,
+    onTtsElevenLabsModelChange: (String) -> Unit,
+) {
+    when (ttsProvider) {
+        "android" -> {
+            VoiceDivider()
+            ChoiceDropdown(
+                label = stringResource(R.string.tts_engine_label),
+                selected = ttsAndroidEngine.orEmpty(),
+                options = listOf("" to stringResource(R.string.tts_engine_system_default)) + androidTtsEngines,
+                onSelect = { onTtsAndroidEngineChange(it.takeIf(String::isNotBlank)) },
+            )
+            VoiceDivider()
+            VoiceSlider(
+                label = stringResource(R.string.tts_speech_rate_label),
+                value = ttsSpeechRate,
+                range = TtsTuning.MIN_RATE..TtsTuning.MAX_RATE,
+                onValueChange = onTtsSpeechRateChange,
+            )
+            VoiceSlider(
+                label = stringResource(R.string.tts_pitch_label),
+                value = ttsPitch,
+                range = TtsTuning.MIN_PITCH..TtsTuning.MAX_PITCH,
+                onValueChange = onTtsPitchChange,
+            )
+        }
+        "openai" -> {
+            VoiceDivider()
+            SecretTextField(
+                label = stringResource(R.string.tts_api_key_label),
+                value = ttsOpenAiApiKey,
+                onValueChange = onTtsOpenAiApiKeyChange,
+            )
+            VoiceTextField(
+                label = stringResource(R.string.tts_voice_label),
+                value = ttsOpenAiVoice,
+                onValueChange = onTtsOpenAiVoiceChange,
+            )
+            VoiceTextField(
+                label = stringResource(R.string.tts_model_label),
+                value = ttsOpenAiModel,
+                onValueChange = onTtsOpenAiModelChange,
+            )
+        }
+        "elevenlabs" -> {
+            VoiceDivider()
+            SecretTextField(
+                label = stringResource(R.string.tts_api_key_label),
+                value = ttsElevenLabsApiKey,
+                onValueChange = onTtsElevenLabsApiKeyChange,
+            )
+            VoiceTextField(
+                label = stringResource(R.string.tts_voice_id_label),
+                value = ttsElevenLabsVoiceId,
+                onValueChange = onTtsElevenLabsVoiceIdChange,
+            )
+            VoiceTextField(
+                label = stringResource(R.string.tts_model_label),
+                value = ttsElevenLabsModel,
+                onValueChange = onTtsElevenLabsModelChange,
+            )
+        }
+    }
+}
+
+/**
+ * A labelled slider showing its own value.
+ *
+ * The value is committed on every change rather than only when the finger lifts: the settings
+ * repository is the single source the voice session reads from, and a rate that only lands after
+ * an unrelated recomposition is the kind of thing that looks like the setting being ignored.
+ */
+@Composable
+private fun VoiceSlider(
+    label: String,
+    value: Float,
+    range: ClosedFloatingPointRange<Float>,
+    onValueChange: (Float) -> Unit,
+) {
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyLarge,
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = String.format(Locale.US, "%.2f", value),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Slider(
+            value = value.coerceIn(range),
+            onValueChange = onValueChange,
+            valueRange = range,
+            // 0.05 apart across the 0.5..2.0 range the engine accepts: fine enough to hear a
+            // difference between neighbouring stops, coarse enough to land on one deliberately.
+            steps = SLIDER_STEPS,
+        )
+    }
+}
+
+private const val SLIDER_STEPS = 29
+
+/**
+ * Reads a sample line back with the settings as they stand.
+ *
+ * Rate and pitch are hard to judge from a number, and the cloud providers need a working key and
+ * voice id before they say anything at all, so this doubles as the one place those are proved
+ * right without leaving the screen.
+ */
+@Composable
+private fun TtsPreviewRow(
+    state: TtsPreviewState,
+    onPress: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.tts_preview_label),
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            if (state == TtsPreviewState.FAILED) {
+                Text(
+                    text = stringResource(R.string.tts_preview_failed),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+        OutlinedButton(onClick = onPress) {
+            Icon(
+                if (state.isRunning) Icons.Default.Stop else Icons.Default.PlayArrow,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                stringResource(
+                    if (state.isRunning) R.string.tts_preview_stop else R.string.tts_preview_play,
+                ),
+            )
         }
     }
 }

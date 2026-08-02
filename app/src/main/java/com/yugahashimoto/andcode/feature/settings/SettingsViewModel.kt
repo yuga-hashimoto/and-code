@@ -12,6 +12,8 @@ import com.yugahashimoto.andcode.data.repository.RuntimeCatalogRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeCatalogState
 import com.yugahashimoto.andcode.data.settings.AppPreferences
 import com.yugahashimoto.andcode.data.settings.AppPreferencesRepository
+import com.yugahashimoto.andcode.feature.assistant.TtsSettings
+import com.yugahashimoto.andcode.feature.assistant.ttsSettings
 import com.yugahashimoto.andcode.runtime.BackendKind
 import com.yugahashimoto.andcode.runtime.LocalAgent
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
@@ -38,12 +40,15 @@ data class SettingsUiState(
     val ttsEnabled: Boolean = true,
     val ttsProvider: String = "android",
     val ttsAndroidEngine: String? = null,
+    val ttsSpeechRate: Float = 1.0f,
+    val ttsPitch: Float = 1.0f,
     val ttsOpenAiApiKey: String = "",
     val ttsOpenAiVoice: String = "alloy",
     val ttsOpenAiModel: String = "gpt-4o-mini-tts",
     val ttsElevenLabsApiKey: String = "",
     val ttsElevenLabsVoiceId: String = "",
     val ttsElevenLabsModel: String = "eleven_multilingual_v2",
+    val ttsBargeInEnabled: Boolean = true,
     val continuousConversation: Boolean = false,
     val wakeWordEnabled: Boolean = false,
     val wakeWordModel: String = "hey_mycroft",
@@ -167,12 +172,15 @@ class SettingsViewModel(
                 ttsEnabled = core.preferences.ttsEnabled,
                 ttsProvider = core.preferences.ttsProvider,
                 ttsAndroidEngine = core.preferences.ttsAndroidEngine,
+                ttsSpeechRate = core.preferences.ttsSpeechRate,
+                ttsPitch = core.preferences.ttsPitch,
                 ttsOpenAiApiKey = core.preferences.ttsOpenAiApiKey,
                 ttsOpenAiVoice = core.preferences.ttsOpenAiVoice,
                 ttsOpenAiModel = core.preferences.ttsOpenAiModel,
                 ttsElevenLabsApiKey = core.preferences.ttsElevenLabsApiKey,
                 ttsElevenLabsVoiceId = core.preferences.ttsElevenLabsVoiceId,
                 ttsElevenLabsModel = core.preferences.ttsElevenLabsModel,
+                ttsBargeInEnabled = core.preferences.ttsBargeInEnabled,
                 continuousConversation = core.preferences.continuousConversation,
                 wakeWordEnabled = core.preferences.wakeWordEnabled,
                 wakeWordModel = core.preferences.wakeWordModel,
@@ -213,6 +221,13 @@ class SettingsViewModel(
 
     fun setTtsAndroidEngine(engine: String?) = preferences.setTtsAndroidEngine(engine)
 
+    /** The voice preferences as they stand, for the settings screen's own test playback. */
+    internal fun ttsSettings(): TtsSettings = settings.ttsSettings()
+
+    fun setTtsSpeechRate(rate: Float) = preferences.setTtsSpeechRate(rate)
+
+    fun setTtsPitch(pitch: Float) = preferences.setTtsPitch(pitch)
+
     fun setTtsOpenAiApiKey(apiKey: String) = preferences.setTtsOpenAiApiKey(apiKey)
 
     fun setTtsOpenAiVoice(voice: String) = preferences.setTtsOpenAiVoice(voice)
@@ -224,6 +239,8 @@ class SettingsViewModel(
     fun setTtsElevenLabsVoiceId(voiceId: String) = preferences.setTtsElevenLabsVoiceId(voiceId)
 
     fun setTtsElevenLabsModel(model: String) = preferences.setTtsElevenLabsModel(model)
+
+    fun setTtsBargeInEnabled(enabled: Boolean) = preferences.setTtsBargeInEnabled(enabled)
 
     fun setContinuousConversation(enabled: Boolean) = preferences.setContinuousConversation(enabled)
 

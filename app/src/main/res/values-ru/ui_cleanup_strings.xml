@@ -46,6 +46,13 @@
     <string name="tts_provider_android">Синтез речи Android</string>
     <string name="tts_engine_label">Речевой движок Android</string>
     <string name="tts_engine_system_default">Системный по умолчанию</string>
+    <string name="tts_speech_rate_label">Скорость речи</string>
+    <string name="tts_pitch_label">Высота голоса</string>
+    <string name="tts_preview_label">Тестовое воспроизведение</string>
+    <string name="tts_preview_play">Воспроизвести</string>
+    <string name="tts_preview_stop">Остановить</string>
+    <string name="tts_preview_failed">Не удалось воспроизвести. Проверьте настройки поставщика речи.</string>
+    <string name="tts_preview_sample">Так AndCode зачитывает ответ вслух.</string>
     <string name="tts_api_key_label">API-ключ</string>
     <string name="tts_voice_label">Голос</string>
     <string name="tts_voice_id_label">ID голоса</string>
@@ -53,6 +60,8 @@
     <string name="wake_word_section_title">Активация</string>
     <string name="wake_word_pack_required">Необязательный пакет ключевого слова ещё не установлен.</string>
     <string name="wake_word_description">Слушайте «hey Mycroft», чтобы запустить ассистента без рук.</string>
+    <string name="wake_word_barge_in">Прерывать озвучивание</string>
+    <string name="wake_word_barge_in_description">Скажите слово активации, чтобы прервать зачитывание ответа.</string>
     <string name="wake_word_notification_channel">Обнаружение ключевого слова</string>
     <string name="wake_word_notification_title">Ключевое слово активно</string>
     <string name="wake_word_notification_text">Слушаю «hey Mycroft»…</string>

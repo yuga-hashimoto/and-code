@@ -55,6 +55,7 @@ import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.OpenCodeEvent
 import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.core.api.PromptRequest
+import com.yugahashimoto.andcode.feature.wakeword.WakeWordService
 import com.yugahashimoto.andcode.runtime.OpenCodeBackend
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
@@ -97,6 +98,8 @@ class AndCodeVoiceSession(context: Context) :
     private val textPartIds = mutableSetOf<String>()
     private var responseHandled = false
 
+    @Volatile private var bargedIn = false
+
     private val assistantState = mutableStateOf(VoiceState.IDLE)
     private val userText = mutableStateOf("")
     private val responseText = mutableStateOf("")
@@ -113,38 +116,7 @@ class AndCodeVoiceSession(context: Context) :
         tts = TTSManager(context, ttsConfiguration())
     }
 
-    private fun ttsConfiguration(): TTSProviderConfig =
-        when (settings.ttsProvider) {
-            "openai" ->
-                if (
-                    settings.ttsOpenAiApiKey.isNotBlank() &&
-                    settings.ttsOpenAiVoice.isNotBlank() &&
-                    settings.ttsOpenAiModel.isNotBlank()
-                ) {
-                    TTSProviderConfig.OpenAI(
-                        apiKey = settings.ttsOpenAiApiKey,
-                        voice = settings.ttsOpenAiVoice,
-                        model = settings.ttsOpenAiModel,
-                    )
-                } else {
-                    TTSProviderConfig.Android(settings.ttsAndroidEngine)
-                }
-            "elevenlabs" ->
-                if (
-                    settings.ttsElevenLabsApiKey.isNotBlank() &&
-                    settings.ttsElevenLabsVoiceId.isNotBlank() &&
-                    settings.ttsElevenLabsModel.isNotBlank()
-                ) {
-                    TTSProviderConfig.ElevenLabs(
-                        apiKey = settings.ttsElevenLabsApiKey,
-                        voiceId = settings.ttsElevenLabsVoiceId,
-                        model = settings.ttsElevenLabsModel,
-                    )
-                } else {
-                    TTSProviderConfig.Android(settings.ttsAndroidEngine)
-                }
-            else -> TTSProviderConfig.Android(settings.ttsAndroidEngine)
-        }
+    private fun ttsConfiguration(): TTSProviderConfig = TtsConfiguration.from(settings.ttsSettings())
 
     override fun onCreateContentView(): View =
         ComposeView(context).apply {
@@ -176,8 +148,10 @@ class AndCodeVoiceSession(context: Context) :
         sessionVisible = true
         sessionEnded = false
         sessionToken = args?.getString(AndCodeVoiceInteractionService.EXTRA_REQUEST_ID) ?: UUID.randomUUID().toString()
-        sessionToken?.let(com.yugahashimoto.andcode.feature.wakeword.WakeWordService::pauseForSession)
-        sessionToken?.let(com.yugahashimoto.andcode.feature.wakeword.WakeWordService::confirmSession)
+        sessionToken?.let(WakeWordService::pauseForSession)
+        sessionToken?.let(WakeWordService::confirmSession)
+        bargedIn = false
+        WakeWordService.setInterruptListener(::onWakeWordInterrupt)
         speech.destroy()
         speech = SpeechRecognizerManager(context)
         responseHandled = false
@@ -237,9 +211,10 @@ class AndCodeVoiceSession(context: Context) :
     }
 
     private fun endWakeWordPause() {
+        WakeWordService.setInterruptListener(null)
         if (sessionEnded) return
         sessionEnded = true
-        sessionToken?.let(com.yugahashimoto.andcode.feature.wakeword.WakeWordService::resumeAfterSession)
+        sessionToken?.let(WakeWordService::resumeAfterSession)
         sessionToken = null
     }
 
@@ -392,8 +367,16 @@ class AndCodeVoiceSession(context: Context) :
         responseJob =
             scope.launch {
                 assistantState.value = VoiceState.SPEAKING
-                val spoken = !settings.ttsEnabled || tts.speak(answer)
+                val spoken = !settings.ttsEnabled || speakInterruptibly(answer)
                 if (!sessionVisible) return@launch
+                if (bargedIn) {
+                    // The wake word cut in. Take the question that prompted it rather than
+                    // announcing the answer nobody is still listening to.
+                    bargedIn = false
+                    assistantState.value = VoiceState.DONE
+                    if (sessionVisible) startListening()
+                    return@launch
+                }
                 if (!spoken) {
                     showError(context.getString(R.string.tts_error))
                     return@launch
@@ -404,6 +387,29 @@ class AndCodeVoiceSession(context: Context) :
                     if (sessionVisible) startListening()
                 }
             }
+    }
+
+    /**
+     * Reads [answer] out with the wake word left listening, so it can be cut short.
+     *
+     * The wake-word service is otherwise stopped for the whole session; it is handed the
+     * microphone back for exactly the stretch where this session is not using it, and told to give
+     * it up again the moment playback ends however it ends.
+     */
+    private suspend fun speakInterruptibly(answer: String): Boolean {
+        val token = sessionToken
+        token?.let { WakeWordService.setSpeaking(it, true) }
+        return try {
+            tts.speak(answer)
+        } finally {
+            token?.let { WakeWordService.setSpeaking(it, false) }
+        }
+    }
+
+    private fun onWakeWordInterrupt() {
+        if (!sessionVisible) return
+        bargedIn = true
+        tts.stop()
     }
 
     private fun respondPermission(response: PermissionResponse) {

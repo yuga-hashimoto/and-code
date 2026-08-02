@@ -46,6 +46,13 @@
     <string name="tts_provider_android">Android文字转语音</string>
     <string name="tts_engine_label">Android语音引擎</string>
     <string name="tts_engine_system_default">系统默认</string>
+    <string name="tts_speech_rate_label">朗读速度</string>
+    <string name="tts_pitch_label">音调</string>
+    <string name="tts_preview_label">试听</string>
+    <string name="tts_preview_play">播放</string>
+    <string name="tts_preview_stop">停止</string>
+    <string name="tts_preview_failed">播放失败。请检查语音服务商设置。</string>
+    <string name="tts_preview_sample">AndCode 将这样朗读回复。</string>
     <string name="tts_api_key_label">API密钥</string>
     <string name="tts_voice_label">语音</string>
     <string name="tts_voice_id_label">语音ID</string>
@@ -53,6 +60,8 @@
     <string name="wake_word_section_title">唤醒</string>
     <string name="wake_word_pack_required">可选的唤醒词包尚未安装。</string>
     <string name="wake_word_description">监听"hey Mycroft"以免提启动助手。</string>
+    <string name="wake_word_barge_in">朗读时打断</string>
+    <string name="wake_word_barge_in_description">说出唤醒词即可中断正在朗读的回复。</string>
     <string name="wake_word_notification_channel">唤醒词检测</string>
     <string name="wake_word_notification_title">唤醒词已激活</string>
     <string name="wake_word_notification_text">正在监听"hey Mycroft"…</string>

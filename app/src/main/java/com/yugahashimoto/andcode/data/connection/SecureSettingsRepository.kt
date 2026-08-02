@@ -117,6 +117,12 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         get() = preferences.getString(KEY_TTS_ELEVENLABS_MODEL, "eleven_multilingual_v2") ?: "eleven_multilingual_v2"
         set(value) = preferences.edit().putString(KEY_TTS_ELEVENLABS_MODEL, value).apply()
 
+    // On by default: being unable to stop a long answer without reaching for the screen is the
+    // problem this exists to solve, and it costs nothing when the wake word is switched off.
+    var ttsBargeInEnabled: Boolean
+        get() = preferences.getBoolean(KEY_TTS_BARGE_IN_ENABLED, true)
+        set(value) = preferences.edit().putBoolean(KEY_TTS_BARGE_IN_ENABLED, value).apply()
+
     var continuousConversation: Boolean
         get() = preferences.getBoolean(KEY_CONTINUOUS_CONVERSATION, false)
         set(value) = preferences.edit().putBoolean(KEY_CONTINUOUS_CONVERSATION, value).apply()
@@ -429,6 +435,7 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         private const val KEY_TTS_ELEVENLABS_VOICE_ID = "tts_elevenlabs_voice_id"
         private const val KEY_TTS_ELEVENLABS_MODEL = "tts_elevenlabs_model"
         private const val KEY_CONTINUOUS_CONVERSATION = "continuous_conversation"
+        private const val KEY_TTS_BARGE_IN_ENABLED = "tts_barge_in_enabled"
         private const val KEY_WAKE_WORD_ENABLED = "wake_word_enabled"
         private const val KEY_WAKE_WORD_MODEL = "wake_word_model"
         private const val KEY_AUTO_ACCEPT_PERMISSIONS = "auto_accept_permissions"

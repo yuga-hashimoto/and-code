@@ -46,6 +46,13 @@
     <string name="tts_provider_android">Android text-to-speech</string>
     <string name="tts_engine_label">Android speech engine</string>
     <string name="tts_engine_system_default">System default</string>
+    <string name="tts_speech_rate_label">Speaking rate</string>
+    <string name="tts_pitch_label">Pitch</string>
+    <string name="tts_preview_label">Test playback</string>
+    <string name="tts_preview_play">Play</string>
+    <string name="tts_preview_stop">Stop</string>
+    <string name="tts_preview_failed">Playback failed. Check the speech provider settings.</string>
+    <string name="tts_preview_sample">This is how AndCode reads a response aloud.</string>
     <string name="tts_api_key_label">API key</string>
     <string name="tts_voice_label">Voice</string>
     <string name="tts_voice_id_label">Voice ID</string>
@@ -53,6 +60,8 @@
     <string name="wake_word_section_title">Invocation</string>
     <string name="wake_word_pack_required">The optional wake-word pack is not installed yet.</string>
     <string name="wake_word_description">Listen for \"hey Mycroft\" to start the assistant hands-free.</string>
+    <string name="wake_word_barge_in">Interrupt while speaking</string>
+    <string name="wake_word_barge_in_description">Say the wake word to cut a spoken answer short.</string>
     <string name="wake_word_notification_channel">Wake word detection</string>
     <string name="wake_word_notification_title">Wake word active</string>
     <string name="wake_word_notification_text">Listening for \"hey Mycroft\"…</string>

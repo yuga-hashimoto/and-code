@@ -46,6 +46,13 @@
     <string name="tts_provider_android">Androidテキスト読み上げ</string>
     <string name="tts_engine_label">Android音声エンジン</string>
     <string name="tts_engine_system_default">システム既定</string>
+    <string name="tts_speech_rate_label">読み上げ速度</string>
+    <string name="tts_pitch_label">声の高さ</string>
+    <string name="tts_preview_label">テスト再生</string>
+    <string name="tts_preview_play">再生</string>
+    <string name="tts_preview_stop">停止</string>
+    <string name="tts_preview_failed">再生できませんでした。音声プロバイダーの設定を確認してください。</string>
+    <string name="tts_preview_sample">AndCodeはこのように応答を読み上げます。</string>
     <string name="tts_api_key_label">APIキー</string>
     <string name="tts_voice_label">音声</string>
     <string name="tts_voice_id_label">音声ID</string>
@@ -53,6 +60,8 @@
     <string name="wake_word_section_title">呼びかけ</string>
     <string name="wake_word_pack_required">ウェイクワード用の追加パックはまだ導入されていません。</string>
     <string name="wake_word_description">「hey Mycroft」でハンズフリーでアシスタントを起動します。</string>
+    <string name="wake_word_barge_in">読み上げ中の割り込み</string>
+    <string name="wake_word_barge_in_description">読み上げ中にウェイクワードで停止できるようにします。</string>
     <string name="wake_word_notification_channel">ウェイクワード検出</string>
     <string name="wake_word_notification_title">ウェイクワード有効</string>
     <string name="wake_word_notification_text">「hey Mycroft」を待機中…</string>
