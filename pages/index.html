@@ -3,321 +3,417 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AndCode — Coding Agents on Android</title>
-  <meta name="description" content="Native Android GUI for running AI coding agents locally on-device. No terminal or PC required." />
+  <title>AndCode — Coding agents, wherever you are</title>
+  <meta name="description" content="A native Android workspace for OpenCode, Claude Code, and Google Antigravity. Run coding agents on-device or connect to OpenCode remotely." />
+  <meta name="theme-color" content="#0B1017" />
   <link rel="icon" type="image/png" href="favicon.png" />
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="AndCode — Coding Agents on Android" />
-  <meta property="og:description" content="Native Android GUI for running AI coding agents locally on-device. No terminal or PC required." />
+  <meta property="og:title" content="AndCode — Coding agents, wherever you are" />
+  <meta property="og:description" content="A native Android workspace for OpenCode, Claude Code, and Google Antigravity." />
   <meta property="og:image" content="https://yuga-hashimoto.github.io/and-code/screenshot.png" />
   <meta property="og:url" content="https://yuga-hashimoto.github.io/and-code/" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="AndCode — Coding Agents on Android" />
-  <meta name="twitter:description" content="Native Android GUI for running AI coding agents locally on-device. No terminal or PC required." />
+  <meta name="twitter:title" content="AndCode — Coding agents, wherever you are" />
+  <meta name="twitter:description" content="A native Android workspace for OpenCode, Claude Code, and Google Antigravity." />
   <meta name="twitter:image" content="https://yuga-hashimoto.github.io/and-code/screenshot.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <style>
     :root {
-      --bg: #0a0a0f;
-      --surface: #14141f;
-      --border: #2a2a3a;
-      --text: #e8e8f0;
-      --text-muted: #9898aa;
-      --accent: #6366f1;
-      --accent-light: #818cf8;
-      --green: #34d399;
-      --radius: 12px;
+      --ink: #080d13;
+      --navy: #0b1017;
+      --surface: #111a25;
+      --surface-raised: #162331;
+      --line: #243447;
+      --line-soft: rgba(146, 168, 194, 0.16);
+      --text: #f4f7fb;
+      --muted: #9aa8b7;
+      --blue: #6ea8fe;
+      --blue-soft: #9ac3ff;
+      --teal: #55c6c1;
+      --cream: #fffaf0;
+      --success: #55d187;
+      --radius-lg: 28px;
+      --radius-md: 18px;
+      --shadow: 0 24px 70px rgba(0, 0, 0, 0.38);
     }
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
     body {
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg);
+      margin: 0;
       color: var(--text);
+      background: var(--ink);
+      font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       line-height: 1.6;
       overflow-x: hidden;
     }
-    .container { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+    body::before {
+      content: '';
+      position: fixed;
+      z-index: -2;
+      inset: 0;
+      background:
+        radial-gradient(circle at 12% 0%, rgba(110, 168, 254, 0.11), transparent 30rem),
+        radial-gradient(circle at 88% 44%, rgba(85, 198, 193, 0.06), transparent 26rem),
+        var(--ink);
+    }
+    a { color: inherit; }
+    img { display: block; max-width: 100%; }
+    :focus-visible { outline: 3px solid var(--teal); outline-offset: 4px; }
+    .container { width: min(1160px, calc(100% - 48px)); margin: 0 auto; }
+    .mono { font-family: 'DM Mono', ui-monospace, SFMono-Regular, Menlo, monospace; }
 
-    /* Hero */
+    .site-header {
+      position: sticky;
+      z-index: 10;
+      top: 0;
+      border-bottom: 1px solid var(--line-soft);
+      background: rgba(8, 13, 19, 0.84);
+      backdrop-filter: blur(18px);
+    }
+    .header-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      min-height: 76px;
+    }
+    .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 12px;
+      color: var(--text);
+      font-size: 1.08rem;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      text-decoration: none;
+    }
+    .brand img { width: 38px; height: 38px; border-radius: 11px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3); }
+    .site-nav { display: flex; align-items: center; gap: 26px; margin-left: auto; }
+    .site-nav a, .header-link {
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-decoration: none;
+      transition: color 160ms ease;
+    }
+    .site-nav a:hover, .header-link:hover { color: var(--text); }
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .header-link { display: inline-flex; align-items: center; gap: 8px; }
+
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 46px;
+      padding: 0 19px;
+      border: 1px solid transparent;
+      border-radius: 12px;
+      font-size: 0.82rem;
+      font-weight: 800;
+      text-decoration: none;
+      transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease;
+    }
+    .button:hover { transform: translateY(-2px); }
+    .button-primary { color: #07111b; background: var(--blue); box-shadow: 0 10px 28px rgba(110, 168, 254, 0.2); }
+    .button-primary:hover { background: var(--blue-soft); box-shadow: 0 14px 34px rgba(110, 168, 254, 0.28); }
+    .button-secondary { color: var(--text); border-color: var(--line); background: rgba(17, 26, 37, 0.72); }
+    .button-secondary:hover { border-color: rgba(110, 168, 254, 0.65); background: var(--surface-raised); }
+    .button svg { width: 16px; height: 16px; }
+
     .hero {
-      text-align: center;
-      padding: 100px 0 60px;
       position: relative;
+      padding: 88px 0 42px;
+      background-image: linear-gradient(90deg, rgba(8, 13, 19, 0.3), rgba(8, 13, 19, 0.04)), url('andcode-hero-atmosphere.png');
+      background-position: center;
+      background-size: cover;
+      border-bottom: 1px solid var(--line-soft);
     }
     .hero::before {
       content: '';
       position: absolute;
-      top: -200px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 600px;
-      height: 600px;
-      background: radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%);
+      inset: 0;
       pointer-events: none;
+      background: linear-gradient(180deg, rgba(8, 13, 19, 0.08), var(--ink) 94%);
     }
-    .badge {
-      display: inline-block;
-      padding: 6px 14px;
-      border-radius: 20px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      font-size: 0.8rem;
-      color: var(--text-muted);
-      margin-bottom: 24px;
-    }
-    .badge span { color: var(--green); }
-    h1 {
-      font-size: clamp(2.2rem, 5vw, 3.5rem);
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      margin-bottom: 16px;
-      background: linear-gradient(135deg, var(--text) 0%, var(--accent-light) 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-    .hero p {
-      font-size: 1.15rem;
-      color: var(--text-muted);
-      max-width: 600px;
-      margin: 0 auto 36px;
-    }
-    .cta-group { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
-    .btn {
+    .hero-inner { position: relative; }
+    .hero-grid { display: grid; grid-template-columns: minmax(0, 0.93fr) minmax(480px, 1.07fr); gap: 62px; align-items: center; }
+    .eyebrow, .section-kicker {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 12px 24px;
-      border-radius: var(--radius);
-      font-size: 0.95rem;
-      font-weight: 600;
-      text-decoration: none;
-      transition: transform 0.15s, box-shadow 0.15s;
+      gap: 9px;
+      color: var(--teal);
+      font: 500 0.72rem/1.2 'DM Mono', ui-monospace, monospace;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
     }
-    .btn:hover { transform: translateY(-2px); }
-    .btn-primary {
-      background: var(--accent);
-      color: #fff;
-      box-shadow: 0 4px 20px rgba(99,102,241,0.3);
+    .eyebrow::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 5px rgba(85, 209, 135, 0.12); }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 {
+      max-width: 670px;
+      margin: 22px 0 22px;
+      color: var(--cream);
+      font-size: clamp(3rem, 6.2vw, 5.65rem);
+      line-height: 0.98;
+      letter-spacing: -0.075em;
     }
-    .btn-primary:hover { box-shadow: 0 6px 28px rgba(99,102,241,0.45); }
-    .btn-secondary {
-      background: var(--surface);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
+    h1 span { color: var(--blue); }
+    .hero-copy > p { max-width: 570px; color: var(--muted); font-size: clamp(1rem, 1.6vw, 1.18rem); line-height: 1.75; }
+    .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
+    .hero-note { margin: 16px 0 0; color: #75879b; font-size: 0.75rem; }
 
-    /* Screenshots */
-    .hero-shots {
-      display: flex;
-      justify-content: center;
-      align-items: flex-start;
-      flex-wrap: wrap;
-      gap: 20px;
-      margin: 60px auto 0;
-    }
-    .hero-shots img {
-      max-width: 220px;
-      width: 100%;
-      border-radius: 24px;
-      border: 1px solid var(--border);
-      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-    }
-
-    /* Features */
-    .features { padding: 80px 0; }
-    .features h2 {
-      text-align: center;
-      font-size: 1.8rem;
-      font-weight: 700;
-      margin-bottom: 48px;
-    }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 20px;
-    }
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 24px;
-      transition: border-color 0.2s;
-    }
-    .card:hover { border-color: var(--accent); }
-    .card h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; }
-    .card p { font-size: 0.9rem; color: var(--text-muted); }
-    .card .icon { font-size: 1.5rem; margin-bottom: 12px; }
-
-    /* How it works */
-    .how { padding: 60px 0 80px; }
-    .how h2 { text-align: center; font-size: 1.8rem; font-weight: 700; margin-bottom: 48px; }
-    .steps { max-width: 600px; margin: 0 auto; }
-    .step {
-      display: flex;
-      gap: 16px;
-      margin-bottom: 32px;
-      align-items: flex-start;
-    }
-    .step-num {
-      flex-shrink: 0;
-      width: 36px;
-      height: 36px;
-      border-radius: 50%;
-      background: var(--accent);
-      color: #fff;
+    .hero-visual { position: relative; min-height: 590px; }
+    .visual-glow { position: absolute; inset: 14% 4% 8%; border-radius: 50%; background: radial-gradient(circle, rgba(110, 168, 254, 0.16), transparent 68%); filter: blur(22px); }
+    .visual-card {
+      position: absolute;
+      top: 3%;
+      right: 3%;
+      z-index: 3;
       display: flex;
       align-items: center;
-      justify-content: center;
-      font-weight: 700;
-      font-size: 0.9rem;
+      gap: 12px;
+      padding: 10px 14px 10px 10px;
+      border: 1px solid rgba(154, 195, 255, 0.4);
+      border-radius: 16px;
+      background: rgba(17, 26, 37, 0.88);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(14px);
     }
-    .step-content h4 { font-size: 0.95rem; font-weight: 600; margin-bottom: 4px; }
-    .step-content p { font-size: 0.85rem; color: var(--text-muted); }
+    .visual-card img { width: 48px; height: 48px; border-radius: 13px; }
+    .visual-card strong { display: block; color: var(--cream); font-size: 0.86rem; }
+    .visual-card span { display: block; margin-top: 2px; color: var(--muted); font-size: 0.68rem; }
+    .phone {
+      position: absolute;
+      overflow: hidden;
+      border: 7px solid #101923;
+      border-radius: 28px;
+      background: #0b1017;
+      box-shadow: 0 28px 55px rgba(0, 0, 0, 0.48), 0 0 0 1px rgba(154, 195, 255, 0.14);
+    }
+    .phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+    .phone-main { z-index: 2; top: 10%; left: 18%; width: 246px; height: 536px; transform: rotate(-3deg); }
+    .phone-left { z-index: 1; top: 21%; left: 0; width: 183px; height: 400px; transform: rotate(-11deg); opacity: 0.88; }
+    .phone-right { z-index: 1; top: 25%; right: 0; width: 183px; height: 400px; transform: rotate(10deg); opacity: 0.92; }
+    .proof-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 54px; padding-top: 24px; border-top: 1px solid var(--line-soft); }
+    .proof-item { display: flex; align-items: center; gap: 10px; min-width: 0; color: var(--muted); font-size: 0.78rem; font-weight: 700; }
+    .proof-icon { display: grid; flex: 0 0 32px; place-items: center; width: 32px; height: 32px; color: var(--teal); border: 1px solid rgba(85, 198, 193, 0.28); border-radius: 10px; background: rgba(85, 198, 193, 0.08); }
+    .proof-icon svg { width: 16px; height: 16px; }
 
-    /* Footer */
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 32px 0;
-      text-align: center;
-      font-size: 0.85rem;
-      color: var(--text-muted);
+    section { padding: 124px 0; }
+    .section-heading { display: flex; align-items: end; justify-content: space-between; gap: 30px; margin-bottom: 42px; }
+    .section-heading h2 { max-width: 600px; margin: 14px 0 0; color: var(--cream); font-size: clamp(2rem, 4.4vw, 3.8rem); line-height: 1.05; letter-spacing: -0.065em; }
+    .section-heading > p { max-width: 390px; margin-bottom: 3px; color: var(--muted); font-size: 0.92rem; line-height: 1.75; }
+
+    .feature-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+    .feature-card { min-height: 238px; padding: 22px; border: 1px solid var(--line-soft); border-radius: var(--radius-md); background: linear-gradient(145deg, rgba(22, 35, 49, 0.9), rgba(13, 21, 30, 0.96)); transition: transform 180ms ease, border-color 180ms ease, background 180ms ease; }
+    .feature-card:hover { transform: translateY(-5px); border-color: rgba(110, 168, 254, 0.5); background: linear-gradient(145deg, rgba(28, 46, 65, 0.95), rgba(13, 21, 30, 0.96)); }
+    .feature-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 29px; }
+    .feature-icon { display: grid; place-items: center; width: 42px; height: 42px; color: var(--blue); border: 1px solid rgba(110, 168, 254, 0.28); border-radius: 13px; background: rgba(110, 168, 254, 0.08); }
+    .feature-icon svg { width: 21px; height: 21px; }
+    .feature-index { color: #587089; font: 500 0.7rem 'DM Mono', ui-monospace, monospace; }
+    .feature-card h3 { margin-bottom: 9px; color: var(--cream); font-size: 0.98rem; letter-spacing: -0.025em; }
+    .feature-card p { margin-bottom: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.7; }
+
+    .showcase { padding-top: 0; }
+    .showcase-panel { display: grid; grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.2fr); gap: 64px; align-items: center; padding: 36px; border: 1px solid var(--line-soft); border-radius: var(--radius-lg); background: linear-gradient(135deg, rgba(22, 35, 49, 0.92), rgba(11, 16, 23, 0.98)); }
+    .showcase-copy h2 { margin: 14px 0 16px; color: var(--cream); font-size: clamp(2rem, 4vw, 3.2rem); line-height: 1.05; letter-spacing: -0.06em; }
+    .showcase-copy p { color: var(--muted); font-size: 0.9rem; line-height: 1.75; }
+    .showcase-list { display: grid; gap: 13px; margin: 24px 0 0; padding: 0; list-style: none; }
+    .showcase-list li { display: flex; gap: 10px; color: #c9d4df; font-size: 0.8rem; }
+    .showcase-list svg { flex: 0 0 17px; margin-top: 4px; color: var(--teal); }
+    .showcase-image { width: 100%; max-width: 250px; justify-self: center; border: 7px solid #101923; border-radius: 28px; box-shadow: var(--shadow); transform: rotate(3deg); }
+
+    .steps-section { background: rgba(17, 26, 37, 0.58); border-block: 1px solid var(--line-soft); }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+    .step { position: relative; padding: 24px 24px 27px; border: 1px solid var(--line-soft); border-radius: var(--radius-md); background: rgba(11, 16, 23, 0.74); }
+    .step:not(:last-child)::after { content: ''; position: absolute; top: 43px; left: calc(100% + 7px); width: 10px; height: 1px; background: var(--blue); opacity: 0.5; }
+    .step-number { display: grid; place-items: center; width: 38px; height: 38px; margin-bottom: 25px; color: #07111b; border-radius: 50%; background: var(--blue); font: 500 0.84rem 'DM Mono', monospace; }
+    .step h3 { margin-bottom: 8px; color: var(--cream); font-size: 1rem; }
+    .step p { margin-bottom: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.7; }
+
+    .closing { padding-top: 52px; }
+    .closing-panel { display: flex; align-items: center; justify-content: space-between; gap: 30px; padding: 30px 34px; border: 1px solid rgba(110, 168, 254, 0.3); border-radius: var(--radius-lg); background: radial-gradient(circle at 12% 50%, rgba(110, 168, 254, 0.16), transparent 40%), var(--surface); }
+    .closing-brand { display: flex; align-items: center; gap: 15px; }
+    .closing-brand img { width: 56px; height: 56px; border-radius: 16px; }
+    .closing-brand h2 { margin: 0 0 4px; color: var(--cream); font-size: 1.2rem; }
+    .closing-brand p { margin: 0; color: var(--muted); font-size: 0.8rem; }
+    .closing-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+    footer { padding: 32px 0 42px; border-top: 1px solid var(--line-soft); }
+    .footer-inner { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .footer-brand { display: flex; align-items: center; gap: 9px; color: var(--muted); font-size: 0.78rem; font-weight: 700; }
+    .footer-brand img { width: 26px; height: 26px; border-radius: 8px; }
+    .footer-links { display: flex; flex-wrap: wrap; gap: 18px; }
+    .footer-links a { color: var(--muted); font-size: 0.74rem; text-decoration: none; }
+    .footer-links a:hover { color: var(--text); }
+    .footer-note { margin: 22px 0 0; color: #617386; font-size: 0.7rem; text-align: center; }
+
+    @media (max-width: 1050px) {
+      .hero-grid { grid-template-columns: 1fr 0.88fr; gap: 26px; }
+      .hero-visual { min-height: 510px; transform: scale(0.9); transform-origin: center right; }
+      .feature-grid { grid-template-columns: repeat(2, 1fr); }
     }
-    footer a { color: var(--accent-light); text-decoration: none; }
-    footer a:hover { text-decoration: underline; }
+    @media (max-width: 800px) {
+      .container { width: min(100% - 34px, 620px); }
+      .site-nav, .header-link { display: none; }
+      .header-actions { margin-left: auto; }
+      .hero { padding-top: 62px; }
+      .hero-grid { display: block; }
+      .hero-copy { max-width: 600px; margin: 0 auto; text-align: center; }
+      .eyebrow { justify-content: center; }
+      h1 { font-size: clamp(3.1rem, 15vw, 5rem); }
+      .hero-copy > p { margin-inline: auto; }
+      .hero-actions { justify-content: center; }
+      .hero-visual { min-height: 540px; margin: 22px auto 0; transform: none; }
+      .proof-row { margin-top: 26px; }
+      .section-heading { display: block; }
+      .section-heading > p { margin-top: 18px; }
+      .showcase-panel { grid-template-columns: 1fr; gap: 34px; }
+      .showcase-image { order: -1; }
+      .steps { grid-template-columns: 1fr; }
+      .step:not(:last-child)::after { top: calc(100% + 1px); left: 43px; width: 1px; height: 23px; }
+      .closing-panel { display: block; }
+      .closing-actions { margin-top: 22px; }
+    }
+    @media (max-width: 520px) {
+      .container { width: min(100% - 28px, 440px); }
+      .header-inner { min-height: 68px; }
+      .brand img { width: 34px; height: 34px; }
+      .brand { font-size: 1rem; }
+      .header-actions .button { min-height: 40px; padding-inline: 13px; font-size: 0.72rem; }
+      .hero { padding-bottom: 24px; }
+      .hero-visual { min-height: 420px; }
+      .visual-card { top: 2%; right: 0; padding: 7px 10px 7px 7px; }
+      .visual-card img { width: 38px; height: 38px; border-radius: 10px; }
+      .visual-card strong { font-size: 0.74rem; }
+      .visual-card span { font-size: 0.58rem; }
+      .phone { border-width: 5px; border-radius: 22px; }
+      .phone-main { top: 10%; left: 21%; width: 174px; height: 380px; }
+      .phone-left { top: 23%; left: 0; width: 124px; height: 270px; }
+      .phone-right { top: 26%; right: 0; width: 124px; height: 270px; }
+      .proof-row { grid-template-columns: 1fr; gap: 9px; }
+      section { padding: 86px 0; }
+      .feature-grid { grid-template-columns: 1fr; }
+      .feature-card { min-height: 0; }
+      .showcase-panel { padding: 22px; }
+      .footer-inner { display: block; }
+      .footer-links { margin-top: 18px; }
+    }
   </style>
 </head>
 <body>
-  <div class="container">
-    <section class="hero">
-      <div class="badge"><span>●</span> Open Source · MIT License</div>
-      <h1>AndCode</h1>
-      <p>Run coding agents locally on Android with a native GUI. No terminal. No PC required.</p>
-      <div class="cta-group">
-        <a class="btn btn-primary" href="https://github.com/yuga-hashimoto/and-code/releases/latest">↓ Download APK</a>
-        <a class="btn btn-secondary" href="https://github.com/yuga-hashimoto/and-code">View on GitHub</a>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="./" aria-label="AndCode home">
+        <img src="andcode-icon.png" alt="AndCode app icon" />
+        <span>AndCode</span>
+      </a>
+      <nav class="site-nav" aria-label="Primary navigation">
+        <a href="#features">Features</a>
+        <a href="#how-it-works">How it works</a>
+      </nav>
+      <div class="header-actions">
+        <a class="header-link" href="https://github.com/yuga-hashimoto/and-code" aria-label="View AndCode on GitHub">GitHub</a>
+        <a class="button button-primary" href="https://github.com/yuga-hashimoto/and-code/releases/latest">Download APK</a>
       </div>
-      <div class="hero-shots">
-        <img src="screenshot-nav.png" alt="Navigation drawer with agents, projects, and recent chats" />
-        <img src="screenshot.png" alt="Chat with an agent that inspected a repository" />
-        <img src="screenshot-schedules.png" alt="Scheduled prompts running on a recurring schedule" />
-      </div>
-    </section>
+    </div>
+  </header>
 
-    <section class="features">
-      <h2>Features</h2>
-      <div class="grid">
-        <div class="card">
-          <div class="icon">📱</div>
-          <h3>Native Android GUI</h3>
-          <p>Touch-first interface built for Android. No terminal, no CLI — just tap, talk, and code.</p>
+  <main>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="container hero-inner">
+        <div class="hero-grid">
+          <div class="hero-copy">
+            <div class="eyebrow">Native Android workspace</div>
+            <h1 id="hero-title">Code with your agents. <span>Anywhere.</span></h1>
+            <p>A native Android workspace for OpenCode, Claude Code, and Google Antigravity. Run your agent on-device, or connect to OpenCode on your computer.</p>
+            <div class="hero-actions">
+              <a class="button button-primary" href="https://github.com/yuga-hashimoto/and-code/releases/latest">
+                Download the APK
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12m0 0 4-4m-4 4-4-4M5 20h14" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              </a>
+              <a class="button button-secondary" href="https://github.com/yuga-hashimoto/and-code">Explore the source</a>
+            </div>
+            <p class="hero-note mono">OPEN SOURCE · MIT LICENSE · BUILT FOR ANDROID</p>
+          </div>
+
+          <div class="hero-visual" aria-label="AndCode app screens">
+            <div class="visual-glow" aria-hidden="true"></div>
+            <div class="visual-card">
+              <img src="andcode-icon.png" alt="" aria-hidden="true" />
+              <div><strong>AndCode</strong><span>Agent workspace for Android</span></div>
+            </div>
+            <div class="phone phone-left"><img src="navigation-drawer.jpg" alt="AndCode navigation drawer with agents, projects, and recent chats" /></div>
+            <div class="phone phone-main"><img src="repository-chat.jpg" alt="AndCode chat with an agent inspecting a repository" /></div>
+            <div class="phone phone-right"><img src="model-picker.jpg" alt="AndCode model and runtime picker" /></div>
+          </div>
         </div>
-        <div class="card">
-          <div class="icon">⚡</div>
-          <h3>On-Device Runtime</h3>
-          <p>Full Alpine Linux environment running coding agents locally on your phone via PRoot.</p>
-        </div>
-        <div class="card">
-          <div class="icon">🤖</div>
-          <h3>OpenCode</h3>
-          <p>Run OpenCode locally on-device or connect to a remote instance on your PC/Mac/Linux.</p>
-        </div>
-        <div class="card">
-          <div class="icon">🧠</div>
-          <h3>Claude Code</h3>
-          <p>Run Claude Code directly on your Android device with the same native GUI.</p>
-        </div>
-        <div class="card">
-          <div class="icon">🚀</div>
-          <h3>Google Antigravity</h3>
-          <p>Run Google's Antigravity CLI on-device, with OAuth sign-in and live model selection.</p>
-        </div>
-        <div class="card">
-          <div class="icon">📂</div>
-          <h3>Repository & Workspace</h3>
-          <p>Open and work within git repositories on-device with full workspace management.</p>
-        </div>
-        <div class="card">
-          <div class="icon">🌿</div>
-          <h3>Git Support</h3>
-          <p>Stage changes, view diffs, commit, and manage branches — all from the GUI.</p>
-        </div>
-        <div class="card">
-          <div class="icon">📋</div>
-          <h3>Diff Viewer</h3>
-          <p>Review code changes inline before accepting. Know exactly what your agent is modifying.</p>
-        </div>
-        <div class="card">
-          <div class="icon">🔗</div>
-          <h3>Pull Request Badges</h3>
-          <p>PRs opened in a chat stay pinned above the composer with diff size and state — tap to open on GitHub.</p>
-        </div>
-        <div class="card">
-          <div class="icon">✅</div>
-          <h3>Tool Approvals</h3>
-          <p>Approve or reject dangerous operations. No auto-approve — you stay in control.</p>
-        </div>
-        <div class="card">
-          <div class="icon">💬</div>
-          <h3>Session Management</h3>
-          <p>Create, resume, rename, and delete sessions. Switch agents and models on the fly.</p>
-        </div>
-        <div class="card">
-          <div class="icon">⏰</div>
-          <h3>Scheduled Tasks</h3>
-          <p>Run prompts automatically on a one-time or recurring (cron) schedule, with run history.</p>
-        </div>
-        <div class="card">
-          <div class="icon">🎙️</div>
-          <h3>Voice + Wake Word</h3>
-          <p>Push-to-talk voice input with wake word detection. Use it as your Android digital assistant.</p>
-        </div>
-        <div class="card">
-          <div class="icon">🖥️</div>
-          <h3>Remote OpenCode</h3>
-          <p>Connect to OpenCode on your PC/Mac/Linux over LAN or Tailscale. Seamless handoff between devices.</p>
+
+        <div class="proof-row" aria-label="AndCode highlights">
+          <div class="proof-item"><span class="proof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2" /><path d="M10 6h4M10 18h4" stroke-linecap="round" /></svg></span><span>Native Android UI</span></div>
+          <div class="proof-item"><span class="proof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="7" cy="12" r="3" /><circle cx="17" cy="6" r="3" /><circle cx="17" cy="18" r="3" /><path d="m9.7 10.5 4.6-3M9.7 13.5l4.6 3" stroke-linecap="round" /></svg></span><span>On-device or remote</span></div>
+          <div class="proof-item"><span class="proof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 2.9 8.5 7 10 4.1-1.5 7-5.5 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-4" stroke-linecap="round" stroke-linejoin="round" /></svg></span><span>MIT licensed</span></div>
         </div>
       </div>
     </section>
 
-    <section class="how">
-      <h2>Get Started in Minutes</h2>
-      <div class="steps">
-        <div class="step">
-          <div class="step-num">1</div>
-          <div class="step-content">
-            <h4>Download the APK</h4>
-            <p>Grab the latest release from GitHub. Supports arm64 and x86_64 devices.</p>
-          </div>
+    <section id="features" aria-labelledby="features-title">
+      <div class="container">
+        <div class="section-heading">
+          <div><div class="section-kicker">The workspace</div><h2 id="features-title">A serious coding surface, made for your phone.</h2></div>
+          <p>Keep the agent close without giving up control. AndCode brings the parts of an agent workflow you actually need into a touch-first Android UI.</p>
         </div>
-        <div class="step">
-          <div class="step-num">2</div>
-          <div class="step-content">
-            <h4>Set up your runtime</h4>
-            <p>Tap to install the on-device runtime (~2 min) or connect to your PC's agent server via LAN/Tailscale.</p>
-          </div>
-        </div>
-        <div class="step">
-          <div class="step-num">3</div>
-          <div class="step-content">
-            <h4>Start coding</h4>
-            <p>Chat with your AI coding agent, approve tool operations, review diffs — all from your phone.</p>
-          </div>
+
+        <div class="feature-grid">
+          <article class="feature-card"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 9-3 3 3 3M16 9l3 3-3 3M14 6l-4 12" stroke-linecap="round" stroke-linejoin="round" /></svg></span><span class="feature-index">01</span></div><h3>Local agents</h3><p>Run OpenCode, Claude Code, and Antigravity on-device through a managed Linux runtime.</p></article>
+          <article class="feature-card"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="6" cy="12" r="3" /><circle cx="18" cy="6" r="3" /><circle cx="18" cy="18" r="3" /><path d="m8.6 10.8 6.8-3.6M8.6 13.2l6.8 3.6" stroke-linecap="round" /></svg></span><span class="feature-index">02</span></div><h3>Remote OpenCode</h3><p>Connect to an OpenCode server on your PC, Mac, or Linux machine over your network.</p></article>
+          <article class="feature-card"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z" stroke-linejoin="round" /><path d="M3 7.5 12 12l9-4.5M12 12v9" /></svg></span><span class="feature-index">03</span></div><h3>Repository workspace</h3><p>Browse folders, inspect files, and move through projects with a real workspace model.</p></article>
+          <article class="feature-card"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M6 3v18M6 6h8a3 3 0 0 1 0 6H6M6 12h10a3 3 0 0 1 0 6H6" stroke-linecap="round" stroke-linejoin="round" /></svg></span><span class="feature-index">04</span></div><h3>Git review</h3><p>Stage changes, inspect diffs, commit, and manage branches before you ship.</p></article>
+          <article class="feature-card"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 2.9 8.5 7 10 4.1-1.5 7-5.5 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-4" stroke-linecap="round" stroke-linejoin="round" /></svg></span><span class="feature-index">05</span></div><h3>Tool approvals</h3><p>Review dangerous operations and stay in control of what your agent can do.</p></article>
+          <article class="feature-card"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7v5l3 2" stroke-linecap="round" /><path d="M12 2v2M22 12h-2M12 22v-2M2 12h2" stroke-linecap="round" /></svg></span><span class="feature-index">06</span></div><h3>Scheduled tasks</h3><p>Run one-time or recurring prompts and keep a visible history of each run.</p></article>
+          <article class="feature-card"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="5" y="4" width="14" height="16" rx="3" /><path d="M9 10v4M12 8v8M15 10v4" stroke-linecap="round" /></svg></span><span class="feature-index">07</span></div><h3>Voice input</h3><p>Speak into the composer with push-to-talk input and wake word support.</p></article>
+          <article class="feature-card"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M5 5h14v10H9l-4 4V5Z" stroke-linejoin="round" /><path d="M8 9h8M8 12h5" stroke-linecap="round" /></svg></span><span class="feature-index">08</span></div><h3>Sessions that stay useful</h3><p>Create, resume, rename, and switch between conversations without losing the thread.</p></article>
         </div>
       </div>
     </section>
-  </div>
+
+    <section class="showcase" aria-labelledby="showcase-title">
+      <div class="container">
+        <div class="showcase-panel">
+          <div class="showcase-copy"><div class="section-kicker">Designed for the loop</div><h2 id="showcase-title">Prompt. Review. Keep moving.</h2><p>AndCode keeps the working state visible: what the agent ran, what changed, and what needs your approval next.</p><ul class="showcase-list"><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m5 12 4 4L19 6" stroke-linecap="round" stroke-linejoin="round" /></svg>Structured tool activity and readable responses</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m5 12 4 4L19 6" stroke-linecap="round" stroke-linejoin="round" /></svg>Models and runtimes available from one picker</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m5 12 4 4L19 6" stroke-linecap="round" stroke-linejoin="round" /></svg>Recurring work with a clear run history</li></ul></div>
+          <img class="showcase-image" src="schedules.jpg" alt="AndCode schedules screen showing a daily prompt and its next run" />
+        </div>
+      </div>
+    </section>
+
+    <section id="how-it-works" class="steps-section" aria-labelledby="steps-title">
+      <div class="container">
+        <div class="section-heading"><div><div class="section-kicker">Start in minutes</div><h2 id="steps-title">From APK to first task.</h2></div><p>Use AndCode on its own, or bring the Android front end to the runtime you already use.</p></div>
+        <div class="steps">
+          <article class="step"><div class="step-number">01</div><h3>Download the APK</h3><p>Install the latest release from GitHub on your Android device.</p></article>
+          <article class="step"><div class="step-number">02</div><h3>Choose a runtime</h3><p>Set up an on-device runtime or connect to OpenCode on your computer.</p></article>
+          <article class="step"><div class="step-number">03</div><h3>Start coding</h3><p>Open a repository, send a prompt, review the work, and keep building.</p></article>
+        </div>
+      </div>
+    </section>
+
+    <section class="closing" aria-labelledby="closing-title">
+      <div class="container">
+        <div class="closing-panel">
+          <div class="closing-brand"><img src="andcode-icon.png" alt="AndCode app icon" /><div><h2 id="closing-title">Your next task can start here.</h2><p>Open source. Native Android. Ready when you are.</p></div></div>
+          <div class="closing-actions"><a class="button button-primary" href="https://github.com/yuga-hashimoto/and-code/releases/latest">Download APK</a><a class="button button-secondary" href="https://github.com/yuga-hashimoto/and-code">View on GitHub</a></div>
+        </div>
+      </div>
+    </section>
+  </main>
 
   <footer>
     <div class="container">
-      <p>
-        <a href="https://github.com/yuga-hashimoto/and-code">GitHub</a> ·
-        <a href="https://github.com/yuga-hashimoto/and-code/releases">Releases</a> ·
-        <a href="https://github.com/yuga-hashimoto/and-code/blob/main/CONTRIBUTING.md">Contributing</a>
-      </p>
-      <p style="margin-top: 12px;">Independent open-source project. Not affiliated with OpenCode, Anthropic, or Google. MIT Licensed.</p>
+      <div class="footer-inner"><div class="footer-brand"><img src="andcode-icon.png" alt="" aria-hidden="true" /><span>AndCode</span></div><nav class="footer-links" aria-label="Footer navigation"><a href="https://github.com/yuga-hashimoto/and-code">GitHub</a><a href="https://github.com/yuga-hashimoto/and-code/releases">Releases</a><a href="https://github.com/yuga-hashimoto/and-code/blob/main/CONTRIBUTING.md">Contributing</a></nav></div>
+      <p class="footer-note">Independent open-source project. Not affiliated with OpenCode, Anthropic, or Google. MIT Licensed.</p>
     </div>
   </footer>
 </body>
