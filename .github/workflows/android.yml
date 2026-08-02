@@ -113,9 +113,14 @@ jobs:
         # See release.yml for why this is AND_CODE_-prefixed rather than GITHUB_CLIENT_ID directly
         # (GitHub Actions rejects that prefix for repo variables/secrets); without it this job's
         # own debug APK artifact would have no GitHub sign-in either.
+        #
+        # assembleDebugAndroidTest only compiles the instrumented test sources - there is no
+        # emulator/device in this job to actually run them on (connectedDebugAndroidTest), so this
+        # is a compile-only safety net: it catches a broken androidTest before merge without the
+        # cost of standing up an emulator job.
         env:
           GITHUB_CLIENT_ID: ${{ vars.AND_CODE_GITHUB_CLIENT_ID }}
-        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug
+        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest
 
       # assembleRelease runs R8 with minification and resource shrinking, which is the single
       # most expensive task in this workflow. The published artifact is built by release.yml,

@@ -510,6 +510,13 @@
     <string name="legal_build_version_row">Versão do build</string>
     <string name="legal_doc_load_error">Não foi possível carregar este documento neste dispositivo.</string>
     <string name="legal_non_affiliation_note">O AndCode é um projeto de código aberto independente. Ele não é afiliado, endossado ou oficialmente apoiado por OpenCode, Anthropic ou Google.</string>
+    <string name="legal_license_texts_section">Textos de licenças</string>
+    <string name="legal_license_gpl2">GPL-2.0</string>
+    <string name="legal_license_gpl3">GPL-3.0</string>
+    <string name="legal_license_lgpl3">LGPL-3.0</string>
+    <string name="legal_license_bsd3">BSD-3-Clause (libandroid-shmem)</string>
+    <string name="legal_license_apache2">Apache License 2.0</string>
+    <string name="legal_license_ccbyncsa4">CC BY-NC-SA 4.0 (modelos de wake-word)</string>
     <string name="section_appearance_settings">Aparência</string>
     <string name="theme_row">Tema</string>
     <string name="theme_dialog_title">Selecionar tema</string>

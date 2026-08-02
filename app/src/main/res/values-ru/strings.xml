@@ -510,6 +510,13 @@
     <string name="legal_build_version_row">Версия сборки</string>
     <string name="legal_doc_load_error">Не удалось загрузить этот документ на этом устройстве.</string>
     <string name="legal_non_affiliation_note">AndCode — независимый проект с открытым исходным кодом. Он не связан с OpenCode, Anthropic или Google, не одобрен и официально не поддерживается ни одной из этих компаний.</string>
+    <string name="legal_license_texts_section">Тексты лицензий</string>
+    <string name="legal_license_gpl2">GPL-2.0</string>
+    <string name="legal_license_gpl3">GPL-3.0</string>
+    <string name="legal_license_lgpl3">LGPL-3.0</string>
+    <string name="legal_license_bsd3">BSD-3-Clause (libandroid-shmem)</string>
+    <string name="legal_license_apache2">Apache License 2.0</string>
+    <string name="legal_license_ccbyncsa4">CC BY-NC-SA 4.0 (модели активации)</string>
     <string name="section_appearance_settings">Внешний вид</string>
     <string name="theme_row">Тема</string>
     <string name="theme_dialog_title">Выбрать тему</string>

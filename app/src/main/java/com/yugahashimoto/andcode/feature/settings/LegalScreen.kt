@@ -106,6 +106,30 @@ fun LegalScreen(
                 }
             }
             item {
+                // Individually reachable so a user can actually read one of these from the app,
+                // not only via the Markdown links inside the "Open-source Licenses" overview above
+                // (LegalDocumentScreen's line renderer doesn't turn those into working in-app links).
+                SettingsSection(title = stringResource(R.string.legal_license_texts_section)) {
+                    val licenseTexts =
+                        listOf(
+                            LegalDocument.LICENSE_GPL_2_0,
+                            LegalDocument.LICENSE_GPL_3_0,
+                            LegalDocument.LICENSE_LGPL_3_0,
+                            LegalDocument.LICENSE_BSD_3_CLAUSE,
+                            LegalDocument.LICENSE_APACHE_2_0,
+                            LegalDocument.LICENSE_CC_BY_NC_SA_4_0,
+                        )
+                    licenseTexts.forEachIndexed { index, document ->
+                        SettingsRow(
+                            icon = Icons.Default.Description,
+                            title = stringResource(document.titleRes),
+                            onClick = { onOpenDocument(document) },
+                        )
+                        if (index != licenseTexts.lastIndex) SettingsDivider()
+                    }
+                }
+            }
+            item {
                 SettingsSection(title = stringResource(R.string.app_info_row)) {
                     SettingsRow(
                         icon = Icons.Default.Info,

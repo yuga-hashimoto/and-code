@@ -24,4 +24,30 @@ class LegalDocumentTest {
         assertEquals(paths.size, paths.toSet().size)
         paths.forEach { path -> assertEquals(true, path.startsWith("legal/")) }
     }
+
+    @Test
+    fun `documents with a Japanese translation resolve to it only for the ja language tag`() {
+        val translated =
+            listOf(
+                LegalDocument.PRIVACY_POLICY,
+                LegalDocument.TERMS_OF_USE,
+                LegalDocument.THIRD_PARTY_SERVICES,
+                LegalDocument.AUTH_DATA_FLOW,
+            )
+        translated.forEach { document ->
+            val jaPath = requireNotNull(document.assetPathJa) { "${document.name} should have a Japanese translation" }
+            assertEquals(jaPath, document.assetPathFor("ja"))
+            assertEquals(document.assetPath, document.assetPathFor("en"))
+            assertEquals(document.assetPath, document.assetPathFor("fr"))
+        }
+    }
+
+    @Test
+    fun `documents without a Japanese translation fall back to the English asset even for ja`() {
+        val untranslated = listOf(LegalDocument.OSS_LICENSES, LegalDocument.TRADEMARKS, LegalDocument.LICENSE_GPL_2_0)
+        untranslated.forEach { document ->
+            assertNull(document.assetPathJa)
+            assertEquals(document.assetPath, document.assetPathFor("ja"))
+        }
+    }
 }

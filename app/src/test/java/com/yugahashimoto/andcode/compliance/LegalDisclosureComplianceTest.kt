@@ -131,6 +131,71 @@ class LegalDisclosureComplianceTest {
     }
 
     @Test
+    fun `Japanese translations of privacy, terms, third-party services, and auth data flow are bundled offline`() {
+        listOf(
+            "app/src/main/assets/legal/privacy.ja.md",
+            "app/src/main/assets/legal/terms.ja.md",
+            "app/src/main/assets/legal/third_party_services.ja.md",
+            "app/src/main/assets/legal/auth_data_flow.ja.md",
+        ).forEach { relativePath ->
+            val text = readRepoFile(relativePath)
+            assertTrue("$relativePath should contain Japanese text", text.any { it.code in 0x3040..0x30FF || it.code in 0x4E00..0x9FFF })
+        }
+    }
+
+    @Test
+    fun `full license texts referenced from THIRD_PARTY_NOTICES are bundled offline in the APK assets`() {
+        listOf(
+            "GPL-2.0.txt",
+            "GPL-3.0.txt",
+            "LGPL-3.0.txt",
+            "BSD-3-Clause-libandroid-shmem.txt",
+            "Apache-2.0.txt",
+            "CC-BY-NC-SA-4.0.txt",
+        ).forEach { name ->
+            val text = readRepoFile("app/src/main/assets/legal/licenses/$name")
+            assertTrue("$name should be non-trivial license text", text.length > 200)
+        }
+    }
+
+    @Test
+    fun `THIRD_PARTY_NOTICES documents the openWakeWord CC BY-NC-SA model files with matching hashes`() {
+        val text = readRepoFile("THIRD_PARTY_NOTICES.md")
+        assertTrue(text.contains("openWakeWord"))
+        assertTrue(text.contains("CC BY-NC-SA"))
+        val wakewordDir = File(repoRoot, "app/src/main/assets/wakeword")
+        listOf("hey_mycroft_v0.1.tflite", "melspectrogram.tflite", "embedding_model.tflite").forEach { name ->
+            val file = File(wakewordDir, name)
+            assertTrue("Expected bundled wake-word model ${file.absolutePath} to exist", file.exists())
+            val hash =
+                file.inputStream().use { stream ->
+                    val digest = java.security.MessageDigest.getInstance("SHA-256")
+                    val buffer = ByteArray(8192)
+                    while (true) {
+                        val read = stream.read(buffer)
+                        if (read < 0) break
+                        digest.update(buffer, 0, read)
+                    }
+                    digest.digest().joinToString("") { "%02x".format(it) }
+                }
+            assertTrue(
+                "THIRD_PARTY_NOTICES.md should document the SHA-256 of bundled $name ($hash)",
+                text.contains(hash),
+            )
+        }
+    }
+
+    @Test
+    fun `THIRD_PARTY_NOTICES does not overclaim GPL corresponding-source compliance is fully satisfied`() {
+        val text = readRepoFile("THIRD_PARTY_NOTICES.md").lowercase()
+        assertFalse(
+            "THIRD_PARTY_NOTICES.md should not assert GPLv2 corresponding-source is satisfied outright",
+            text.contains("this project treats as satisfying gplv2"),
+        )
+        assertTrue(text.contains("requires_license_review"))
+    }
+
+    @Test
     fun `required standalone legal documents exist at the repository root`() {
         listOf("PRIVACY.md", "TERMS.md", "THIRD_PARTY_SERVICES.md", "TRADEMARKS.md", "docs/AUTHENTICATION_AND_DATA_FLOW.md")
             .forEach { relativePath -> readRepoFile(relativePath) }

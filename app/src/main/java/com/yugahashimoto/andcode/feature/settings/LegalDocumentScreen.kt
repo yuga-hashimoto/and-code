@@ -47,12 +47,13 @@ fun LegalDocumentScreen(
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
+    val languageTag = context.resources.configuration.locales[0].language
     val state by
-        produceState<LegalDocState>(initialValue = LegalDocState.Loading, document) {
+        produceState<LegalDocState>(initialValue = LegalDocState.Loading, document, languageTag) {
             value =
                 runCatching {
                     withContext(Dispatchers.IO) {
-                        context.assets.open(document.assetPath).bufferedReader().use { it.readText() }
+                        context.assets.open(document.assetPathFor(languageTag)).bufferedReader().use { it.readText() }
                     }
                 }.fold(
                     onSuccess = { text -> LegalDocState.Loaded(text.lines()) },
