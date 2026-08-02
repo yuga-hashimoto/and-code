@@ -353,6 +353,11 @@ private fun McpAddDialog(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Text(
+                    stringResource(R.string.risk_warning_mcp_server_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
             }
         },
         confirmButton = {

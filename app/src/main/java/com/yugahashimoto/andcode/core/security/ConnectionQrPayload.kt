@@ -11,6 +11,10 @@ data class ConnectionQrPayload(
     val password: String? = null,
     val insecure: Boolean = false,
 ) {
+    override fun toString(): String =
+        "ConnectionQrPayload(name=$name, url=$url, username=$username, " +
+            "password=${if (password.isNullOrEmpty()) password else "<redacted>"}, insecure=$insecure)"
+
     companion object {
         private const val SCHEME_PREFIX = "opencode://connect"
 

@@ -2,6 +2,7 @@ package com.yugahashimoto.andcode.core.diagnostics
 
 import android.os.Build
 import com.google.firebase.crashlytics.FirebaseCrashlytics
+import com.yugahashimoto.andcode.core.security.SecretRedaction
 
 /**
  * Best-effort bridge for non-fatal diagnostics.
@@ -61,7 +62,7 @@ object CrashReporter {
     }
 
     internal object CrashReportSanitizer {
-        fun message(value: String): String = value.replace(Regex("\\s+"), " ").trim().take(MAX_LOG_CHARS)
+        fun message(value: String): String = SecretRedaction.redact(value.replace(Regex("\\s+"), " ").trim()).take(MAX_LOG_CHARS)
 
         fun key(value: String): String = value.replace(Regex("[^A-Za-z0-9_]"), "_").take(MAX_KEY_CHARS).ifBlank { "key" }
 

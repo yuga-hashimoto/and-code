@@ -19,6 +19,13 @@ const val ROUTE_SETTINGS_MCP_CLAUDE = "settings-mcp-claude"
 const val ROUTE_SETTINGS_MCP_ANTIGRAVITY = "settings-mcp-antigravity"
 const val ROUTE_SETTINGS_MODEL_VISIBILITY = "settings-model-visibility"
 const val ROUTE_SETTINGS_SERVER_INFO = "settings-server-info"
+const val ROUTE_SETTINGS_LEGAL = "settings-legal"
+const val ROUTE_SETTINGS_LEGAL_DOCUMENT = "settings-legal-document"
+const val SETTINGS_LEGAL_DOCUMENT_ARG_ID = "docId"
+const val SETTINGS_LEGAL_DOCUMENT_ROUTE_PATTERN = "$ROUTE_SETTINGS_LEGAL_DOCUMENT/{$SETTINGS_LEGAL_DOCUMENT_ARG_ID}"
+
+fun settingsLegalDocumentRoute(docId: String): String = "$ROUTE_SETTINGS_LEGAL_DOCUMENT/$docId"
+
 const val ROUTE_WORKSPACES = "workspaces"
 const val WORKSPACE_DETAIL_ROUTE = "workspace-detail"
 const val LOCAL_RUNTIME_MANAGEMENT_ROUTE = "local-runtime-management"

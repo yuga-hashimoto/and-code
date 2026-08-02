@@ -6,6 +6,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeAgent
 import com.yugahashimoto.andcode.core.api.OpenCodeProvider
 import com.yugahashimoto.andcode.core.api.ProviderAuthMethod
 import com.yugahashimoto.andcode.core.api.ProviderCatalog
+import com.yugahashimoto.andcode.core.security.SecretRedaction
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeCatalogRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeCatalogState
@@ -400,7 +401,11 @@ class SettingsViewModel(
                 }
                 runCatching { target.authorizeProvider(dialog.providerId, methodIndex, dialog.inputs) }
                     .onSuccess { authorization ->
-                        android.util.Log.w(TAG, "authorizeProvider OK: method=${authorization.method} url=${authorization.url.take(80)}")
+                        android.util.Log.w(
+                            TAG,
+                            "authorizeProvider OK: method=${authorization.method} " +
+                                "url=${SecretRedaction.redactUrlQuery(authorization.url)}",
+                        )
                         if (target.kind == BackendKind.LOCAL) {
                             credentials.unmanageProvider(dialog.providerId)
                         }

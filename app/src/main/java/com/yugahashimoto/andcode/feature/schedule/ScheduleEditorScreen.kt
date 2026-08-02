@@ -371,6 +371,13 @@ fun ScheduleEditorScreen(
                     label = { Text(stringResource(R.string.schedule_timing_custom), maxLines = 1) },
                 )
             }
+            if (timingState.mode != TimingMode.ONCE) {
+                Text(
+                    stringResource(R.string.risk_warning_schedule_body),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
 
             when (timingState.mode) {
                 TimingMode.ONCE -> {

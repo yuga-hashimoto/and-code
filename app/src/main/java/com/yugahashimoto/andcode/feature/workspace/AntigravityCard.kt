@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.feature.workspace
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -215,14 +216,22 @@ private fun PermissionModePicker(
     selected: AntigravityPermissionMode,
     onSelect: (AntigravityPermissionMode) -> Unit,
 ) {
+    var pendingFullAccess by remember { mutableStateOf(false) }
+    val requestSelect: (AntigravityPermissionMode) -> Unit = { mode ->
+        if (mode == AntigravityPermissionMode.FULL_ACCESS && mode != selected) {
+            pendingFullAccess = true
+        } else {
+            onSelect(mode)
+        }
+    }
     Text(stringResource(R.string.claude_permission_mode_label), style = MaterialTheme.typography.labelLarge)
     AntigravityPermissionMode.entries.forEach { mode ->
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().clickable { requestSelect(mode) },
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            RadioButton(selected = mode == selected, onClick = { onSelect(mode) })
+            RadioButton(selected = mode == selected, onClick = { requestSelect(mode) })
             Column(modifier = Modifier.weight(1f)) {
                 Text(stringResource(mode.labelRes), style = MaterialTheme.typography.bodyMedium)
                 Text(
@@ -232,6 +241,17 @@ private fun PermissionModePicker(
                 )
             }
         }
+    }
+    if (pendingFullAccess) {
+        RiskWarningDialog(
+            titleRes = R.string.risk_warning_title,
+            bodyRes = R.string.risk_warning_full_access_body,
+            onConfirm = {
+                pendingFullAccess = false
+                onSelect(AntigravityPermissionMode.FULL_ACCESS)
+            },
+            onDismiss = { pendingFullAccess = false },
+        )
     }
 }
 
@@ -266,5 +286,19 @@ private fun BrowserStep(
 
 @Composable
 private fun SignInButton(onSignIn: () -> Unit) {
-    Button(onClick = onSignIn, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.antigravity_sign_in_button)) }
+    var showExplainer by remember { mutableStateOf(false) }
+    Button(onClick = { showExplainer = true }, modifier = Modifier.fillMaxWidth()) {
+        Text(stringResource(R.string.antigravity_sign_in_button))
+    }
+    if (showExplainer) {
+        AgentAuthExplainerDialog(
+            titleRes = R.string.antigravity_pre_auth_dialog_title,
+            bodyRes = R.string.antigravity_pre_auth_dialog_body,
+            onConfirm = {
+                showExplainer = false
+                onSignIn()
+            },
+            onDismiss = { showExplainer = false },
+        )
+    }
 }

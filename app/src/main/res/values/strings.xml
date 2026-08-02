@@ -510,6 +510,18 @@
     <string name="privacy_stub_body">This feature is coming soon.</string>
     <string name="diagnostics_row">Diagnostics &amp; logs</string>
     <string name="app_info_row">App info</string>
+    <string name="legal_privacy_settings_row" translatable="false">Legal &amp; Privacy</string>
+    <string name="legal_screen_title" translatable="false">Legal &amp; Privacy</string>
+    <string name="legal_doc_privacy_policy" translatable="false">Privacy Policy</string>
+    <string name="legal_doc_terms_of_use" translatable="false">Terms of Use</string>
+    <string name="legal_doc_third_party_services" translatable="false">Third-party Services</string>
+    <string name="legal_doc_oss_licenses" translatable="false">Open-source Licenses</string>
+    <string name="legal_doc_trademarks" translatable="false">Trademarks</string>
+    <string name="legal_doc_auth_data_flow" translatable="false">Authentication &amp; Data Flow</string>
+    <string name="legal_app_version_row" translatable="false">App version</string>
+    <string name="legal_build_version_row" translatable="false">Build version</string>
+    <string name="legal_doc_load_error" translatable="false">Could not load this document on this device.</string>
+    <string name="legal_non_affiliation_note" translatable="false">AndCode is an independent open-source project. It is not affiliated with, endorsed by, or officially supported by OpenCode, Anthropic, or Google.</string>
     <string name="section_appearance_settings">Appearance</string>
     <string name="theme_row">Theme</string>
     <string name="theme_dialog_title">Select theme</string>
@@ -843,11 +855,11 @@
     <string name="claude_status_installing">Installing</string>
     <string name="claude_status_ready">Ready</string>
     <string name="claude_status_signed_out">Signed out</string>
-    <string name="claude_sign_in_button">Sign in to Claude</string>
+    <string name="claude_sign_in_button">Set up Claude Code</string>
     <string name="claude_sign_out_button">Sign out</string>
     <string name="claude_signed_in_as">Signed in: %1$s</string>
     <string name="claude_auth_starting">Starting sign-in…</string>
-    <string name="claude_auth_open_browser">Open the sign-in page</string>
+    <string name="claude_auth_open_browser">Open CLI sign-in</string>
     <string name="claude_auth_instructions">Approve the request in your browser, then paste the code it shows back here.</string>
     <string name="claude_auth_code_hint">Authorization code</string>
     <string name="claude_auth_submit_code">Submit code</string>
@@ -911,11 +923,30 @@
     <string name="settings_agents_section">Agents</string>
     <string name="antigravity_install_button">Install Antigravity</string>
     <string name="antigravity_status_signed_out">Not signed in</string>
-    <string name="antigravity_sign_in_button">Sign in to Antigravity</string>
+    <string name="antigravity_sign_in_button">Set up Antigravity CLI</string>
     <string name="antigravity_auth_starting">Starting sign-in…</string>
     <string name="antigravity_auth_instructions">Approve the Google request in your browser, then paste the code it shows back here.</string>
     <string name="antigravity_auth_verifying">Verifying…</string>
     <string name="antigravity_signed_in">Signed in to Antigravity</string>
+
+    <!-- Pre-login explainer dialogs: shown once before each CLI's own sign-in flow starts. -->
+    <string name="claude_pre_auth_dialog_title" translatable="false">Start official Claude Code CLI sign-in</string>
+    <string name="claude_pre_auth_dialog_body" translatable="false">AndCode starts the official Claude Code CLI inside the Linux environment on this device.\n\nAuthentication and communication with Anthropic (or your configured provider) are handled entirely by the official Claude Code CLI.\n\nAndCode passes the sign-in URL and the code you enter through to the local CLI process. It does not copy the resulting OAuth token into Android settings, send it to an AndCode server, or reuse it for any other tool.\n\nYou need your own usable account or provider configuration. Anthropic\'s current terms of service and plan conditions apply.</string>
+    <string name="antigravity_pre_auth_dialog_title" translatable="false">Start official Antigravity CLI sign-in</string>
+    <string name="antigravity_pre_auth_dialog_body" translatable="false">AndCode starts the official, unmodified Google Antigravity CLI inside the Linux environment on this device.\n\nAuthentication, model access, and communication with Google are handled entirely by the official Antigravity CLI.\n\nAndCode does not extract, store, or transmit Google OAuth tokens, and does not reuse them for other agents such as OpenCode or Claude Code.\n\nYou need your own usable Google account. Google Antigravity\'s current terms of service, offering terms, and usage limits apply.</string>
+    <string name="pre_auth_dialog_continue" translatable="false">Understood, continue</string>
+
+    <!-- Dangerous permission / risk warnings (section 2.9). -->
+    <string name="risk_warning_title" translatable="false">This changes what the CLI can do</string>
+    <string name="risk_warning_full_access_body" translatable="false">Turning this on lets the official CLI change files or run commands without asking you first.\n\nPRoot is a compatibility runtime, not a full security sandbox. Back up anything important, and only use trusted repositories, prompts, and MCP servers.</string>
+    <string name="risk_warning_all_files_title" translatable="false">Allow access to all device files?</string>
+    <string name="risk_warning_all_files_body" translatable="false">Granting this lets agents you run read and modify any file the folder picker can reach on this device, not just AndCode\'s own storage.\n\nOnly grant this if you trust the agents, prompts, and MCP servers you use with them.</string>
+    <string name="risk_warning_mcp_server_title" translatable="false">Adding a third-party MCP server</string>
+    <string name="risk_warning_mcp_server_body" translatable="false">MCP servers can read prompts, files, and tool output, and some can take actions on your behalf. Only add servers you trust.</string>
+    <string name="risk_warning_schedule_title" translatable="false">Scheduled and background runs</string>
+    <string name="risk_warning_schedule_body" translatable="false">Scheduled prompts run unattended, using whatever permission mode the agent is set to at the time. Review the prompt and permission mode before enabling a recurring schedule.</string>
+    <string name="risk_warning_understood" translatable="false">I understand, continue</string>
+
     <string name="chat_response_duration">%1$d min</string>
     <string name="chat_response_duration_under_minute">&lt;1 min</string>
 

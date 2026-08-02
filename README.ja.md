@@ -13,6 +13,9 @@ AndCodeはAIコーディングエージェントをスマートフォンで使�
 
 [Releases](https://github.com/yuga-hashimoto/and-code/releases/latest) · [English README](README.md)
 
+> [!IMPORTANT]
+> AndCodeは、利用者自身のAndroid端末上で対応する第三者製コマンドラインツールをインストールまたは起動する、独立したローカルファーストGUIです。AndCode自体がClaude、Google Antigravity、OpenCodeなどのAIサービス、サブスクリプション、モデル利用権またはアカウント利用権を提供するものではありません。認証、モデルアクセス、推論およびサービスとの通信は、各公式CLIまたは利用者が設定したプロバイダーによって処理されます。AndCodeはOpenCode、AnthropicまたはGoogleと提携、承認、後援または公式サポート関係にありません。詳細は[法的情報・第三者ソフトウェア](#法的情報第三者ソフトウェア)を参照してください。
+
 <div align="center">
 
 ### スクリーンショット
@@ -52,7 +55,7 @@ AndCodeはAIコーディングエージェントをスマートフォンで使�
 - [ビルド](#ビルド)
 - [ドキュメント](#ドキュメント)
 - [コントリビューション](#コントリビューション)
-- [第三者ソフトウェア](#第三者ソフトウェア)
+- [法的情報・第三者ソフトウェア](#法的情報第三者ソフトウェア)
 - [ライセンス](#ライセンス)
 
 ## 対応エージェント
@@ -163,6 +166,8 @@ npx qrcode "opencode://connect?name=Mac%20mini&url=http%3A%2F%2F192.168.1.10%3A4
 - 公開ネットワークではHTTPSリバースプロキシを使用
 - 危険操作は自動承認されません
 - LAN上の平文HTTPは接続先ごとに明示的許可が必要
+- PRootは互換実行環境であり、完全なセキュリティサンドボックスではありません。Full Access／bypass permissionsモードを有効にすると、公式CLIが確認なしにコマンド実行やファイル変更を行えるようになります。有効化前にアプリが警告を表示しますが、重要なファイルは各自バックアップし、信頼できるリポジトリ・プロンプト・MCPサーバーとのみ組み合わせて使用してください
+- `opencode://connect`用に生成したQRコードには平文の接続パスワードが含まれます。信頼できる相手から受け取ったQRコードのみをスキャンし、QRコードの共有はパスワードの共有と同等に扱ってください
 
 ## オンデバイスランタイムの詳細
 
@@ -239,10 +244,16 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 コード、バグ報告、翻訳など、どんな貢献も歓迎します！セットアップと開発フローは[CONTRIBUTING.md](CONTRIBUTING.md)を、翻訳で協力したい場合は[docs/TRANSLATION.md](docs/TRANSLATION.md)を参照してください。
 
-## 第三者ソフトウェア
+## 法的情報・第三者ソフトウェア
 
-ランタイム生成処理の一部は、MITライセンスのHermes Agent Android実装に含まれる汎用Termuxパッケージ解決・展開処理をコーディングエージェント向けに再設計しています。詳細は[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)を参照。
+- **公式CLIは端末内で実行されます。** OpenCode、Claude Code、Google Antigravityは各プロジェクトの公式配布チャネルから取得した無改変のバイナリであり、この端末のPRoot Linux環境内（OpenCodeについては利用者自身のPC/Mac/Linux上）で実行されます。AndCodeはこれらのエージェントロジックをフォーク・改変・再実装していません。
+- **アカウントやAPI設定は利用者自身が用意します。** AndCodeはClaude、Antigravity、OpenCode用モデル、GitHubへのアクセスを販売・提供しません。利用者自身のアカウントまたはプロバイダー設定で認証し、各サービスの最新の利用規約が適用されます。
+- **AndCode独自サーバーへプロンプトやトークンを中継しません。** プロンプト、ファイル、OAuthトークンが経由するAndCode独自バックエンドは存在しません。リクエストは端末上のCLI（またはPC上のOpenCodeサーバー）から、利用者が設定したプロバイダーへ直接送信されます。詳細は[docs/AUTHENTICATION_AND_DATA_FLOW.md](docs/AUTHENTICATION_AND_DATA_FLOW.md)を参照してください。
+- **OAuthトークンを他のツールへ転用しません。** Claude CodeとAntigravityは、それぞれの公式CLIが通常行うのと同様に、OAuth認証情報をLinux/Debian rootfs内に保持します。AndCodeはこれをAndroidアプリの設定領域、他エージェントの認証情報保存領域、外部サービスへコピーすることはありません。
+- **関連文書：** [PRIVACY.md](PRIVACY.md)、[TERMS.md](TERMS.md)、[THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md)、[TRADEMARKS.md](TRADEMARKS.md)、[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)（同梱ランタイムコンポーネントおよび依存ライブラリのOSSライセンス一覧）。これらはアプリ内の**設定 → 法的情報・プライバシー**からオフラインでも確認できます。
+
+ランタイム生成処理の一部は、MITライセンスのHermes Agent Android実装に含まれる汎用Termuxパッケージ解決・展開処理をコーディングエージェント向けに再設計しています。同梱する第三者コンポーネントとライセンスの一覧は[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)を参照してください。
 
 ## ライセンス
 
-[MIT](LICENSE)
+このリポジトリの**AndCodeソースコード**は[MITライセンス](LICENSE)です。このライセンスが適用されるのはAndCode自身のKotlin/Androidコードのみであり、AndCodeが導入・起動する第三者CLIやランタイム（Claude Code、Google Antigravity、OpenCode、PRoot、Alpine/Debianパッケージなど）には適用されません。それぞれ独自の配布元ライセンスが適用されます。詳細は[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)および[TRADEMARKS.md](TRADEMARKS.md)を参照してください。

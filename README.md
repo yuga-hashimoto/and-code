@@ -13,6 +13,9 @@ AndCode is a native Android GUI app that brings AI coding agents to your phone. 
 
 [Releases](https://github.com/yuga-hashimoto/and-code/releases/latest) · [日本語のREADME](README.ja.md)
 
+> [!IMPORTANT]
+> AndCode is an independent, local-first graphical interface that installs or launches supported third-party command-line tools on the user's own Android device. AndCode itself does not provide or resell the underlying AI services, subscriptions, model access, or account entitlements. Authentication, model access, inference, and provider communication are handled by the applicable official CLI or user-configured provider. AndCode is not affiliated with, endorsed by, sponsored by, or officially supported by OpenCode, Anthropic, or Google. See [Legal & Third-Party Software](#legal--third-party-software) below.
+
 <div align="center">
 
 ### Screenshots
@@ -52,7 +55,7 @@ AndCode is a native Android GUI app that brings AI coding agents to your phone. 
 - [Building from Source](#building-from-source)
 - [Documentation](#documentation)
 - [Contributing](#contributing)
-- [Third-Party Software](#third-party-software)
+- [Legal & Third-Party Software](#legal--third-party-software)
 - [License](#license)
 
 ## Supported Agents
@@ -163,6 +166,8 @@ Then scan it from **Workspaces** → **Add via QR** in the app.
 - Use an HTTPS reverse proxy on public networks
 - The app never auto-approves dangerous operations
 - Plaintext HTTP on LAN requires explicit per-connection opt-in
+- PRoot is a compatibility runtime, not a full security sandbox. Full-access / bypass-permissions modes let the official CLI run commands and edit files without asking; the app warns before you turn one on, but you should still back up important files and only point an agent at repositories, prompts, and MCP servers you trust
+- QR codes generated for the `opencode://connect` flow can embed a plaintext connection password — only scan codes from a source you trust, and treat a printed/displayed QR code the same as sharing that password
 
 ## On-Device Runtime Details
 
@@ -239,10 +244,16 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 Contributions are welcome — code, bug reports, and translations! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for setup and workflow, and [docs/TRANSLATION.md](docs/TRANSLATION.md) if you'd like to help translate the app.
 
-## Third-Party Software
+## Legal & Third-Party Software
 
-Runtime generation reuses generic Termux package resolution/extraction logic redesigned for coding agents, inspired by the MIT-licensed Hermes Agent Android implementation. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for details.
+- **Official CLIs run on-device.** OpenCode, Claude Code, and Google Antigravity are the official, unmodified binaries from their respective projects, downloaded from their official distribution channels and executed inside the PRoot Linux environment on your device (or, for OpenCode, on your own PC/Mac/Linux machine). AndCode does not fork, patch, or re-implement their agent logic.
+- **You bring your own account or API access.** AndCode does not sell, resell, or otherwise provide Claude, Antigravity, OpenCode-model, or GitHub access. You authenticate with your own account or provider configuration, subject to that provider's current terms of service.
+- **AndCode does not relay prompts or tokens through its own servers.** There is no AndCode backend that prompts, files, or OAuth tokens pass through. Requests go directly from the on-device CLI (or your PC's OpenCode server) to the provider you configured. See [docs/AUTHENTICATION_AND_DATA_FLOW.md](docs/AUTHENTICATION_AND_DATA_FLOW.md).
+- **OAuth tokens are not reused across tools.** Claude Code and Antigravity each keep their own OAuth credentials inside the Linux/Debian rootfs the way their official CLI normally would; AndCode never copies them into Android app settings, another agent's credential store, or an external service.
+- **See also:** [PRIVACY.md](PRIVACY.md), [TERMS.md](TERMS.md), [THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md), [TRADEMARKS.md](TRADEMARKS.md), and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) (OSS licenses for bundled runtime components and dependencies). All of these are also reachable offline from **Settings → Legal & Privacy** in the app.
+
+Runtime generation reuses generic Termux package resolution/extraction logic redesigned for coding agents, inspired by the MIT-licensed Hermes Agent Android implementation. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for the full list of bundled third-party components and their licenses.
 
 ## License
 
-[MIT](LICENSE)
+The **AndCode source code** in this repository is [MIT licensed](LICENSE). That license covers AndCode's own Kotlin/Android code only — it does **not** extend to the third-party CLIs, runtimes, or packages AndCode installs or launches (Claude Code, Google Antigravity, OpenCode, PRoot, Alpine/Debian packages, and others), each of which is distributed under its own upstream license. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and [TRADEMARKS.md](TRADEMARKS.md).

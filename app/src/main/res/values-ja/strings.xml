@@ -510,6 +510,18 @@
     <string name="privacy_stub_body">この機能は準備中です。</string>
     <string name="diagnostics_row">診断・ログ</string>
     <string name="app_info_row">アプリ情報</string>
+    <string name="legal_privacy_settings_row">法的情報・プライバシー</string>
+    <string name="legal_screen_title">法的情報・プライバシー</string>
+    <string name="legal_doc_privacy_policy">プライバシーポリシー</string>
+    <string name="legal_doc_terms_of_use">利用規約</string>
+    <string name="legal_doc_third_party_services">第三者サービス</string>
+    <string name="legal_doc_oss_licenses">オープンソースライセンス</string>
+    <string name="legal_doc_trademarks">商標について</string>
+    <string name="legal_doc_auth_data_flow">認証とデータの流れ</string>
+    <string name="legal_app_version_row">アプリバージョン</string>
+    <string name="legal_build_version_row">ビルドバージョン</string>
+    <string name="legal_doc_load_error">この端末では文書を読み込めませんでした。</string>
+    <string name="legal_non_affiliation_note">AndCodeは独立したオープンソースプロジェクトです。OpenCode、Anthropic、Googleのいずれとも提携、承認、公式サポート関係にありません。</string>
     <string name="section_appearance_settings">外観</string>
     <string name="theme_row">テーマ</string>
     <string name="theme_dialog_title">テーマを選択</string>
@@ -843,11 +855,11 @@
     <string name="claude_status_installing">インストール中</string>
     <string name="claude_status_ready">利用可能</string>
     <string name="claude_status_signed_out">未サインイン</string>
-    <string name="claude_sign_in_button">Claudeにサインイン</string>
+    <string name="claude_sign_in_button">Claude Codeを設定</string>
     <string name="claude_sign_out_button">サインアウト</string>
     <string name="claude_signed_in_as">サインイン済み: %1$s</string>
     <string name="claude_auth_starting">サインインを開始しています…</string>
-    <string name="claude_auth_open_browser">サインインページを開く</string>
+    <string name="claude_auth_open_browser">CLIログインを開始</string>
     <string name="claude_auth_instructions">ブラウザで承認し、表示されたコードをここに貼り付けてください。</string>
     <string name="claude_auth_code_hint">認証コード</string>
     <string name="claude_auth_submit_code">コードを送信</string>
@@ -911,11 +923,30 @@
     <string name="settings_agents_section">エージェント</string>
     <string name="antigravity_install_button">Antigravityをインストール</string>
     <string name="antigravity_status_signed_out">未サインイン</string>
-    <string name="antigravity_sign_in_button">Antigravityにサインイン</string>
+    <string name="antigravity_sign_in_button">Antigravity CLIを設定</string>
     <string name="antigravity_auth_starting">サインインを開始しています…</string>
     <string name="antigravity_auth_instructions">ブラウザでGoogleのリクエストを承認し、表示されたコードをここに貼り付けてください。</string>
     <string name="antigravity_auth_verifying">確認しています…</string>
     <string name="antigravity_signed_in">Antigravityにサインイン済み</string>
+
+    <!-- ログイン前の説明ダイアログ（各公式CLI自身のサインインフローの前に一度表示） -->
+    <string name="claude_pre_auth_dialog_title">公式Claude Code CLIのログインを開始</string>
+    <string name="claude_pre_auth_dialog_body">AndCodeは、この端末内のLinux環境で公式Claude Code CLIを起動します。\n\n認証およびAnthropicまたは設定されたクラウドプロバイダーとの通信は、公式Claude Code CLIが処理します。\n\nAndCodeは、ログイン用URLや入力された認証コードをローカルCLIプロセスへ受け渡しますが、ログイン後のOAuthトークンをAndroid設定へコピーしたり、AndCodeのサーバーへ送信したり、他のツールへ転用したりしません。\n\n利用には、ご自身が利用可能なアカウントまたはプロバイダー設定が必要です。Anthropicの最新の利用規約とプラン条件が適用されます。</string>
+    <string name="antigravity_pre_auth_dialog_title">公式Antigravity CLIのログインを開始</string>
+    <string name="antigravity_pre_auth_dialog_body">AndCodeは、この端末内のLinux環境で公式かつ無改変のGoogle Antigravity CLIを起動します。\n\n認証、モデルアクセス、Googleとの通信は、公式Antigravity CLIが処理します。\n\nAndCodeはGoogleのOAuthトークンを抽出、保存、外部送信したり、OpenCodeやClaude Codeなど別のエージェントへ転用したりしません。\n\n利用には、ご自身が利用可能なGoogleアカウントが必要です。Google Antigravityの最新の利用規約、提供条件、利用制限が適用されます。</string>
+    <string name="pre_auth_dialog_continue">理解して続行</string>
+
+    <!-- 危険な権限に関する警告（セクション2.9） -->
+    <string name="risk_warning_title">CLIの動作範囲が変わります</string>
+    <string name="risk_warning_full_access_body">この設定を有効にすると、公式CLIが個別確認なしでファイルを変更したり、コマンドを実行したりする可能性があります。\n\nPRootは互換実行環境であり、完全なセキュリティサンドボックスではありません。重要なファイルをバックアップし、信頼できるリポジトリ、プロンプト、MCPサーバーだけを使用してください。</string>
+    <string name="risk_warning_all_files_title">すべての端末ファイルへのアクセスを許可しますか？</string>
+    <string name="risk_warning_all_files_body">許可すると、実行中のエージェントがAndCode自身の保存領域だけでなく、フォルダ選択画面から到達できるこの端末上のあらゆるファイルを読み書きできるようになります。\n\n信頼できるエージェント、プロンプト、MCPサーバーとの組み合わせでのみ許可してください。</string>
+    <string name="risk_warning_mcp_server_title">第三者のMCPサーバーを追加します</string>
+    <string name="risk_warning_mcp_server_body">MCPサーバーはプロンプトやファイル、ツールの出力を読み取ることができ、代理で操作を実行できるものもあります。信頼できるサーバーのみを追加してください。</string>
+    <string name="risk_warning_schedule_title">スケジュール実行・バックグラウンド実行について</string>
+    <string name="risk_warning_schedule_body">スケジュールされたプロンプトは、その時点でエージェントに設定されている権限モードのまま無人で実行されます。定期実行を有効にする前に、プロンプトと権限モードを確認してください。</string>
+    <string name="risk_warning_understood">理解しました。続行します</string>
+
     <string name="chat_response_duration">%1$d分</string>
     <string name="chat_response_duration_under_minute">1分未満</string>
 

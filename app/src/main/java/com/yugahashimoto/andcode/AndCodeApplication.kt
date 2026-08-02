@@ -12,6 +12,7 @@ import com.yugahashimoto.andcode.core.diagnostics.CrashLog
 import com.yugahashimoto.andcode.core.diagnostics.CrashReporter
 import com.yugahashimoto.andcode.core.locale.AppLanguage
 import com.yugahashimoto.andcode.core.notification.RuntimeNotificationHelper
+import com.yugahashimoto.andcode.core.security.SecretRedaction
 import com.yugahashimoto.andcode.core.storage.DeviceStorage
 import com.yugahashimoto.andcode.core.storage.DeviceStorageAccess
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
@@ -342,7 +343,7 @@ class AndCodeApplication : Application() {
                 },
                 onSessionError = { sessionId, message ->
                     CrashReporter.recordException(
-                        error = IllegalStateException(message ?: "Runtime session failed"),
+                        error = IllegalStateException(SecretRedaction.redact(message ?: "Runtime session failed")),
                         message = "Runtime session error",
                         customKeys = mapOf("session_id" to (sessionId ?: "unknown")),
                     )

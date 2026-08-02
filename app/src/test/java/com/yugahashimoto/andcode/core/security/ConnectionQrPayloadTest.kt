@@ -98,4 +98,11 @@ class ConnectionQrPayloadTest {
         assertEquals("http://x", parsed?.url)
         assertNull(parsed?.username)
     }
+
+    @Test
+    fun `toString never prints the plaintext password`() {
+        val payload = ConnectionQrPayload(name = "Mac mini", url = "http://x", username = "opencode", password = "s3cret!")
+        assertFalse(payload.toString().contains("s3cret!"))
+        assertTrue(payload.toString().contains("<redacted>"))
+    }
 }

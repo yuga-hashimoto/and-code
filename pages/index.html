@@ -162,6 +162,7 @@
     }
     h1 span { color: var(--blue); }
     .hero-copy > p { max-width: 570px; color: var(--muted); font-size: clamp(1rem, 1.6vw, 1.18rem); line-height: 1.75; }
+    .hero-disclosure { max-width: 570px; margin-top: 14px !important; color: #7c8ea3; font-size: 0.82rem; line-height: 1.6; }
     .hero-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 32px; }
     .hero-note { margin: 16px 0 0; color: #75879b; font-size: 0.75rem; }
 
@@ -330,6 +331,7 @@
             <div class="eyebrow">Native Android workspace</div>
             <h1 id="hero-title">Code with your agents. <span>Anywhere.</span></h1>
             <p>A native Android workspace for OpenCode, Claude Code, and Google Antigravity. Run your agent on-device, or connect to OpenCode on your computer.</p>
+            <p class="hero-disclosure">Independent local GUI. Third-party CLIs, accounts, services, and terms are provided and governed by their respective owners.</p>
             <div class="hero-actions">
               <a class="button button-primary" href="https://github.com/yuga-hashimoto/and-code/releases/latest">
                 Download the APK
@@ -337,7 +339,7 @@
               </a>
               <a class="button button-secondary" href="https://github.com/yuga-hashimoto/and-code">Explore the source</a>
             </div>
-            <p class="hero-note mono">OPEN SOURCE · MIT LICENSE · BUILT FOR ANDROID</p>
+            <p class="hero-note mono">OPEN SOURCE · ANDCODE SOURCE: MIT LICENSED · BUILT FOR ANDROID</p>
           </div>
 
           <div class="hero-visual" aria-label="AndCode app screens">
@@ -355,7 +357,7 @@
         <div class="proof-row" aria-label="AndCode highlights">
           <div class="proof-item"><span class="proof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2" /><path d="M10 6h4M10 18h4" stroke-linecap="round" /></svg></span><span>Native Android UI</span></div>
           <div class="proof-item"><span class="proof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="7" cy="12" r="3" /><circle cx="17" cy="6" r="3" /><circle cx="17" cy="18" r="3" /><path d="m9.7 10.5 4.6-3M9.7 13.5l4.6 3" stroke-linecap="round" /></svg></span><span>On-device or remote</span></div>
-          <div class="proof-item"><span class="proof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 2.9 8.5 7 10 4.1-1.5 7-5.5 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-4" stroke-linecap="round" stroke-linejoin="round" /></svg></span><span>MIT licensed</span></div>
+          <div class="proof-item"><span class="proof-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 3 5 6v5c0 4.5 2.9 8.5 7 10 4.1-1.5 7-5.5 7-10V6l-7-3Z" /><path d="m9 12 2 2 4-4" stroke-linecap="round" stroke-linejoin="round" /></svg></span><span>AndCode source: MIT licensed</span></div>
         </div>
       </div>
     </section>
@@ -368,7 +370,7 @@
         </div>
 
         <div class="feature-grid">
-          <article class="feature-card"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 9-3 3 3 3M16 9l3 3-3 3M14 6l-4 12" stroke-linecap="round" stroke-linejoin="round" /></svg></span><span class="feature-index">01</span></div><h3>Local agents</h3><p>Run OpenCode, Claude Code, and Antigravity on-device through a managed Linux runtime.</p></article>
+          <article class="feature-card"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="m8 9-3 3 3 3M16 9l3 3-3 3M14 6l-4 12" stroke-linecap="round" stroke-linejoin="round" /></svg></span><span class="feature-index">01</span></div><h3>Local agents</h3><p>Run OpenCode, Claude Code, and Antigravity on-device through a managed Linux runtime. Official CLI executed locally · separate account or provider access required · third-party terms apply.</p></article>
           <article class="feature-card"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><circle cx="6" cy="12" r="3" /><circle cx="18" cy="6" r="3" /><circle cx="18" cy="18" r="3" /><path d="m8.6 10.8 6.8-3.6M8.6 13.2l6.8 3.6" stroke-linecap="round" /></svg></span><span class="feature-index">02</span></div><h3>Remote OpenCode</h3><p>Connect to an OpenCode server on your PC, Mac, or Linux machine over your network.</p></article>
           <article class="feature-card"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5v-9Z" stroke-linejoin="round" /><path d="M3 7.5 12 12l9-4.5M12 12v9" /></svg></span><span class="feature-index">03</span></div><h3>Repository workspace</h3><p>Browse folders, inspect files, and move through projects with a real workspace model.</p></article>
           <article class="feature-card"><div class="feature-top"><span class="feature-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M6 3v18M6 6h8a3 3 0 0 1 0 6H6M6 12h10a3 3 0 0 1 0 6H6" stroke-linecap="round" stroke-linejoin="round" /></svg></span><span class="feature-index">04</span></div><h3>Git review</h3><p>Stage changes, inspect diffs, commit, and manage branches before you ship.</p></article>
@@ -412,8 +414,8 @@
 
   <footer>
     <div class="container">
-      <div class="footer-inner"><div class="footer-brand"><img src="andcode-icon.png" alt="" aria-hidden="true" /><span>AndCode</span></div><nav class="footer-links" aria-label="Footer navigation"><a href="https://github.com/yuga-hashimoto/and-code">GitHub</a><a href="https://github.com/yuga-hashimoto/and-code/releases">Releases</a><a href="https://github.com/yuga-hashimoto/and-code/blob/main/CONTRIBUTING.md">Contributing</a></nav></div>
-      <p class="footer-note">Independent open-source project. Not affiliated with OpenCode, Anthropic, or Google. MIT Licensed.</p>
+      <div class="footer-inner"><div class="footer-brand"><img src="andcode-icon.png" alt="" aria-hidden="true" /><span>AndCode</span></div><nav class="footer-links" aria-label="Footer navigation"><a href="https://github.com/yuga-hashimoto/and-code">GitHub</a><a href="https://github.com/yuga-hashimoto/and-code/releases">Releases</a><a href="https://github.com/yuga-hashimoto/and-code/blob/main/CONTRIBUTING.md">Contributing</a><a href="https://github.com/yuga-hashimoto/and-code/blob/main/PRIVACY.md">Privacy</a><a href="https://github.com/yuga-hashimoto/and-code/blob/main/TERMS.md">Terms</a><a href="https://github.com/yuga-hashimoto/and-code/blob/main/THIRD_PARTY_NOTICES.md">Licenses</a></nav></div>
+      <p class="footer-note">AndCode is an independent open-source project. It is not affiliated with, endorsed by, sponsored by, or officially supported by OpenCode, Anthropic, or Google. AndCode source: MIT licensed — third-party CLIs and runtime components keep their own upstream licenses; see THIRD_PARTY_NOTICES.md.</p>
     </div>
   </footer>
 </body>

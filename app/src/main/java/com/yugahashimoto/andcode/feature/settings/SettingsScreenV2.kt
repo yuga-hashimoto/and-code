@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Palette
+import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Router
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Star
@@ -79,6 +80,7 @@ fun SettingsScreenV2(
     onOpenSupport: () -> Unit = {},
     onOpenMcp: () -> Unit = {},
     onOpenServerInfo: () -> Unit = {},
+    onOpenLegal: () -> Unit = {},
     currentTheme: String = "dark",
     onThemeChange: (String) -> Unit = {},
     currentLanguage: String = "system",
@@ -296,6 +298,12 @@ fun SettingsScreenV2(
                     icon = Icons.Default.Star,
                     title = stringResource(R.string.github_support_button),
                     onClick = onOpenSupport,
+                )
+                SettingsDivider()
+                SettingsRow(
+                    icon = Icons.Default.Policy,
+                    title = stringResource(R.string.legal_privacy_settings_row),
+                    onClick = onOpenLegal,
                 )
             }
         }

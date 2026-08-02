@@ -553,6 +553,7 @@ private fun FolderPickerDialog(
 ) {
     val atRoot = picker.path == WorkspaceFolders.GUEST_ROOT
     val requestDeviceStorage = rememberDeviceStorageRequest(onDeviceStorageAccessChanged)
+    var showAllFilesWarning by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -591,7 +592,7 @@ private fun FolderPickerDialog(
                             FolderPickerRow(
                                 icon = Icons.Default.PhoneAndroid,
                                 label = stringResource(R.string.workspace_device_storage_row),
-                                onClick = requestDeviceStorage,
+                                onClick = { showAllFilesWarning = true },
                             )
                             Text(
                                 stringResource(R.string.workspace_device_storage_hint),
@@ -633,6 +634,18 @@ private fun FolderPickerDialog(
             }
         },
     )
+
+    if (showAllFilesWarning) {
+        RiskWarningDialog(
+            titleRes = R.string.risk_warning_all_files_title,
+            bodyRes = R.string.risk_warning_all_files_body,
+            onConfirm = {
+                showAllFilesWarning = false
+                requestDeviceStorage()
+            },
+            onDismiss = { showAllFilesWarning = false },
+        )
+    }
 }
 
 /**

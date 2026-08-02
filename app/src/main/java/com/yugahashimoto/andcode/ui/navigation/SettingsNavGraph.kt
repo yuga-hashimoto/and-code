@@ -73,6 +73,7 @@ fun NavGraphBuilder.settingsNavGraph(
             onOpenSupport = { showSupportSheet = true },
             onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP) },
             onOpenServerInfo = { navController.navigate(ROUTE_SETTINGS_SERVER_INFO) },
+            onOpenLegal = { navController.navigate(ROUTE_SETTINGS_LEGAL) },
             currentTheme = preferences().theme,
             onThemeChange = { appPreferences.setTheme(it) },
             currentLanguage = preferences().language,
@@ -339,6 +340,24 @@ fun NavGraphBuilder.settingsNavGraph(
             registry = runtimeRegistry,
             onBack = { navController.popBackStack() },
         )
+    }
+
+    composable(ROUTE_SETTINGS_LEGAL) {
+        com.yugahashimoto.andcode.feature.settings.LegalScreen(
+            onOpenDocument = { document -> navController.navigate(settingsLegalDocumentRoute(document.name)) },
+            onBack = { navController.popBackStack() },
+        )
+    }
+
+    composable(SETTINGS_LEGAL_DOCUMENT_ROUTE_PATTERN) { backStackEntry ->
+        val docId = backStackEntry.arguments?.getString(SETTINGS_LEGAL_DOCUMENT_ARG_ID)
+        val document = com.yugahashimoto.andcode.feature.settings.LegalDocument.fromId(docId)
+        if (document != null) {
+            com.yugahashimoto.andcode.feature.settings.LegalDocumentScreen(
+                document = document,
+                onBack = { navController.popBackStack() },
+            )
+        }
     }
 }
 

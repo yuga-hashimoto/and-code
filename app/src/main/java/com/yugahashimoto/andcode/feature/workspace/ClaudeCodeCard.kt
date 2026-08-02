@@ -222,17 +222,25 @@ private fun PermissionModePicker(
     selected: ClaudePermissionMode,
     onSelect: (ClaudePermissionMode) -> Unit,
 ) {
+    var pendingFullAccess by remember { mutableStateOf(false) }
+    val requestSelect: (ClaudePermissionMode) -> Unit = { mode ->
+        if (mode == ClaudePermissionMode.FULL_ACCESS && mode != selected) {
+            pendingFullAccess = true
+        } else {
+            onSelect(mode)
+        }
+    }
     Text(
         text = stringResource(R.string.claude_permission_mode_label),
         style = MaterialTheme.typography.labelLarge,
     )
     ClaudePermissionMode.entries.forEach { mode ->
         Row(
-            modifier = Modifier.fillMaxWidth().clickable { onSelect(mode) },
+            modifier = Modifier.fillMaxWidth().clickable { requestSelect(mode) },
             verticalAlignment = Alignment.Top,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            RadioButton(selected = mode == selected, onClick = { onSelect(mode) })
+            RadioButton(selected = mode == selected, onClick = { requestSelect(mode) })
             Column(modifier = Modifier.weight(1f)) {
                 Text(stringResource(mode.labelRes), style = MaterialTheme.typography.bodyMedium)
                 Text(
@@ -242,6 +250,17 @@ private fun PermissionModePicker(
                 )
             }
         }
+    }
+    if (pendingFullAccess) {
+        RiskWarningDialog(
+            titleRes = R.string.risk_warning_title,
+            bodyRes = R.string.risk_warning_full_access_body,
+            onConfirm = {
+                pendingFullAccess = false
+                onSelect(ClaudePermissionMode.FULL_ACCESS)
+            },
+            onDismiss = { pendingFullAccess = false },
+        )
     }
 }
 
@@ -280,8 +299,20 @@ private fun BrowserStep(
 
 @Composable
 private fun SignInButton(onSignIn: () -> Unit) {
-    Button(onClick = onSignIn, modifier = Modifier.fillMaxWidth()) {
+    var showExplainer by remember { mutableStateOf(false) }
+    Button(onClick = { showExplainer = true }, modifier = Modifier.fillMaxWidth()) {
         Text(stringResource(R.string.claude_sign_in_button))
+    }
+    if (showExplainer) {
+        AgentAuthExplainerDialog(
+            titleRes = R.string.claude_pre_auth_dialog_title,
+            bodyRes = R.string.claude_pre_auth_dialog_body,
+            onConfirm = {
+                showExplainer = false
+                onSignIn()
+            },
+            onDismiss = { showExplainer = false },
+        )
     }
 }
 
