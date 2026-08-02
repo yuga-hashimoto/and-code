@@ -86,12 +86,17 @@ class AntigravityRuntime(
      *
      * `agy --version` is not a cheap probe: it boots the whole bundled language server before it
      * prints anything, and on device it took over a minute and overlapped the `models` call that the
-     * model picker actually needs. The version is not in question either - [AntigravityInstaller]
-     * writes exactly [AntigravityManifest.VERSION] and verifies its SHA-256 first - so reporting the
-     * pinned version for a present, executable binary says the same thing at no cost. Whether the CLI
-     * *works* is answered by [models], which the app needs to run anyway.
+     * model picker actually needs. [AntigravityInstaller] verifies the release's SHA-256 and records
+     * what it wrote, so the marker it leaves answers the same question at no cost.
+     *
+     * A sandbox provisioned before the marker existed falls back to [AntigravityManifest.VERSION] —
+     * the previous assumption, and the only one available for an install whose version was never
+     * written down. Whether the CLI *works* is answered by [models], which the app runs anyway.
      */
-    fun version(): String? = AntigravityManifest.VERSION.takeIf { isInstalled() }
+    fun version(): String? =
+        currentRootfs()
+            ?.takeIf { isInstalled() }
+            ?.let { rootfs -> AntigravityInstaller.installedVersion(rootfs) ?: AntigravityManifest.VERSION }
 
     /** Kept for call sites that invalidate health after an install or update; see [version]. */
     fun invalidateVersion() {

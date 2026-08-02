@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Error
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -26,12 +27,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.runtime.local.AntigravityAuthCoordinator
 import com.yugahashimoto.andcode.runtime.local.AntigravityControllerState
 import com.yugahashimoto.andcode.runtime.local.AntigravityInstallStatus
 import com.yugahashimoto.andcode.runtime.local.AntigravityPermissionMode
+import com.yugahashimoto.andcode.runtime.local.AntigravityUpdateResult
 
 /**
  * Install, sign-in and permission controls for the official Antigravity agent.
@@ -43,6 +46,7 @@ import com.yugahashimoto.andcode.runtime.local.AntigravityPermissionMode
 fun AntigravityCard(
     antigravity: AntigravityControllerState,
     onInstall: () -> Unit,
+    onUpdate: () -> Unit,
     onSelectPermissionMode: (AntigravityPermissionMode) -> Unit,
     onSignIn: () -> Unit,
     onSubmitCode: (String) -> Unit,
@@ -82,16 +86,28 @@ fun AntigravityCard(
             is AntigravityInstallStatus.Ready ->
                 InstalledSection(
                     antigravity,
+                    onUpdate,
                     onSelectPermissionMode,
                     onSignIn,
                     onSubmitCode,
                     onCancelSignIn,
                     onSignOut,
                     onOpenUrl,
+                    showInstallActions,
                 )
             AntigravityInstallStatus.Idle ->
                 if (antigravity.installed) {
-                    InstalledSection(antigravity, onSelectPermissionMode, onSignIn, onSubmitCode, onCancelSignIn, onSignOut, onOpenUrl)
+                    InstalledSection(
+                        antigravity,
+                        onUpdate,
+                        onSelectPermissionMode,
+                        onSignIn,
+                        onSubmitCode,
+                        onCancelSignIn,
+                        onSignOut,
+                        onOpenUrl,
+                        showInstallActions,
+                    )
                 } else if (showInstallActions) {
                     Button(
                         onClick = onInstall,
@@ -105,13 +121,22 @@ fun AntigravityCard(
 @Composable
 private fun InstalledSection(
     antigravity: AntigravityControllerState,
+    onUpdate: () -> Unit,
     onSelectPermissionMode: (AntigravityPermissionMode) -> Unit,
     onSignIn: () -> Unit,
     onSubmitCode: (String) -> Unit,
     onCancelSignIn: () -> Unit,
     onSignOut: () -> Unit,
     onOpenUrl: (String) -> Unit,
+    showInstallActions: Boolean,
 ) {
+    antigravity.version?.takeIf(String::isNotBlank)?.let { version ->
+        Text(
+            text = stringResource(R.string.antigravity_installed_version, version),
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
+        )
+    }
     when (val auth = antigravity.auth) {
         AntigravityAuthCoordinator.State.Idle -> {
             Text(stringResource(R.string.antigravity_status_signed_out), style = MaterialTheme.typography.bodySmall)
@@ -143,6 +168,45 @@ private fun InstalledSection(
         }
     }
     PermissionModePicker(selected = antigravity.permissionMode, onSelect = onSelectPermissionMode)
+    if (showInstallActions) UpdateSection(antigravity, onUpdate)
+}
+
+/**
+ * Offers the release this build of the app carries, and says what the last attempt did.
+ *
+ * Antigravity comes from a version pinned in the app rather than a package repository, so whether an
+ * update exists is already known here — no check button, and no network needed to answer it.
+ */
+@Composable
+private fun UpdateSection(
+    antigravity: AntigravityControllerState,
+    onUpdate: () -> Unit,
+) {
+    antigravity.lastUpdate?.let { result ->
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+            Text(
+                text =
+                    when (result) {
+                        is AntigravityUpdateResult.Updated ->
+                            stringResource(R.string.agent_update_result_updated, result.fromVersion, result.version)
+                        is AntigravityUpdateResult.AlreadyLatest ->
+                            stringResource(R.string.agent_update_result_latest, result.version)
+                    },
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+    }
+    if (antigravity.updateAvailable) {
+        Text(
+            text = stringResource(R.string.antigravity_update_available, antigravity.bundledVersion),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedButton(onClick = onUpdate, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.antigravity_update_button))
+        }
+    }
 }
 
 /** Mirrors Claude Code's picker: agy's own `default` mode expects a live TUI, so it is not offered. */

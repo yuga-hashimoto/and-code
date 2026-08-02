@@ -25,10 +25,39 @@ sealed interface ClaudeInstallStatus {
     data class Failed(val message: String) : ClaudeInstallStatus
 }
 
+/**
+ * What an update attempt actually did.
+ *
+ * `apk` upgrades in place and says nothing about the version it landed on, so an update that had
+ * nothing to do and an update that installed a new build looked identical from the outside — the
+ * button simply stopped spinning. Comparing the version before and after is the only thing that
+ * tells them apart, and the card reports whichever it was.
+ */
+sealed interface ClaudeUpdateResult {
+    /** The version now installed, whether or not this attempt changed it. */
+    val version: String
+
+    data class Updated(val fromVersion: String, override val version: String) : ClaudeUpdateResult
+
+    data class AlreadyLatest(override val version: String) : ClaudeUpdateResult
+}
+
+/** Classifies an update by what it did to the installed version. */
+internal fun claudeUpdateResult(
+    before: String?,
+    after: String,
+): ClaudeUpdateResult =
+    if (before.isNullOrBlank() || before == after) {
+        ClaudeUpdateResult.AlreadyLatest(after)
+    } else {
+        ClaudeUpdateResult.Updated(before, after)
+    }
+
 data class ClaudeCodeUiState(
     val installed: Boolean = false,
     val version: String? = null,
     val install: ClaudeInstallStatus = ClaudeInstallStatus.Idle,
+    val lastUpdate: ClaudeUpdateResult? = null,
     val auth: ClaudeAuthCoordinator.State = ClaudeAuthCoordinator.State.Idle,
     val signedInAccount: String? = null,
     val permissionMode: ClaudePermissionMode = ClaudePermissionMode.DEFAULT,
@@ -117,9 +146,15 @@ class ClaudeCodeController(
         if (installJob?.isActive == true) return
         installJob =
             scope.launch(Dispatchers.IO) {
+                mutableState.value = mutableState.value.copy(lastUpdate = null)
                 report(ClaudeInstallStatus.Installing(R.string.claude_step_downloading_package))
                 target.update()
-                    .onSuccess { refreshBlocking() }
+                    .onSuccess { result ->
+                        refreshBlocking()
+                        // After the refresh, so the version the card shows and the outcome it
+                        // reports come from the same read of the sandbox.
+                        mutableState.value = mutableState.value.copy(lastUpdate = result)
+                    }
                     .onFailure { error -> report(ClaudeInstallStatus.Failed(error.message ?: messages.updateFailed)) }
             }
     }

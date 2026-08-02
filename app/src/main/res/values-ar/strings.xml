@@ -817,6 +817,10 @@
     <string name="claude_install_button">تثبيت Claude Code</string>
     <string name="claude_retry_install_button">إعادة محاولة التثبيت</string>
     <string name="claude_update_button">تحديث Claude Code</string>
+    <string name="agent_update_result_updated">تم التحديث: %1$s ← %2$s</string>
+    <string name="agent_update_result_latest">محدَّث بالفعل (%1$s)</string>
+    <string name="antigravity_update_button">تحديث Antigravity</string>
+    <string name="antigravity_update_available">يتوفّر Antigravity %1$s</string>
     <string name="claude_step_preparing_runtime">جارٍ تحضير بيئة Linux</string>
     <string name="claude_step_adding_repository">جارٍ إضافة مستودع حزم Claude Code</string>
     <string name="claude_step_downloading_package">جارٍ تنزيل Claude Code (حوالي 80 ميغابايت)</string>

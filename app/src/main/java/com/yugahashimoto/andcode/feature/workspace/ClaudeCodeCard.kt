@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
@@ -36,6 +37,7 @@ import com.yugahashimoto.andcode.runtime.local.ClaudeAuthCoordinator
 import com.yugahashimoto.andcode.runtime.local.ClaudeCodeUiState
 import com.yugahashimoto.andcode.runtime.local.ClaudeInstallStatus
 import com.yugahashimoto.andcode.runtime.local.ClaudePermissionMode
+import com.yugahashimoto.andcode.runtime.local.ClaudeUpdateResult
 
 /**
  * Install and sign-in controls for the Android-local Claude Code agent.
@@ -129,6 +131,7 @@ private fun InstalledSection(
     onOpenUrl: (String) -> Unit,
     showInstallActions: Boolean,
 ) {
+    claude.version?.takeIf(String::isNotBlank)?.let { InstalledVersionRow(it) }
     when (val auth = claude.auth) {
         ClaudeAuthCoordinator.State.Starting -> {
             Text(stringResource(R.string.claude_auth_starting), style = MaterialTheme.typography.bodySmall)
@@ -164,9 +167,47 @@ private fun InstalledSection(
     }
     PermissionModePicker(selected = claude.permissionMode, onSelect = onSelectPermissionMode)
     if (showInstallActions) {
+        claude.lastUpdate?.let { UpdateResultRow(it) }
         OutlinedButton(onClick = onUpdate, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.claude_update_button))
         }
+    }
+}
+
+/**
+ * States which version is installed.
+ *
+ * The update button lives on this card, so without the version here there was no way to tell what
+ * an update started from or arrived at.
+ */
+@Composable
+private fun InstalledVersionRow(version: String) {
+    Text(
+        text = stringResource(R.string.claude_installed_version, version),
+        style = MaterialTheme.typography.bodyMedium,
+        fontWeight = FontWeight.Medium,
+    )
+}
+
+/** Says whether the last update moved the version or found nothing newer. */
+@Composable
+private fun UpdateResultRow(result: ClaudeUpdateResult) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            Icons.Default.CheckCircle,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text =
+                when (result) {
+                    is ClaudeUpdateResult.Updated ->
+                        stringResource(R.string.agent_update_result_updated, result.fromVersion, result.version)
+                    is ClaudeUpdateResult.AlreadyLatest ->
+                        stringResource(R.string.agent_update_result_latest, result.version)
+                },
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }
 

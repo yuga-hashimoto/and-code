@@ -860,6 +860,7 @@ private fun SignInStep(
                     com.yugahashimoto.andcode.feature.workspace.AntigravityCard(
                         antigravity = antigravity,
                         onInstall = {},
+                        onUpdate = {},
                         onSelectPermissionMode = onSelectAntigravityPermissionMode,
                         onSignIn = onBeginAntigravitySignIn,
                         onSubmitCode = onSubmitAntigravitySignInCode,

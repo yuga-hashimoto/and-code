@@ -50,6 +50,9 @@ class AntigravityInstaller(
                     if (!destination.exists() && backup.exists()) backup.renameTo(destination)
                     throw error
                 }
+                // Written only once the swap succeeded, so the marker can never claim a version the
+                // guest is not actually running.
+                writeInstalledVersion(rootfs, AntigravityManifest.VERSION)
                 onProgress(1f)
                 archive.delete()
                 destination
@@ -57,4 +60,39 @@ class AntigravityInstaller(
                 extraction.deleteRecursively()
             }
         }
+
+    companion object {
+        /**
+         * Records which release is in the guest, because the binary cannot be asked cheaply.
+         *
+         * `agy --version` boots the whole bundled language server before it prints anything — over a
+         * minute on device — so the app reported [AntigravityManifest.VERSION] for any present
+         * binary instead. That answer goes stale the moment the app ships a newer pin: the card
+         * claimed the new version while the guest still ran the old one, and an update had no
+         * before-and-after to report. The marker is what the installer actually wrote.
+         */
+        private const val VERSION_MARKER = "usr/local/share/and-code/antigravity-version"
+
+        internal fun writeInstalledVersion(
+            rootfs: File,
+            version: String,
+        ) {
+            runCatching {
+                File(rootfs, VERSION_MARKER).apply {
+                    parentFile?.mkdirs()
+                    writeText("$version\n")
+                }
+            }
+        }
+
+        /**
+         * The recorded version, or null when this sandbox predates the marker.
+         *
+         * Callers treat null as "unknown", not as "out of date": a sandbox provisioned by an older
+         * build is running whatever that build pinned, and guessing which release that was would be
+         * inventing history.
+         */
+        fun installedVersion(rootfs: File): String? =
+            runCatching { File(rootfs, VERSION_MARKER).readText().trim().takeIf(String::isNotEmpty) }.getOrNull()
+    }
 }

@@ -66,6 +66,18 @@ consequences for these scripts:
 The failure diagnostics list the flagged packages, since apk names a package when it breaks it but
 never when it later refuses to work because of the flag.
 
+### The card reports which version an update landed on
+
+`apk` upgrades in place and reports nothing about the version, so an update that had nothing to do
+and one that installed a new build were indistinguishable — the button stopped spinning either way.
+`ClaudeCodeTarget.update` therefore reads `claude --version` on both sides of the upgrade and returns
+a `ClaudeUpdateResult`: `Updated(from, to)` when the version moved, `AlreadyLatest(version)` when it
+did not. The card shows the installed version next to the update button and the outcome underneath.
+
+"Already up to date" is a claim the update script has verified, not an assumption: the script only
+succeeds once `apk version -q -l '<' claude-code` reports nothing pending, so a version that did not
+move means the repository has nothing newer.
+
 ## Execution
 
 Prompts run through Claude Code's streaming-JSON protocol rather than its terminal UI:

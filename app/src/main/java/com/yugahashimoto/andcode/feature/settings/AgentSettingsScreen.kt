@@ -62,6 +62,7 @@ fun AgentSettingsScreen(
 fun AntigravityAgentSettingsScreen(
     antigravity: com.yugahashimoto.andcode.runtime.local.AntigravityControllerState,
     onInstall: () -> Unit,
+    onUpdate: () -> Unit,
     onSelectPermissionMode: (com.yugahashimoto.andcode.runtime.local.AntigravityPermissionMode) -> Unit,
     onSignIn: () -> Unit,
     onSubmitCode: (String) -> Unit,
@@ -78,6 +79,7 @@ fun AntigravityAgentSettingsScreen(
                 com.yugahashimoto.andcode.feature.workspace.AntigravityCard(
                     antigravity = antigravity,
                     onInstall = onInstall,
+                    onUpdate = onUpdate,
                     onSelectPermissionMode = onSelectPermissionMode,
                     onSignIn = onSignIn,
                     onSubmitCode = onSubmitCode,

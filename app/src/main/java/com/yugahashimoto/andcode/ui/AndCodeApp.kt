@@ -974,6 +974,7 @@ fun AndCodeApp(
                     antigravityActions =
                         com.yugahashimoto.andcode.ui.navigation.AntigravitySettingsActions(
                             onInstall = app.antigravityController::install,
+                            onUpdate = app.antigravityController::update,
                             onSelectPermissionMode = app.antigravityController::setPermissionMode,
                             onSignIn = app.antigravityController::beginAuth,
                             onSubmitCode = app.antigravityController::submitAuthCode,

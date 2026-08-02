@@ -817,6 +817,10 @@
     <string name="claude_install_button">Instalar o Claude Code</string>
     <string name="claude_retry_install_button">Tentar instalar novamente</string>
     <string name="claude_update_button">Atualizar o Claude Code</string>
+    <string name="agent_update_result_updated">Atualizado: %1$s → %2$s</string>
+    <string name="agent_update_result_latest">Já está atualizado (%1$s)</string>
+    <string name="antigravity_update_button">Atualizar o Antigravity</string>
+    <string name="antigravity_update_available">O Antigravity %1$s está disponível</string>
     <string name="claude_step_preparing_runtime">Preparando o ambiente Linux</string>
     <string name="claude_step_adding_repository">Adicionando o repositório de pacotes do Claude Code</string>
     <string name="claude_step_downloading_package">Baixando o Claude Code (cerca de 80 MB)</string>

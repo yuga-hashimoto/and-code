@@ -817,6 +817,10 @@
     <string name="claude_install_button">安装 Claude Code</string>
     <string name="claude_retry_install_button">重试安装</string>
     <string name="claude_update_button">更新 Claude Code</string>
+    <string name="agent_update_result_updated">已更新：%1$s → %2$s</string>
+    <string name="agent_update_result_latest">已是最新版本（%1$s）</string>
+    <string name="antigravity_update_button">更新 Antigravity</string>
+    <string name="antigravity_update_available">可安装 Antigravity %1$s</string>
     <string name="claude_step_preparing_runtime">正在准备 Linux 环境</string>
     <string name="claude_step_adding_repository">正在添加 Claude Code 软件源</string>
     <string name="claude_step_downloading_package">正在下载 Claude Code（约 80 MB）</string>

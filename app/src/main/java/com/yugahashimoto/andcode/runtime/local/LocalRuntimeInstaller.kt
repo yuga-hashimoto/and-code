@@ -259,6 +259,25 @@ class LocalRuntimeInstaller(
 
     fun bundledOpenCodeVersion(): String = manifestReader.read().openCodeVersion
 
+    /**
+     * Reinstalls the pinned Antigravity release into the sandbox that is already active.
+     *
+     * Antigravity ships as a binary this app pins, so an update means "install what this build
+     * pins" — and going through [install] for that would provision a whole new environment
+     * directory to replace one file. [AntigravityInstaller] verifies the release's SHA-256 and swaps
+     * `agy` in place instead, leaving the Debian rootfs and every agent's credentials untouched.
+     *
+     * Not serialised against [install]: that one builds a staging directory and swaps it in, so the
+     * worst a concurrent run can do is discard this binary, which the next update reinstates. The
+     * controller that owns both actions runs one at a time.
+     */
+    suspend fun updateAntigravity(onProgress: (Float) -> Unit = {}): String {
+        val runtime = installedRuntime() ?: error("The Linux environment is not installed")
+        AntigravityInstaller(runtimeDirectory, abi, downloader)
+            .installInto(runtime.antigravityRootfs ?: runtime.rootfs, onProgress)
+        return AntigravityManifest.VERSION
+    }
+
     private fun extractOpenCode(
         archive: File,
         staging: File,

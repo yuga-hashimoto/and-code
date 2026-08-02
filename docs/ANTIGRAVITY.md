@@ -2,6 +2,25 @@
 
 The Android app provisions the official Google Antigravity CLI release in the shared Alpine/PRoot environment. Release 1.1.7 is pinned in `AntigravityManifest` and every archive is downloaded through `VerifiedRuntimeDownloader` and SHA-256 checked before activation.
 
+## Versions and updates
+
+`agy --version` boots the whole bundled language server before it prints anything — over a minute on
+device — so the app does not ask the binary which release it is. `AntigravityInstaller` writes
+`usr/local/share/and-code/antigravity-version` after the SHA-256-verified binary is swapped in, and
+`AntigravityRuntime.version` reads that marker. Before the marker existed the app simply reported
+`AntigravityManifest.VERSION` for any present binary, which went stale as soon as a new release was
+pinned: the card claimed a version the guest was not running. A sandbox provisioned by one of those
+builds has no marker and still falls back to the pinned version, since nothing recorded what it
+installed.
+
+Antigravity comes from a version pinned in the app rather than a package repository, so the update
+check needs no network: the card compares the marker against `AntigravityManifest.VERSION` and offers
+`AntigravityController.update` when they differ. That update goes through
+`LocalRuntimeInstaller.updateAntigravity`, which re-verifies the release and swaps the single binary
+in place — a full reinstall would rebuild the whole environment directory to replace one file. The
+outcome is reported as `Updated(from, to)` or `AlreadyLatest(version)` so an update that changed
+nothing is distinguishable from one that did.
+
 The Termux fork is reference material only. Its native-Termux wrapper and patched binaries are not bundled or used. The runtime uses Alpine `gcompat`, `util-linux`, and CA certificates; an ABI/loader failure is reported as unsupported instead of silently installing an unofficial binary.
 
 OAuth is a remote PTY flow. The browser URL and one-time code are passed to the PTY, while credentials remain in `/root/.gemini` inside the Linux rootfs and are never copied into Android preferences. `AGY_CLI_DISABLE_AUTO_UPDATE=1` is set so updates remain verified and app-controlled.

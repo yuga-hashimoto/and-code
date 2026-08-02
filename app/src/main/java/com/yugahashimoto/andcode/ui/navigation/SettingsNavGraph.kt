@@ -240,6 +240,7 @@ fun NavGraphBuilder.settingsNavGraph(
         AntigravityAgentSettingsScreen(
             antigravity = antigravity(),
             onInstall = antigravityActions.onInstall,
+            onUpdate = antigravityActions.onUpdate,
             onSelectPermissionMode = antigravityActions.onSelectPermissionMode,
             onSignIn = antigravityActions.onSignIn,
             onSubmitCode = antigravityActions.onSubmitCode,
@@ -346,6 +347,7 @@ data class ClaudeSettingsActions(
 /** Antigravity actions the settings graph forwards to its agent screen. */
 data class AntigravitySettingsActions(
     val onInstall: () -> Unit,
+    val onUpdate: () -> Unit,
     val onSelectPermissionMode: (com.yugahashimoto.andcode.runtime.local.AntigravityPermissionMode) -> Unit,
     val onSignIn: () -> Unit,
     val onSubmitCode: (String) -> Unit,

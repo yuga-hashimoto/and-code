@@ -829,6 +829,10 @@
     <string name="claude_install_button">Claude Codeをインストール</string>
     <string name="claude_retry_install_button">インストールを再試行</string>
     <string name="claude_update_button">Claude Codeを更新</string>
+    <string name="agent_update_result_updated">更新しました: %1$s → %2$s</string>
+    <string name="agent_update_result_latest">最新です (%1$s)</string>
+    <string name="antigravity_update_button">Antigravityを更新</string>
+    <string name="antigravity_update_available">Antigravity %1$sを利用できます</string>
     <string name="claude_step_preparing_runtime">Linux環境を準備しています</string>
     <string name="claude_step_adding_repository">Claude Codeのパッケージリポジトリを追加しています</string>
     <string name="claude_step_downloading_package">Claude Codeをダウンロードしています（約80MB）</string>

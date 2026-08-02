@@ -148,11 +148,19 @@ class ClaudeCodeTarget(
         }
     }
 
-    fun update(): Result<String> =
+    /**
+     * Upgrades the installed package, reporting the version on both sides of the attempt.
+     *
+     * The version is read before the upgrade rather than taken from the UI so the comparison
+     * reflects what is on disk, not what a screen last happened to render.
+     */
+    fun update(): Result<ClaudeUpdateResult> =
         runCatching {
+            val before = runtime.version()
             runtime.update()
-            runtime.version() ?: error("Claude Code did not report a version after the update")
-        }.onSuccess { version -> mutableState.value = RuntimeState.Connected(version) }
+            val after = runtime.version() ?: error("Claude Code did not report a version after the update")
+            claudeUpdateResult(before, after)
+        }.onSuccess { result -> mutableState.value = RuntimeState.Connected(result.version) }
 
     override suspend fun connect(): Result<OpenCodeHealth> =
         runCatching {
