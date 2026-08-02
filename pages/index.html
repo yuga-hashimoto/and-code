@@ -5,6 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>AndCode — Coding Agents on Android</title>
   <meta name="description" content="Native Android GUI for running AI coding agents locally on-device. No terminal or PC required." />
+  <link rel="icon" type="image/png" href="favicon.png" />
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="AndCode — Coding Agents on Android" />
+  <meta property="og:description" content="Native Android GUI for running AI coding agents locally on-device. No terminal or PC required." />
+  <meta property="og:image" content="https://yuga-hashimoto.github.io/and-code/screenshot.png" />
+  <meta property="og:url" content="https://yuga-hashimoto.github.io/and-code/" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="AndCode — Coding Agents on Android" />
+  <meta name="twitter:description" content="Native Android GUI for running AI coding agents locally on-device. No terminal or PC required." />
+  <meta name="twitter:image" content="https://yuga-hashimoto.github.io/and-code/screenshot.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -99,10 +109,18 @@
       border: 1px solid var(--border);
     }
 
-    /* Screenshot */
-    .screenshot {
+    /* Screenshots */
+    .hero-shots {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 20px;
       margin: 60px auto 0;
-      max-width: 320px;
+    }
+    .hero-shots img {
+      max-width: 220px;
+      width: 100%;
       border-radius: 24px;
       border: 1px solid var(--border);
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
@@ -181,7 +199,11 @@
         <a class="btn btn-primary" href="https://github.com/yuga-hashimoto/and-code/releases/latest">↓ Download APK</a>
         <a class="btn btn-secondary" href="https://github.com/yuga-hashimoto/and-code">View on GitHub</a>
       </div>
-      <img class="screenshot" src="screenshot.png" alt="AndCode app screenshot" />
+      <div class="hero-shots">
+        <img src="screenshot-nav.png" alt="Navigation drawer with agents, projects, and recent chats" />
+        <img src="screenshot.png" alt="Chat with an agent that inspected a repository" />
+        <img src="screenshot-schedules.png" alt="Scheduled prompts running on a recurring schedule" />
+      </div>
     </section>
 
     <section class="features">
@@ -208,6 +230,11 @@
           <p>Run Claude Code directly on your Android device with the same native GUI.</p>
         </div>
         <div class="card">
+          <div class="icon">🚀</div>
+          <h3>Google Antigravity</h3>
+          <p>Run Google's Antigravity CLI on-device, with OAuth sign-in and live model selection.</p>
+        </div>
+        <div class="card">
           <div class="icon">📂</div>
           <h3>Repository & Workspace</h3>
           <p>Open and work within git repositories on-device with full workspace management.</p>
@@ -223,6 +250,11 @@
           <p>Review code changes inline before accepting. Know exactly what your agent is modifying.</p>
         </div>
         <div class="card">
+          <div class="icon">🔗</div>
+          <h3>Pull Request Badges</h3>
+          <p>PRs opened in a chat stay pinned above the composer with diff size and state — tap to open on GitHub.</p>
+        </div>
+        <div class="card">
           <div class="icon">✅</div>
           <h3>Tool Approvals</h3>
           <p>Approve or reject dangerous operations. No auto-approve — you stay in control.</p>
@@ -231,6 +263,11 @@
           <div class="icon">💬</div>
           <h3>Session Management</h3>
           <p>Create, resume, rename, and delete sessions. Switch agents and models on the fly.</p>
+        </div>
+        <div class="card">
+          <div class="icon">⏰</div>
+          <h3>Scheduled Tasks</h3>
+          <p>Run prompts automatically on a one-time or recurring (cron) schedule, with run history.</p>
         </div>
         <div class="card">
           <div class="icon">🎙️</div>
@@ -280,7 +317,7 @@
         <a href="https://github.com/yuga-hashimoto/and-code/releases">Releases</a> ·
         <a href="https://github.com/yuga-hashimoto/and-code/blob/main/CONTRIBUTING.md">Contributing</a>
       </p>
-      <p style="margin-top: 12px;">Independent open-source project. Not affiliated with OpenCode or Anthropic. MIT Licensed.</p>
+      <p style="margin-top: 12px;">Independent open-source project. Not affiliated with OpenCode, Anthropic, or Google. MIT Licensed.</p>
     </div>
   </footer>
 </body>

@@ -11,20 +11,40 @@
 
 AndCode is a native Android GUI app that brings AI coding agents to your phone. Chat with [OpenCode](https://github.com/sst/opencode), [Claude Code](https://github.com/anthropics/claude-code), and [Google Antigravity](https://github.com/google-antigravity/antigravity-cli) through a touch-first interface — no terminal, no SSH, no PC required for on-device use. It wraps agent runtimes via PRoot (on-device) or connects remotely to your existing OpenCode server on PC/Mac/Linux.
 
+[Releases](https://github.com/yuga-hashimoto/and-code/releases/latest) · [日本語のREADME](README.ja.md)
+
 <p align="center">
   <img src="screenshots/navigation.png" width="240" alt="Navigation drawer with agents, projects, and recent chats" />
   &nbsp;
-  <img src="screenshots/chat.png" width="240" alt="Chat with streaming response, todo progress, and model switching" />
+  <img src="screenshots/chat.png" width="240" alt="Chat with an agent that inspected the repository and summarized its state" />
   &nbsp;
   <img src="screenshots/model-picker.png" width="240" alt="Model and runtime picker with favorites" />
+  &nbsp;
+  <img src="screenshots/schedules.png" width="240" alt="Scheduled prompts running on a recurring schedule" />
 </p>
 
 > [!IMPORTANT]
-> AndCode is an independent open-source project. It is **not** affiliated with OpenCode or Anthropic.
-
-[日本語のREADMEはこちら](README.ja.md)
+> AndCode is an independent open-source project. It is **not** affiliated with OpenCode, Anthropic, or Google.
 
 ---
+
+## Table of Contents
+
+- [Supported Agents](#supported-agents)
+- [Features](#features)
+- [Antigravity](#antigravity)
+- [Remote OpenCode](#remote-opencode)
+- [Screens](#screens)
+- [Quick Start](#quick-start)
+- [Security](#security)
+- [On-Device Runtime Details](#on-device-runtime-details)
+- [Handoff (Runtime Switching Mid-Conversation)](#handoff-runtime-switching-mid-conversation)
+- [Connecting to OpenCode Desktop](#connecting-to-opencode-desktop)
+- [Building from Source](#building-from-source)
+- [Documentation](#documentation)
+- [Contributing](#contributing)
+- [Third-Party Software](#third-party-software)
+- [License](#license)
 
 ## Supported Agents
 
@@ -34,25 +54,28 @@ AndCode is a native Android GUI app that brings AI coding agents to your phone. 
 | [Claude Code](https://github.com/anthropics/claude-code) | ✓ | — | Beta |
 | [Google Antigravity](https://github.com/google-antigravity/antigravity-cli) | ✓ | — | Beta |
 
-On-device agents run inside an Alpine Linux environment via PRoot. Google Antigravity additionally installs a Debian Bookworm rootfs alongside Alpine, since the official `agy` binary links against glibc.
+On-device agents run inside a Linux environment via PRoot. OpenCode and Claude Code use Alpine Linux; Google Antigravity additionally installs a Debian Bookworm rootfs alongside Alpine, since the official `agy` binary links against glibc.
 
 ## Features
 
-- **Native Android GUI** — Touch-first interface for coding agents; no CLI or terminal required
+- **Native Android GUI** — Touch-first interface for coding agents; no CLI or terminal required for day-to-day use
 - **On-device runtime** — Alpine Linux, Git, bash, curl, ripgrep, and coding agents auto-installed on your Android device via PRoot
-- **Repository & workspace** — Open and work within git repositories on-device
+- **Repository & workspace** — Open git repositories on-device, browse the file tree, and view files with syntax highlighting
 - **Device files** — Grant all-files access and the whole phone (`/sdcard`, SD cards, USB drives) becomes browsable in the folder picker and reachable by the agent, opened in place instead of copied into the app
 - **Git support** — Stage, diff, commit, and manage branches from the GUI
 - **Diff viewer** — Review code changes inline before accepting
+- **Embedded terminal** — Full PTY terminal access into the on-device runtime for manual commands
 - **Pull request badges** — Pull requests opened in a chat stay pinned above the composer with their diff size and state (draft, open, conflict, merged, closed); tap to open them on GitHub
 - **Tool approvals** — Approve or reject dangerous tool operations
 - **Session management** — Create, resume, rename, and delete sessions
+- **Scheduled tasks** — Run prompts automatically on a one-time or recurring (cron) schedule, with run history
 - **Dynamic models** — Models, providers, and agents fetched live from your connected agent instance
 - **Real-time streaming** — SSE-based live responses, tool execution, and approval requests
 - **Structured timeline** — Collapsible reasoning, tool calls, and command output
 - **Voice + Wake Word** — Push-to-talk with Android speech recognition + wake word detection
 - **Text-to-speech** — Read responses aloud
 - **Digital assistant** — Register as Android's default assistant (home gesture / corner swipe)
+- **Home screen widget** — Fire off a prompt straight from the launcher without opening the app first
 - **Secure storage** — Connection credentials encrypted with Android Keystore
 - **Localized UI** — English, Japanese, Chinese (Simplified), Russian, Spanish, French, Portuguese (Brazil), and Arabic, switchable from Settings
 
@@ -78,11 +101,10 @@ In addition to on-device agents, AndCode can connect to OpenCode running on your
 
 | Screen | Description |
 |--------|-------------|
-| Home | Current runtime, model, agent, recent sessions |
-| Chat | Conversation with collapsible reasoning/tools, voice input, model switching, approvals, handoff |
-| Workspaces | Local runtime, PC connections, working folders |
-| History | Running tasks, pending approvals, sessions, event log |
-| Settings | Home assistant, TTS, continuous conversation, configuration |
+| Chat | Home screen and conversation view — recent sessions, collapsible reasoning/tools, voice input, model switching, approvals, handoff |
+| Workspaces | Local runtime setup, PC connections, working folders, file browser, code viewer, embedded terminal |
+| Schedules | Create, edit, enable/disable, and review the run history of one-time or recurring (cron) prompts |
+| Settings | Agents & providers, GitHub, MCP servers, model visibility, voice/TTS, digital assistant, language |
 
 ## Quick Start
 
@@ -146,10 +168,10 @@ The setup process (triggered from Workspaces):
 7. Starts the agent server on `127.0.0.1:4097`
 8. Switches the app to the local runtime
 
-Pinned versions (updatable via app releases without agent changes):
+Pinned versions (updatable via app releases without agent changes; see [`local-runtime-manifest.json`](app/src/main/assets/local-runtime-manifest.json)):
 
 - Alpine Linux 3.24.1
-- OpenCode 1.18.3
+- OpenCode 1.18.5
 - Google Antigravity CLI 1.1.7 (Debian Bookworm rootfs)
 - Architectures: arm64-v8a, x86_64
 
@@ -178,7 +200,7 @@ Restart the desktop app, then discover it from the Android app via **LAN search*
 Requirements: JDK 17, Android SDK, Python 3, network access (first build only)
 
 ```bash
-./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease
+./gradlew detekt spotlessCheck :app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease
 ```
 
 Output APKs:
@@ -194,17 +216,19 @@ Install to device:
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
+## Documentation
+
+- [On-Device Runtime Design](docs/LOCAL_RUNTIME.md)
+- [Antigravity Local Runtime](docs/ANTIGRAVITY.md)
+- [Antigravity Agent Parity Design](docs/superpowers/specs/2026-07-27-antigravity-agent-parity-design.md)
+- [CI Guide](docs/CI.md)
+- [Release Guide](docs/RELEASE.md)
+- [Translation Guide](docs/TRANSLATION.md)
+- [Device Validation Matrix](docs/device-matrix.md)
+
 ## Contributing
 
-Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
-
-## Design Documents
-
-- [AndCode v2 Design](docs/superpowers/specs/2026-07-18-opencode-android-v2-design.md)
-- [Antigravity Agent Parity Design](docs/superpowers/specs/2026-07-27-antigravity-agent-parity-design.md)
-- [Initial MVP Plan](docs/superpowers/plans/2026-07-18-initial-mvp.md)
-- [Local Runtime Design](docs/LOCAL_RUNTIME.md)
-- [Antigravity Local Runtime](docs/ANTIGRAVITY.md)
+Contributions are welcome — code, bug reports, and translations! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for setup and workflow, and [docs/TRANSLATION.md](docs/TRANSLATION.md) if you'd like to help translate the app.
 
 ## Third-Party Software
 
