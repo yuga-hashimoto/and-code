@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   build:
@@ -27,9 +28,48 @@ jobs:
       - run: ./gradlew :app:testDebugUnitTest :app:assembleDebug
         env:
           GITHUB_CLIENT_ID: ${{ vars.AND_CODE_GITHUB_CLIENT_ID }}
-      - uses: actions/upload-artifact@v4
+      - id: upload-apk
+        uses: actions/upload-artifact@v4
         with:
           name: and-code-debug-apk
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Comment or update APK link on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const artifactUrl = '${{ steps.upload-apk.outputs.artifact-url }}';
+            let prNumber = context.payload.pull_request?.number;
+            if (!prNumber) {
+              const branch = context.ref.replace(/^refs\/heads\//, '');
+              const { data: prs } = await github.rest.pulls.list({
+                owner, repo, head: `${owner}:${branch}`, state: 'all', per_page: 1,
+              });
+              prNumber = prs[0]?.number;
+            }
+            if (!prNumber) {
+              core.info('No associated pull request found; skipping comment.');
+              return;
+            }
+            const marker = '<!-- and-code-debug-apk -->';
+            const body = [
+              marker,
+              '**Debug APK built successfully**',
+              '',
+              `[Download APK artifact](${artifactUrl})`,
+              `[View workflow run](https://github.com/${owner}/${repo}/actions/runs/${context.runId})`,
+              '',
+              `Commit: \`${context.sha.slice(0, 12)}\` | Artifact expires in 14 days.`,
+            ].join('\n');
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner, repo, issue_number: prNumber, per_page: 100,
+            });
+            const existing = comments.find((comment) => comment.user?.type === 'Bot' && comment.body?.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner, repo, issue_number: prNumber, body });
+            }
