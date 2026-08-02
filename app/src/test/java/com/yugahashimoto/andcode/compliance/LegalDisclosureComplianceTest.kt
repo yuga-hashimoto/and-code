@@ -135,4 +135,48 @@ class LegalDisclosureComplianceTest {
         listOf("PRIVACY.md", "TERMS.md", "THIRD_PARTY_SERVICES.md", "TRADEMARKS.md", "docs/AUTHENTICATION_AND_DATA_FLOW.md")
             .forEach { relativePath -> readRepoFile(relativePath) }
     }
+
+    /**
+     * The offline copies under `app/src/main/assets/legal/` are maintained by hand (no Gradle copy
+     * task), so they can silently drift from the root documents they are supposed to mirror. This
+     * fails loudly the moment one edit is made without the other, instead of shipping a stale
+     * in-app document.
+     */
+    @Test
+    fun `bundled legal doc assets are byte-for-byte identical to their root source files`() {
+        val pairs =
+            listOf(
+                "PRIVACY.md" to "app/src/main/assets/legal/privacy.md",
+                "TERMS.md" to "app/src/main/assets/legal/terms.md",
+                "THIRD_PARTY_SERVICES.md" to "app/src/main/assets/legal/third_party_services.md",
+                "TRADEMARKS.md" to "app/src/main/assets/legal/trademarks.md",
+                "THIRD_PARTY_NOTICES.md" to "app/src/main/assets/legal/oss_licenses.md",
+                "docs/AUTHENTICATION_AND_DATA_FLOW.md" to "app/src/main/assets/legal/auth_data_flow.md",
+            )
+        pairs.forEach { (source, asset) ->
+            val sourceText = readRepoFile(source)
+            val assetText = readRepoFile(asset)
+            assertTrue(
+                "$asset has drifted from $source - re-copy $source over $asset after editing either one",
+                sourceText == assetText,
+            )
+        }
+    }
+
+    /**
+     * Same drift check for the bundled full license texts: the copy inside the APK's assets must
+     * match the copy kept in the repository root exactly.
+     */
+    @Test
+    fun `bundled license texts are byte-for-byte identical to the repository copies`() {
+        val licenseFiles = listOf("GPL-2.0.txt", "GPL-3.0.txt", "LGPL-3.0.txt", "BSD-3-Clause-libandroid-shmem.txt")
+        licenseFiles.forEach { name ->
+            val sourceText = readRepoFile("THIRD_PARTY_LICENSES/$name")
+            val assetText = readRepoFile("app/src/main/assets/legal/licenses/$name")
+            assertTrue(
+                "app/src/main/assets/legal/licenses/$name has drifted from THIRD_PARTY_LICENSES/$name",
+                sourceText == assetText,
+            )
+        }
+    }
 }

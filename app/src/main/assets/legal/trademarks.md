@@ -2,7 +2,7 @@
 
 - **Claude**, **Claude Code**, and **Anthropic** are trademarks or trade names of Anthropic, PBC.
 - **Google**, **Gemini**, and **Google Antigravity** are trademarks or trade names of Google LLC.
-- **OpenCode** and its logo belong to their respective rights holder(s) (the `sst/opencode`
+- **OpenCode** and its logo belong to their respective rights holder(s) (the `anomalyco/opencode`
   project).
 - **GitHub** is a trademark of GitHub, Inc.
 

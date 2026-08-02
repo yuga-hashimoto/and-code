@@ -15,6 +15,16 @@ class SecretRedactionTest {
     }
 
     @Test
+    fun `redacts a project-scoped OpenAI style api key with hyphens in the body`() {
+        // sk-proj-/sk-svcacct-/sk-admin- keys are hyphenated, not the plain alphanumeric body an
+        // [A-Za-z0-9]-only pattern would assume.
+        val message = "invalid key sk-proj-A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5-P6Q7R8S9T0U1V2W3X4Y5Z6"
+        val redacted = SecretRedaction.redact(message)
+        assertFalse(redacted.contains("A1B2C3D4E5F6G7H8I9J0K1L2M3N4O5-P6Q7R8S9T0U1V2W3X4Y5Z6"))
+        assertTrue(redacted.contains("<redacted>"))
+    }
+
+    @Test
     fun `redacts a github token`() {
         val redacted = SecretRedaction.redact("token ghp_1234567890abcdefghijklmnopqrstuv leaked in output")
         assertFalse(redacted.contains("ghp_1234567890abcdefghijklmnopqrstuv"))
@@ -47,5 +57,16 @@ class SecretRedactionTest {
     fun `url without a query string is returned unchanged`() {
         val url = "https://claude.ai/oauth/authorize"
         assertEquals(url, SecretRedaction.redactUrlQuery(url))
+    }
+
+    @Test
+    fun `redact also strips query strings from urls embedded in arbitrary text`() {
+        // Covers callers that pass a message through redact() directly rather than routing a URL
+        // through redactUrlQuery() explicitly first.
+        val message = "session failed calling https://api.example.com/callback?code=abc123&state=xyz789 (timeout)"
+        val redacted = SecretRedaction.redact(message)
+        assertFalse(redacted.contains("code=abc123"))
+        assertFalse(redacted.contains("state=xyz789"))
+        assertTrue(redacted.contains("https://api.example.com/callback"))
     }
 }

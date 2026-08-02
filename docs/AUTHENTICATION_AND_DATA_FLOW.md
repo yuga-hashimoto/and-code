@@ -28,13 +28,23 @@ that implement each flow, not from how the feature is expected to behave.
   via an Android `Intent.ACTION_VIEW` and forwards any code you type back to the OpenCode API. Full
   authorization URLs are not written to persistent logs (query strings are stripped by
   `SecretRedaction.redactUrlQuery` before a URL is logged).
-- **Where OAuth/API-key material is stored:** provider credentials are managed by OpenCode's own
-  config on the machine running it (on-device Alpine rootfs, or your remote PC). AndCode separately
-  stores your **remote connection profile** (server URL, username, password) in
-  `EncryptedSharedPreferences` (`SecureSettingsRepository`) so it can reconnect.
+- **Where OAuth/API-key material is stored — three distinct paths, not one:**
+  1. A provider API key typed into AndCode's own UI (**Settings → Providers**) for the **local**
+     on-device runtime is stored in `EncryptedSharedPreferences`, *and* AndCode's own
+     `LocalProviderCredentialStore.syncToRuntime()` writes it into
+     `root/.local/share/opencode/auth.json` inside the on-device Alpine rootfs — the plaintext JSON
+     format the local OpenCode process reads. AndCode is the one writing that file in this path, not
+     merely relaying to a process that manages it independently.
+  2. Provider OAuth obtained through OpenCode's own API (flow above) is managed by the OpenCode
+     process once obtained, the same way flow 1's synced file ends up managed by OpenCode afterward.
+  3. For a **remote** OpenCode server, AndCode stores only the **connection profile** (server URL,
+     username, password) in `EncryptedSharedPreferences` (`SecureSettingsRepository`); provider
+     credentials live on the remote machine and are never synced to the Android app.
 - **What AndCode reads:** session/message/tool-call data over OpenCode's REST/SSE API, so it can
   render the chat UI, and the provider list/connection status.
-- **What AndCode does not read:** the OpenCode server's own on-disk credential files.
+- **What AndCode does not read:** the contents of an already-existing `auth.json` beyond what it
+  needs to merge in the managed provider keys from path 1 above; for a remote server, AndCode never
+  reads that server's on-disk credential files at all.
 - **Prompt/response data flow:** typed directly between the Android app and the OpenCode server
   (local loopback or your remote host) over HTTP/SSE; from there, OpenCode talks to whatever model
   provider you configured. No AndCode-operated server is in this path.
@@ -110,9 +120,11 @@ that implement each flow, not from how the feature is expected to behave.
 - **Prompt/response data flow:** once signed in, `agy` is driven per-session as a child process;
   prompts and responses flow directly between that process and Google. No AndCode-operated server is
   in this path.
-- **Logout:** deletes the guest token file described above, then re-verifies with
-  `AntigravityGuestSettings.repair` and an `agy models` check that the CLI now reports itself signed
-  out.
+- **Logout:** `logout()` deletes the guest token file described above, then calls
+  `AntigravityGuestSettings.repair()` to restore the guest config to a consistent state, and sets the
+  in-app state directly to `Idle`. It does **not** run an `agy models` check to confirm the CLI now
+  reports itself signed out (that out-of-band check is only used during sign-in, in `verifyModels()`,
+  described above) — logout is confirmed by removing the credential file, not by re-querying the CLI.
 - **AndCode-owned server:** none.
 
 ## Common properties across all three agents
