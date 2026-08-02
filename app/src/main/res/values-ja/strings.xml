@@ -891,6 +891,9 @@
     <string name="schedule_run_now">今すぐ実行</string>
     <string name="schedule_save">保存</string>
     <string name="schedule_cancel">キャンセル</string>
+    <string name="schedule_error_prompt_required">保存する前にプロンプトを入力してください</string>
+    <string name="schedule_error_agent_required">保存する前にエージェントを選択してください</string>
+    <string name="schedule_error_timing_required">保存する前にタイミングを設定してください</string>
     <string name="schedule_empty">スケジュールはまだありません。＋を押して作成してください。</string>
     <string name="schedule_next_run">次回: %1$s</string>
     <string name="schedule_last_run">前回: %1$s</string>

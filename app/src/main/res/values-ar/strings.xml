@@ -878,6 +878,9 @@
     <string name="schedule_run_now">تشغيل الآن</string>
     <string name="schedule_save">حفظ</string>
     <string name="schedule_cancel">إلغاء</string>
+    <string name="schedule_error_prompt_required">أدخل موجّهًا قبل الحفظ</string>
+    <string name="schedule_error_agent_required">اختر وكيلًا قبل الحفظ</string>
+    <string name="schedule_error_timing_required">أكمل إعدادات التوقيت قبل الحفظ</string>
     <string name="schedule_empty">لا توجد جداول بعد. اضغط + لإنشاء جدول.</string>
     <string name="schedule_next_run">التالي: %1$s</string>
     <string name="schedule_last_run">آخر تشغيل: %1$s</string>

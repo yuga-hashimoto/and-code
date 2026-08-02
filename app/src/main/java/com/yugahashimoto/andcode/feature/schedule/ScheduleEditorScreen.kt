@@ -2,7 +2,10 @@ package com.yugahashimoto.andcode.feature.schedule
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +24,8 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
@@ -30,6 +35,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,6 +46,7 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,7 +83,7 @@ private enum class TimingMode { ONCE, DAILY, WEEKLY, MONTHLY, CUSTOM }
 
 private enum class AutoAcceptMode { DEFAULT, ALWAYS }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ScheduleEditorScreen(
     existing: Schedule?,
@@ -104,8 +112,20 @@ fun ScheduleEditorScreen(
     var showDatePicker by remember { mutableStateOf(false) }
     var showTimePicker by remember { mutableStateOf(false) }
     var invalidCron by remember { mutableStateOf(false) }
+    var saveError by remember { mutableStateOf<String?>(null) }
 
     val sheetState = rememberModalBottomSheetState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // Saving used to fail silently whenever a required field was missing; surface the reason instead.
+    val promptRequiredMessage = stringResource(R.string.schedule_error_prompt_required)
+    val agentRequiredMessage = stringResource(R.string.schedule_error_agent_required)
+    val timingRequiredMessage = stringResource(R.string.schedule_error_timing_required)
+    LaunchedEffect(saveError) {
+        val message = saveError ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        saveError = null
+    }
 
     val selectedTarget = runtimeTargets.firstOrNull { it.id == runtimeId }
     val selectedProvider = providers.firstOrNull { it.id == providerId }
@@ -144,7 +164,16 @@ fun ScheduleEditorScreen(
                                     workspacePath,
                                     autoAcceptMode,
                                 )
-                            if (built != null) onSave(built)
+                            if (built != null) {
+                                onSave(built)
+                            } else {
+                                saveError =
+                                    when {
+                                        prompt.isBlank() -> promptRequiredMessage
+                                        runtimeId.isEmpty() -> agentRequiredMessage
+                                        else -> timingRequiredMessage
+                                    }
+                            }
                         },
                     ) {
                         Text(stringResource(R.string.schedule_save), fontWeight = FontWeight.SemiBold)
@@ -159,6 +188,7 @@ fun ScheduleEditorScreen(
                     ),
             )
         },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         containerColor = MaterialTheme.colorScheme.background,
     ) { padding ->
         Column(
@@ -224,17 +254,56 @@ fun ScheduleEditorScreen(
                     .firstOrNull { it.path == workspacePath }
                     ?.let { "${it.name} · ${it.path}" }
                     ?: workspacePath
-            OutlinedButton(
-                onClick = { workspaceMenuExpanded = true },
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(
-                    text = workspaceSummary.ifBlank { stringResource(R.string.schedule_workspace_unset) },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+            Box(modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = { workspaceMenuExpanded = true },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Icon(Icons.Default.Folder, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = workspaceSummary.ifBlank { stringResource(R.string.schedule_workspace_unset) },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                DropdownMenu(
+                    expanded = workspaceMenuExpanded,
+                    onDismissRequest = { workspaceMenuExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.schedule_workspace_unset)) },
+                        onClick = {
+                            workspacePath = ""
+                            workspaceMenuExpanded = false
+                        },
+                    )
+                    workspaces.forEach { workspace ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(
+                                        text = workspace.name,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                    Text(
+                                        text = workspace.path,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            },
+                            onClick = {
+                                workspacePath = workspace.path
+                                workspaceMenuExpanded = false
+                            },
+                        )
+                    }
+                }
             }
 
             EditorSectionHeader(stringResource(R.string.schedule_prompt))
@@ -248,31 +317,37 @@ fun ScheduleEditorScreen(
             )
 
             EditorSectionHeader(stringResource(R.string.schedule_timing))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            // Flow layout: the chip labels are translated, and a plain Row squeezes long ones
+            // (e.g. "カスタム（cron）") down to a single character per line.
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 FilterChip(
                     selected = timingState.mode == TimingMode.ONCE,
                     onClick = { timingState.mode = TimingMode.ONCE },
-                    label = { Text(stringResource(R.string.schedule_timing_once)) },
+                    label = { Text(stringResource(R.string.schedule_timing_once), maxLines = 1) },
                 )
                 FilterChip(
                     selected = timingState.mode == TimingMode.DAILY,
                     onClick = { timingState.mode = TimingMode.DAILY },
-                    label = { Text(stringResource(R.string.schedule_timing_daily)) },
+                    label = { Text(stringResource(R.string.schedule_timing_daily), maxLines = 1) },
                 )
                 FilterChip(
                     selected = timingState.mode == TimingMode.WEEKLY,
                     onClick = { timingState.mode = TimingMode.WEEKLY },
-                    label = { Text(stringResource(R.string.schedule_timing_weekly)) },
+                    label = { Text(stringResource(R.string.schedule_timing_weekly), maxLines = 1) },
                 )
                 FilterChip(
                     selected = timingState.mode == TimingMode.MONTHLY,
                     onClick = { timingState.mode = TimingMode.MONTHLY },
-                    label = { Text(stringResource(R.string.schedule_timing_monthly)) },
+                    label = { Text(stringResource(R.string.schedule_timing_monthly), maxLines = 1) },
                 )
                 FilterChip(
                     selected = timingState.mode == TimingMode.CUSTOM,
                     onClick = { timingState.mode = TimingMode.CUSTOM },
-                    label = { Text(stringResource(R.string.schedule_timing_custom)) },
+                    label = { Text(stringResource(R.string.schedule_timing_custom), maxLines = 1) },
                 )
             }
 
@@ -303,9 +378,14 @@ fun ScheduleEditorScreen(
                     TimePickerButton(
                         label = timingState.dailyTime?.format(TIME_FORMAT) ?: stringResource(R.string.schedule_time),
                         onClick = { showTimePicker = true },
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 TimingMode.WEEKLY -> {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
                         DayOfWeek.entries.forEach { day ->
                             FilterChip(
                                 selected = timingState.weeklyDay == day,
@@ -313,6 +393,7 @@ fun ScheduleEditorScreen(
                                 label = {
                                     Text(
                                         day.getDisplayName(TextStyle.NARROW, Locale.getDefault()),
+                                        maxLines = 1,
                                     )
                                 },
                             )
@@ -321,23 +402,34 @@ fun ScheduleEditorScreen(
                     TimePickerButton(
                         label = timingState.weeklyTime?.format(TIME_FORMAT) ?: stringResource(R.string.schedule_time),
                         onClick = { showTimePicker = true },
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 TimingMode.MONTHLY -> {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                    // Both buttons are weighted: the time button used to ask for the full row width
+                    // and pushed the day-of-month button off screen.
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         OutlinedButton(
                             onClick = {
                                 timingState.monthlyDay = (timingState.monthlyDay ?: 1) % 31 + 1
                             },
+                            modifier = Modifier.weight(1f),
                         ) {
                             Icon(Icons.Default.Schedule, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.width(6.dp))
-                            Text(stringResource(R.string.schedule_day_of_month) + ": " + (timingState.monthlyDay ?: 1))
+                            Text(
+                                text = stringResource(R.string.schedule_day_of_month) + ": " + (timingState.monthlyDay ?: 1),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
                         }
-                        Spacer(Modifier.width(12.dp))
                         TimePickerButton(
                             label = timingState.monthlyTime?.format(TIME_FORMAT) ?: stringResource(R.string.schedule_time),
                             onClick = { showTimePicker = true },
+                            modifier = Modifier.weight(1f),
                         )
                     }
                 }
@@ -375,16 +467,20 @@ fun ScheduleEditorScreen(
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f))
 
             EditorSectionHeader(stringResource(R.string.schedule_auto_accept))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 FilterChip(
                     selected = autoAcceptMode == AutoAcceptMode.DEFAULT,
                     onClick = { autoAcceptMode = AutoAcceptMode.DEFAULT },
-                    label = { Text(stringResource(R.string.schedule_auto_accept_default)) },
+                    label = { Text(stringResource(R.string.schedule_auto_accept_default), maxLines = 1) },
                 )
                 FilterChip(
                     selected = autoAcceptMode == AutoAcceptMode.ALWAYS,
                     onClick = { autoAcceptMode = AutoAcceptMode.ALWAYS },
-                    label = { Text(stringResource(R.string.always_allow)) },
+                    label = { Text(stringResource(R.string.always_allow), maxLines = 1) },
                 )
             }
             Text(
@@ -481,9 +577,10 @@ private fun EditorSectionHeader(text: String) {
 private fun TimePickerButton(
     label: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Text(label)
+    OutlinedButton(onClick = onClick, modifier = modifier) {
+        Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
 

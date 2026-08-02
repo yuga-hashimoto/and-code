@@ -878,6 +878,9 @@
     <string name="schedule_run_now">Exécuter maintenant</string>
     <string name="schedule_save">Enregistrer</string>
     <string name="schedule_cancel">Annuler</string>
+    <string name="schedule_error_prompt_required">Saisissez une invite avant d\'enregistrer</string>
+    <string name="schedule_error_agent_required">Choisissez un agent avant d\'enregistrer</string>
+    <string name="schedule_error_timing_required">Complétez la planification avant d\'enregistrer</string>
     <string name="schedule_empty">Aucune planification. Appuyez sur + pour en créer une.</string>
     <string name="schedule_next_run">Prochaine : %1$s</string>
     <string name="schedule_last_run">Dernière exécution : %1$s</string>

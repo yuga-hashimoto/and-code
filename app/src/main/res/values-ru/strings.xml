@@ -878,6 +878,9 @@
     <string name="schedule_run_now">Запустить сейчас</string>
     <string name="schedule_save">Сохранить</string>
     <string name="schedule_cancel">Отмена</string>
+    <string name="schedule_error_prompt_required">Введите запрос перед сохранением</string>
+    <string name="schedule_error_agent_required">Выберите агента перед сохранением</string>
+    <string name="schedule_error_timing_required">Завершите настройку расписания перед сохранением</string>
     <string name="schedule_empty">Пока нет расписаний. Нажмите +, чтобы создать.</string>
     <string name="schedule_next_run">Следующий: %1$s</string>
     <string name="schedule_last_run">Последний запуск: %1$s</string>

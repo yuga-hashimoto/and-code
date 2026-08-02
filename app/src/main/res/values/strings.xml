@@ -891,6 +891,9 @@
     <string name="schedule_run_now">Run now</string>
     <string name="schedule_save">Save</string>
     <string name="schedule_cancel">Cancel</string>
+    <string name="schedule_error_prompt_required">Enter a prompt before saving</string>
+    <string name="schedule_error_agent_required">Choose an agent before saving</string>
+    <string name="schedule_error_timing_required">Finish the timing settings before saving</string>
     <string name="schedule_empty">No schedules yet. Tap + to create one.</string>
     <string name="schedule_next_run">Next: %1$s</string>
     <string name="schedule_last_run">Last run: %1$s</string>

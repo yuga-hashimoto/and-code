@@ -878,6 +878,9 @@
     <string name="schedule_run_now">Executar agora</string>
     <string name="schedule_save">Salvar</string>
     <string name="schedule_cancel">Cancelar</string>
+    <string name="schedule_error_prompt_required">Escreva um prompt antes de salvar</string>
+    <string name="schedule_error_agent_required">Escolha um agente antes de salvar</string>
+    <string name="schedule_error_timing_required">Conclua a programação antes de salvar</string>
     <string name="schedule_empty">Ainda não há agendamentos. Toque em + para criar um.</string>
     <string name="schedule_next_run">Próxima: %1$s</string>
     <string name="schedule_last_run">Última execução: %1$s</string>
