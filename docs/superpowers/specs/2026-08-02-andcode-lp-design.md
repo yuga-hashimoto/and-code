@@ -6,7 +6,7 @@ Refresh the English AndCode landing page so it feels like the Android app rather
 
 ## Scope
 
-The change is limited to the static GitHub Pages site under `pages/` and its presentation assets. No Android application behavior, release flow, or product copy outside the LP changes.
+The change covers the static GitHub Pages site under `pages/`, the repository screenshot gallery in `README.md` and `README.ja.md`, and their presentation assets. No Android application behavior, release flow, or product copy outside the LP/README presentation changes.
 
 ## Experience
 
@@ -45,6 +45,14 @@ The change is limited to the static GitHub Pages site under `pages/` and its pre
 - Keep GitHub, Releases, and Contributing links.
 - Keep the independent-project and MIT-license disclaimer.
 
+### README screenshot gallery
+
+- Replace the current four-image strip with a two-row, three-column HTML table inspired by the existing OpenClaw Assistant README style.
+- Use the six supplied screenshots and name them by what they show rather than retaining numeric download filenames.
+- Each cell includes an accessible alt text and a visible caption: Navigation drawer, Model & runtime picker, Repository chat, Image generation, Schedules, and Scheduled run result.
+- Keep the English and Japanese README galleries in the same order; localize only the captions and alt text in `README.ja.md`.
+- Do not force all six screenshots into the LP hero. Use the three most product-defining screens there and keep the complete six-screen gallery in the README.
+
 ## Visual system
 
 - Background: deep navy/near-black matching the app screenshots, not purple-black.
@@ -60,6 +68,7 @@ The change is limited to the static GitHub Pages site under `pages/` and its pre
 - Keep the LP as a single static `pages/index.html` with embedded CSS and inline SVG markup so GitHub Pages remains dependency-free.
 - Add the generated decorative asset under `pages/` and reference it with a relative path.
 - Keep existing screenshot files and reuse them rather than fabricating product UI.
+- Copy the six supplied screenshots into both `screenshots/` for repository documentation and `pages/` for the GitHub Pages artifact; use descriptive filenames and leave unrelated existing assets intact.
 - Update Open Graph/Twitter image metadata to a stable LP asset if the final composition provides one; otherwise retain the existing screenshot metadata.
 - All interactive elements must remain keyboard reachable with visible focus states.
 - Decorative SVGs and the generated atmosphere image must be hidden from assistive technology; meaningful images need descriptive alt text.
