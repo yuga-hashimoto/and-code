@@ -55,6 +55,8 @@ data class SettingsUiState(
     val runtimeOptions: List<Pair<String, String>> = emptyList(),
     val assistantRuntimeId: String? = null,
     val assistantWorkspacePath: String? = null,
+    val assistantProviderId: String? = null,
+    val assistantModelId: String? = null,
     val openCodeVersion: String? = null,
     val providerAuthMethods: Map<String, List<ProviderAuthMethod>> = emptyMap(),
     val oauthMessage: String? = null,
@@ -178,6 +180,8 @@ class SettingsViewModel(
                 runtimeOptions = core.targets.map { it.id to it.displayName },
                 assistantRuntimeId = settings.assistantRuntimeId ?: core.selected?.id,
                 assistantWorkspacePath = settings.assistantWorkspacePath,
+                assistantProviderId = settings.assistantProviderId ?: core.preferences.providerId,
+                assistantModelId = settings.assistantModelId ?: core.preferences.modelId,
                 openCodeVersion = core.runtime.health?.version,
                 providerAuthMethods = oauth.methods,
                 oauthMessage = oauth.message,
@@ -590,12 +594,29 @@ class SettingsViewModel(
     }
 
     fun setAssistantRuntimeId(runtimeId: String?) {
+        if (settings.assistantRuntimeId != runtimeId) {
+            // A provider/model/workspace belongs to the runtime that supplied it. Keeping those
+            // values while switching Agent makes the next voice request send stale identifiers to
+            // the new runtime, and leaves the settings screen showing a choice that cannot work.
+            settings.assistantProviderId = null
+            settings.assistantModelId = null
+            settings.assistantWorkspacePath = null
+        }
         settings.assistantRuntimeId = runtimeId
         settingsTick.update { it + 1 }
     }
 
     fun setAssistantWorkspacePath(path: String?) {
         settings.assistantWorkspacePath = path?.trim()?.ifBlank { null }
+        settingsTick.update { it + 1 }
+    }
+
+    fun setAssistantModel(
+        providerId: String?,
+        modelId: String?,
+    ) {
+        settings.assistantProviderId = providerId?.takeIf(String::isNotBlank)
+        settings.assistantModelId = modelId?.takeIf(String::isNotBlank)
         settingsTick.update { it + 1 }
     }
 

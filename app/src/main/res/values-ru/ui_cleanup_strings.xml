@@ -35,8 +35,11 @@
     <string name="voice_settings_intro">Настройте голосовой ввод и озвучивание ответов.</string>
     <string name="assistant_target_section">Цель ассистента</string>
     <string name="assistant_agent_label">Агент для активации</string>
+    <string name="assistant_model_label">Модель</string>
     <string name="assistant_agent_auto">Следовать текущему агенту</string>
     <string name="assistant_workspace_label">Рабочая область</string>
+    <string name="assistant_model_unset">Модель не выбрана</string>
+    <string name="assistant_workspace_auto">По умолчанию агента</string>
     <string name="voice_conversation_section">Голосовой разговор</string>
     <string name="voice_response_description">Зачитывать ответы агента вслух.</string>
     <string name="tts_provider_label">Провайдер речи</string>

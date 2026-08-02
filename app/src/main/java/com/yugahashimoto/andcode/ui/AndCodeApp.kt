@@ -82,6 +82,7 @@ import com.yugahashimoto.andcode.feature.schedule.ScheduleViewModel
 import com.yugahashimoto.andcode.feature.settings.DiagnosticsSheet
 import com.yugahashimoto.andcode.feature.settings.GitHubRepo
 import com.yugahashimoto.andcode.feature.settings.SettingsViewModel
+import com.yugahashimoto.andcode.feature.wakeword.WakeWordSettingsPolicy
 import com.yugahashimoto.andcode.feature.workspace.WorkspaceViewModel
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
@@ -340,8 +341,8 @@ fun AndCodeApp(
                 startOrStopVoiceInput()
             } else if (granted && startWakeWordAfterPermission) {
                 startWakeWordAfterPermission = false
-                settingsViewModel.setWakeWordEnabled(true)
-                if (assistantActive) {
+                if (WakeWordSettingsPolicy.canEnable(microphonePermission = true, assistantActive = assistantActive)) {
+                    settingsViewModel.setWakeWordEnabled(true)
                     val started =
                         com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
                             context,
@@ -355,6 +356,13 @@ fun AndCodeApp(
                             android.widget.Toast.LENGTH_SHORT,
                         ).show()
                     }
+                } else {
+                    android.widget.Toast.makeText(
+                        context,
+                        R.string.wake_word_requires_assistant,
+                        android.widget.Toast.LENGTH_LONG,
+                    ).show()
+                    onOpenAssistantSettings()
                 }
             } else if (!granted) {
                 startVoiceAfterPermission = false
@@ -436,6 +444,7 @@ fun AndCodeApp(
             if (!started) settingsViewModel.setWakeWordEnabled(false)
         } else {
             com.yugahashimoto.andcode.feature.wakeword.WakeWordService.stop(context)
+            if (preferences.wakeWordEnabled) settingsViewModel.setWakeWordEnabled(false)
         }
     }
 
@@ -951,6 +960,8 @@ fun AndCodeApp(
                     onOpenDrawer = { openDrawer() },
                     onOpenAssistantSettings = onOpenAssistantSettings,
                     assistantActive = { assistantActive },
+                    runtimeTargets = { runtimeTargets },
+                    workspaces = { workspaceState.workspaces },
                     onShowDiagnostics = { showDiagnostics = true },
                     preferences = { preferences },
                     appPreferences = app.preferences,

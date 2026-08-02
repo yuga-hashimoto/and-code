@@ -35,8 +35,11 @@
     <string name="voice_settings_intro">音声入力と読み上げの動作を設定します。</string>
     <string name="assistant_target_section">アシスタント起動先</string>
     <string name="assistant_agent_label">起動するAgent</string>
+    <string name="assistant_model_label">Model</string>
     <string name="assistant_agent_auto">現在のAgentに従う</string>
     <string name="assistant_workspace_label">デフォルトワークスペース</string>
+    <string name="assistant_model_unset">モデル未選択</string>
+    <string name="assistant_workspace_auto">Agentの既定</string>
     <string name="voice_conversation_section">音声会話</string>
     <string name="voice_response_description">エージェントの応答を読み上げます。</string>
     <string name="tts_provider_label">音声プロバイダー</string>

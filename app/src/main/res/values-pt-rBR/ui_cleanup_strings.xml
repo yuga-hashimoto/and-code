@@ -35,8 +35,11 @@
     <string name="voice_settings_intro">Configure a entrada de voz e as respostas faladas.</string>
     <string name="assistant_target_section">Alvo do assistente</string>
     <string name="assistant_agent_label">Agente a ativar</string>
+    <string name="assistant_model_label">Modelo</string>
     <string name="assistant_agent_auto">Seguir agente atual</string>
     <string name="assistant_workspace_label">Espaço de trabalho</string>
+    <string name="assistant_model_unset">Modelo não selecionado</string>
+    <string name="assistant_workspace_auto">Padrão do agente</string>
     <string name="voice_conversation_section">Conversa por voz</string>
     <string name="voice_response_description">Lê em voz alta as respostas do agente.</string>
     <string name="tts_provider_label">Provedor de voz</string>

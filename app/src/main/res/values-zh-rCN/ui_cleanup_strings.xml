@@ -35,8 +35,11 @@
     <string name="voice_settings_intro">配置语音输入和语音回复。</string>
     <string name="assistant_target_section">助手目标</string>
     <string name="assistant_agent_label">要激活的代理</string>
+    <string name="assistant_model_label">模型</string>
     <string name="assistant_agent_auto">自动跟随当前代理</string>
     <string name="assistant_workspace_label">默认工作区</string>
+    <string name="assistant_model_unset">未选择模型</string>
+    <string name="assistant_workspace_auto">代理默认值</string>
     <string name="voice_conversation_section">语音对话</string>
     <string name="voice_response_description">朗读智能体的回复。</string>
     <string name="tts_provider_label">语音服务提供商</string>

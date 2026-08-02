@@ -17,7 +17,10 @@ import java.util.UUID
 
 class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarget {
     override val id = LocalAgent.ANTIGRAVITY.targetId
-    override val displayName = "Antigravity · Local"
+
+    // Every other on-device agent is named after the agent alone ("OpenCode", "Claude Code"), so the
+    // "· Local" suffix here read as a separate, third kind of target in the agent pickers.
+    override val displayName = "Antigravity"
     override val agent = LocalAgent.ANTIGRAVITY
     override val kind = BackendKind.LOCAL
     override val type = RuntimeType.LOCAL

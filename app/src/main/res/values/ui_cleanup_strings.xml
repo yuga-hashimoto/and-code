@@ -35,8 +35,11 @@
     <string name="voice_settings_intro">Configure voice input and spoken responses.</string>
     <string name="assistant_target_section">Assistant target</string>
     <string name="assistant_agent_label">Agent to activate</string>
+    <string name="assistant_model_label">Model</string>
     <string name="assistant_agent_auto">Auto follow current agent</string>
     <string name="assistant_workspace_label">Default workspace</string>
+    <string name="assistant_model_unset">Model not selected</string>
+    <string name="assistant_workspace_auto">Agent default</string>
     <string name="voice_conversation_section">Voice conversation</string>
     <string name="voice_response_description">Read agent responses aloud.</string>
     <string name="tts_provider_label">Speech provider</string>

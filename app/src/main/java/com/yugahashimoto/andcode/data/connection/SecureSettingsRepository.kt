@@ -205,6 +205,21 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         get() = preferences.getString(KEY_ASSISTANT_WORKSPACE_PATH, null)
         set(value) = preferences.edit().putString(KEY_ASSISTANT_WORKSPACE_PATH, value).apply()
 
+    /**
+     * Model the voice assistant talks to, independent of the chat's own pick.
+     *
+     * Null means "whatever the chat is using". The assistant can be pointed at another agent than
+     * the one open in the chat, and reusing [selectedModelId] then sent that agent a model it does
+     * not serve.
+     */
+    var assistantProviderId: String?
+        get() = preferences.getString(KEY_ASSISTANT_PROVIDER_ID, null)
+        set(value) = preferences.edit().putString(KEY_ASSISTANT_PROVIDER_ID, value).apply()
+
+    var assistantModelId: String?
+        get() = preferences.getString(KEY_ASSISTANT_MODEL_ID, null)
+        set(value) = preferences.edit().putString(KEY_ASSISTANT_MODEL_ID, value).apply()
+
     var safWorkspaceUris: List<String>
         get() =
             preferences.getString(KEY_SAF_WORKSPACE_URIS, null)
@@ -419,6 +434,8 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         private const val KEY_MANAGED_PROVIDER_API_KEY_IDS = "managed_provider_api_key_ids"
         private const val KEY_ASSISTANT_RUNTIME_ID = "assistant_runtime_id"
         private const val KEY_ASSISTANT_WORKSPACE_PATH = "assistant_workspace_path"
+        private const val KEY_ASSISTANT_PROVIDER_ID = "assistant_provider_id"
+        private const val KEY_ASSISTANT_MODEL_ID = "assistant_model_id"
         private const val KEY_SAF_WORKSPACE_URIS = "saf_workspace_uris"
         private const val KEY_PROJECT_PATHS = "project_paths"
         private const val KEY_HIDDEN_WORKSPACE_PATHS = "hidden_workspace_paths"

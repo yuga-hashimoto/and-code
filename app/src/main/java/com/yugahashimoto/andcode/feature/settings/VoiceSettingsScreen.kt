@@ -1,22 +1,28 @@
 package com.yugahashimoto.andcode.feature.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.VoiceChat
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -27,10 +33,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -45,6 +55,11 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.core.api.OpenCodeProvider
+import com.yugahashimoto.andcode.feature.chat.ModelAndRuntimePickerSheet
+import com.yugahashimoto.andcode.runtime.RuntimeTarget
+import com.yugahashimoto.andcode.runtime.WorkspaceRef
+import com.yugahashimoto.andcode.ui.runtimeAgentIcon
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
 
 /** Voice settings with explicit wake-word capability status. */
@@ -65,7 +80,11 @@ fun VoiceSettingsScreen(
     wakeWordModel: String = "hey_mycroft",
     availableWakeWordModels: List<String> = emptyList(),
     assistantRuntimeId: String? = null,
-    availableRuntimes: List<Pair<String, String>> = emptyList(),
+    runtimeTargets: List<RuntimeTarget> = emptyList(),
+    providers: List<OpenCodeProvider> = emptyList(),
+    workspaces: List<WorkspaceRef> = emptyList(),
+    assistantProviderId: String? = null,
+    assistantModelId: String? = null,
     assistantWorkspacePath: String = "",
     onTtsChange: (Boolean) -> Unit,
     onTtsProviderChange: (String) -> Unit = {},
@@ -80,6 +99,7 @@ fun VoiceSettingsScreen(
     onWakeWordChange: (Boolean) -> Unit,
     onWakeWordModelChange: (String) -> Unit = {},
     onAssistantRuntimeChange: (String) -> Unit = {},
+    onAssistantModelChange: (String, String) -> Unit = { _, _ -> },
     onAssistantWorkspaceChange: (String) -> Unit = {},
     onBack: () -> Unit,
 ) {
@@ -221,18 +241,20 @@ fun VoiceSettingsScreen(
                 }
             }
 
-            if (availableRuntimes.isNotEmpty()) {
+            if (runtimeTargets.isNotEmpty()) {
                 item {
                     SettingsGroup(title = stringResource(R.string.assistant_target_section)) {
-                        AgentDropdown(
-                            selectedRuntimeId = assistantRuntimeId,
-                            runtimes = availableRuntimes,
-                            onSelect = onAssistantRuntimeChange,
-                        )
-                        VoiceDivider()
-                        WorkspaceTextField(
-                            value = assistantWorkspacePath,
-                            onValueChange = onAssistantWorkspaceChange,
+                        AssistantTargetSection(
+                            runtimeTargets = runtimeTargets,
+                            providers = providers,
+                            workspaces = workspaces,
+                            assistantRuntimeId = assistantRuntimeId,
+                            assistantProviderId = assistantProviderId,
+                            assistantModelId = assistantModelId,
+                            assistantWorkspacePath = assistantWorkspacePath,
+                            onRuntimeChange = onAssistantRuntimeChange,
+                            onModelChange = onAssistantModelChange,
+                            onWorkspaceChange = onAssistantWorkspaceChange,
                         )
                     }
                 }
@@ -311,63 +333,226 @@ private fun SecretTextField(
     )
 }
 
+/**
+ * Agent, model and workspace the wake word / assistant session starts with.
+ *
+ * The agent used to be the only thing selectable here: the model came from whatever the chat was
+ * using, which is wrong as soon as the assistant points at a different agent, and the workspace was
+ * a free-text path nobody could be expected to type correctly. Both are pickers over what the
+ * chosen agent actually offers now.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun AgentDropdown(
-    selectedRuntimeId: String?,
-    runtimes: List<Pair<String, String>>,
+private fun AssistantTargetSection(
+    runtimeTargets: List<RuntimeTarget>,
+    providers: List<OpenCodeProvider>,
+    workspaces: List<WorkspaceRef>,
+    assistantRuntimeId: String?,
+    assistantProviderId: String?,
+    assistantModelId: String?,
+    assistantWorkspacePath: String,
+    onRuntimeChange: (String) -> Unit,
+    onModelChange: (String, String) -> Unit,
+    onWorkspaceChange: (String) -> Unit,
+) {
+    var showPicker by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+    val selectableTargets = assistantTargets(runtimeTargets)
+    val selectedTarget = selectableTargets.firstOrNull { it.id == assistantRuntimeId }
+
+    /*
+     * The assistant's catalog belongs to its selected agent, not necessarily to the runtime open in
+     * the chat. Fetching it here also makes a model choice possible for Claude Code and Antigravity,
+     * whose catalogues are not part of the chat runtime's state.
+     */
+    var targetWorkspaces by remember { mutableStateOf<List<WorkspaceRef>>(emptyList()) }
+    var targetProviders by remember { mutableStateOf<List<OpenCodeProvider>>(emptyList()) }
+    LaunchedEffect(selectedTarget?.id) {
+        val target = selectedTarget
+        targetWorkspaces = emptyList()
+        targetProviders = emptyList()
+        if (target != null) {
+            targetWorkspaces = runCatching { target.listWorkspaces() }.getOrDefault(emptyList())
+            targetProviders =
+                runCatching { assistantProviderOptions(target.listProviders()) }
+                    .getOrDefault(emptyList())
+        }
+    }
+    val workspaceOptions = assistantWorkspaceOptions(targetWorkspaces, workspaces)
+    val modelProviders = targetProviders.ifEmpty { providers }
+    val selectedModelName =
+        modelProviders.firstOrNull { it.id == assistantProviderId }?.models?.get(assistantModelId)?.name
+
+    SelectionRow(
+        icon = runtimeAgentIcon(selectedTarget?.agent),
+        label = stringResource(R.string.assistant_agent_label),
+        value =
+            selectedTarget?.agent?.let { stringResource(it.displayNameRes) }
+                ?: stringResource(R.string.assistant_agent_auto),
+        onClick = { showPicker = true },
+    )
+
+    SelectionRow(
+        icon = runtimeAgentIcon(selectedTarget?.agent),
+        label = stringResource(R.string.assistant_model_label),
+        value = selectedModelName ?: stringResource(R.string.assistant_model_unset),
+        onClick = { showPicker = true },
+    )
+
+    VoiceDivider()
+
+    WorkspaceDropdown(
+        selectedPath = assistantWorkspacePath,
+        workspaces = workspaceOptions,
+        onSelect = onWorkspaceChange,
+    )
+
+    if (showPicker) {
+        ModelAndRuntimePickerSheet(
+            sheetState = sheetState,
+            runtimeTargets = selectableTargets,
+            selectedRuntimeId = assistantRuntimeId,
+            onSelectRuntime = onRuntimeChange,
+            providers = modelProviders,
+            selectedProviderId = assistantProviderId,
+            selectedModelId = assistantModelId,
+            showLocalSuffix = false,
+            onSelectModel = { providerId, modelId ->
+                onModelChange(providerId, modelId)
+                showPicker = false
+            },
+            onDismiss = { showPicker = false },
+        )
+    }
+}
+
+@Composable
+private fun SelectionRow(
+    icon: Int,
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 4.dp, vertical = 4.dp)
+                .clickable(onClick = onClick),
+        shape = MaterialTheme.shapes.medium,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = painterResource(icon),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(text = value, style = MaterialTheme.typography.bodyLarge)
+            }
+            Icon(
+                Icons.Default.ArrowDropDown,
+                contentDescription = label,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WorkspaceDropdown(
+    selectedPath: String,
+    workspaces: List<WorkspaceRef>,
     onSelect: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val selectedName = runtimes.firstOrNull { it.first == selectedRuntimeId }?.second ?: "Auto (current agent)"
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-    ) {
-        OutlinedTextField(
-            value = selectedName,
-            onValueChange = {},
-            readOnly = true,
-            label = { Text(stringResource(R.string.assistant_agent_label)) },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-            singleLine = true,
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+    val selectedName =
+        workspaces.firstOrNull { it.path == selectedPath }?.name
+            ?: selectedPath.takeIf(String::isNotBlank)
+            ?: stringResource(R.string.assistant_workspace_auto)
+    Box(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)) {
+        Surface(
+            modifier = Modifier.fillMaxWidth().clickable { expanded = true },
+            shape = MaterialTheme.shapes.medium,
+            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = stringResource(R.string.assistant_workspace_label),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(text = selectedName, style = MaterialTheme.typography.bodyLarge)
+                    selectedPath.takeIf(String::isNotBlank)?.let { path ->
+                        Text(
+                            text = path,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                Icon(
+                    Icons.Default.ArrowDropDown,
+                    contentDescription = stringResource(R.string.assistant_workspace_label),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false },
+            modifier = Modifier.fillMaxWidth(0.92f),
+        ) {
             DropdownMenuItem(
-                text = { Text(stringResource(R.string.assistant_agent_auto)) },
+                text = { Text(stringResource(R.string.assistant_workspace_auto)) },
                 onClick = {
                     onSelect("")
                     expanded = false
                 },
             )
-            runtimes.forEach { (id, name) ->
+            if (workspaces.isEmpty()) {
                 DropdownMenuItem(
-                    text = { Text(name) },
+                    text = { Text(stringResource(R.string.no_workspaces_title)) },
+                    onClick = { expanded = false },
+                    enabled = false,
+                )
+            }
+            workspaces.forEach { workspace ->
+                DropdownMenuItem(
+                    text = {
+                        Column {
+                            Text(workspace.name, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                workspace.path,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    },
                     onClick = {
-                        onSelect(id)
+                        onSelect(workspace.path)
                         expanded = false
                     },
                 )
             }
         }
     }
-}
-
-@Composable
-private fun WorkspaceTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(stringResource(R.string.assistant_workspace_label)) },
-        placeholder = { Text("/workspace") },
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-        singleLine = true,
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

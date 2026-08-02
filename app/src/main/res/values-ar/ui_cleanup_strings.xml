@@ -35,8 +35,11 @@
     <string name="voice_settings_intro">قم بتكوين الإدخال الصوتي والردود المنطوقة.</string>
     <string name="assistant_target_section">هدف المساعد</string>
     <string name="assistant_agent_label">الوكيل المراد تنشيطه</string>
+    <string name="assistant_model_label">النموذج</string>
     <string name="assistant_agent_auto">تلقائي متابعة الوكيل الحالي</string>
     <string name="assistant_workspace_label">مساحة العمل الافتراضية</string>
+    <string name="assistant_model_unset">لم يتم تحديد نموذج</string>
+    <string name="assistant_workspace_auto">الافتراضي للوكيل</string>
     <string name="voice_conversation_section">محادثة صوتية</string>
     <string name="voice_response_description">قراءة ردود الوكيل بصوت عالٍ.</string>
     <string name="tts_provider_label">موفر الصوت</string>

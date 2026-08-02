@@ -67,6 +67,7 @@ fun ModelAndRuntimePickerSheet(
     recentModelKeys: List<String> = emptyList(),
     hiddenModelKeys: Set<String> = emptySet(),
     onToggleFavorite: (String, String) -> Unit = { _, _ -> },
+    showLocalSuffix: Boolean = true,
     onDismiss: () -> Unit,
 ) {
     var query by remember { mutableStateOf("") }
@@ -134,6 +135,7 @@ fun ModelAndRuntimePickerSheet(
                             RuntimeRow(
                                 target = target,
                                 selected = target.id == selectedRuntimeId,
+                                showLocalSuffix = showLocalSuffix,
                                 onClick = { onSelectRuntime(target.id) },
                             )
                         }
@@ -285,8 +287,10 @@ private fun SheetSectionHeader(text: String) {
 private fun RuntimeRow(
     target: RuntimeTarget,
     selected: Boolean,
+    showLocalSuffix: Boolean,
     onClick: () -> Unit,
 ) {
+    val agent = target.agent
     Row(
         modifier =
             Modifier
@@ -302,7 +306,12 @@ private fun RuntimeRow(
             tint = MaterialTheme.colorScheme.primary,
         )
         Text(
-            text = runtimeTargetLabel(target),
+            text =
+                if (showLocalSuffix || agent == null) {
+                    runtimeTargetLabel(target)
+                } else {
+                    stringResource(agent.displayNameRes)
+                },
             modifier = Modifier.weight(1f),
             style = MaterialTheme.typography.bodyMedium,
         )

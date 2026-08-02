@@ -23,6 +23,7 @@ import com.yugahashimoto.andcode.feature.settings.SettingsScreenV2
 import com.yugahashimoto.andcode.feature.settings.SettingsViewModel
 import com.yugahashimoto.andcode.feature.settings.VoiceSettingsScreen
 import com.yugahashimoto.andcode.feature.support.GitHubSupportSheetHost
+import com.yugahashimoto.andcode.feature.wakeword.WakeWordSettingsPolicy
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 
 fun NavGraphBuilder.settingsNavGraph(
@@ -36,6 +37,8 @@ fun NavGraphBuilder.settingsNavGraph(
     onOpenDrawer: () -> Unit,
     onOpenAssistantSettings: () -> Unit,
     assistantActive: () -> Boolean,
+    runtimeTargets: () -> List<com.yugahashimoto.andcode.runtime.RuntimeTarget>,
+    workspaces: () -> List<com.yugahashimoto.andcode.runtime.WorkspaceRef>,
     onShowDiagnostics: () -> Unit,
     preferences: () -> AppPreferences,
     appPreferences: AppPreferencesRepository,
@@ -125,7 +128,11 @@ fun NavGraphBuilder.settingsNavGraph(
             wakeWordModel = settingsState.wakeWordModel,
             availableWakeWordModels = settingsState.availableWakeWordModels,
             assistantRuntimeId = settingsState.assistantRuntimeId,
-            availableRuntimes = settingsState.runtimeOptions,
+            runtimeTargets = runtimeTargets(),
+            providers = settingsState.providers,
+            workspaces = workspaces(),
+            assistantProviderId = settingsState.assistantProviderId,
+            assistantModelId = settingsState.assistantModelId,
             assistantWorkspacePath = settingsState.assistantWorkspacePath.orEmpty(),
             onTtsChange = settingsViewModel::setTtsEnabled,
             onTtsProviderChange = settingsViewModel::setTtsProvider,
@@ -139,32 +146,31 @@ fun NavGraphBuilder.settingsNavGraph(
             onContinuousChange = settingsViewModel::setContinuousConversation,
             onWakeWordChange = { enabled ->
                 if (enabled) {
-                    if (hasMicrophonePermission()) {
+                    val microphonePermission = hasMicrophonePermission()
+                    if (!microphonePermission) {
+                        onRequestWakeWordPermission()
+                    } else if (!WakeWordSettingsPolicy.canEnable(microphonePermission, assistantActive())) {
+                        android.widget.Toast.makeText(
+                            context,
+                            com.yugahashimoto.andcode.R.string.wake_word_requires_assistant,
+                            android.widget.Toast.LENGTH_LONG,
+                        ).show()
+                        onOpenAssistantSettings()
+                    } else {
                         settingsViewModel.setWakeWordEnabled(true)
-                        if (!assistantActive()) {
+                        val started =
+                            com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
+                                context,
+                                settingsState.wakeWordModel,
+                            )
+                        if (!started) {
+                            settingsViewModel.setWakeWordEnabled(false)
                             android.widget.Toast.makeText(
                                 context,
-                                com.yugahashimoto.andcode.R.string.wake_word_requires_assistant,
-                                android.widget.Toast.LENGTH_LONG,
+                                com.yugahashimoto.andcode.R.string.wake_word_start_failed,
+                                android.widget.Toast.LENGTH_SHORT,
                             ).show()
-                            onOpenAssistantSettings()
-                        } else {
-                            val started =
-                                com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
-                                    context,
-                                    settingsState.wakeWordModel,
-                                )
-                            if (!started) {
-                                settingsViewModel.setWakeWordEnabled(false)
-                                android.widget.Toast.makeText(
-                                    context,
-                                    com.yugahashimoto.andcode.R.string.wake_word_start_failed,
-                                    android.widget.Toast.LENGTH_SHORT,
-                                ).show()
-                            }
                         }
-                    } else {
-                        onRequestWakeWordPermission()
                     }
                 } else {
                     settingsViewModel.setWakeWordEnabled(false)
@@ -180,6 +186,9 @@ fun NavGraphBuilder.settingsNavGraph(
             },
             onAssistantRuntimeChange = { runtimeId ->
                 settingsViewModel.setAssistantRuntimeId(runtimeId.takeIf { it.isNotBlank() })
+            },
+            onAssistantModelChange = { providerId, modelId ->
+                settingsViewModel.setAssistantModel(providerId, modelId)
             },
             onAssistantWorkspaceChange = { path ->
                 settingsViewModel.setAssistantWorkspacePath(path)

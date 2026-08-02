@@ -2,7 +2,7 @@ package com.yugahashimoto.andcode.feature.wakeword
 
 import android.content.Context
 import android.util.Log
-import org.tensorflow.lite.Interpreter
+import org.tensorflow.lite.InterpreterApi
 import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -23,9 +23,9 @@ class OpenWakeWordDetector(
     val keyword: String
         get() = keywordForModel(modelName)
 
-    private var melspecInterpreter: Interpreter? = null
-    private var embeddingInterpreter: Interpreter? = null
-    private var wakewordInterpreter: Interpreter? = null
+    private var melspecInterpreter: InterpreterApi? = null
+    private var embeddingInterpreter: InterpreterApi? = null
+    private var wakewordInterpreter: InterpreterApi? = null
     private var wakewordInputFrames: Int = 16
 
     private val rawBuffer = ArrayDeque<Float>(MAX_RAW_BUFFER)
@@ -42,19 +42,43 @@ class OpenWakeWordDetector(
             val modelPath = "wakeword/${modelName}_v0.1.tflite"
             val wakewordModel = loadModel(context, modelPath)
 
-            melspecInterpreter = Interpreter(melspecModel, interpreterOptions())
-            embeddingInterpreter = Interpreter(embeddingModel, interpreterOptions())
-            wakewordInterpreter = Interpreter(wakewordModel, interpreterOptions())
+            val melspec = createInterpreter("melspectrogram", melspecModel)
+            val embedding = createInterpreter("embedding", embeddingModel)
+            val wakeword = createInterpreter(modelName, wakewordModel)
 
-            wakewordInputFrames = wakewordInterpreter!!.getInputTensor(0).shape()[1]
+            melspecInterpreter = melspec
+            embeddingInterpreter = embedding
+            wakewordInterpreter = wakeword
+
+            wakewordInputFrames = wakeword.getInputTensor(0).shape()[1]
 
             initialized = true
             Log.i(TAG, "Initialized: model=$modelName, inputFrames=$wakewordInputFrames")
             true
         } catch (e: Exception) {
             Log.e(TAG, "Failed to initialize model '$modelName'", e)
+            release()
             false
         }
+    }
+
+    /**
+     * The bundled openWakeWord assets are normalized to fixed input shapes because Android TFLite
+     * allocates tensors while constructing an interpreter. Leaving their exported `-1` dimensions
+     * unresolved makes allocation overflow before the wake-word toggle can start the service.
+     */
+    private fun createInterpreter(
+        label: String,
+        model: MappedByteBuffer,
+    ): InterpreterApi {
+        val interpreter = InterpreterApi.create(model, interpreterOptions())
+        val shape = interpreter.getInputTensor(0).shape()
+        if (shape.any { it <= 0 }) {
+            interpreter.close()
+            error("$label model has unresolved input shape ${shape.toList()}")
+        }
+        Log.d(TAG, "Loaded '$label' input ${shape.toList()}")
+        return interpreter
     }
 
     fun processAudio(samples: ShortArray): WakeWordResult? {
@@ -101,27 +125,25 @@ class OpenWakeWordDetector(
     private fun computeMelspectrogram(): Array<FloatArray> {
         val interpreter = melspecInterpreter ?: return emptyArray()
 
-        val startIdx = max(0, rawBuffer.size - FRAME_SIZE - CONTEXT_SAMPLES)
+        val startIdx = max(0, rawBuffer.size - MELSPEC_INPUT_SAMPLES)
         val nSamples = rawBuffer.size - startIdx
-        val input = ByteBuffer.allocateDirect(nSamples * 4).order(ByteOrder.nativeOrder())
+        val input = ByteBuffer.allocateDirect(MELSPEC_INPUT_SAMPLES * 4).order(ByteOrder.nativeOrder())
+        repeat(MELSPEC_INPUT_SAMPLES - nSamples) { input.putFloat(0f) }
         for (i in startIdx until rawBuffer.size) {
             input.putFloat(rawBuffer[i])
         }
         input.rewind()
 
-        interpreter.resizeInput(0, intArrayOf(1, nSamples))
-        interpreter.allocateTensors()
-
         val outputShape = interpreter.getOutputTensor(0).shape()
-        val nFrames = outputShape[1]
-        val nBins = outputShape[2]
-        val output = Array(1) { Array(nFrames) { FloatArray(nBins) } }
+        val nFrames = outputShape[outputShape.lastIndex - 1]
+        val nBins = outputShape[outputShape.lastIndex]
+        val output = Array(1) { Array(1) { Array(nFrames) { FloatArray(nBins) } } }
 
         interpreter.run(input, output)
 
         return Array(nFrames) { frameIndex ->
-            FloatArray(32) { binIndex ->
-                if (binIndex < nBins) output[0][frameIndex][binIndex] / 10f + 2f else 2f
+            FloatArray(MEL_BINS) { binIndex ->
+                if (binIndex < nBins) output[0][0][frameIndex][binIndex] / 10f + 2f else 2f
             }
         }
     }
@@ -140,16 +162,16 @@ class OpenWakeWordDetector(
         }
         input.rewind()
 
-        val output = Array(1) { Array(1) { FloatArray(96) } }
+        val output = Array(1) { Array(1) { Array(1) { FloatArray(EMBEDDING_SIZE) } } }
         interpreter.run(input, output)
-        return output[0][0]
+        return output[0][0][0]
     }
 
     private fun runWakewordModel(): Float {
         val interpreter = wakewordInterpreter ?: return 0f
 
         val frames = featureBuffer.toList().takeLast(wakewordInputFrames)
-        val input = ByteBuffer.allocateDirect(wakewordInputFrames * 96 * 4).order(ByteOrder.nativeOrder())
+        val input = ByteBuffer.allocateDirect(wakewordInputFrames * EMBEDDING_SIZE * 4).order(ByteOrder.nativeOrder())
         for (frame in frames) {
             for (v in frame) input.putFloat(v)
         }
@@ -190,9 +212,10 @@ class OpenWakeWordDetector(
         return buffer
     }
 
-    private fun interpreterOptions(): Interpreter.Options {
-        return Interpreter.Options().apply {
+    private fun interpreterOptions(): InterpreterApi.Options {
+        return InterpreterApi.Options().apply {
             setNumThreads(2)
+            setUseXNNPACK(false)
         }
     }
 
@@ -201,9 +224,12 @@ class OpenWakeWordDetector(
         private const val SAMPLE_RATE = 16000
         private const val FRAME_SIZE = 1280
         private const val CONTEXT_SAMPLES = 480
+        private const val MELSPEC_INPUT_SAMPLES = FRAME_SIZE + CONTEXT_SAMPLES
         private const val MAX_RAW_BUFFER = SAMPLE_RATE * 10
         private const val FEATURE_BUFFER_MAX = 120
         private const val MELSPEC_WINDOW_FRAMES = 76
+        private const val MEL_BINS = 32
+        private const val EMBEDDING_SIZE = 96
         private const val DETECTION_THRESHOLD = 0.5f
         const val DEFAULT_MODEL = "hey_mycroft"
 

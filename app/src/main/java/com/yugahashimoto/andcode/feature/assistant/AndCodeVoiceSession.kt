@@ -372,8 +372,8 @@ class AndCodeVoiceSession(context: Context) :
                     targetSessionId,
                     PromptRequest(
                         text = text,
-                        providerId = settings.selectedProviderId,
-                        modelId = settings.selectedModelId,
+                        providerId = settings.assistantProviderId ?: settings.selectedProviderId,
+                        modelId = settings.assistantModelId ?: settings.selectedModelId,
                         agent = settings.selectedAgentId,
                     ),
                 )
