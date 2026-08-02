@@ -225,23 +225,29 @@ class AntigravityController(
      * code because it is dispatched onto [scope] here.
      */
     fun beginAuth() {
-        // On the click, and through the coordinator: [state] takes its auth from the coordinator's
-        // own flow, so setting it on this controller's state would be overwritten immediately.
+        // Both of these go through the coordinator: [state] takes its auth from the coordinator's
+        // own flow, so setting it on this controller's state is overwritten on the next emission.
+        // The failure below used to do exactly that, which is why a sign-in that could not start at
+        // all - no Linux environment, or the process gate still busy - said nothing.
         target.auth.markStarting()
         scope.launch {
             runCatching { target.auth.start() }
-                .onFailure { error ->
-                    mutableState.value =
-                        mutableState.value.copy(
-                            auth = AntigravityAuthCoordinator.State.Failed(error.message ?: "Unable to start sign-in", ""),
-                        )
-                }
+                .onFailure { error -> target.auth.markFailed(error.message ?: "Unable to start sign-in") }
         }
     }
 
     fun submitAuthCode(code: String) = target.auth.submitCode(code)
 
-    fun cancelAuth() = target.auth.cancel()
+    /**
+     * Off the caller's thread, for the same reason as [beginAuth].
+     *
+     * [AntigravityAuthCoordinator.cancel] takes the same lock [AntigravityAuthCoordinator.start]
+     * holds through its whole pre-flight, so cancelling a sign-in that is still starting up would
+     * otherwise block the UI thread for as long as that takes.
+     */
+    fun cancelAuth() {
+        scope.launch { target.auth.cancel() }
+    }
 
     /** Mirrors [ClaudeCodeController.setPermissionMode]: the open chat changes with the default. */
     fun setPermissionMode(

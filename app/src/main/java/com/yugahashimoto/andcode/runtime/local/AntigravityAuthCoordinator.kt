@@ -41,18 +41,47 @@ class AntigravityAuthCoordinator(
     private val mutableState = MutableStateFlow<State>(State.Idle)
     val state: StateFlow<State> = mutableState.asStateFlow()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private var process: Process? = null
-    private var transcript = StringBuilder()
 
     /**
-     * Frozen once the code field is live. Everything the TUI paints from that point on can contain
-     * the authorization code the user typed, so it must never reach the UI or a log.
+     * The attempt whose output and death still speak for this coordinator; null when none does.
+     *
+     * Volatile so [markStarting] can read it from the UI thread. Writes and compare-and-clear go
+     * through this class's monitor, which [start] holds for as long as its pre-flight takes - a
+     * minute and a half in the worst case - so nothing on the UI thread may wait for it.
      */
-    @Volatile private var diagnostics: String = ""
+    @Volatile private var current: Attempt? = null
 
-    @Volatile private var codeFieldLive = false
+    /**
+     * One sign-in attempt: the guest process and everything read out of it.
+     *
+     * Attempts overlap by construction. Killing the guest process tree is asynchronous, so an
+     * attempt the user cancelled - or one a second press replaced - keeps draining its buffer, and
+     * still reports its own exit, while the next attempt is already running. Per-attempt state is
+     * what keeps the two apart: the coordinator acts only on the attempt it still holds, so a dead
+     * one can neither publish a stale URL nor stamp its own kill onto its successor.
+     */
+    internal class Attempt(val process: Process) {
+        private val transcript = StringBuilder()
 
-    @Volatile private var menuAnswered = false
+        /**
+         * Frozen once the code field is live. Everything the TUI paints from that point on can
+         * contain the authorization code the user typed, so it must never reach the UI or a log.
+         */
+        @Volatile var diagnostics: String = ""
+
+        @Volatile var codeFieldLive = false
+
+        @Volatile var menuAnswered = false
+
+        fun append(chunk: String) {
+            synchronized(this) {
+                transcript.append(chunk)
+                if (transcript.length > MAX_TRANSCRIPT) transcript.delete(0, transcript.length - MAX_TRANSCRIPT)
+            }
+        }
+
+        fun clean(): String = AntigravityAuthParser.stripAnsi(synchronized(this) { transcript.toString() })
+    }
 
     /**
      * Starts the no-argument agy TUI and returns once it is past its own vulnerable startup window.
@@ -66,13 +95,18 @@ class AntigravityAuthCoordinator(
      */
     @Synchronized
     fun start(): AntigravityAuthStart {
-        // Before anything blocking. Everything below - killing a previous process, repairing the
-        // guest settings, and above all the already-signed-in check, which is a whole `agy models`
-        // run behind a gate that waits up to a minute - happens before the TUI exists, and the state
-        // used to be published only after all of it. Pressing "Sign in" therefore did nothing
-        // visible for tens of seconds.
+        // A press while an attempt is already running is a second press, not a request to start
+        // over: restarting would kill the process that is about to print the URL, and that kill
+        // would then be reported as a failure of the attempt the press had just started.
+        current?.takeIf { it.process.isAlive }?.let { return AntigravityAuthStart(it.process) }
+        // Before anything blocking. Everything below - repairing the guest settings, and above all
+        // the already-signed-in check, which is a whole `agy models` run behind a gate that waits up
+        // to a minute - happens before the TUI exists, and the state used to be published only after
+        // all of it. Worse, the cleanup this used to do here went through `cancel`, which publishes
+        // Idle: pressing "Sign in" put the plain sign-in button straight back on screen and left it
+        // there for as long as the check took, so the press looked like it had done nothing at all.
         mutableState.value = State.Starting
-        cancel()
+        abandonCurrent()
         val runtime = installedRuntimeProvider() ?: error("Linux environment is not installed")
         AntigravityGuestSettings.repair(runtime)
         if (verifyModels()) {
@@ -82,19 +116,50 @@ class AntigravityAuthCoordinator(
         val started =
             AntigravityProcessGate.acquireThenRelease(STARTUP_GRACE_MS) { launchTui(runtime) }
                 ?: error("Antigravity is busy with another operation; try again in a moment")
-        process = started
-        transcript = StringBuilder()
-        diagnostics = ""
-        codeFieldLive = false
-        menuAnswered = false
+        val attempt = adopt(Attempt(started))
         mutableState.value = State.Starting
-        scope.launch { driveLoginChooser(started) }
+        scope.launch { driveLoginChooser(attempt) }
         scope.launch {
-            runCatching { started.inputStream.bufferedReader().forEachChunk(::onOutput) }
-            onProcessExit(runCatching { started.waitFor() }.getOrDefault(-1))
+            runCatching { started.inputStream.bufferedReader().forEachChunk { chunk -> onOutput(attempt, chunk) } }
+            onProcessExit(attempt, runCatching { started.waitFor() }.getOrDefault(-1))
         }
-        scope.launch { watchForDiscoveryTimeout(started) }
+        scope.launch { watchForDiscoveryTimeout(attempt) }
         return AntigravityAuthStart(started)
+    }
+
+    /**
+     * Takes ownership of [attempt], so that from here on it is the one allowed to publish state.
+     *
+     * Internal rather than private because the abandonment rules are the whole point of [Attempt]
+     * and testing them needs an attempt, not a guest process.
+     */
+    @Synchronized
+    internal fun adopt(attempt: Attempt): Attempt {
+        current = attempt
+        return attempt
+    }
+
+    /**
+     * Drops the current attempt and kills its process, publishing nothing.
+     *
+     * The kill is asynchronous, so the abandoned attempt keeps running for a moment and then reports
+     * its own exit. Dropping it *before* that happens is what stops the report: [onProcessExit] only
+     * speaks for the attempt this coordinator still holds.
+     */
+    @Synchronized
+    private fun abandonCurrent() {
+        current?.let { terminateAsync(it.process) }
+        current = null
+    }
+
+    @Synchronized
+    private fun isCurrent(attempt: Attempt): Boolean = current === attempt
+
+    @Synchronized
+    private fun releaseIfCurrent(attempt: Attempt): Boolean {
+        if (current !== attempt) return false
+        current = null
+        return true
     }
 
     /**
@@ -102,11 +167,12 @@ class AntigravityAuthCoordinator(
      * once the bundled language server is up, which is why this waits for the chooser to be painted
      * instead of pressing Enter on a fixed delay.
      */
-    private suspend fun driveLoginChooser(started: Process) {
+    private suspend fun driveLoginChooser(attempt: Attempt) {
+        val started = attempt.process
         val deadline = System.currentTimeMillis() + MENU_TIMEOUT_MS
         while (started.isAlive && System.currentTimeMillis() < deadline) {
-            if (AntigravityAuthParser.isLoginMenuVisible(cleanTranscript())) {
-                menuAnswered = true
+            if (AntigravityAuthParser.isLoginMenuVisible(attempt.clean())) {
+                attempt.menuAnswered = true
                 // Bubble Tea reads Enter as CR because it puts the PTY in raw mode.
                 runCatching {
                     started.outputStream.write('\r'.code)
@@ -118,83 +184,68 @@ class AntigravityAuthCoordinator(
         }
     }
 
-    private suspend fun watchForDiscoveryTimeout(started: Process) {
+    private suspend fun watchForDiscoveryTimeout(attempt: Attempt) {
         delay(AUTH_DISCOVERY_TIMEOUT_MS)
-        if (!started.isAlive || mutableState.value !is State.Starting) return
-        val clean = cleanTranscript()
+        if (!attempt.process.isAlive || !isCurrent(attempt) || mutableState.value !is State.Starting) return
+        val clean = attempt.clean()
         mutableState.value =
             State.Failed(
                 when {
                     AntigravityAuthParser.isLocalBrowserMode(clean) ->
                         "Antigravity selected local browser mode and did not print a sign-in URL"
-                    !menuAnswered -> "Antigravity did not show its sign-in chooser"
+                    !attempt.menuAnswered -> "Antigravity did not show its sign-in chooser"
                     else -> "Antigravity did not print a Google sign-in URL"
                 },
                 visibleDiagnostics(clean),
             )
-        terminate(started)
-    }
-
-    fun submitCode(
-        start: AntigravityAuthStart,
-        code: String,
-    ) {
-        submitCode(code, start.process)
+        terminate(attempt.process)
     }
 
     @Synchronized
     fun submitCode(code: String) {
-        submitCode(code, process ?: return)
-    }
-
-    private fun submitCode(
-        code: String,
-        target: Process,
-    ) {
+        val attempt = current ?: return
         val trimmed = code.trim()
         if (trimmed.isEmpty()) return
         mutableState.value = State.Verifying
         runCatching {
-            target.outputStream.write((trimmed + "\r").toByteArray())
-            target.outputStream.flush()
+            attempt.process.outputStream.write((trimmed + "\r").toByteArray())
+            attempt.process.outputStream.flush()
         }.onFailure {
-            mutableState.value = State.Failed(it.message ?: "Could not submit the Antigravity code", diagnostics)
+            mutableState.value = State.Failed(it.message ?: "Could not submit the Antigravity code", attempt.diagnostics)
             return
         }
-        scope.launch { awaitVerification(target) }
+        scope.launch { awaitVerification(attempt) }
     }
 
     /**
      * The official CLI stays running after a successful exchange, so completion is confirmed out of
      * band with `agy models` rather than by waiting for the process to exit.
      */
-    private suspend fun awaitVerification(target: Process) {
+    private suspend fun awaitVerification(attempt: Attempt) {
         val deadline = System.currentTimeMillis() + VERIFY_TIMEOUT_MS
         while (System.currentTimeMillis() < deadline) {
             if (mutableState.value !is State.Verifying) return
-            val clean = cleanTranscript()
+            val clean = attempt.clean()
             if (AntigravityAuthParser.isFailure(clean)) {
-                mutableState.value = State.Failed("Antigravity rejected the authorization code", diagnostics)
+                mutableState.value = State.Failed("Antigravity rejected the authorization code", attempt.diagnostics)
                 return
             }
             if (AntigravityAuthParser.isSignedIn(clean) || verifyModels()) {
-                terminate(target)
-                synchronized(this) { process = null }
+                releaseIfCurrent(attempt)
+                terminate(attempt.process)
                 mutableState.value = State.SignedIn()
                 return
             }
             delay(VERIFY_POLL_MS)
         }
         if (mutableState.value is State.Verifying) {
-            mutableState.value = State.Failed("Antigravity sign-in did not complete in time", diagnostics)
+            mutableState.value = State.Failed("Antigravity sign-in did not complete in time", attempt.diagnostics)
         }
     }
 
     @Synchronized
     fun cancel() {
-        process?.let(::terminateAsync)
-        process = null
-        codeFieldLive = false
+        abandonCurrent()
         if (mutableState.value !is State.SignedIn) mutableState.value = State.Idle
     }
 
@@ -228,13 +279,29 @@ class AntigravityAuthCoordinator(
     /**
      * Publishes [State.Starting] without taking [start]'s lock, so the button reacts on the tap.
      *
-     * [start] is `@Synchronized` and everything it does before publishing a state is slow - killing
-     * a previous process, and an already-signed-in check that is a whole `agy models` run behind a
-     * gate that waits up to a minute. Its own first line cannot report anything until it holds the
-     * lock, so the press has to be acknowledged from outside it.
+     * [start] is `@Synchronized` and everything it does before publishing a state is slow - an
+     * already-signed-in check that is a whole `agy models` run behind a gate that waits up to a
+     * minute. Its own first line cannot report anything until it holds the lock, so the press has to
+     * be acknowledged from outside it.
      */
     fun markStarting() {
+        // Not over a live attempt: a second press while the sign-in URL is on screen would replace
+        // it with a spinner for a process nothing is going to restart. [start] ignores that press.
+        // Read without the lock - this runs on the UI thread. See [current].
+        if (current?.process?.isAlive == true) return
         mutableState.value = State.Starting
+    }
+
+    /**
+     * Publishes a failure that happened instead of a sign-in rather than during one.
+     *
+     * [AntigravityController.beginAuth] used to record this on its own state, which is combined with
+     * - and therefore immediately overwritten by - this flow. A sign-in that could not even start,
+     * because no Linux environment is installed or the process gate is still busy, left the UI on a
+     * spinner with nothing to say and no way back.
+     */
+    fun markFailed(message: String) {
+        mutableState.value = State.Failed(message, "")
     }
 
     private fun launchTui(runtime: LocalRuntimeInstaller.InstalledRuntime): Process {
@@ -257,27 +324,36 @@ class AntigravityAuthCoordinator(
             .start()
     }
 
-    private fun cleanTranscript(): String = AntigravityAuthParser.stripAnsi(synchronized(this) { transcript.toString() })
-
     private fun visibleDiagnostics(clean: String): String = AntigravityAuthParser.redact(clean).takeLast(VISIBLE_TRANSCRIPT)
 
-    private fun onOutput(chunk: String) {
-        synchronized(this) {
-            transcript.append(chunk)
-            if (transcript.length > MAX_TRANSCRIPT) transcript.delete(0, transcript.length - MAX_TRANSCRIPT)
-        }
-        val clean = cleanTranscript()
-        if (!codeFieldLive) {
-            diagnostics = visibleDiagnostics(clean)
-            codeFieldLive = AntigravityAuthParser.isAwaitingCode(clean)
+    private fun onOutput(
+        attempt: Attempt,
+        chunk: String,
+    ) {
+        attempt.append(chunk)
+        // An abandoned attempt drains whatever is left in its buffer before the kill lands. None of
+        // it can be published: its URL is dead, and its transcript is not the live attempt's.
+        if (!isCurrent(attempt)) return
+        val clean = attempt.clean()
+        if (!attempt.codeFieldLive) {
+            attempt.diagnostics = visibleDiagnostics(clean)
+            attempt.codeFieldLive = AntigravityAuthParser.isAwaitingCode(clean)
         }
         if (mutableState.value is State.Verifying || mutableState.value is State.SignedIn) return
         val url = AntigravityAuthParser.findOAuthUrl(clean)
-        if (url != null) mutableState.value = State.AwaitingBrowser(url, diagnostics)
+        if (url != null) mutableState.value = State.AwaitingBrowser(url, attempt.diagnostics)
     }
 
-    private fun onProcessExit(exitCode: Int) {
-        synchronized(this) { process = null }
+    /** Internal for the same reason as [adopt]: the rule below is what the tests are about. */
+    internal fun onProcessExit(
+        attempt: Attempt,
+        exitCode: Int,
+    ) {
+        // Only the attempt this coordinator still holds may report anything. A cancelled attempt, or
+        // one a second press replaced, is being killed on purpose, and announcing that kill as
+        // "stopped (exit code 137)" described the coordinator's own SIGKILL as a sign-in failure -
+        // on top of whatever state had already taken its place.
+        if (!releaseIfCurrent(attempt)) return
         when (mutableState.value) {
             is State.SignedIn -> return
             // Verification owns the terminal state once a code has been submitted.
@@ -293,7 +369,7 @@ class AntigravityAuthCoordinator(
             if (verifyModels()) {
                 State.SignedIn()
             } else {
-                State.Failed("Antigravity sign-in stopped (exit code $exitCode)", diagnostics)
+                State.Failed("Antigravity sign-in stopped (exit code $exitCode)", attempt.diagnostics)
             }
     }
 
