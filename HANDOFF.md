@@ -4,15 +4,16 @@
 
 作業ブランチ: `claude/wakeword-button-toggle-issue-345b31`
 
-## 完了済み（このブランチの直近2コミット）
+## 完了済み
 
-1. `fix: show the assistant agent's own models, not the chat agent's`
+1. **マージ済み** — `fix: show the assistant agent's own models, not the chat agent's`（PR #197）
    音声設定の「アシスタント起動先」が、選んだAgentではなくチャット側Agentのモデル一覧を出す不具合の修正。
-   `AssistantTargetResolver.loadAssistantProviders()` を追加し、`listProviders()` の前に `connect()` するようにした。実機検証済み。
+   `AssistantTargetResolver.loadAssistantProviders()` を追加し、`listProviders()` の前に `connect()` するようにした。
+   実機検証済みで、既に `main` に入っている。**この作業は再度やらないこと。**
 
-2. `feat: persist speaking rate and pitch for text-to-speech`
+2. **このブランチ上** — `feat: persist speaking rate and pitch for text-to-speech`
    `TtsTuning` ヘルパーと `SecureSettingsRepository.ttsSpeechRate` / `ttsPitch` を追加。
-   **まだUIに繋がっていない**（値は常にデフォルト1.0のまま）。
+   **まだUIに繋がっていない**（値は常にデフォルト1.0のまま）。下記Aがその続き。
 
 ## 残作業
 
