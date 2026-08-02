@@ -79,6 +79,15 @@
     <string name="workspace_remove_from_list">Remover da lista</string>
     <string name="workspace_delete_files">Excluir arquivos</string>
     <string name="workspace_delete_files_confirm">Excluir \"%1$s\" e todos os seus arquivos? Isso não pode ser desfeito.</string>
+    <string name="workspace_deleting">Excluindo…</string>
+    <string name="workspace_delete_failed">Não foi possível excluir esta pasta. Pare o ambiente de execução, se estiver ativo, e tente novamente.</string>
+    <string name="workspace_delete_retry">Tentar novamente</string>
+    <string name="workspace_choose_folder">Escolher pasta existente</string>
+    <string name="cd_choose_folder">Escolher uma pasta existente</string>
+    <string name="workspace_folder_picker_up">Um nível acima</string>
+    <string name="workspace_folder_picker_empty">Nenhuma subpasta aqui.</string>
+    <string name="workspace_folder_picker_select">Usar esta pasta</string>
+    <string name="workspace_folder_picker_unavailable">Configure primeiro o ambiente no dispositivo — ainda não há nada para navegar.</string>
 
     <string name="recent_sessions">Sessões recentes</string>
     <string name="view_all">Ver tudo</string>

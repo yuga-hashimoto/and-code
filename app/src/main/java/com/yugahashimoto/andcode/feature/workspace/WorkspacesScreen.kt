@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -20,17 +21,20 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.DriveFolderUpload
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.WifiFind
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,6 +49,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +57,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -87,8 +93,14 @@ fun WorkspacesScreen(
     onOpenWorkspace: (WorkspaceRef) -> Unit,
     onImportFolder: () -> Unit = {},
     onCloneGithub: () -> Unit = {},
+    onChooseFolder: () -> Unit = {},
+    onBrowseFolderInto: (String) -> Unit = {},
+    onBrowseFolderUp: () -> Unit = {},
+    onConfirmFolder: () -> Unit = {},
+    onDismissFolderPicker: () -> Unit = {},
     onRemoveProject: (String) -> Unit = {},
     onDeleteProjectFiles: (String) -> Unit = {},
+    onDismissDeleteFailure: (String) -> Unit = {},
     onBack: () -> Unit = {},
 ) {
     val localRuntimeActive =
@@ -359,6 +371,22 @@ fun WorkspacesScreen(
                             Text(stringResource(R.string.workspace_clone_github))
                         }
                     }
+                    Spacer(Modifier.height(8.dp))
+                    // Neither of the two above reaches a folder the environment already has — one
+                    // cloned from the terminal, or anything outside /workspace — so those could not
+                    // be made a working folder at all.
+                    OutlinedButton(
+                        onClick = onChooseFolder,
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Icon(
+                            Icons.Default.FolderOpen,
+                            contentDescription = stringResource(R.string.cd_choose_folder),
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(stringResource(R.string.workspace_choose_folder))
+                    }
                 }
             }
 
@@ -383,9 +411,15 @@ fun WorkspacesScreen(
                 items(state.workspaces, key = { it.id }) { workspace ->
                     WorkspaceProjectRow(
                         workspace = workspace,
+                        isDeleting = workspace.path in state.folders.deleting,
+                        deleteFailed = workspace.path in state.folders.failed,
+                        // Only the /workspace mount is this app's own storage; a folder elsewhere in
+                        // the environment can be dropped from the list but is not ours to erase.
+                        canDeleteFiles = localRuntimeActive && WorkspaceFolders.isInsideWorkspaceRoot(workspace.path),
                         onOpen = { onOpenWorkspace(workspace) },
                         onRemove = { onRemoveProject(workspace.path) },
                         onDeleteFiles = { onDeleteProjectFiles(workspace.path) },
+                        onDismissDeleteFailure = { onDismissDeleteFailure(workspace.path) },
                     )
                 }
             }
@@ -484,19 +518,140 @@ fun WorkspacesScreen(
             },
         )
     }
+
+    if (state.folderPicker.visible) {
+        FolderPickerDialog(
+            picker = state.folderPicker,
+            onOpenChild = onBrowseFolderInto,
+            onUp = onBrowseFolderUp,
+            onConfirm = onConfirmFolder,
+            onDismiss = onDismissFolderPicker,
+        )
+    }
+}
+
+/**
+ * Walks the on-device environment so an existing directory can be made a working folder.
+ *
+ * Selects the folder that is open, not one highlighted in the list: the user has to be able to pick
+ * a directory whose own contents they just looked at, and that is also how they reach a folder with
+ * no subfolders at all.
+ */
+@Composable
+private fun FolderPickerDialog(
+    picker: FolderPickerState,
+    onOpenChild: (String) -> Unit,
+    onUp: () -> Unit,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val atRoot = picker.path == WorkspaceFolders.GUEST_ROOT
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.workspace_choose_folder)) },
+        text = {
+            Column {
+                if (picker.unavailable) {
+                    Text(
+                        stringResource(R.string.workspace_folder_picker_unavailable),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    return@Column
+                }
+                Text(
+                    picker.path,
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Medium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Spacer(Modifier.height(8.dp))
+                if (picker.isLoading) LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                LazyColumn(modifier = Modifier.heightIn(max = 320.dp)) {
+                    if (!atRoot) {
+                        item {
+                            FolderPickerRow(
+                                icon = Icons.Default.ArrowUpward,
+                                label = stringResource(R.string.workspace_folder_picker_up),
+                                onClick = onUp,
+                            )
+                        }
+                    }
+                    items(picker.directories, key = { it }) { name ->
+                        FolderPickerRow(
+                            icon = Icons.Default.Folder,
+                            label = name,
+                            onClick = { onOpenChild(name) },
+                        )
+                    }
+                    if (picker.directories.isEmpty() && !picker.isLoading) {
+                        item {
+                            Text(
+                                stringResource(R.string.workspace_folder_picker_empty),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 8.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            // The environment root itself is not a project; anything below it can be one.
+            Button(onClick = onConfirm, enabled = !picker.unavailable && !atRoot) {
+                Text(stringResource(R.string.workspace_folder_picker_select))
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.cancel))
+            }
+        },
+    )
+}
+
+@Composable
+private fun FolderPickerRow(
+    icon: ImageVector,
+    label: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier =
+            Modifier
+                .fillMaxWidth()
+                .clickable { onClick() }
+                .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(20.dp))
+        Text(label, maxLines = 1)
+    }
 }
 
 @Composable
 private fun WorkspaceProjectRow(
     workspace: WorkspaceRef,
+    isDeleting: Boolean,
+    deleteFailed: Boolean,
+    canDeleteFiles: Boolean,
     onOpen: () -> Unit,
     onRemove: () -> Unit,
     onDeleteFiles: () -> Unit,
+    onDismissDeleteFailure: () -> Unit,
 ) {
     var menuOpen by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
 
-    SectionCard(modifier = Modifier.clickable { onOpen() }) {
+    // The dialog is the thing that reports progress, so a failure has to bring it back even if the
+    // user closed it while the delete was running.
+    LaunchedEffect(deleteFailed) {
+        if (deleteFailed) confirmDelete = true
+    }
+
+    SectionCard(modifier = Modifier.clickable(enabled = !isDeleting) { onOpen() }) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -510,50 +665,98 @@ private fun WorkspaceProjectRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 2,
                 )
-            }
-            Box {
-                IconButton(onClick = { menuOpen = true }) {
-                    Icon(
-                        Icons.Default.MoreVert,
-                        contentDescription = stringResource(R.string.workspace_more_options),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                if (isDeleting) {
+                    Spacer(Modifier.height(6.dp))
+                    Text(
+                        stringResource(R.string.workspace_deleting),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                    Spacer(Modifier.height(4.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
                 }
-                DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.workspace_remove_from_list)) },
-                        onClick = {
-                            menuOpen = false
-                            onRemove()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.workspace_delete_files)) },
-                        onClick = {
-                            menuOpen = false
-                            confirmDelete = true
-                        },
-                    )
+            }
+            if (isDeleting) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else {
+                Box {
+                    IconButton(onClick = { menuOpen = true }) {
+                        Icon(
+                            Icons.Default.MoreVert,
+                            contentDescription = stringResource(R.string.workspace_more_options),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.workspace_remove_from_list)) },
+                            onClick = {
+                                menuOpen = false
+                                onRemove()
+                            },
+                        )
+                        if (canDeleteFiles) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.workspace_delete_files)) },
+                                onClick = {
+                                    menuOpen = false
+                                    confirmDelete = true
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 
     if (confirmDelete) {
+        // Stays up for the whole delete: this used to close on the tap and leave the row behind
+        // until some later refresh happened to drop it, which read as the delete having failed.
         AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            title = { Text(stringResource(R.string.workspace_delete_files)) },
-            text = { Text(stringResource(R.string.workspace_delete_files_confirm, workspace.name)) },
-            confirmButton = {
-                Button(onClick = {
+            onDismissRequest = {
+                if (!isDeleting) {
                     confirmDelete = false
-                    onDeleteFiles()
-                }) {
-                    Text(stringResource(R.string.delete))
+                    onDismissDeleteFailure()
+                }
+            },
+            title = { Text(stringResource(R.string.workspace_delete_files)) },
+            text = {
+                Column {
+                    Text(stringResource(R.string.workspace_delete_files_confirm, workspace.name))
+                    if (isDeleting) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            stringResource(R.string.workspace_deleting),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(6.dp))
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+                    if (deleteFailed) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            stringResource(R.string.workspace_delete_failed),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(onClick = onDeleteFiles, enabled = !isDeleting) {
+                    Text(stringResource(if (deleteFailed) R.string.workspace_delete_retry else R.string.delete))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDelete = false }) {
+                TextButton(
+                    onClick = {
+                        confirmDelete = false
+                        onDismissDeleteFailure()
+                    },
+                    enabled = !isDeleting,
+                ) {
                     Text(stringResource(R.string.cancel))
                 }
             },

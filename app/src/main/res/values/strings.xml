@@ -79,6 +79,15 @@
     <string name="workspace_remove_from_list">Remove from list</string>
     <string name="workspace_delete_files">Delete files</string>
     <string name="workspace_delete_files_confirm">Delete \"%1$s\" and all its files? This cannot be undone.</string>
+    <string name="workspace_deleting">Deleting…</string>
+    <string name="workspace_delete_failed">Could not delete this folder. Stop the runtime if it is running, then try again.</string>
+    <string name="workspace_delete_retry">Try again</string>
+    <string name="workspace_choose_folder">Choose existing folder</string>
+    <string name="cd_choose_folder">Choose an existing folder</string>
+    <string name="workspace_folder_picker_up">Up one level</string>
+    <string name="workspace_folder_picker_empty">No subfolders here.</string>
+    <string name="workspace_folder_picker_select">Use this folder</string>
+    <string name="workspace_folder_picker_unavailable">Set up the on-device runtime first — there is no environment to browse yet.</string>
 
     <string name="recent_sessions">Recent sessions</string>
     <string name="view_all">View all</string>

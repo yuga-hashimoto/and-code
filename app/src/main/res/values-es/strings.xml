@@ -79,6 +79,15 @@
     <string name="workspace_remove_from_list">Quitar de la lista</string>
     <string name="workspace_delete_files">Eliminar archivos</string>
     <string name="workspace_delete_files_confirm">¿Eliminar \"%1$s\" y todos sus archivos? Esta acción no se puede deshacer.</string>
+    <string name="workspace_deleting">Eliminando…</string>
+    <string name="workspace_delete_failed">No se pudo eliminar esta carpeta. Detén el entorno de ejecución si está activo e inténtalo de nuevo.</string>
+    <string name="workspace_delete_retry">Reintentar</string>
+    <string name="workspace_choose_folder">Elegir carpeta existente</string>
+    <string name="cd_choose_folder">Elegir una carpeta existente</string>
+    <string name="workspace_folder_picker_up">Subir un nivel</string>
+    <string name="workspace_folder_picker_empty">Aquí no hay subcarpetas.</string>
+    <string name="workspace_folder_picker_select">Usar esta carpeta</string>
+    <string name="workspace_folder_picker_unavailable">Configura primero el entorno en el dispositivo: aún no hay nada que explorar.</string>
 
     <string name="recent_sessions">Sesiones recientes</string>
     <string name="view_all">Ver todo</string>

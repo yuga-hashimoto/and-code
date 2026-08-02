@@ -79,6 +79,15 @@
     <string name="workspace_remove_from_list">一覧から削除</string>
     <string name="workspace_delete_files">ファイルを削除</string>
     <string name="workspace_delete_files_confirm">「%1$s」とすべてのファイルを削除しますか？元に戻せません。</string>
+    <string name="workspace_deleting">削除しています…</string>
+    <string name="workspace_delete_failed">このフォルダを削除できませんでした。実行環境が動作中の場合は停止してから、もう一度お試しください。</string>
+    <string name="workspace_delete_retry">再試行</string>
+    <string name="workspace_choose_folder">既存のフォルダを選択</string>
+    <string name="cd_choose_folder">既存のフォルダを選択</string>
+    <string name="workspace_folder_picker_up">一つ上の階層へ</string>
+    <string name="workspace_folder_picker_empty">サブフォルダはありません。</string>
+    <string name="workspace_folder_picker_select">このフォルダを使う</string>
+    <string name="workspace_folder_picker_unavailable">先にオンデバイス実行環境をセットアップしてください。参照できる環境がまだありません。</string>
 
     <string name="recent_sessions">最近のセッション</string>
     <string name="view_all">すべて表示</string>

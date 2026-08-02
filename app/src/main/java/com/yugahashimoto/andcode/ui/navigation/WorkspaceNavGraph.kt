@@ -70,8 +70,14 @@ fun NavGraphBuilder.workspaceNavGraph(
             },
             onImportFolder = onImportFolder,
             onCloneGithub = onShowCloneDialog,
+            onChooseFolder = workspaceViewModel::openFolderPicker,
+            onBrowseFolderInto = workspaceViewModel::browseFolderInto,
+            onBrowseFolderUp = workspaceViewModel::browseFolderUp,
+            onConfirmFolder = { workspaceViewModel.confirmFolderPicker() },
+            onDismissFolderPicker = workspaceViewModel::dismissFolderPicker,
             onRemoveProject = workspaceViewModel::removeProject,
             onDeleteProjectFiles = workspaceViewModel::deleteProjectFiles,
+            onDismissDeleteFailure = workspaceViewModel::dismissDeleteFailure,
             onBack = { navController.popBackStack() },
         )
     }

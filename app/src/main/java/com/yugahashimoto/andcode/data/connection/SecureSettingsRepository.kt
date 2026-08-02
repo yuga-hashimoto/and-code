@@ -231,6 +231,27 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
                 .apply()
         }
 
+    /**
+     * Workspace folders the user removed from the list.
+     *
+     * Remembered because most rows are not registrations: the runtimes report a folder from their
+     * own chat history and from what is on disk, so a removal that only cleared [projectPaths] was
+     * undone by the next refresh. Registering a path again — importing or cloning into it — clears
+     * it from here.
+     */
+    var hiddenWorkspacePaths: List<String>
+        get() =
+            preferences.getString(KEY_HIDDEN_WORKSPACE_PATHS, null)
+                ?.split('\n')
+                ?.map { it.trim() }
+                ?.filter { it.isNotEmpty() }
+                .orEmpty()
+        set(value) {
+            preferences.edit()
+                .putString(KEY_HIDDEN_WORKSPACE_PATHS, value.joinToString("\n"))
+                .apply()
+        }
+
     /** True once the user has completed (or explicitly skipped) first-run onboarding. */
     var onboardingCompleted: Boolean
         get() = preferences.getBoolean(KEY_ONBOARDING_COMPLETED, false)
@@ -383,6 +404,7 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         private const val KEY_ASSISTANT_WORKSPACE_PATH = "assistant_workspace_path"
         private const val KEY_SAF_WORKSPACE_URIS = "saf_workspace_uris"
         private const val KEY_PROJECT_PATHS = "project_paths"
+        private const val KEY_HIDDEN_WORKSPACE_PATHS = "hidden_workspace_paths"
         private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
         private const val KEY_UNREAD_SESSIONS = "unread_sessions"
         private const val KEY_GITHUB_TOKEN = "github_token"

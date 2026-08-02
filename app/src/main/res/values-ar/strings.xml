@@ -79,6 +79,15 @@
     <string name="workspace_remove_from_list">إزالة من القائمة</string>
     <string name="workspace_delete_files">حذف الملفات</string>
     <string name="workspace_delete_files_confirm">حذف \"%1$s\" وجميع ملفاته؟ لا يمكن التراجع عن هذا.</string>
+    <string name="workspace_deleting">جارٍ الحذف…</string>
+    <string name="workspace_delete_failed">تعذر حذف هذا المجلد. أوقف بيئة التشغيل إذا كانت قيد التشغيل ثم حاول مرة أخرى.</string>
+    <string name="workspace_delete_retry">إعادة المحاولة</string>
+    <string name="workspace_choose_folder">اختيار مجلد موجود</string>
+    <string name="cd_choose_folder">اختيار مجلد موجود</string>
+    <string name="workspace_folder_picker_up">مستوى للأعلى</string>
+    <string name="workspace_folder_picker_empty">لا توجد مجلدات فرعية هنا.</string>
+    <string name="workspace_folder_picker_select">استخدام هذا المجلد</string>
+    <string name="workspace_folder_picker_unavailable">قم بإعداد بيئة التشغيل على الجهاز أولاً — لا توجد بيئة لاستعراضها بعد.</string>
 
     <string name="recent_sessions">الجلسات الأخيرة</string>
     <string name="view_all">عرض الكل</string>

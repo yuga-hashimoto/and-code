@@ -14,7 +14,11 @@ import java.io.File
  * not need one: `/workspace` inside the sandbox is a plain directory on the device, so these read it
  * directly. Without this the explorer throws "unsupported" the moment a Claude session is open.
  */
-class ClaudeWorkspaceFiles(private val workspaceHostDir: File) {
+class ClaudeWorkspaceFiles(
+    private val workspaceHostDir: File,
+    /** The Linux rootfs, for workspaces that sit outside the `/workspace` mount. */
+    private val rootfsHostDir: File? = null,
+) {
     fun list(
         directory: String,
         path: String,
@@ -123,11 +127,20 @@ class ClaudeWorkspaceFiles(private val workspaceHostDir: File) {
      * Host directory backing [directory].
      *
      * Sessions record sandbox paths such as `/workspace/project`; everything under `/workspace` maps
-     * into the app's own workspace directory.
+     * into the app's own workspace directory. A workspace can also be set to a folder the Linux
+     * environment already has — `/root/project`, say — and those live in the rootfs instead; without
+     * [rootfsHostDir] they were resolved under the workspace mount, which is a different folder
+     * entirely.
      */
     private fun resolveRoot(directory: String): File {
-        val relative = directory.removePrefix("/workspace").trim('/')
-        return if (relative.isEmpty()) workspaceHostDir else File(workspaceHostDir, relative)
+        val trimmed = directory.trim().trimEnd('/')
+        if (trimmed == WORKSPACE_MOUNT || trimmed.startsWith("$WORKSPACE_MOUNT/")) {
+            val relative = trimmed.removePrefix(WORKSPACE_MOUNT).trim('/')
+            return if (relative.isEmpty()) workspaceHostDir else File(workspaceHostDir, relative)
+        }
+        val rootfs = rootfsHostDir ?: return File(workspaceHostDir, trimmed.trim('/'))
+        val relative = trimmed.trim('/')
+        return if (relative.isEmpty()) rootfs else File(rootfs, relative)
     }
 
     private fun sandboxPath(
@@ -148,6 +161,7 @@ class ClaudeWorkspaceFiles(private val workspaceHostDir: File) {
     }
 
     private companion object {
+        const val WORKSPACE_MOUNT = "/workspace"
         const val MAX_READ_BYTES = 2L * 1024 * 1024
         const val BINARY_SNIFF_BYTES = 1024
         const val DEFAULT_LIMIT = 200

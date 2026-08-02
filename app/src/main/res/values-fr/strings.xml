@@ -79,6 +79,15 @@
     <string name="workspace_remove_from_list">Retirer de la liste</string>
     <string name="workspace_delete_files">Supprimer les fichiers</string>
     <string name="workspace_delete_files_confirm">Supprimer « %1$s » et tous ses fichiers ? Cette action est irréversible.</string>
+    <string name="workspace_deleting">Suppression…</string>
+    <string name="workspace_delete_failed">Impossible de supprimer ce dossier. Arrêtez l\'environnement s\'il est en cours d\'exécution, puis réessayez.</string>
+    <string name="workspace_delete_retry">Réessayer</string>
+    <string name="workspace_choose_folder">Choisir un dossier existant</string>
+    <string name="cd_choose_folder">Choisir un dossier existant</string>
+    <string name="workspace_folder_picker_up">Remonter d\'un niveau</string>
+    <string name="workspace_folder_picker_empty">Aucun sous-dossier ici.</string>
+    <string name="workspace_folder_picker_select">Utiliser ce dossier</string>
+    <string name="workspace_folder_picker_unavailable">Configurez d\'abord l\'environnement sur l\'appareil : il n\'y a encore rien à parcourir.</string>
 
     <string name="recent_sessions">Sessions récentes</string>
     <string name="view_all">Voir tout</string>

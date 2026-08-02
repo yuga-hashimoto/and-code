@@ -79,6 +79,15 @@
     <string name="workspace_remove_from_list">Удалить из списка</string>
     <string name="workspace_delete_files">Удалить файлы</string>
     <string name="workspace_delete_files_confirm">Удалить \"%1$s\" и все его файлы? Это действие нельзя отменить.</string>
+    <string name="workspace_deleting">Удаление…</string>
+    <string name="workspace_delete_failed">Не удалось удалить эту папку. Остановите среду выполнения, если она запущена, и повторите попытку.</string>
+    <string name="workspace_delete_retry">Повторить</string>
+    <string name="workspace_choose_folder">Выбрать существующую папку</string>
+    <string name="cd_choose_folder">Выбрать существующую папку</string>
+    <string name="workspace_folder_picker_up">На уровень вверх</string>
+    <string name="workspace_folder_picker_empty">Здесь нет вложенных папок.</string>
+    <string name="workspace_folder_picker_select">Использовать эту папку</string>
+    <string name="workspace_folder_picker_unavailable">Сначала настройте среду на устройстве — просматривать пока нечего.</string>
 
     <string name="recent_sessions">Недавние сессии</string>
     <string name="view_all">Показать все</string>

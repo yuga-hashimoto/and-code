@@ -19,6 +19,7 @@ import com.yugahashimoto.andcode.runtime.local.ClaudeCodeUiState
 import com.yugahashimoto.andcode.runtime.local.ClaudePermissionMode
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeManager
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeServiceController
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.io.File
 
 data class RuntimeSummary(
@@ -49,6 +51,29 @@ data class WorkspaceUiState(
     val isRefreshing: Boolean = false,
     val error: String? = null,
     val claude: ClaudeCodeUiState = ClaudeCodeUiState(),
+    val folders: WorkspaceFolderActions = WorkspaceFolderActions(),
+    val folderPicker: FolderPickerState = FolderPickerState(),
+)
+
+/**
+ * Which folders are being erased right now, and which ones failed.
+ *
+ * Deleting a project folder is not instant — a repository with its history and dependencies is tens
+ * of thousands of files — so the row and its dialog stay on screen reporting progress until the
+ * folder is actually gone, instead of returning immediately and leaving the entry sitting there.
+ */
+data class WorkspaceFolderActions(
+    val deleting: Set<String> = emptySet(),
+    val failed: Set<String> = emptySet(),
+)
+
+/** Browsing state for picking an existing folder out of the on-device Linux environment. */
+data class FolderPickerState(
+    val visible: Boolean = false,
+    val path: String = WorkspaceFolders.GUEST_ROOT,
+    val directories: List<String> = emptyList(),
+    val isLoading: Boolean = false,
+    val unavailable: Boolean = false,
 )
 
 class WorkspaceViewModel(
@@ -59,10 +84,15 @@ class WorkspaceViewModel(
     private val settings: SecureSettingsRepository,
     private val workspaceHostDir: File,
     private val claudeCode: ClaudeCodeController? = null,
+    private val folderBrowser: RuntimeFolderBrowser =
+        // The workspace directory sits beside the installed environment inside the runtime folder.
+        RuntimeFolderBrowser(File(workspaceHostDir.absoluteFile.parentFile, "environment/rootfs"), workspaceHostDir),
 ) : ViewModel() {
     private val registeredTick = MutableStateFlow(0)
     private val claudeState: StateFlow<ClaudeCodeUiState> =
         claudeCode?.state ?: MutableStateFlow(ClaudeCodeUiState())
+    private val folderActions = MutableStateFlow(WorkspaceFolderActions())
+    private val folderPicker = MutableStateFlow(FolderPickerState())
 
     val state: StateFlow<WorkspaceUiState> =
         combine(
@@ -70,8 +100,8 @@ class WorkspaceViewModel(
             registry.selected,
             catalog.state,
             localRuntimeManager.state,
-            combine(registeredTick, claudeState) { _, claude -> claude },
-        ) { targets, selected, runtime, localStatus, claude ->
+            combine(registeredTick, claudeState, folderActions, folderPicker, ::LocalState),
+        ) { targets, selected, runtime, localStatus, local ->
             val profiles = registry.remoteProfiles()
             // Read imperatively: the registry recomputes this set while building the target list, so
             // it is already up to date by the time `targets` emits.
@@ -91,11 +121,18 @@ class WorkspaceViewModel(
                 connections = profiles,
                 unusableConnections = profiles.filter { it.id in unusableIds },
                 selectedRuntimeId = selected?.id,
-                workspaces = mergeWorkspaces(runtime.workspaces, registeredProjects(selected)),
+                workspaces =
+                    WorkspaceFolders.visibleWorkspaces(
+                        runtimeWorkspaces = runtime.workspaces,
+                        registered = registeredProjects(selected),
+                        hidden = settings.hiddenWorkspacePaths.toSet(),
+                    ),
                 localStatus = localStatus,
                 isRefreshing = runtime.isRefreshing,
                 error = runtime.error,
-                claude = claude,
+                claude = local.claude,
+                folders = local.folders,
+                folderPicker = local.picker,
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, WorkspaceUiState())
 
@@ -120,49 +157,118 @@ class WorkspaceViewModel(
     private fun registeredProjects(selected: RuntimeTarget?): List<WorkspaceRef> {
         if (selected != null && selected.type != RuntimeType.LOCAL) return emptyList()
         return settings.projectPaths.map { path ->
-            WorkspaceRef(id = path, name = displayName(path), path = path)
+            WorkspaceRef(id = path, name = WorkspaceFolders.displayName(path), path = path)
         }
     }
 
-    private fun mergeWorkspaces(
-        server: List<WorkspaceRef>,
-        registered: List<WorkspaceRef>,
-    ): List<WorkspaceRef> {
-        val byPath = linkedMapOf<String, WorkspaceRef>()
-        registered.forEach { byPath[it.path] = it }
-        server.forEach { byPath.putIfAbsent(it.path, it) }
-        return byPath.values.toList()
-    }
-
-    private fun displayName(serverPath: String): String = serverPath.trimEnd('/').substringAfterLast('/').ifBlank { serverPath }
-
     fun addProject(serverPath: String) {
+        // Registering a folder again is how a removal is undone: the user pointed at this path, so
+        // it belongs back on the list even if they had hidden it earlier.
+        settings.hiddenWorkspacePaths = settings.hiddenWorkspacePaths.filter { it != serverPath }
         val current = settings.projectPaths.toMutableList()
         if (serverPath !in current) {
             current += serverPath
             settings.projectPaths = current
-            registeredTick.update { it + 1 }
         }
+        registeredTick.update { it + 1 }
     }
 
     fun removeProject(serverPath: String) {
         settings.projectPaths = settings.projectPaths.filter { it != serverPath }
+        settings.hiddenWorkspacePaths = (settings.hiddenWorkspacePaths + serverPath).distinct()
+        folderActions.update { it.copy(failed = it.failed - serverPath) }
         registeredTick.update { it + 1 }
     }
 
+    /**
+     * Erases a workspace folder from the device, then drops it from the list.
+     *
+     * Runs off the main thread and reports progress: a project folder holds a repository's history
+     * and its dependencies, so the delete takes long enough that doing it inline froze the screen
+     * and returned before the folder was gone.
+     */
     fun deleteProjectFiles(serverPath: String) {
-        // Only folders this device registered live under the Android runtime. A folder listed by a
-        // PC connection just happens to share a basename with one of ours, and deleting on that
-        // resemblance would wipe unrelated local files.
-        if (serverPath !in settings.projectPaths) {
+        if (serverPath in folderActions.value.deleting) return
+        val hostDir =
+            if (registry.selected.value?.type == RuntimeType.LOCAL) {
+                // Only the workspace mount is this app's own storage. A folder listed by a PC
+                // connection just happens to share a path with one of ours, and deleting on that
+                // resemblance would wipe unrelated local files.
+                WorkspaceFolders.deletableHostDirectory(workspaceHostDir, serverPath)
+            } else {
+                null
+            }
+        if (hostDir == null) {
             removeProject(serverPath)
             refresh()
             return
         }
-        val hostDir = File(workspaceHostDir, displayName(serverPath))
-        if (hostDir.exists()) hostDir.deleteRecursively()
-        removeProject(serverPath)
+        folderActions.update { it.copy(deleting = it.deleting + serverPath, failed = it.failed - serverPath) }
+        viewModelScope.launch {
+            val deleted = withContext(Dispatchers.IO) { deleteFolder(hostDir) }
+            if (deleted) {
+                removeProject(serverPath)
+                refresh()
+            }
+            folderActions.update {
+                it.copy(
+                    deleting = it.deleting - serverPath,
+                    failed = if (deleted) it.failed else it.failed + serverPath,
+                )
+            }
+        }
+    }
+
+    /** Clears the failure shown on a row, so its dialog can be dismissed. */
+    fun dismissDeleteFailure(serverPath: String) {
+        folderActions.update { it.copy(failed = it.failed - serverPath) }
+    }
+
+    private fun deleteFolder(hostDir: File): Boolean {
+        if (!hostDir.exists()) return true
+        hostDir.deleteRecursively()
+        // What is left on disk is the answer, not the return value: the row is claiming the folder
+        // is gone, so it has to be gone.
+        return !hostDir.exists()
+    }
+
+    fun openFolderPicker() {
+        if (!folderBrowser.isAvailable()) {
+            folderPicker.value = FolderPickerState(visible = true, unavailable = true)
+            return
+        }
+        folderPicker.value = FolderPickerState(visible = true, path = WorkspaceFolders.GUEST_ROOT)
+        browseFolder(WorkspaceFolders.GUEST_ROOT)
+    }
+
+    fun browseFolder(path: String) {
+        val normalized = WorkspaceFolders.normalize(path)
+        folderPicker.update { it.copy(path = normalized, isLoading = true) }
+        viewModelScope.launch {
+            val children = withContext(Dispatchers.IO) { folderBrowser.children(normalized) }
+            folderPicker.update { current ->
+                // A slower listing must not overwrite the folder the user has since moved to.
+                if (current.path != normalized) current else current.copy(directories = children, isLoading = false)
+            }
+        }
+    }
+
+    fun browseFolderUp() = browseFolder(WorkspaceFolders.parentOf(folderPicker.value.path))
+
+    fun browseFolderInto(name: String) = browseFolder(WorkspaceFolders.childOf(folderPicker.value.path, name))
+
+    /** Registers the folder currently open in the picker and closes it. */
+    fun confirmFolderPicker(): String? {
+        val path = folderPicker.value.path
+        if (path == WorkspaceFolders.GUEST_ROOT) return null
+        addProject(path)
         refresh()
+        dismissFolderPicker()
+        return path
+    }
+
+    fun dismissFolderPicker() {
+        folderPicker.value = FolderPickerState()
     }
 
     fun selectRuntime(id: String) {
@@ -229,6 +335,14 @@ class WorkspaceViewModel(
         catalog.refresh()
         claudeCode?.refresh()
     }
+
+    /** The four app-local flows, folded into one so [combine] stays within its arity. */
+    private data class LocalState(
+        val tick: Int,
+        val claude: ClaudeCodeUiState,
+        val folders: WorkspaceFolderActions,
+        val picker: FolderPickerState,
+    )
 
     private companion object {
         const val LOCAL_RUNTIME_ID = "local-android"

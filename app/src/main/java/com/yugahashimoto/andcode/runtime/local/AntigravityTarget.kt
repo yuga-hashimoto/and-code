@@ -32,7 +32,11 @@ class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarge
         RuntimeCapabilities(toolEvents = true, forcesQueue = true)
     private val mutableState = MutableStateFlow<RuntimeState>(RuntimeState.Disconnected)
     override val state: StateFlow<RuntimeState> = mutableState.asStateFlow()
-    private val files = ClaudeWorkspaceFiles(File(runtime.runtimeDirectory, "workspace"))
+    private val files =
+        ClaudeWorkspaceFiles(
+            workspaceHostDir = File(runtime.runtimeDirectory, "workspace"),
+            rootfsHostDir = File(runtime.runtimeDirectory, "environment/rootfs"),
+        )
     private val titleScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     val auth get() = runtime.auth()
 

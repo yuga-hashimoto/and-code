@@ -123,7 +123,11 @@ class ClaudeCodeTarget(
     }
 
     private val titleScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val files = ClaudeWorkspaceFiles(File(runtime.runtimeDirectory, "workspace"))
+    private val files =
+        ClaudeWorkspaceFiles(
+            workspaceHostDir = File(runtime.runtimeDirectory, "workspace"),
+            rootfsHostDir = File(runtime.runtimeDirectory, "environment/rootfs"),
+        )
 
     val auth: ClaudeAuthCoordinator get() = runtime.auth
 
