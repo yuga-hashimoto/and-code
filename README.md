@@ -17,6 +17,8 @@ AndCode is a native Android GUI app that brings AI coding agents to your phone. 
   <img src="screenshots/chat.png" width="240" alt="Chat with streaming response, todo progress, and model switching" />
   &nbsp;
   <img src="screenshots/model-picker.png" width="240" alt="Model and runtime picker with favorites" />
+  &nbsp;
+  <img src="screenshots/schedules.png" width="240" alt="Scheduled prompts running on a recurring schedule" />
 </p>
 
 > [!IMPORTANT]
@@ -46,6 +48,7 @@ On-device agents run inside an Alpine Linux environment via PRoot. Google Antigr
 - **Pull request badges** — Pull requests opened in a chat stay pinned above the composer with their diff size and state (draft, open, conflict, merged, closed); tap to open them on GitHub
 - **Tool approvals** — Approve or reject dangerous tool operations
 - **Session management** — Create, resume, rename, and delete sessions
+- **Scheduled tasks** — Run prompts automatically on a one-time or recurring (cron) schedule, with run history
 - **Dynamic models** — Models, providers, and agents fetched live from your connected agent instance
 - **Real-time streaming** — SSE-based live responses, tool execution, and approval requests
 - **Structured timeline** — Collapsible reasoning, tool calls, and command output
