@@ -131,6 +131,20 @@ fun ScheduleEditorScreen(
     val selectedProvider = providers.firstOrNull { it.id == providerId }
     val selectedModelName = selectedProvider?.models?.get(modelId)?.name
 
+    /*
+     * Folders of the agent this schedule runs on, which is not necessarily the agent selected in
+     * the app: [workspaces] only ever holds the selected one's folders, so picking any other agent
+     * left the menu with nothing to offer. A target that is stopped or unreachable answers with
+     * nothing, and the app-wide list is used instead of an empty menu.
+     */
+    var targetWorkspaces by remember { mutableStateOf<List<WorkspaceRef>>(emptyList()) }
+    LaunchedEffect(selectedTarget?.id) {
+        val target = selectedTarget
+        targetWorkspaces =
+            if (target == null) emptyList() else runCatching { target.listWorkspaces() }.getOrDefault(emptyList())
+    }
+    val workspaceOptions = targetWorkspaces.ifEmpty { workspaces }
+
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -250,7 +264,7 @@ fun ScheduleEditorScreen(
 
             EditorSectionHeader(stringResource(R.string.schedule_workspace))
             val workspaceSummary =
-                workspaces
+                workspaceOptions
                     .firstOrNull { it.path == workspacePath }
                     ?.let { "${it.name} · ${it.path}" }
                     ?: workspacePath
@@ -278,7 +292,14 @@ fun ScheduleEditorScreen(
                             workspaceMenuExpanded = false
                         },
                     )
-                    workspaces.forEach { workspace ->
+                    if (workspaceOptions.isEmpty()) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.no_workspaces_title)) },
+                            onClick = {},
+                            enabled = false,
+                        )
+                    }
+                    workspaceOptions.forEach { workspace ->
                         DropdownMenuItem(
                             text = {
                                 Column {
