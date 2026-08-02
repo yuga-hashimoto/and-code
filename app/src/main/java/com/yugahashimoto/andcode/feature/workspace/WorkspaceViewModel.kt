@@ -85,8 +85,7 @@ class WorkspaceViewModel(
     private val workspaceHostDir: File,
     private val claudeCode: ClaudeCodeController? = null,
     private val folderBrowser: RuntimeFolderBrowser =
-        // The workspace directory sits beside the installed environment inside the runtime folder.
-        RuntimeFolderBrowser(File(workspaceHostDir.absoluteFile.parentFile, "environment/rootfs"), workspaceHostDir),
+        RuntimeFolderBrowser(File(workspaceHostDir.absoluteFile.parentFile, RUNTIME_ROOTFS_PATH), workspaceHostDir),
 ) : ViewModel() {
     private val registeredTick = MutableStateFlow(0)
     private val claudeState: StateFlow<ClaudeCodeUiState> =
@@ -346,5 +345,8 @@ class WorkspaceViewModel(
 
     private companion object {
         const val LOCAL_RUNTIME_ID = "local-android"
+
+        /** The installed Linux environment, which sits beside the workspace directory. */
+        const val RUNTIME_ROOTFS_PATH = "environment/rootfs"
     }
 }

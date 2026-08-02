@@ -13,10 +13,11 @@ import java.io.File
  * OpenCode answers the explorer's file questions over HTTP; Claude Code has no such server. It does
  * not need one: `/workspace` inside the sandbox is a plain directory on the device, so these read it
  * directly. Without this the explorer throws "unsupported" the moment a Claude session is open.
+ *
+ * [rootfsHostDir] is the Linux rootfs, for workspaces set to a folder outside the `/workspace` mount.
  */
 class ClaudeWorkspaceFiles(
     private val workspaceHostDir: File,
-    /** The Linux rootfs, for workspaces that sit outside the `/workspace` mount. */
     private val rootfsHostDir: File? = null,
 ) {
     fun list(
