@@ -44,7 +44,8 @@ class LegalDocumentTest {
 
     @Test
     fun `documents without a Japanese translation fall back to the English asset even for ja`() {
-        val untranslated = listOf(LegalDocument.OSS_LICENSES, LegalDocument.TRADEMARKS, LegalDocument.LICENSE_GPL_2_0)
+        val untranslated =
+            listOf(LegalDocument.OSS_LICENSES, LegalDocument.NOTICE_AGGREGATE, LegalDocument.TRADEMARKS, LegalDocument.LICENSE_GPL_2_0)
         untranslated.forEach { document ->
             assertNull(document.assetPathJa)
             assertEquals(document.assetPath, document.assetPathFor("ja"))

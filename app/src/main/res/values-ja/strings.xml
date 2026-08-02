@@ -516,6 +516,7 @@
     <string name="legal_doc_terms_of_use">利用規約</string>
     <string name="legal_doc_third_party_services">第三者サービス</string>
     <string name="legal_doc_oss_licenses">オープンソースライセンス</string>
+    <string name="legal_doc_notice_aggregate">サードパーティNOTICEファイル</string>
     <string name="legal_doc_trademarks">商標について</string>
     <string name="legal_doc_auth_data_flow">認証とデータの流れ</string>
     <string name="legal_app_version_row">アプリバージョン</string>

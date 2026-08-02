@@ -22,6 +22,7 @@ enum class LegalDocument(val assetPath: String, val titleRes: Int, val assetPath
         "legal/third_party_services.ja.md",
     ),
     OSS_LICENSES("legal/oss_licenses.md", R.string.legal_doc_oss_licenses),
+    NOTICE_AGGREGATE("legal/notice_aggregate.md", R.string.legal_doc_notice_aggregate),
     TRADEMARKS("legal/trademarks.md", R.string.legal_doc_trademarks),
     AUTH_DATA_FLOW(
         "legal/auth_data_flow.md",

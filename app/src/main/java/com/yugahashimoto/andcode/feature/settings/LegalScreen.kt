@@ -93,6 +93,12 @@ fun LegalScreen(
                     )
                     SettingsDivider()
                     SettingsRow(
+                        icon = Icons.Default.Description,
+                        title = stringResource(R.string.legal_doc_notice_aggregate),
+                        onClick = { onOpenDocument(LegalDocument.NOTICE_AGGREGATE) },
+                    )
+                    SettingsDivider()
+                    SettingsRow(
                         icon = Icons.Default.Shield,
                         title = stringResource(R.string.legal_doc_trademarks),
                         onClick = { onOpenDocument(LegalDocument.TRADEMARKS) },

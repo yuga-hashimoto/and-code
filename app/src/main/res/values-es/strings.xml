@@ -504,6 +504,7 @@
     <string name="legal_doc_terms_of_use">Términos de uso</string>
     <string name="legal_doc_third_party_services">Servicios de terceros</string>
     <string name="legal_doc_oss_licenses">Licencias de código abierto</string>
+    <string name="legal_doc_notice_aggregate">Archivos NOTICE de terceros</string>
     <string name="legal_doc_trademarks">Marcas registradas</string>
     <string name="legal_doc_auth_data_flow">Autenticación y flujo de datos</string>
     <string name="legal_app_version_row">Versión de la app</string>

@@ -504,6 +504,7 @@
     <string name="legal_doc_terms_of_use">شروط الاستخدام</string>
     <string name="legal_doc_third_party_services">خدمات الطرف الثالث</string>
     <string name="legal_doc_oss_licenses">تراخيص المصادر المفتوحة</string>
+    <string name="legal_doc_notice_aggregate">ملفات NOTICE الخاصة بالأطراف الثالثة</string>
     <string name="legal_doc_trademarks">العلامات التجارية</string>
     <string name="legal_doc_auth_data_flow">المصادقة وتدفق البيانات</string>
     <string name="legal_app_version_row">إصدار التطبيق</string>

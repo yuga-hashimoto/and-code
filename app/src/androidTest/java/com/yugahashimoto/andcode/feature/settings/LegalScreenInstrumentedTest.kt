@@ -59,4 +59,14 @@ class LegalScreenInstrumentedTest {
             composeRule.onAllNodesWithText("PRoot", substring = true).fetchSemanticsNodes().isNotEmpty()
         }
     }
+
+    @Test
+    fun noticeAggregateDocumentLoadsFromBundledAssetOffline() {
+        composeRule.setContent {
+            LegalDocumentScreen(document = LegalDocument.NOTICE_AGGREGATE, onBack = {})
+        }
+        composeRule.waitUntil(timeoutMillis = 5_000) {
+            composeRule.onAllNodesWithText("Apache Software Foundation", substring = true).fetchSemanticsNodes().isNotEmpty()
+        }
+    }
 }

@@ -504,6 +504,7 @@
     <string name="legal_doc_terms_of_use">使用条款</string>
     <string name="legal_doc_third_party_services">第三方服务</string>
     <string name="legal_doc_oss_licenses">开源许可证</string>
+    <string name="legal_doc_notice_aggregate">第三方NOTICE文件</string>
     <string name="legal_doc_trademarks">商标声明</string>
     <string name="legal_doc_auth_data_flow">身份验证与数据流</string>
     <string name="legal_app_version_row">应用版本</string>

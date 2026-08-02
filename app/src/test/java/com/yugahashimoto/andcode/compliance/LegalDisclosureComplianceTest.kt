@@ -195,6 +195,36 @@ class LegalDisclosureComplianceTest {
         assertTrue(text.contains("requires_license_review"))
     }
 
+    /**
+     * A prior version of this document claimed Gradle preserves every dependency's embedded
+     * `META-INF/NOTICE` file unmodified in the built APK. Unzipping the actual CI-produced debug
+     * APK showed that is false (AGP's resource merging keeps only one arbitrarily-picked copy),
+     * so the doc must point at a generated aggregate instead of asserting nothing needs collecting.
+     */
+    @Test
+    fun `THIRD_PARTY_NOTICES no longer claims Gradle preserves every dependency NOTICE file untouched`() {
+        val text = readRepoFile("THIRD_PARTY_NOTICES.md").lowercase()
+        assertFalse(
+            "THIRD_PARTY_NOTICES.md should not claim no manual NOTICE aggregation step is needed",
+            text.replace("\n", " ").contains("no separate manual notice aggregation step is needed"),
+        )
+        assertTrue(
+            "THIRD_PARTY_NOTICES.md should reference the generated NOTICE aggregate",
+            text.contains("notice-aggregate.txt"),
+        )
+    }
+
+    @Test
+    fun `NOTICE aggregate is bundled offline and documents at least one dependency's NOTICE text`() {
+        val rootText = readRepoFile("THIRD_PARTY_LICENSES/NOTICE-aggregate.txt")
+        assertTrue(rootText.contains("Apache Software Foundation"))
+        val assetText = readRepoFile("app/src/main/assets/legal/notice_aggregate.md")
+        assertTrue(
+            "app/src/main/assets/legal/notice_aggregate.md has drifted from THIRD_PARTY_LICENSES/NOTICE-aggregate.txt",
+            rootText == assetText,
+        )
+    }
+
     @Test
     fun `required standalone legal documents exist at the repository root`() {
         listOf("PRIVACY.md", "TERMS.md", "THIRD_PARTY_SERVICES.md", "TRADEMARKS.md", "docs/AUTHENTICATION_AND_DATA_FLOW.md")

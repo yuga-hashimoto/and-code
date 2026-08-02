@@ -504,6 +504,7 @@
     <string name="legal_doc_terms_of_use">Conditions d\'utilisation</string>
     <string name="legal_doc_third_party_services">Services tiers</string>
     <string name="legal_doc_oss_licenses">Licences open source</string>
+    <string name="legal_doc_notice_aggregate">Fichiers NOTICE tiers</string>
     <string name="legal_doc_trademarks">Marques déposées</string>
     <string name="legal_doc_auth_data_flow">Authentification et flux de données</string>
     <string name="legal_app_version_row">Version de l\'application</string>

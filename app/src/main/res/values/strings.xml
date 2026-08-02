@@ -516,6 +516,7 @@
     <string name="legal_doc_terms_of_use">Terms of Use</string>
     <string name="legal_doc_third_party_services">Third-party Services</string>
     <string name="legal_doc_oss_licenses">Open-source Licenses</string>
+    <string name="legal_doc_notice_aggregate">Third-party NOTICE files</string>
     <string name="legal_doc_trademarks">Trademarks</string>
     <string name="legal_doc_auth_data_flow">Authentication &amp; Data Flow</string>
     <string name="legal_app_version_row">App version</string>

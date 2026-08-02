@@ -116,11 +116,32 @@ claim that it is exhaustive — consult the generated file for the complete set.
 
 Apache License 2.0's full text is bundled at
 [`THIRD_PARTY_LICENSES/Apache-2.0.txt`](THIRD_PARTY_LICENSES/Apache-2.0.txt) and
-`assets/legal/licenses/Apache-2.0.txt` inside the APK, covering the dependencies above. Where an
-individual Apache-licensed artifact ships its own `NOTICE` file inside its AAR/JAR (several Google
-and Apache Commons artifacts do), that file remains embedded in the distributed dependency artifact
-unmodified — Gradle does not strip package resources from dependency archives, so no separate
-manual NOTICE aggregation step is needed for AndCode's own build to preserve them.
+`assets/legal/licenses/Apache-2.0.txt` inside the APK, covering the dependencies above.
+
+**NOTICE files are not preserved in the built APK and must be aggregated separately.** An earlier
+version of this document claimed that Gradle keeps each dependency's `META-INF/NOTICE` file intact
+in the final package; that was checked against the actual `and-code-debug` CI artifact and found to
+be false. AGP's resource merging deduplicates files that collide under `META-INF/NOTICE*` across
+dependencies by keeping a single, arbitrarily-chosen copy (a "pick first" rule, not per-artifact
+preservation) — inspecting the built APK showed only `okhttp3/internal/publicsuffix/NOTICE`
+survived; the Apache Commons artifacts' own `NOTICE` files did not make it into the APK at all.
+
+The actual NOTICE text for every `releaseRuntimeClasspath` artifact that ships one is aggregated,
+straight out of the dependency archives (not the built APK), at
+[`THIRD_PARTY_LICENSES/NOTICE-aggregate.txt`](THIRD_PARTY_LICENSES/NOTICE-aggregate.txt) and
+`assets/legal/notice_aggregate.md` inside the APK, reachable from the in-app Legal screen. As of
+this writing that is `commons-codec`, `commons-io`, `commons-compress`, and `commons-lang3` — all
+four are the standard "Copyright The Apache Software Foundation" boilerplate NOTICE, not a notice
+of any modification. Regenerate it after any dependency change with:
+
+```bash
+./scripts/generate_notice_aggregate.sh
+```
+
+and re-copy the result into `app/src/main/assets/legal/notice_aggregate.md` before releasing (a
+test enforces the two stay byte-for-byte identical). An artifact absent from the aggregate is not
+a claim that it ships no NOTICE file — only that none of the standard `NOTICE`/`NOTICE.txt` entry
+names were found at the top level of its jar/aar or its nested `classes.jar`.
 
 ## Wake-word models (bundled ML models, not Gradle dependencies)
 

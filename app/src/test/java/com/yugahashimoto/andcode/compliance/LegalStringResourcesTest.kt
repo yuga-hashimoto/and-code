@@ -43,6 +43,7 @@ class LegalStringResourcesTest {
             "legal_doc_terms_of_use",
             "legal_doc_third_party_services",
             "legal_doc_oss_licenses",
+            "legal_doc_notice_aggregate",
             "legal_doc_trademarks",
             "legal_doc_auth_data_flow",
             "legal_app_version_row",

@@ -504,6 +504,7 @@
     <string name="legal_doc_terms_of_use">Условия использования</string>
     <string name="legal_doc_third_party_services">Сторонние сервисы</string>
     <string name="legal_doc_oss_licenses">Лицензии открытого ПО</string>
+    <string name="legal_doc_notice_aggregate">Файлы NOTICE сторонних компонентов</string>
     <string name="legal_doc_trademarks">Товарные знаки</string>
     <string name="legal_doc_auth_data_flow">Аутентификация и поток данных</string>
     <string name="legal_app_version_row">Версия приложения</string>
