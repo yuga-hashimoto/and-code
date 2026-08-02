@@ -59,6 +59,7 @@ class ChatVoiceInstrumentedTest {
         composeRule.onNodeWithText(context.getString(R.string.voice_state_listening)).assertIsDisplayed()
         composeRule.onNodeWithTag("chat-message-input").assertTextContains("こんにちは")
         composeRule.onNodeWithTag("chat-voice-waveform").assertDoesNotExist()
+        composeRule.onNodeWithText(context.getString(R.string.voice_listening_placeholder)).assertDoesNotExist()
 
         screenState.value = ChatUiState(isSpeechProcessing = true)
 

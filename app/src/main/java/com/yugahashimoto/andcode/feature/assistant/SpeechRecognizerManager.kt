@@ -18,7 +18,11 @@ import kotlin.coroutines.EmptyCoroutineContext
 private const val TAG = "SpeechRecognizerManager"
 private const val CLEANUP_DELAY_MS = 300L
 private const val MAX_RESULTS = 3
-private const val SILENCE_LENGTH_MS = 1500L
+
+// A short pause is common inside a Japanese sentence. Giving the recognizer more time here
+// avoids finalizing a segment before the user has finished the thought; chat then starts the next
+// segment after a genuine recognition result so long dictation remains in one composer value.
+private const val SILENCE_LENGTH_MS = 3000L
 
 /**
  * 音声認識マネージャー

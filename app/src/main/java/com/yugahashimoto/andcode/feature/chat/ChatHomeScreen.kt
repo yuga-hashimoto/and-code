@@ -598,16 +598,6 @@ fun ChatHomeScreen(
             }
         }
 
-        LiveTranscriptOverlay(
-            isRecording = state.isListening,
-            transcript = "",
-            amplitude = 0.5f,
-            onAccept = {},
-            onCancel = {},
-            onAcceptAndSend = {},
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
-
         AnimatedVisibility(
             visible = showSidePanel,
             enter = slideInHorizontally(initialOffsetX = { it }),
@@ -1027,6 +1017,7 @@ private fun ChatComposer(
     onCameraLaunch: () -> Unit,
     onGalleryLaunch: () -> Unit,
 ) {
+    val voiceActive = isListening || isSpeechProcessing
     var showAttachMenu by remember { mutableStateOf(false) }
 
     Column(
@@ -1248,13 +1239,13 @@ private fun ChatComposer(
                         VolumeMeter(amplitude = 0.5f, idle = true)
                     }
                     val micContainerColor =
-                        if (isListening) {
+                        if (voiceActive) {
                             MaterialTheme.colorScheme.primaryContainer
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant
                         }
                     val micContentColor =
-                        if (isListening) {
+                        if (voiceActive) {
                             MaterialTheme.colorScheme.primary
                         } else {
                             MaterialTheme.colorScheme.onSurfaceVariant
@@ -1270,8 +1261,9 @@ private fun ChatComposer(
                     ) {
                         IconButton(onClick = onMic, modifier = Modifier.fillMaxSize()) {
                             Icon(
-                                Icons.Default.Mic,
-                                contentDescription = stringResource(R.string.voice),
+                                if (voiceActive) Icons.Default.Stop else Icons.Default.Mic,
+                                contentDescription =
+                                    stringResource(if (voiceActive) R.string.stop_run else R.string.voice),
                                 modifier = Modifier.size(21.dp),
                                 tint = micContentColor,
                             )

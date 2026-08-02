@@ -69,6 +69,7 @@ import com.yugahashimoto.andcode.core.diagnostics.CrashLog
 import com.yugahashimoto.andcode.feature.activity.ActivityViewModel
 import com.yugahashimoto.andcode.feature.assistant.SpeechRecognizerManager
 import com.yugahashimoto.andcode.feature.assistant.SpeechResult
+import com.yugahashimoto.andcode.feature.assistant.SpeechTranscriptAccumulator
 import com.yugahashimoto.andcode.feature.chat.ChatHomeScreen
 import com.yugahashimoto.andcode.feature.chat.ChatViewModel
 import com.yugahashimoto.andcode.feature.chat.SubagentInfo
@@ -117,6 +118,7 @@ import kotlinx.coroutines.withContext
 
 /** How often the open chat asks GitHub whether its pull requests have moved on. */
 private const val PULL_REQUEST_REFRESH_INTERVAL_MS = 30_000L
+private const val VOICE_RESTART_DELAY_MS = 200L
 
 private fun speechLocaleTag(context: android.content.Context): String {
     val locale =
@@ -310,19 +312,34 @@ fun AndCodeApp(
         chatViewModel.startListening()
         voiceJob =
             voiceScope.launch {
+                val transcript = SpeechTranscriptAccumulator()
                 try {
-                    speechManager.startListening(speechLocaleTag(context)).collect { result ->
-                        when (result) {
-                            SpeechResult.Ready,
-                            SpeechResult.Listening,
-                            -> Unit
-                            SpeechResult.Processing -> chatViewModel.showSpeechProcessing()
-                            is SpeechResult.PartialResult -> chatViewModel.updateSpeechPartial(result.text)
-                            is SpeechResult.Result -> {
-                                chatViewModel.updateSpeechPartial(result.text)
-                                chatViewModel.stopListening()
+                    while (true) {
+                        var restart = true
+                        speechManager.startListening(speechLocaleTag(context)).collect { result ->
+                            when (result) {
+                                SpeechResult.Ready,
+                                SpeechResult.Listening,
+                                -> Unit
+                                SpeechResult.Processing -> chatViewModel.showSpeechProcessing()
+                                is SpeechResult.PartialResult -> {
+                                    chatViewModel.updateSpeechPartial(transcript.preview(result.text))
+                                }
+                                is SpeechResult.Result -> {
+                                    transcript.append(result.text)
+                                    chatViewModel.updateSpeechPartial(transcript.text)
+                                }
+                                is SpeechResult.Error -> {
+                                    restart = false
+                                    chatViewModel.reportSpeechError(result.message)
+                                }
                             }
-                            is SpeechResult.Error -> chatViewModel.reportSpeechError(result.message)
+                        }
+                        if (!restart) break
+                        delay(VOICE_RESTART_DELAY_MS)
+                        chatViewModel.startListening()
+                        if (transcript.text.isNotBlank()) {
+                            chatViewModel.updateSpeechPartial(transcript.text)
                         }
                     }
                 } finally {
