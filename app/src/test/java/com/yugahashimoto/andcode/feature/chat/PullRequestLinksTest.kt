@@ -78,6 +78,38 @@ class PullRequestLinksTest {
     }
 
     @Test
+    fun `ignores the pull requests a release notes listing links`() {
+        val messages =
+            listOf(
+                toolMessage(output = "https://github.com/o/r/pull/182"),
+                assistantMessage(
+                    "## What's Changed\n" +
+                        "* fix(ci) by @u in https://github.com/o/r/pull/178\n" +
+                        "* Refresh README by @u in https://github.com/o/r/pull/177\n" +
+                        "* feat(workspace) by @u in https://github.com/o/r/pull/180\n" +
+                        "* feat: agent versions by @u in https://github.com/o/r/pull/181\n" +
+                        "* chore: prepare release by @u in https://github.com/o/r/pull/182\n",
+                ),
+            )
+
+        assertEquals(listOf(PullRequestRef("o", "r", 182)), pullRequestRefsIn(messages))
+    }
+
+    @Test
+    fun `ignores a listing of open pull requests`() {
+        val messages =
+            listOf(
+                toolMessage(
+                    output =
+                        "https://github.com/o/r/pull/12\thttps://github.com/o/r/pull/11\t" +
+                            "https://github.com/o/r/pull/10",
+                ),
+            )
+
+        assertTrue(pullRequestRefsIn(messages).isEmpty())
+    }
+
+    @Test
     fun `keeps only the newest few pull requests, newest first`() {
         val messages = (1..8).map { assistantMessage("https://github.com/o/r/pull/$it") }
 

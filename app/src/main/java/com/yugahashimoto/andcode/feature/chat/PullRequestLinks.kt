@@ -12,7 +12,7 @@ data class ChatPullRequest(
 )
 
 /**
- * The pull requests this conversation links to, newest first.
+ * The pull requests this conversation opened, newest first.
  *
  * Assistant text carries the link an agent reports after opening a pull request, tool output
  * carries the one `gh pr create` prints, and user text carries one that was pasted in - all three
@@ -22,16 +22,30 @@ data class ChatPullRequest(
 fun pullRequestRefsIn(messages: List<ChatMessage>): List<PullRequestRef> {
     val refs = LinkedHashSet<PullRequestRef>()
     messages.forEach { message ->
-        message.parts.forEach { part ->
-            when (part) {
-                is ChatPart.Text -> refs += parsePullRequestRefs(part.text)
-                is ChatPart.Tool -> {
-                    part.output?.let { refs += parsePullRequestRefs(it) }
-                    part.error?.let { refs += parsePullRequestRefs(it) }
-                }
-                else -> Unit
-            }
-        }
+        message.parts.forEach { part -> part.openedPullRequest()?.let(refs::add) }
     }
     return refs.toList().takeLast(MAX_TRACKED_PULL_REQUESTS).reversed()
+}
+
+/**
+ * The one pull request [this] part reports, or null when it reports none - or several.
+ *
+ * A part that links several at once is listing them, not opening one: release notes credit every
+ * pull request in the version, `gh pr list` prints the queue, a changelog names the whole history.
+ * Counting those filled the badge with pull requests the conversation never touched. A part that
+ * opens one names one - `gh pr create` prints a single link, and an agent announces its work as it
+ * lands - so a lone link is the signal, and anything longer is a list to be read, not a badge.
+ */
+private fun ChatPart.openedPullRequest(): PullRequestRef? {
+    val refs =
+        when (this) {
+            is ChatPart.Text -> parsePullRequestRefs(text)
+            // A retried command can report the same pull request twice, once as output and once as
+            // the error of the attempt before it, and that is still a single pull request.
+            is ChatPart.Tool ->
+                (parsePullRequestRefs(output.orEmpty()) + parsePullRequestRefs(error.orEmpty()))
+                    .distinct()
+            else -> return null
+        }
+    return refs.singleOrNull()
 }
