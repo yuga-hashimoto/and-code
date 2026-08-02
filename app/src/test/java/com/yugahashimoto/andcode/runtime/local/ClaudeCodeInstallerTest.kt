@@ -108,10 +108,10 @@ class ClaudeCodeInstallerTest {
         val repositories =
             temporaryFolder.newFile("repositories").apply {
                 writeText(
-                    """
-                    https://dl-cdn.alpinelinux.org/alpine/v3.24/main
-                    https://downloads.claude.ai/claude-code/apk/stable
-                    """.trimIndent() + "\n",
+                    listOf(
+                        "https://dl-cdn.alpinelinux.org/alpine/v3.24/main",
+                        "https://downloads.claude.ai/claude-code/apk/stable",
+                    ).joinToString("\n", postfix = "\n"),
                 )
             }
 
