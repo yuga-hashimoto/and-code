@@ -19,12 +19,17 @@ jobs:
           MISSING_FOUND=0
 
           source_keys=$(grep -oP 'name="\K[^"]+' "$SOURCE" | sort)
+          # Strings the source explicitly marks translatable="false" (e.g. new EN/JA-only legal
+          # copy) are exempt: they intentionally fall back to the English default in locales that
+          # don't have a translation yet, same as Android's own lint MissingTranslation check.
+          non_translatable_keys=$(grep 'translatable="false"' "$SOURCE" | grep -oP 'name="\K[^"]+' | sort)
+          required_keys=$(comm -23 <(echo "$source_keys") <(echo "$non_translatable_keys"))
 
           for file in app/src/main/res/values-*/strings.xml; do
             lang=$(echo "$file" | grep -oP 'values-\K[^/]+')
             file_keys=$(grep -oP 'name="\K[^"]+' "$file" | sort)
 
-            missing=$(comm -23 <(echo "$source_keys") <(echo "$file_keys"))
+            missing=$(comm -23 <(echo "$required_keys") <(echo "$file_keys"))
 
             if [ -n "$missing" ]; then
               count=$(echo "$missing" | wc -l | tr -d ' ')
