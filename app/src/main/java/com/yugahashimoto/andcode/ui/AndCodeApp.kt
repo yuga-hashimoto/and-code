@@ -784,7 +784,9 @@ fun AndCodeApp(
                         onSubmitAntigravitySignInCode = app.antigravityController::submitAuthCode,
                         onCancelAntigravitySignIn = app.antigravityController::cancelAuth,
                         onSignOutAntigravity = app.antigravityController::logout,
-                        onSelectAntigravityPermissionMode = app.antigravityController::setPermissionMode,
+                        onSelectAntigravityPermissionMode = { mode ->
+                            app.antigravityController.setPermissionMode(mode, chatState.sessionId)
+                        },
                         onOpenUrl = { url ->
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
                         },
@@ -853,6 +855,15 @@ fun AndCodeApp(
                         supportsPermissions = selectedRuntime?.capabilities?.permissions != false,
                         onSelectClaudePermissionMode = { mode ->
                             workspaceViewModel.setClaudePermissionMode(mode, chatState.sessionId)
+                        },
+                        // The mode settings shows, so the chip is not left naming whatever agent id
+                        // another runtime last remembered - see AntigravityTarget.listAgents.
+                        antigravityPermissionMode =
+                            antigravityState
+                                .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.ANTIGRAVITY }
+                                ?.permissionMode,
+                        onSelectAntigravityPermissionMode = { mode ->
+                            app.antigravityController.setPermissionMode(mode, chatState.sessionId)
                         },
                         onModelPickerClosed = { handoffReady = true },
                         onSelectRuntime = { id ->
@@ -975,7 +986,9 @@ fun AndCodeApp(
                         com.yugahashimoto.andcode.ui.navigation.AntigravitySettingsActions(
                             onInstall = app.antigravityController::install,
                             onUpdate = app.antigravityController::update,
-                            onSelectPermissionMode = app.antigravityController::setPermissionMode,
+                            onSelectPermissionMode = { mode ->
+                                app.antigravityController.setPermissionMode(mode, chatState.sessionId)
+                            },
                             onSignIn = app.antigravityController::beginAuth,
                             onSubmitCode = app.antigravityController::submitAuthCode,
                             onCancelSignIn = app.antigravityController::cancelAuth,

@@ -87,7 +87,9 @@ class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarge
         directory: String?,
     ): OpenCodeSession {
         val id = UUID.randomUUID().toString()
-        runtime.create(id, directory ?: "/workspace", title)
+        // Same as ClaudeCodeTarget: the mode settings shows is what a new chat runs in. Leaving the
+        // record's own default here is what made a full-access setting start chats in accept-edits.
+        runtime.create(id, directory ?: "/workspace", title, mutableDefaultPermissionMode.value)
         return OpenCodeSession(
             id,
             directory = directory ?: "/workspace",
@@ -128,13 +130,15 @@ class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarge
         withContext(kotlinx.coroutines.Dispatchers.IO) { AntigravityModels.catalog(runtime.models()) }
 
     /**
-     * The permission modes, offered through the composer's mode chip.
+     * The CLI has one agent; its permission mode is not one.
      *
-     * That chip is where OpenCode's `build`/`plan` live, so a single agent named "antigravity" there
-     * told the user nothing and left no way to switch modes without opening settings.
+     * The modes were offered here so the composer's mode chip could switch them, but that chip
+     * reads the agent id the app remembers globally, across runtimes - a "plan" picked once under
+     * OpenCode named Antigravity's plan mode and silently outranked the mode settings chose. The
+     * composer now shows the same dedicated permission-mode chip Claude Code does, fed by
+     * [defaultPermissionMode], and a stale agent id no longer matches anything here.
      */
-    override suspend fun listAgents(): List<OpenCodeAgent> =
-        AntigravityPermissionMode.entries.map { OpenCodeAgent(it.agentId, "Antigravity", "primary", true) }
+    override suspend fun listAgents(): List<OpenCodeAgent> = listOf(OpenCodeAgent("antigravity", "Antigravity", "primary", true))
 
     override suspend fun sendMessage(
         sessionId: String,
@@ -149,12 +153,9 @@ class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarge
         val model = request.modelId ?: record.model
         val variant = request.variant ?: record.variant
         if (model != record.model || variant != record.variant) runtime.setSessionModel(sessionId, model, variant)
-        // The chip's choice wins for this message and is remembered; falling back to the session's
-        // stored mode, then to the default the settings screen shows.
-        val permissionMode =
-            AntigravityPermissionMode.fromAgentId(request.agent)
-                ?.also { runtime.setSessionMode(sessionId, it) }
-                ?: AntigravityPermissionMode.fromCliValue(record.permissionMode)
+        // The session's own mode: set when the chat was created from the default settings shows, and
+        // changed from either the composer's chip or the settings screen.
+        val permissionMode = AntigravityPermissionMode.fromCliValue(record.permissionMode)
         runtime.send(
             sessionId,
             record.workspace,

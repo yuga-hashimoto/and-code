@@ -128,6 +128,7 @@ import com.yugahashimoto.andcode.feature.workspace.GitHubAutoAttachChips
 import com.yugahashimoto.andcode.feature.workspace.GitHubReference
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
+import com.yugahashimoto.andcode.runtime.local.AntigravityPermissionMode
 import com.yugahashimoto.andcode.runtime.local.ClaudePermissionMode
 import com.yugahashimoto.andcode.ui.components.StatusChip
 import com.yugahashimoto.andcode.ui.components.VolumeMeter
@@ -160,6 +161,9 @@ fun ChatHomeScreen(
     /** Non-null only for runtimes that decide tool permissions per session, i.e. Claude Code. */
     claudePermissionMode: ClaudePermissionMode? = null,
     onSelectClaudePermissionMode: (ClaudePermissionMode) -> Unit = {},
+    /** The same, for Antigravity: non-null only while that runtime is the selected one. */
+    antigravityPermissionMode: AntigravityPermissionMode? = null,
+    onSelectAntigravityPermissionMode: (AntigravityPermissionMode) -> Unit = {},
     /**
      * Called once the model and runtime sheet closes.
      *
@@ -547,6 +551,8 @@ fun ChatHomeScreen(
                     supportsPermissions = supportsPermissions,
                     claudePermissionMode = claudePermissionMode,
                     onSelectClaudePermissionMode = onSelectClaudePermissionMode,
+                    antigravityPermissionMode = antigravityPermissionMode,
+                    onSelectAntigravityPermissionMode = onSelectAntigravityPermissionMode,
                     onToggleAutoAccept = onToggleAutoAccept,
                     sendBehavior = sendBehavior,
                     enterToSend = enterToSend,
@@ -1003,6 +1009,8 @@ private fun ChatComposer(
     onToggleAutoAccept: (Boolean) -> Unit,
     claudePermissionMode: ClaudePermissionMode?,
     onSelectClaudePermissionMode: (ClaudePermissionMode) -> Unit,
+    antigravityPermissionMode: AntigravityPermissionMode?,
+    onSelectAntigravityPermissionMode: (AntigravityPermissionMode) -> Unit,
     sendBehavior: String,
     enterToSend: Boolean,
     contextTokensUsed: Long,
@@ -1316,8 +1324,18 @@ private fun ChatComposer(
                 // chip selects the permission mode. Auto-accept is an OpenCode concept and has no
                 // meaning here, so it is left out rather than shown as a dead toggle.
                 PermissionModeChip(
-                    selected = claudePermissionMode,
-                    onSelect = onSelectClaudePermissionMode,
+                    selectedLabel = claudePermissionMode.labelRes,
+                    options = ClaudePermissionMode.entries.map { PermissionModeOption(it.cliValue, it.labelRes) },
+                    onSelect = { id -> onSelectClaudePermissionMode(ClaudePermissionMode.fromCliValue(id)) },
+                )
+            } else if (antigravityPermissionMode != null) {
+                // Antigravity decides the same way. Its modes were once offered through the agent
+                // chip below, where the globally remembered agent id overrode the mode settings
+                // chose; the choice now comes from - and goes back to - that same setting.
+                PermissionModeChip(
+                    selectedLabel = antigravityPermissionMode.labelRes,
+                    options = AntigravityPermissionMode.entries.map { PermissionModeOption(it.cliValue, it.labelRes) },
+                    onSelect = { id -> onSelectAntigravityPermissionMode(AntigravityPermissionMode.fromCliValue(id)) },
                 )
             } else {
                 ModeChip(
@@ -1543,8 +1561,9 @@ private fun ModeChip(
 
 @Composable
 private fun PermissionModeChip(
-    selected: ClaudePermissionMode,
-    onSelect: (ClaudePermissionMode) -> Unit,
+    selectedLabel: Int,
+    options: List<PermissionModeOption>,
+    onSelect: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box {
@@ -1569,7 +1588,7 @@ private fun PermissionModeChip(
                     modifier = Modifier.size(14.dp),
                 )
                 Text(
-                    stringResource(selected.labelRes),
+                    stringResource(selectedLabel),
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1582,19 +1601,22 @@ private fun PermissionModeChip(
             }
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            ClaudePermissionMode.entries.forEach { mode ->
+            options.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(stringResource(mode.labelRes)) },
+                    text = { Text(stringResource(option.labelRes)) },
                     onClick = {
-                        onSelect(mode)
+                        onSelect(option.id)
                         expanded = false
                     },
-                    modifier = Modifier.testTag("chat-permission-mode-${mode.cliValue}"),
+                    modifier = Modifier.testTag("chat-permission-mode-${option.id}"),
                 )
             }
         }
     }
 }
+
+/** One entry of the permission-mode chip, so the chip serves Claude Code and Antigravity alike. */
+private data class PermissionModeOption(val id: String, val labelRes: Int)
 
 @Composable
 private fun AutoAcceptChip(

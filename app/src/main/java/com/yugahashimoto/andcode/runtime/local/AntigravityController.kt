@@ -243,5 +243,9 @@ class AntigravityController(
 
     fun cancelAuth() = target.auth.cancel()
 
-    fun setPermissionMode(mode: AntigravityPermissionMode) = target.setPermissionMode(mode)
+    /** Mirrors [ClaudeCodeController.setPermissionMode]: the open chat changes with the default. */
+    fun setPermissionMode(
+        mode: AntigravityPermissionMode,
+        sessionId: String? = null,
+    ) = target.setPermissionMode(mode, sessionId)
 }

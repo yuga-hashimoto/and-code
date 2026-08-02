@@ -371,8 +371,10 @@ class AntigravityRuntime(
         sessionId: String,
         workspace: String,
         title: String? = null,
+        permissionMode: AntigravityPermissionMode = AntigravityPermissionMode.DEFAULT,
     ) {
-        records[sessionId] = AntigravitySessionRecord(sessionId, null, workspace, title = title)
+        records[sessionId] =
+            AntigravitySessionRecord(sessionId, null, workspace, title = title, permissionMode = permissionMode.cliValue)
         persist()
     }
 
