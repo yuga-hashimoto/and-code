@@ -20,10 +20,23 @@ import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class AssistantTargetResolverTest {
+    private val openCodeCatalog =
+        ProviderCatalog(
+            all =
+                listOf(
+                    OpenCodeProvider(
+                        id = "opencode",
+                        models = mapOf("grok-code" to OpenCodeModel("grok-code", "opencode", "Grok Code")),
+                    ),
+                ),
+            connected = listOf("opencode"),
+        )
+
     @Test
     fun `assistant choices contain named agents and never a generic remote or local option`() {
         val targets =
@@ -62,6 +75,28 @@ class AssistantTargetResolverTest {
     }
 
     @Test
+    fun `assistant models are fetched after connecting the agent's own runtime`() =
+        runTest {
+            val target = FakeTarget("open-code", agent = LocalAgent.OPEN_CODE, catalog = openCodeCatalog)
+
+            assertEquals(listOf("opencode"), loadAssistantProviders(target).map { it.id })
+        }
+
+    @Test
+    fun `assistant models stay empty when the agent's runtime cannot be reached`() =
+        runTest {
+            val target =
+                FakeTarget(
+                    "open-code",
+                    agent = LocalAgent.OPEN_CODE,
+                    catalog = openCodeCatalog,
+                    connects = false,
+                )
+
+            assertEquals(emptyList<String>(), loadAssistantProviders(target).map { it.id })
+        }
+
+    @Test
     fun `assistant workspace options prefer the selected agent over chat fallback`() {
         val selected = WorkspaceRef("/workspace/selected", "selected", "selected")
         val fallback = WorkspaceRef("/workspace/chat", "chat", "chat")
@@ -72,13 +107,21 @@ class AssistantTargetResolverTest {
     private class FakeTarget(
         override val id: String,
         override val agent: LocalAgent?,
+        private val catalog: ProviderCatalog = ProviderCatalog(),
+        private val connects: Boolean = true,
     ) : RuntimeTarget {
         override val displayName: String = id
         override val type: RuntimeType = RuntimeType.LOCAL
         override val kind: BackendKind = BackendKind.LOCAL
         override val state = MutableStateFlow<RuntimeState>(RuntimeState.Disconnected)
 
-        override suspend fun connect(): Result<OpenCodeHealth> = Result.success(OpenCodeHealth(true, "test"))
+        private var connected = false
+
+        override suspend fun connect(): Result<OpenCodeHealth> {
+            if (!connects) return Result.failure(IllegalStateException("runtime is not running"))
+            connected = true
+            return Result.success(OpenCodeHealth(true, "test"))
+        }
 
         override fun disconnect() = Unit
 
@@ -93,7 +136,11 @@ class AssistantTargetResolverTest {
 
         override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> = emptyList()
 
-        override suspend fun listProviders(): ProviderCatalog = ProviderCatalog()
+        /** A local runtime only answers once its server is up, which is what [connect] establishes. */
+        override suspend fun listProviders(): ProviderCatalog {
+            check(connected) { "runtime is not connected" }
+            return catalog
+        }
 
         override suspend fun listAgents(): List<OpenCodeAgent> = emptyList()
 

@@ -130,7 +130,6 @@ fun NavGraphBuilder.settingsNavGraph(
             availableWakeWordModels = settingsState.availableWakeWordModels,
             assistantRuntimeId = settingsState.assistantRuntimeId,
             runtimeTargets = runtimeTargets(),
-            providers = settingsState.providers,
             workspaces = workspaces(),
             assistantProviderId = settingsState.assistantProviderId,
             assistantModelId = settingsState.assistantModelId,

@@ -81,7 +81,6 @@ fun VoiceSettingsScreen(
     availableWakeWordModels: List<String> = emptyList(),
     assistantRuntimeId: String? = null,
     runtimeTargets: List<RuntimeTarget> = emptyList(),
-    providers: List<OpenCodeProvider> = emptyList(),
     workspaces: List<WorkspaceRef> = emptyList(),
     assistantProviderId: String? = null,
     assistantModelId: String? = null,
@@ -246,7 +245,6 @@ fun VoiceSettingsScreen(
                     SettingsGroup(title = stringResource(R.string.assistant_target_section)) {
                         AssistantTargetSection(
                             runtimeTargets = runtimeTargets,
-                            providers = providers,
                             workspaces = workspaces,
                             assistantRuntimeId = assistantRuntimeId,
                             assistantProviderId = assistantProviderId,
@@ -345,7 +343,6 @@ private fun SecretTextField(
 @Composable
 private fun AssistantTargetSection(
     runtimeTargets: List<RuntimeTarget>,
-    providers: List<OpenCodeProvider>,
     workspaces: List<WorkspaceRef>,
     assistantRuntimeId: String?,
     assistantProviderId: String?,
@@ -373,15 +370,12 @@ private fun AssistantTargetSection(
         targetProviders = emptyList()
         if (target != null) {
             targetWorkspaces = runCatching { target.listWorkspaces() }.getOrDefault(emptyList())
-            targetProviders =
-                runCatching { assistantProviderOptions(target.listProviders()) }
-                    .getOrDefault(emptyList())
+            targetProviders = loadAssistantProviders(target)
         }
     }
     val workspaceOptions = assistantWorkspaceOptions(targetWorkspaces, workspaces)
-    val modelProviders = targetProviders.ifEmpty { providers }
     val selectedModelName =
-        modelProviders.firstOrNull { it.id == assistantProviderId }?.models?.get(assistantModelId)?.name
+        targetProviders.firstOrNull { it.id == assistantProviderId }?.models?.get(assistantModelId)?.name
 
     SelectionRow(
         icon = runtimeAgentIcon(selectedTarget?.agent),
@@ -413,7 +407,7 @@ private fun AssistantTargetSection(
             runtimeTargets = selectableTargets,
             selectedRuntimeId = assistantRuntimeId,
             onSelectRuntime = onRuntimeChange,
-            providers = modelProviders,
+            providers = targetProviders,
             selectedProviderId = assistantProviderId,
             selectedModelId = assistantModelId,
             showLocalSuffix = false,
