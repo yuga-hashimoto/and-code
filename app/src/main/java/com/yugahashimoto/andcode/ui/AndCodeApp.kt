@@ -190,6 +190,7 @@ fun AndCodeApp(
                         app.localRuntimeController,
                         app.settings,
                         java.io.File(context.filesDir, "runtime/workspace"),
+                        incompleteConnectionMessage = context.getString(R.string.connection_info_incomplete),
                         claudeCode = app.claudeCodeController,
                     )
                 },

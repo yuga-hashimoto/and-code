@@ -90,6 +90,7 @@ class WorkspaceViewModel(
     private val localRuntimeController: LocalRuntimeServiceController,
     private val settings: SecureSettingsRepository,
     private val workspaceHostDir: File,
+    private val incompleteConnectionMessage: String = "Connection information is incomplete",
     private val claudeCode: ClaudeCodeController? = null,
     private val deviceStorage: () -> DeviceStorage.Mounts = DeviceStorage::mounts,
     private val folderBrowser: RuntimeFolderBrowser =
@@ -327,7 +328,7 @@ class WorkspaceViewModel(
 
     suspend fun testConnection(form: ConnectionFormState): Result<OpenCodeHealth> {
         if (!form.canSave) {
-            return Result.failure(IllegalArgumentException("接続情報が不足しています"))
+            return Result.failure(IllegalArgumentException(incompleteConnectionMessage))
         }
         return runCatching { OpenCodeApiClient(form.toProfile()).health() }
     }

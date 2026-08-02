@@ -48,6 +48,7 @@ class AdbConnectionManager(
     private val shellRunner: AdbShellRunner,
     private val connectionStore: AdbConnectionStore = InMemoryAdbConnectionStore(),
     private val nsdManagerProvider: () -> NsdManager?,
+    private val messages: LocalRuntimeMessages = LocalRuntimeMessages,
 ) {
     private val mutableState = MutableStateFlow<AdbConnectionState>(AdbConnectionState.Disconnected)
     val state: StateFlow<AdbConnectionState> = mutableState.asStateFlow()
@@ -63,13 +64,13 @@ class AdbConnectionManager(
 
     fun startDiscovery() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            mutableState.value = AdbConnectionState.Error("Android 11以降が必要です")
+            mutableState.value = AdbConnectionState.Error(messages.adbRequiresAndroid11)
             return
         }
         stopDiscovery()
         val nsdManager =
             nsdManagerProvider() ?: run {
-                mutableState.value = AdbConnectionState.Error("NSDサービスを利用できません")
+                mutableState.value = AdbConnectionState.Error(messages.adbServiceUnavailable)
                 return
             }
         val listener =
@@ -110,7 +111,7 @@ class AdbConnectionManager(
                     serviceType: String,
                     errorCode: Int,
                 ) {
-                    mutableState.value = AdbConnectionState.Error("探索の開始に失敗しました (code=$errorCode)")
+                    mutableState.value = AdbConnectionState.Error(messages.adbDiscoveryStartFailed(errorCode))
                     discoveryListener = null
                 }
 
@@ -123,7 +124,7 @@ class AdbConnectionManager(
         runCatching {
             nsdManager.discoverServices(SERVICE_TYPE, NsdManager.PROTOCOL_DNS_SD, listener)
         }.onFailure { error ->
-            mutableState.value = AdbConnectionState.Error(error.message ?: "探索の開始に失敗しました")
+            mutableState.value = AdbConnectionState.Error(error.message?.takeIf(String::isNotBlank) ?: messages.adbDiscoveryFailed)
             discoveryListener = null
         }
     }
@@ -149,7 +150,7 @@ class AdbConnectionManager(
             if (result.exitCode == 0) {
                 Result.success(Unit)
             } else {
-                mutableState.value = AdbConnectionState.Error(result.output.ifBlank { "ペアリングに失敗しました" })
+                mutableState.value = AdbConnectionState.Error(result.output.ifBlank { messages.adbPairFailed })
                 Result.failure(RuntimeException(result.output))
             }
         }
@@ -166,7 +167,7 @@ class AdbConnectionManager(
                 mutableState.value = AdbConnectionState.Connected(port)
                 Result.success(Unit)
             } else {
-                mutableState.value = AdbConnectionState.Error(result.output.ifBlank { "接続に失敗しました" })
+                mutableState.value = AdbConnectionState.Error(result.output.ifBlank { messages.adbConnectFailed })
                 Result.failure(RuntimeException(result.output))
             }
         }

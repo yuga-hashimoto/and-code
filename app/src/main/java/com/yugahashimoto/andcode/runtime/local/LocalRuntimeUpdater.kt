@@ -58,6 +58,7 @@ class LocalRuntimeUpdater(
         }
     },
     private val accessCoordinator: LocalRuntimeAccessCoordinator,
+    private val messages: LocalRuntimeMessages = LocalRuntimeMessages,
     private val nowMillis: () -> Long = System::currentTimeMillis,
     private val json: Json =
         Json {
@@ -132,7 +133,7 @@ class LocalRuntimeUpdater(
         val currentMetadata = snapshot.metadata
         val freeBytes = snapshot.freeBytes
         require(freeBytes >= release.asset.requiredFreeBytes) {
-            "更新に必要な空き容量が不足しています: 必要 ${release.asset.requiredFreeBytes} bytes, 利用可能 $freeBytes bytes"
+            messages.insufficientFreeSpace(release.asset.requiredFreeBytes, freeBytes)
         }
 
         val normalizedVersion = normalizeOpenCodeVersion(release.version)
@@ -143,15 +144,15 @@ class LocalRuntimeUpdater(
         candidate.delete()
 
         try {
-            onProgress(0.05f, "OpenCode ${normalizedVersion}をダウンロードしています")
+            onProgress(0.05f, messages.downloadingOpenCode(normalizedVersion))
             downloadAsset(release.asset, cacheArchive) { fraction ->
                 onProgress(
                     fraction?.let { 0.05f + it.coerceIn(0f, 1f) * 0.65f },
-                    "OpenCode ${normalizedVersion}をダウンロードしています",
+                    messages.downloadingOpenCode(normalizedVersion),
                 )
             }
             extractionDirectory.mkdirs()
-            onProgress(0.75f, "更新ファイルを展開しています")
+            onProgress(0.75f, messages.extractingUpdate())
             extractArchive(cacheArchive, extractionDirectory)
             val extractedBinary =
                 extractionDirectory.walkTopDown()
@@ -162,7 +163,7 @@ class LocalRuntimeUpdater(
             require(candidate.setExecutable(true, false) || candidate.canExecute()) {
                 "Unable to mark update candidate executable"
             }
-            onProgress(0.9f, "更新候補を検証しています")
+            onProgress(0.9f, messages.verifyingUpdate())
             val reportedVersion = binaryVersion(candidate)
             require(reportedVersion == normalizedVersion) {
                 "OpenCode candidate version mismatch: expected $normalizedVersion, got $reportedVersion"
@@ -173,7 +174,7 @@ class LocalRuntimeUpdater(
                     installedAt = nowMillis(),
                     abi = abi,
                 )
-            onProgress(1f, "更新候補の準備が完了しました")
+            onProgress(1f, messages.updateCandidateReady())
             return PreparedRuntimeUpdate(
                 release = release.copy(version = normalizedVersion),
                 candidateBinary = candidate,

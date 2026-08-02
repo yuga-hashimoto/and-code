@@ -58,6 +58,7 @@ class LocalRuntimeDiagnosticsCollector(
     private val commandExecutor: (LocalRuntimeToolDefinition) -> LocalRuntimeCommandResult,
     private val nowMillis: () -> Long = System::currentTimeMillis,
     private val maxLogCharacters: Int = 12_000,
+    private val messages: LocalRuntimeMessages = LocalRuntimeMessages,
 ) {
     init {
         require(maxLogCharacters >= 0)
@@ -76,20 +77,26 @@ class LocalRuntimeDiagnosticsCollector(
                             onSuccess = { result ->
                                 LocalRuntimeToolCheck(
                                     id = definition.id,
-                                    label = definition.label,
+                                    label = displayLabel(definition),
                                     available = result.exitCode == 0,
                                     detail =
                                         result.output.trim().ifBlank {
-                                            if (result.exitCode == 0) "利用可能" else "終了コード ${result.exitCode}"
+                                            if (result.exitCode == 0) {
+                                                messages.diagnosticsToolAvailable
+                                            } else {
+                                                messages.diagnosticsToolExitCode(
+                                                    result.exitCode,
+                                                )
+                                            }
                                         },
                                 )
                             },
                             onFailure = { error ->
                                 LocalRuntimeToolCheck(
                                     id = definition.id,
-                                    label = definition.label,
+                                    label = displayLabel(definition),
                                     available = false,
-                                    detail = error.message?.takeIf(String::isNotBlank) ?: "確認に失敗しました",
+                                    detail = error.message?.takeIf(String::isNotBlank) ?: messages.diagnosticsToolCheckFailed,
                                 )
                             },
                         )
@@ -98,9 +105,9 @@ class LocalRuntimeDiagnosticsCollector(
                 REQUIRED_TOOLS.map { definition ->
                     LocalRuntimeToolCheck(
                         id = definition.id,
-                        label = definition.label,
+                        label = displayLabel(definition),
                         available = false,
-                        detail = "未インストール",
+                        detail = messages.diagnosticsToolNotInstalled,
                     )
                 }
             }
@@ -121,6 +128,9 @@ class LocalRuntimeDiagnosticsCollector(
             lastExitAtMillis = processMetricsProvider()?.lastExitAtMillis,
         )
     }
+
+    private fun displayLabel(definition: LocalRuntimeToolDefinition): String =
+        if (definition.id == "ca-certificates") messages.diagnosticsCaCertificates else definition.label
 
     private fun readLogTail(): String {
         if (maxLogCharacters == 0) return ""
@@ -165,7 +175,7 @@ class LocalRuntimeDiagnosticsCollector(
                 LocalRuntimeToolDefinition("rg", "ripgrep", "rg --version | head -n 1"),
                 LocalRuntimeToolDefinition(
                     "ca-certificates",
-                    "CA証明書",
+                    "CA certificates",
                     "test -s /etc/ssl/certs/ca-certificates.crt && echo installed",
                 ),
                 LocalRuntimeToolDefinition("adb", "ADB", "adb version | head -n 1"),

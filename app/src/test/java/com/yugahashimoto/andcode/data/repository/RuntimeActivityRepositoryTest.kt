@@ -57,7 +57,7 @@ class RuntimeActivityRepositoryTest {
             target.eventFlow.emit(OpenCodeEvent.ServerConnected)
             advanceUntilIdle()
 
-            assertEquals("イベント接続", repository.state.value.logs.single().title)
+            assertEquals("Event connection", repository.state.value.logs.single().title)
         }
 
     @Test
@@ -91,7 +91,7 @@ class RuntimeActivityRepositoryTest {
             advanceUntilIdle()
 
             assertEquals(null, repository.state.value.streamError)
-            assertEquals("イベント接続", repository.state.value.logs.single().title)
+            assertEquals("Event connection", repository.state.value.logs.single().title)
         }
 
     @Test

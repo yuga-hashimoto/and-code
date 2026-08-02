@@ -15,6 +15,8 @@ import com.yugahashimoto.andcode.core.notification.RuntimeNotificationHelper
 import com.yugahashimoto.andcode.core.storage.DeviceStorage
 import com.yugahashimoto.andcode.core.storage.DeviceStorageAccess
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
+import com.yugahashimoto.andcode.data.repository.AndroidRuntimeActivityMessages
+import com.yugahashimoto.andcode.data.repository.AndroidRuntimeCatalogMessages
 import com.yugahashimoto.andcode.data.repository.ProviderCatalogCache
 import com.yugahashimoto.andcode.data.repository.PullRequestStatusRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeActivityRepository
@@ -256,6 +258,7 @@ class AndCodeApplication : Application() {
                         ?: error("OpenCode update candidate returned no version")
                 },
                 accessCoordinator = accessCoordinator,
+                messages = runtimeMessages,
             )
         val updateEngine =
             DefaultLocalRuntimeUpdateEngine(
@@ -278,6 +281,7 @@ class AndCodeApplication : Application() {
                 statusProvider = localRuntimeManager::status,
                 processMetricsProvider = launcher::metrics,
                 commandExecutor = commandRunner::run,
+                messages = runtimeMessages,
             )
         localRuntimeController = LocalRuntimeServiceController(this)
         adbConnectionManager =
@@ -285,6 +289,7 @@ class AndCodeApplication : Application() {
                 shellRunner = AdbShellRunner { command, timeoutSeconds -> commandRunner.runShell(command, timeoutSeconds) },
                 connectionStore = settings,
                 nsdManagerProvider = { getSystemService(Context.NSD_SERVICE) as? NsdManager },
+                messages = runtimeMessages,
             )
         // Keep the persisted wireless-debugging link alive for the whole process lifetime. The
         // loop is a cheap no-op until the user has connected once, and it self-heals the link
@@ -321,6 +326,7 @@ class AndCodeApplication : Application() {
                                 encodeDefaults = true
                             },
                     ),
+                messages = AndroidRuntimeCatalogMessages(this),
             )
         activityRepository =
             RuntimeActivityRepository(
@@ -344,6 +350,7 @@ class AndCodeApplication : Application() {
                 },
                 onQuestionAsked = notifications::notifyQuestion,
                 unreadStore = settings,
+                messages = AndroidRuntimeActivityMessages(this),
             )
         githubStarCoordinator.refresh()
         scheduleRepository = ScheduleRepository(this)

@@ -47,7 +47,7 @@ class LocalRuntimeUpdaterTest {
 
             val error = runCatching { updater.prepare(release()) }.exceptionOrNull()
 
-            assertTrue(error?.message.orEmpty().contains("空き容量"))
+            assertTrue(error?.message.orEmpty().contains("free space"))
             assertEquals(0, downloadCalls)
             assertEquals("old-binary", activeBinary().readText())
         }
@@ -80,6 +80,25 @@ class LocalRuntimeUpdaterTest {
             assertEquals("1.18.3", updater.rollbackVersion())
             updater.commitActivation()
             assertFalse(runtime.resolve("update-transaction.json").exists())
+        }
+
+    @Test
+    fun `update progress uses the default English runtime language`() =
+        runTest {
+            val labels = mutableListOf<String>()
+
+            updater().prepare(release()) { _, label -> labels += label }
+
+            assertEquals(
+                listOf(
+                    "Downloading OpenCode 1.19.0",
+                    "Downloading OpenCode 1.19.0",
+                    "Extracting the update",
+                    "Verifying the update candidate",
+                    "Update candidate is ready",
+                ),
+                labels,
+            )
         }
 
     @Test

@@ -53,6 +53,7 @@ class RuntimeActivityRepository(
     private val onSessionError: ((String?, String?) -> Unit)? = null,
     private val onQuestionAsked: ((QuestionRequest, String?) -> Unit)? = null,
     private val unreadStore: UnreadSessionStore? = null,
+    private val messages: RuntimeActivityMessages = RuntimeActivityMessages,
 ) {
     init {
         require(retryDelayMillis >= 0L)
@@ -118,7 +119,7 @@ class RuntimeActivityRepository(
             .retryWhen { error, attempt ->
                 mutableState.update {
                     it.copy(
-                        streamError = error.message ?: "OpenCodeイベント接続に失敗しました",
+                        streamError = error.message?.takeIf(String::isNotBlank) ?: messages.streamConnectionFailed,
                     )
                 }
                 if (retryDelayMillis > 0L) {
@@ -198,7 +199,7 @@ class RuntimeActivityRepository(
         event: OpenCodeEvent,
     ) {
         when (event) {
-            OpenCodeEvent.ServerConnected -> appendLog("イベント接続", "OpenCodeのリアルタイムイベントへ接続しました")
+            OpenCodeEvent.ServerConnected -> appendLog(messages.eventConnectedTitle, messages.eventConnectedDetail)
             is OpenCodeEvent.MessagePartUpdated -> {
                 val sessionId = event.part.sessionId ?: return
                 mutableState.update { current ->
@@ -209,8 +210,8 @@ class RuntimeActivityRepository(
                     }
                 }
                 when (event.part.type) {
-                    "tool", "tool-invocation" -> appendLog("ツール実行", event.part.tool, sessionId)
-                    "reasoning" -> appendLog("推論", null, sessionId)
+                    "tool", "tool-invocation" -> appendLog(messages.eventTool, event.part.tool, sessionId)
+                    "reasoning" -> appendLog(messages.eventReasoning, null, sessionId)
                 }
             }
             is OpenCodeEvent.MessagePartDelta -> {
@@ -229,7 +230,7 @@ class RuntimeActivityRepository(
                         activeSessionIds = current.activeSessionIds + event.request.sessionId,
                     )
                 }
-                appendLog("承認待ち", event.request.permission, event.request.sessionId)
+                appendLog(messages.eventPermission, event.request.permission, event.request.sessionId)
                 onPermissionAsked?.invoke(
                     event.request,
                     sessionTitle(target, event.request.sessionId),
@@ -243,7 +244,7 @@ class RuntimeActivityRepository(
                         completedSessionIds = current.completedSessionIds + event.sessionId,
                     )
                 }
-                appendLog("実行完了", null, event.sessionId)
+                appendLog(messages.eventCompleted, null, event.sessionId)
                 val isSubagent =
                     runCatching { target.session(event.sessionId).parentId != null }
                         .getOrDefault(false)
@@ -287,20 +288,20 @@ class RuntimeActivityRepository(
                         current.copy(activeSessionIds = current.activeSessionIds - sessionId)
                     }
                 }
-                appendLog("実行エラー", event.message, event.sessionId)
+                appendLog(messages.eventError, event.message, event.sessionId)
                 onSessionError?.invoke(event.sessionId, event.message)
             }
             is OpenCodeEvent.QuestionAsked -> {
                 mutableState.update { current ->
                     current.copy(activeSessionIds = current.activeSessionIds + event.request.sessionId)
                 }
-                appendLog("質問", event.request.questions.firstOrNull()?.question, event.request.sessionId)
+                appendLog(messages.eventQuestion, event.request.questions.firstOrNull()?.question, event.request.sessionId)
                 onQuestionAsked?.invoke(
                     event.request,
                     sessionTitle(target, event.request.sessionId),
                 )
             }
-            is OpenCodeEvent.Unknown -> appendLog("未対応イベント", event.type)
+            is OpenCodeEvent.Unknown -> appendLog(messages.eventUnknown, event.type)
         }
     }
 

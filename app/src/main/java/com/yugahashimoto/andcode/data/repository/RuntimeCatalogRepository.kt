@@ -43,6 +43,7 @@ class RuntimeCatalogRepository(
     private val registry: RuntimeRegistry,
     private val scope: CoroutineScope,
     private val providerCache: ProviderCatalogCache? = null,
+    private val messages: RuntimeCatalogMessages = RuntimeCatalogMessages,
 ) {
     private val mutableState = MutableStateFlow(RuntimeCatalogState(runtime = registry.selected.value))
 
@@ -178,7 +179,7 @@ class RuntimeCatalogRepository(
                     RuntimeCatalogState(
                         runtime = target,
                         isRefreshing = false,
-                        error = connection.exceptionOrNull().safeMessage(),
+                        error = connection.exceptionOrNull().safeMessage(messages.connectionFailed),
                     )
                 return
             }
@@ -205,7 +206,7 @@ class RuntimeCatalogRepository(
                     }
                 }
             }
-            val errors = catalog.failures()
+            val errors = catalog.failures(messages)
             mutableState.value =
                 RuntimeCatalogState(
                     runtime = target,
@@ -232,12 +233,12 @@ class RuntimeCatalogRepository(
         val agents: Result<List<OpenCodeAgent>>,
         val workspaces: Result<List<WorkspaceRef>>,
     ) {
-        fun failures(): List<String> =
+        fun failures(messages: RuntimeCatalogMessages): List<String> =
             listOfNotNull(
-                sessions.exceptionOrNull()?.let { "セッション: ${it.safeMessage()}" },
-                providers.exceptionOrNull()?.let { "AIサービス: ${it.safeMessage()}" },
-                agents.exceptionOrNull()?.let { "エージェント: ${it.safeMessage()}" },
-                workspaces.exceptionOrNull()?.let { "作業フォルダ: ${it.safeMessage()}" },
+                sessions.exceptionOrNull()?.let { messages.sessions(it.safeMessage(messages.connectionFailed)) },
+                providers.exceptionOrNull()?.let { messages.providers(it.safeMessage(messages.connectionFailed)) },
+                agents.exceptionOrNull()?.let { messages.agents(it.safeMessage(messages.connectionFailed)) },
+                workspaces.exceptionOrNull()?.let { messages.workspaces(it.safeMessage(messages.connectionFailed)) },
             )
     }
 
@@ -247,4 +248,4 @@ class RuntimeCatalogRepository(
     }
 }
 
-private fun Throwable?.safeMessage(): String = this?.message?.takeIf { it.isNotBlank() } ?: "OpenCodeへ接続できませんでした"
+private fun Throwable?.safeMessage(fallback: String): String = this?.message?.takeIf { it.isNotBlank() } ?: fallback

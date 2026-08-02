@@ -4,12 +4,15 @@ import android.os.Build
 import com.yugahashimoto.andcode.core.api.GitHubApiClient
 import com.yugahashimoto.andcode.core.notification.RuntimeNotificationHelper
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
+import com.yugahashimoto.andcode.data.repository.AndroidRuntimeActivityMessages
+import com.yugahashimoto.andcode.data.repository.AndroidRuntimeCatalogMessages
 import com.yugahashimoto.andcode.data.repository.PullRequestStatusRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeActivityRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeCatalogRepository
 import com.yugahashimoto.andcode.data.settings.AppPreferencesRepository
 import com.yugahashimoto.andcode.data.settings.DraftRepository
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
+import com.yugahashimoto.andcode.runtime.local.AndroidLocalRuntimeMessages
 import com.yugahashimoto.andcode.runtime.local.AntigravityRuntime
 import com.yugahashimoto.andcode.runtime.local.AntigravityTarget
 import com.yugahashimoto.andcode.runtime.local.DefaultLocalRuntimeUpdateEngine
@@ -19,6 +22,7 @@ import com.yugahashimoto.andcode.runtime.local.LocalRuntimeAccessCoordinator
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeCommandRunner
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeInstaller
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeManager
+import com.yugahashimoto.andcode.runtime.local.LocalRuntimeMessages
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeProcessLauncher
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeReleaseClient
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeServiceController
@@ -48,11 +52,17 @@ val appModule =
 
         single { RuntimeNotificationHelper(androidContext()) }
 
+        single { AndroidRuntimeActivityMessages(androidContext()) }
+
+        single { AndroidRuntimeCatalogMessages(androidContext()) }
+
         single { LocalProviderCredentialStore(get()) }
 
         single { OkHttpClient() }
 
         single { LocalRuntimeAccessCoordinator() }
+
+        single<LocalRuntimeMessages> { AndroidLocalRuntimeMessages(androidContext()) }
 
         single {
             val runtimeDirectory: File = get()
@@ -91,6 +101,7 @@ val appModule =
                 runtimeDirectory = runtimeDirectory,
                 installedRuntimeProvider = installer::installedRuntime,
                 accessCoordinator = get(),
+                messages = get(),
             )
         }
 
@@ -126,6 +137,7 @@ val appModule =
                             ?: error("OpenCode update candidate returned no version")
                     },
                     accessCoordinator = get(),
+                    messages = get(),
                 )
             val updateEngine =
                 DefaultLocalRuntimeUpdateEngine(
@@ -138,6 +150,7 @@ val appModule =
                 installer = get(),
                 processLauncher = get(),
                 updateEngine = updateEngine,
+                messages = get(),
             )
         }
 
@@ -146,7 +159,7 @@ val appModule =
         single {
             RuntimeRegistry(
                 store = get(),
-                localTarget = LocalRuntimeTarget(get()),
+                localTarget = LocalRuntimeTarget(get(), messages = get()),
                 additionalTargets =
                     listOf(
                         AntigravityTarget(
@@ -166,7 +179,7 @@ val appModule =
         }
 
         single {
-            RuntimeCatalogRepository(get(), get())
+            RuntimeCatalogRepository(get(), get(), messages = get<AndroidRuntimeCatalogMessages>())
         }
 
         single {
@@ -180,6 +193,7 @@ val appModule =
                 onSessionIdle = notifications::notifySessionComplete,
                 onSessionError = notifications::notifySessionError,
                 onQuestionAsked = notifications::notifyQuestion,
+                messages = get<AndroidRuntimeActivityMessages>(),
             )
         }
     }

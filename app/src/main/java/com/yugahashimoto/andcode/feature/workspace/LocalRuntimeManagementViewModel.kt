@@ -277,7 +277,10 @@ class LocalRuntimeManagementViewModel(
                     mutableState.update { it.copy(isAdbPairing = false, showAdbPairDialog = false) }
                 }.onFailure { error ->
                     mutableState.update {
-                        it.copy(isAdbPairing = false, error = error.message ?: "ペアリングに失敗しました")
+                        it.copy(
+                            isAdbPairing = false,
+                            error = error.message?.takeIf(String::isNotBlank) ?: getString(R.string.adb_pair_failed),
+                        )
                     }
                 }
         }
@@ -292,7 +295,10 @@ class LocalRuntimeManagementViewModel(
                     mutableState.update { it.copy(isAdbConnecting = false) }
                 }.onFailure { error ->
                     mutableState.update {
-                        it.copy(isAdbConnecting = false, error = error.message ?: "接続に失敗しました")
+                        it.copy(
+                            isAdbConnecting = false,
+                            error = error.message?.takeIf(String::isNotBlank) ?: getString(R.string.adb_connect_failed),
+                        )
                     }
                 }
         }

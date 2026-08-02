@@ -90,11 +90,11 @@ class LocalRuntimeTarget(
                     if (health.healthy) {
                         RuntimeState.Connected(health.version)
                     } else {
-                        RuntimeState.Failed("ローカルOpenCodeが正常状態を返しませんでした")
+                        RuntimeState.Failed(messages.localRuntimeUnhealthy)
                     }
             }
             .onFailure { error ->
-                mutableState.value = RuntimeState.Failed(error.message ?: "ローカルOpenCodeへ接続できません")
+                mutableState.value = RuntimeState.Failed(error.message?.takeIf(String::isNotBlank) ?: messages.localRuntimeConnectionFailed)
             }
     }
 

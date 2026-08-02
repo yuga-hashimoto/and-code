@@ -27,6 +27,7 @@ val viewModelModule =
                 localRuntimeController = get(),
                 settings = get(),
                 workspaceHostDir = File(androidContext().filesDir, "runtime/workspace"),
+                incompleteConnectionMessage = androidContext().getString(com.yugahashimoto.andcode.R.string.connection_info_incomplete),
             )
         }
 

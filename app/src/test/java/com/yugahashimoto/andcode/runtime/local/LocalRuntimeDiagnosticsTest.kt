@@ -89,7 +89,7 @@ class LocalRuntimeDiagnosticsTest {
         assertEquals(0, commandCalls)
         assertEquals(0L, result.runtimeBytes)
         assertEquals(900L, result.freeBytes)
-        assertTrue(result.tools.all { !it.available && it.detail == "未インストール" })
+        assertTrue(result.tools.all { !it.available && it.detail == "Not installed" })
         assertTrue(result.logTail.isEmpty())
     }
 
