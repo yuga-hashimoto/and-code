@@ -222,6 +222,7 @@ fun AndCodeApp(
                         credentials = app.providerCredentials,
                         settings = app.settings,
                         registry = app.runtimeRegistry,
+                        voskModels = app.voskModels,
                     )
                 },
         )
@@ -364,7 +365,7 @@ fun AndCodeApp(
                     val started =
                         com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
                             context,
-                            preferences.wakeWordModel,
+                            settingsState.wakeWordModelLanguage,
                         )
                     if (!started) {
                         settingsViewModel.setWakeWordEnabled(false)
@@ -452,12 +453,12 @@ fun AndCodeApp(
         }
     }
 
-    LaunchedEffect(preferences.wakeWordEnabled, preferences.wakeWordModel, assistantActive) {
+    LaunchedEffect(preferences.wakeWordEnabled, settingsState.wakeWordModelLanguage, assistantActive) {
         if (preferences.wakeWordEnabled && hasMicrophonePermission() && assistantActive) {
             val started =
                 com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
                     context,
-                    model = preferences.wakeWordModel,
+                    language = settingsState.wakeWordModelLanguage,
                 )
             if (!started) settingsViewModel.setWakeWordEnabled(false)
         } else {

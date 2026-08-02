@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +33,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
@@ -40,6 +42,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -63,6 +66,10 @@ import com.yugahashimoto.andcode.core.api.OpenCodeProvider
 import com.yugahashimoto.andcode.feature.assistant.TtsPreviewState
 import com.yugahashimoto.andcode.feature.assistant.TtsTuning
 import com.yugahashimoto.andcode.feature.chat.ModelAndRuntimePickerSheet
+import com.yugahashimoto.andcode.feature.wakeword.VoskModelCatalog
+import com.yugahashimoto.andcode.feature.wakeword.VoskModelLanguage
+import com.yugahashimoto.andcode.feature.wakeword.VoskModelState
+import com.yugahashimoto.andcode.feature.wakeword.WakeWordGrammar
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.ui.runtimeAgentIcon
@@ -88,8 +95,10 @@ fun VoiceSettingsScreen(
     ttsBargeInEnabled: Boolean = true,
     continuousConversation: Boolean,
     wakeWordEnabled: Boolean,
-    wakeWordModel: String = "hey_mycroft",
-    availableWakeWordModels: List<String> = emptyList(),
+    wakeWordPhrase: String = WakeWordGrammar.DEFAULT_PHRASE,
+    wakeWordSensitivity: Float = 0.7f,
+    wakeWordModelLanguage: VoskModelLanguage = VoskModelLanguage.ENGLISH,
+    wakeWordModelStates: Map<VoskModelLanguage, VoskModelState> = emptyMap(),
     assistantRuntimeId: String? = null,
     runtimeTargets: List<RuntimeTarget> = emptyList(),
     workspaces: List<WorkspaceRef> = emptyList(),
@@ -111,7 +120,12 @@ fun VoiceSettingsScreen(
     onTtsBargeInChange: (Boolean) -> Unit = {},
     onContinuousChange: (Boolean) -> Unit,
     onWakeWordChange: (Boolean) -> Unit,
-    onWakeWordModelChange: (String) -> Unit = {},
+    onWakeWordPhraseChange: (String) -> Unit = {},
+    onWakeWordSensitivityChange: (Float) -> Unit = {},
+    onWakeWordModelLanguageChange: (VoskModelLanguage) -> Unit = {},
+    onWakeWordModelDownload: () -> Unit = {},
+    onWakeWordModelCancel: () -> Unit = {},
+    onWakeWordModelRemove: () -> Unit = {},
     onAssistantRuntimeChange: (String) -> Unit = {},
     onAssistantModelChange: (String, String) -> Unit = { _, _ -> },
     onAssistantWorkspaceChange: (String) -> Unit = {},
@@ -221,14 +235,19 @@ fun VoiceSettingsScreen(
                         checked = wakeWordEnabled,
                         onCheckedChange = onWakeWordChange,
                     )
-                    if (wakeWordEnabled && availableWakeWordModels.isNotEmpty()) {
-                        VoiceDivider()
-                        WakeWordModelDropdown(
-                            selected = wakeWordModel,
-                            models = availableWakeWordModels,
-                            onSelect = onWakeWordModelChange,
-                        )
-                    }
+                    VoiceDivider()
+                    WakeWordSection(
+                        phrase = wakeWordPhrase,
+                        sensitivity = wakeWordSensitivity,
+                        language = wakeWordModelLanguage,
+                        modelState = wakeWordModelStates[wakeWordModelLanguage] ?: VoskModelState.Missing,
+                        onPhraseChange = onWakeWordPhraseChange,
+                        onSensitivityChange = onWakeWordSensitivityChange,
+                        onLanguageChange = onWakeWordModelLanguageChange,
+                        onDownload = onWakeWordModelDownload,
+                        onCancelDownload = onWakeWordModelCancel,
+                        onRemove = onWakeWordModelRemove,
+                    )
                     if (wakeWordEnabled) {
                         VoiceDivider()
                         VoiceToggleRow(
@@ -733,40 +752,136 @@ private fun WorkspaceDropdown(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+/**
+ * The wake word itself: what to say, how sure the recogniser must be, and the speech model that
+ * does the recognising.
+ *
+ * The phrase is free text rather than a fixed list because the recogniser is constrained to a
+ * grammar at start-up, so any phrase works - the previous build could only offer the one phrase
+ * someone had trained a network for. The model is downloaded on demand and is the one part of
+ * this that can be absent, so its state is shown here rather than failing silently later.
+ */
 @Composable
-private fun WakeWordModelDropdown(
-    selected: String,
-    models: List<String>,
-    onSelect: (String) -> Unit,
+private fun WakeWordSection(
+    phrase: String,
+    sensitivity: Float,
+    language: VoskModelLanguage,
+    modelState: VoskModelState,
+    onPhraseChange: (String) -> Unit,
+    onSensitivityChange: (Float) -> Unit,
+    onLanguageChange: (VoskModelLanguage) -> Unit,
+    onDownload: () -> Unit,
+    onCancelDownload: () -> Unit,
+    onRemove: () -> Unit,
 ) {
-    var expanded by remember { mutableStateOf(false) }
-    ExposedDropdownMenuBox(
-        expanded = expanded,
-        onExpandedChange = { expanded = it },
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
-    ) {
-        OutlinedTextField(
-            value = selected.replace('_', ' ').replaceFirstChar { it.uppercase() },
-            onValueChange = {},
-            readOnly = true,
-            label = { Text("Wake word model") },
-            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-            modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
-            singleLine = true,
-        )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-        ) {
-            models.forEach { model ->
-                DropdownMenuItem(
-                    text = { Text(model.replace('_', ' ').replaceFirstChar { it.uppercase() }) },
-                    onClick = {
-                        onSelect(model)
-                        expanded = false
-                    },
+    VoiceTextField(
+        label = stringResource(R.string.wake_word_phrase_label),
+        value = phrase,
+        onValueChange = onPhraseChange,
+    )
+    Text(
+        text = stringResource(R.string.wake_word_phrase_hint, WakeWordGrammar.DEFAULT_PHRASE),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 8.dp),
+    )
+    VoiceSlider(
+        label = stringResource(R.string.wake_word_sensitivity_label),
+        value = sensitivity,
+        range = 0f..1f,
+        onValueChange = onSensitivityChange,
+    )
+    Text(
+        text = stringResource(R.string.wake_word_sensitivity_hint),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 8.dp),
+    )
+    VoiceDivider()
+    ChoiceDropdown(
+        label = stringResource(R.string.wake_word_model_language_label),
+        selected = language.id,
+        options =
+            listOf(
+                VoskModelLanguage.ENGLISH.id to stringResource(R.string.wake_word_model_language_english),
+                VoskModelLanguage.JAPANESE.id to stringResource(R.string.wake_word_model_language_japanese),
+            ),
+        onSelect = { id -> VoskModelLanguage.fromId(id)?.let(onLanguageChange) },
+    )
+    WakeWordModelRow(
+        language = language,
+        state = modelState,
+        onDownload = onDownload,
+        onCancelDownload = onCancelDownload,
+        onRemove = onRemove,
+    )
+}
+
+/** The download state of the selected speech model, and the one action it currently offers. */
+@Composable
+private fun WakeWordModelRow(
+    language: VoskModelLanguage,
+    state: VoskModelState,
+    onDownload: () -> Unit,
+    onCancelDownload: () -> Unit,
+    onRemove: () -> Unit,
+) {
+    val megabytes = VoskModelCatalog.forLanguage(language).approximateBytes / (1024 * 1024)
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.wake_word_model_label),
+                    style = MaterialTheme.typography.bodyLarge,
                 )
+                Text(
+                    text =
+                        when (state) {
+                            VoskModelState.Missing ->
+                                stringResource(R.string.wake_word_model_not_downloaded, megabytes)
+                            is VoskModelState.Downloading ->
+                                state.fraction
+                                    ?.let { stringResource(R.string.wake_word_model_downloading_percent, (it * 100).toInt()) }
+                                    ?: stringResource(R.string.wake_word_model_downloading)
+                            VoskModelState.Extracting -> stringResource(R.string.wake_word_model_extracting)
+                            VoskModelState.Installed -> stringResource(R.string.wake_word_model_ready)
+                            is VoskModelState.Failed ->
+                                state.message ?: stringResource(R.string.wake_word_model_failed)
+                        },
+                    style = MaterialTheme.typography.bodySmall,
+                    color =
+                        if (state is VoskModelState.Failed) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        },
+                )
+            }
+            when (state) {
+                is VoskModelState.Downloading, VoskModelState.Extracting ->
+                    TextButton(onClick = onCancelDownload) {
+                        Text(stringResource(R.string.wake_word_model_cancel))
+                    }
+                VoskModelState.Installed ->
+                    TextButton(onClick = onRemove) {
+                        Text(stringResource(R.string.wake_word_model_remove))
+                    }
+                else ->
+                    OutlinedButton(onClick = onDownload) {
+                        Text(stringResource(R.string.wake_word_model_download))
+                    }
+            }
+        }
+        val fraction = (state as? VoskModelState.Downloading)?.fraction
+        if (state is VoskModelState.Downloading || state == VoskModelState.Extracting) {
+            Spacer(Modifier.height(8.dp))
+            if (fraction != null) {
+                LinearProgressIndicator(
+                    progress = { fraction },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
     }

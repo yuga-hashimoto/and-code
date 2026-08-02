@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import com.yugahashimoto.andcode.data.repository.UnreadSessionStore
+import com.yugahashimoto.andcode.feature.wakeword.WakeWordGrammar
 import com.yugahashimoto.andcode.runtime.RuntimeConnectionStore
 import com.yugahashimoto.andcode.runtime.local.AdbConnectionStore
 
@@ -131,9 +132,21 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         get() = preferences.getBoolean(KEY_WAKE_WORD_ENABLED, false)
         set(value) = preferences.edit().putBoolean(KEY_WAKE_WORD_ENABLED, value).apply()
 
-    var wakeWordModel: String
-        get() = preferences.getString(KEY_WAKE_WORD_MODEL, "hey_mycroft") ?: "hey_mycroft"
-        set(value) = preferences.edit().putString(KEY_WAKE_WORD_MODEL, value).apply()
+    /** Free text now: the recogniser is constrained to whatever this says rather than to a
+     * phrase someone trained a network for in advance. */
+    var wakeWordPhrase: String
+        get() = preferences.getString(KEY_WAKE_WORD_PHRASE, null) ?: WakeWordGrammar.DEFAULT_PHRASE
+        set(value) = preferences.edit().putString(KEY_WAKE_WORD_PHRASE, value).apply()
+
+    /** How sure the recogniser has to be. Higher is harder to trigger. */
+    var wakeWordSensitivity: Float
+        get() = preferences.getFloat(KEY_WAKE_WORD_SENSITIVITY, 0.7f)
+        set(value) = preferences.edit().putFloat(KEY_WAKE_WORD_SENSITIVITY, value).apply()
+
+    /** Which downloaded speech model listens, as a [com.yugahashimoto.andcode.feature.wakeword.VoskModelLanguage] id. */
+    var wakeWordModelLanguage: String?
+        get() = preferences.getString(KEY_WAKE_WORD_MODEL_LANGUAGE, null)
+        set(value) = preferences.edit().putString(KEY_WAKE_WORD_MODEL_LANGUAGE, value).apply()
 
     var autoAcceptPermissions: Boolean
         get() = preferences.getBoolean(KEY_AUTO_ACCEPT_PERMISSIONS, false)
@@ -437,7 +450,9 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         private const val KEY_CONTINUOUS_CONVERSATION = "continuous_conversation"
         private const val KEY_TTS_BARGE_IN_ENABLED = "tts_barge_in_enabled"
         private const val KEY_WAKE_WORD_ENABLED = "wake_word_enabled"
-        private const val KEY_WAKE_WORD_MODEL = "wake_word_model"
+        private const val KEY_WAKE_WORD_PHRASE = "wake_word_phrase"
+        private const val KEY_WAKE_WORD_SENSITIVITY = "wake_word_sensitivity"
+        private const val KEY_WAKE_WORD_MODEL_LANGUAGE = "wake_word_model_language"
         private const val KEY_AUTO_ACCEPT_PERMISSIONS = "auto_accept_permissions"
         private const val KEY_ASSISTANT_SESSION_ID = "assistant_session_id"
         private const val KEY_PROVIDER_ID = "provider_id"

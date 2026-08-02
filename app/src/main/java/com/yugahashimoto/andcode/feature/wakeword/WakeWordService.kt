@@ -30,6 +30,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.util.Locale
 import java.util.UUID
 
 class WakeWordService : Service() {
@@ -39,7 +40,7 @@ class WakeWordService : Service() {
     @Volatile private var audioRecord: AudioRecord? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
-    @Volatile private var currentModel = OpenWakeWordDetector.DEFAULT_MODEL
+    @Volatile private var currentLanguage = VoskModelLanguage.ENGLISH
 
     @Volatile private var assistantRequestId: String? = null
     private var assistantTimeoutJob: Job? = null
@@ -81,7 +82,17 @@ class WakeWordService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        val model = intent?.getStringExtra(EXTRA_MODEL) ?: preferences?.wakeWordModel ?: OpenWakeWordDetector.DEFAULT_MODEL
+        val language =
+            VoskModelLanguage.fromId(intent?.getStringExtra(EXTRA_LANGUAGE) ?: settings()?.wakeWordModelLanguage)
+                ?: VoskModelCatalog.defaultLanguageFor(Locale.getDefault())
+        // The model is downloaded, not packaged, so it can genuinely be absent here - the settings
+        // screen fetches it before switching this on, but a cleared app storage would not have.
+        if (voskModels()?.isInstalled(language) != true) {
+            Log.e(TAG, "No speech model installed for ${language.id}")
+            persistEnabled(false)
+            stopSelf()
+            return START_NOT_STICKY
+        }
         runCatching { startForegroundWithNotification() }
             .onFailure {
                 Log.e(TAG, "Unable to start wake-word foreground service", it)
@@ -90,9 +101,9 @@ class WakeWordService : Service() {
                 return START_NOT_STICKY
             }
         if (assistantRequestId != null) {
-            currentModel = model
+            currentLanguage = language
         } else {
-            startListening(model)
+            startListening(language)
         }
         return START_STICKY
     }
@@ -137,7 +148,12 @@ class WakeWordService : Service() {
         val notification =
             NotificationCompat.Builder(this, CHANNEL_ID)
                 .setContentTitle(getString(R.string.wake_word_notification_title))
-                .setContentText(getString(R.string.wake_word_notification_text))
+                .setContentText(
+                    getString(
+                        R.string.wake_word_notification_text,
+                        WakeWordGrammar.normalize(settings()?.wakeWordPhrase.orEmpty()),
+                    ),
+                )
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentIntent(tapIntent)
                 .addAction(0, getString(R.string.wake_word_notification_stop), stopIntent)
@@ -159,13 +175,13 @@ class WakeWordService : Service() {
      */
     @Synchronized
     private fun startListening(
-        model: String,
+        language: VoskModelLanguage,
         resetSession: Boolean = true,
     ) {
-        if (listenJob?.isActive == true && currentModel == model) return
+        if (listenJob?.isActive == true && currentLanguage == language) return
 
         val previousJob = listenJob
-        currentModel = model
+        currentLanguage = language
         stopAudioRecord()
         previousJob?.cancel()
         if (resetSession) {
@@ -184,7 +200,19 @@ class WakeWordService : Service() {
                     pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, WAKELOCK_TAG).apply {
                         acquire(WAKELOCK_TIMEOUT)
                     }
-                val det = OpenWakeWordDetector(this@WakeWordService, model)
+                val modelDirectory = voskModels()?.directoryFor(language)
+                if (modelDirectory == null) {
+                    Log.e(TAG, "Speech model for ${language.id} disappeared")
+                    persistEnabled(false)
+                    stopSelf()
+                    return@launch
+                }
+                val det =
+                    VoskWakeWordDetector(
+                        modelDirectory = modelDirectory,
+                        phrase = settings()?.wakeWordPhrase.orEmpty(),
+                        sensitivity = settings()?.wakeWordSensitivity ?: DEFAULT_SENSITIVITY,
+                    )
                 if (!det.initialize()) {
                     Log.e(TAG, "Detector initialization failed")
                     det.release()
@@ -242,11 +270,9 @@ class WakeWordService : Service() {
                         if (read < 0) error("AudioRecord read failed with code $read")
                         if (read == 0) continue
 
-                        val samples = if (read == FRAME_SIZE) buffer else buffer.copyOf(read)
-
-                        val result = det.processAudio(samples)
+                        val result = det.processAudio(buffer, read)
                         if (result != null) {
-                            Log.i(TAG, "Wake word detected: ${result.keyword} (${result.confidence})")
+                            Log.i(TAG, "Wake word detected: ${result.phrase} (${result.confidence})")
                             detected = true
                             break
                         }
@@ -284,7 +310,13 @@ class WakeWordService : Service() {
         }
     }
 
-    private fun bargeInEnabled(): Boolean = (application as? AndCodeApplication)?.preferences?.state?.value?.ttsBargeInEnabled ?: true
+    private fun bargeInEnabled(): Boolean = app()?.preferences?.state?.value?.ttsBargeInEnabled ?: true
+
+    private fun app(): AndCodeApplication? = application as? AndCodeApplication
+
+    private fun settings() = app()?.settings
+
+    private fun voskModels() = app()?.voskModels
 
     private fun requestAssistant() {
         if (!AssistantStatus.isActive(this)) {
@@ -323,7 +355,7 @@ class WakeWordService : Service() {
         if (assistantRequestId != requestId) return
         speaking = isSpeaking
         if (BargeInPolicy.shouldListenDuringSession(isSpeaking, bargeInEnabled())) {
-            startListening(currentModel, resetSession = false)
+            startListening(currentLanguage, resetSession = false)
         } else {
             stopListening()
         }
@@ -347,7 +379,7 @@ class WakeWordService : Service() {
         // Barge-in may have left a listen job running for this very model, which startListening
         // would take as "already listening" and return from without clearing the session state.
         stopListening()
-        startListening(currentModel)
+        startListening(currentLanguage)
     }
 
     @Synchronized
@@ -372,7 +404,8 @@ class WakeWordService : Service() {
         private const val CHANNEL_ID = "wakeword_channel"
         private const val NOTIFICATION_ID = 9001
         private const val ACTION_STOP = "com.yugahashimoto.andcode.action.STOP_WAKEWORD"
-        private const val EXTRA_MODEL = "wake_word_model"
+        private const val EXTRA_LANGUAGE = "wake_word_model_language"
+        private const val DEFAULT_SENSITIVITY = 0.7f
         private const val SAMPLE_RATE = 16000
         private const val FRAME_SIZE = 1280
         private const val WAKELOCK_TAG = "opencode:wakeword"
@@ -415,7 +448,7 @@ class WakeWordService : Service() {
 
         fun start(
             context: Context,
-            model: String = OpenWakeWordDetector.DEFAULT_MODEL,
+            language: VoskModelLanguage,
         ): Boolean {
             if (
                 ContextCompat.checkSelfPermission(context, android.Manifest.permission.RECORD_AUDIO) !=
@@ -424,7 +457,7 @@ class WakeWordService : Service() {
                 return false
             }
             val intent = Intent(context, WakeWordService::class.java)
-            intent.putExtra(EXTRA_MODEL, model)
+            intent.putExtra(EXTRA_LANGUAGE, language.id)
             return runCatching {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                     context.startForegroundService(intent)

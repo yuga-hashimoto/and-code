@@ -85,8 +85,7 @@ installed and run.
 The `releaseRuntimeClasspath` Gradle configuration — everything actually resolved into a release
 build, direct **and** transitive — has ~190 distinct artifacts as of this writing. Rather than a
 hand-maintained table (which drifted from reality before: it previously listed Gson as a direct
-dependency, which it isn't, and omitted TensorFlow Lite, `tensorflow-lite-support`, and
-`org.tukaani:xz`, which are actually resolved), the authoritative, generated list is committed at
+dependency, which it isn't, and omitted `org.tukaani:xz`, which is actually resolved), the authoritative, generated list is committed at
 [`THIRD_PARTY_LICENSES/release-dependencies-releaseRuntimeClasspath.txt`](THIRD_PARTY_LICENSES/release-dependencies-releaseRuntimeClasspath.txt).
 Regenerate it with:
 
@@ -109,8 +108,7 @@ claim that it is exhaustive — consult the generated file for the complete set.
 | Kotlin stdlib / Kotlin Gradle plugins | `2.0.21` | Apache License 2.0 — [kotlinlang.org](https://kotlinlang.org/) |
 | kotlinx.coroutines (Android, core, Play Services interop) | `1.9.0` | Apache License 2.0 — [github.com/Kotlin/kotlinx.coroutines](https://github.com/Kotlin/kotlinx.coroutines) |
 | Koin (`koin-android`, `koin-androidx-compose`, `koin-core`) | `4.0.1` | Apache License 2.0 — [insert-koin.io](https://insert-koin.io/) |
-| **`org.tensorflow:tensorflow-lite`, `tensorflow-lite-api`** (wake-word inference engine) | `2.16.1` | Apache License 2.0 — [github.com/tensorflow/tensorflow](https://github.com/tensorflow/tensorflow) |
-| **`org.tensorflow:tensorflow-lite-support`, `tensorflow-lite-support-api`** | `0.4.4` | Apache License 2.0 — [github.com/tensorflow/tflite-support](https://github.com/tensorflow/tflite-support) |
+| **`com.alphacephei:vosk-android`** (wake-word speech recognition; bundles Kaldi) | `0.3.75` | Apache License 2.0 — [github.com/alphacep/vosk-api](https://github.com/alphacep/vosk-api) |
 | Google Play Services (`play-services-basement`, `play-services-tasks`), Firebase Android SDK (BOM + Crashlytics/Installations/DataTransport client libraries), Google Tink, `com.google.android.odml:image`, Guava `listenablefuture`, Gson (transitive via Play Services) | `firebase-bom:34.17.0` and related, `tink-android:1.8.0`, `gson:2.8.9` | Apache License 2.0 for these client SDKs; the **Firebase Crashlytics service** they talk to is a proprietary Google service governed by the [Firebase Terms of Service](https://firebase.google.com/terms) (see [THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md)) |
 | AndroidX Test / Espresso, JUnit 4, MockWebServer, `kotlinx-coroutines-test` (test only, not shipped in a release APK) | various | Apache License 2.0 (AndroidX Test/Espresso, MockWebServer, coroutines-test) / Eclipse Public License 1.0 (JUnit 4 — [junit.org/junit4](https://junit.org/junit4/)) |
 
@@ -143,40 +141,36 @@ test enforces the two stay byte-for-byte identical). An artifact absent from the
 a claim that it ships no NOTICE file — only that none of the standard `NOTICE`/`NOTICE.txt` entry
 names were found at the top level of its jar/aar or its nested `classes.jar`.
 
-## Wake-word models (bundled ML models, not Gradle dependencies)
+## Wake-word speech model (downloaded at runtime, not bundled)
 
-The on-device wake-word feature bundles three pre-trained model files from the
-[openWakeWord](https://github.com/dscripka/openWakeWord) project (`app/src/main/assets/wakeword/`).
-**openWakeWord's code is Apache-2.0, but its pre-trained models — including all three files bundled
-here — are licensed separately, under
-[CC BY-NC-SA 4.0](THIRD_PARTY_LICENSES/CC-BY-NC-SA-4.0.txt) (Attribution-NonCommercial-ShareAlike),
-per the project's own documentation: *"All of the included pre-trained models are licensed under the
-Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International license due to the inclusion
-of datasets with unknown or restrictive licensing as part of the training data."***
+The on-device wake word is recognised with [Vosk](https://github.com/alphacep/vosk-api)
+(`com.alphacephei:vosk-android`), which is **Apache License 2.0** — full text bundled at
+[`THIRD_PARTY_LICENSES/Apache-2.0.txt`](THIRD_PARTY_LICENSES/Apache-2.0.txt). Vosk in turn builds on
+[Kaldi](https://github.com/kaldi-asr/kaldi), also Apache-2.0.
 
-| File | SHA-256 | Role |
+The speech model Vosk loads is **not part of the APK**. It is downloaded from
+[alphacephei.com/vosk/models](https://alphacephei.com/vosk/models) the first time the wake word is
+switched on, into the app's private storage, and can be removed again from voice settings. The
+models offered are:
+
+| Model | Download | License |
 |---|---|---|
-| `hey_mycroft_v0.1.tflite` | `bf9e43136afd3ca323698820a6e32a47f885ef4c30a3b8b577ec71688a9d64d8` | The "hey mycroft" wake-word classification model |
-| `melspectrogram.tflite` | `a3224c82810abc2a3586ea5bc68fd452d4fa74ad5972ae80f3075eda7fb0ff60` | Shared audio pre-processing (mel-spectrogram) model used by all openWakeWord wake words |
-| `embedding_model.tflite` | `ca2b63f83378d8b1d20bc05ee4a0381e0f30a49b0639f4b9482133dc38ce45b9` | Shared feature-extraction backbone model used by all openWakeWord wake words |
+| `vosk-model-small-en-us-0.15` (English, ~40 MB) | [alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip](https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip) | Apache License 2.0, per the model list published by the Vosk project |
+| `vosk-model-small-ja-0.22` (Japanese, ~48 MB) | [alphacephei.com/vosk/models/vosk-model-small-ja-0.22.zip](https://alphacephei.com/vosk/models/vosk-model-small-ja-0.22.zip) | Apache License 2.0, per the model list published by the Vosk project |
 
-The `hey_mycroft_v0.1.tflite` hash above was independently verified against the file bundled in this
-repository and matches the file distributed by the openWakeWord project. **CC BY-NC-SA 4.0 is a
-NonCommercial, ShareAlike license** — beyond attribution, it restricts commercial use of the
-licensed material itself and requires any adaptation to be shared under the same license. AndCode's
-own source is MIT-licensed and separate from these model files, but distributing the model files
-themselves is subject to CC BY-NC-SA 4.0's terms, including its NonCommercial condition; this
-project has not independently confirmed which party's use (a from-source builder's, versus an app
-store distribution, versus any downstream commercial packaging) would or would not qualify as
-"NonCommercial" under that license, so **this is flagged as `REQUIRES_LICENSE_REVIEW`** rather than
-asserted as resolved — anyone building on or distributing this project for a commercial purpose
-should independently evaluate whether their specific use is compatible with CC BY-NC-SA 4.0, or
-replace these three files with wake-word models under a commercially-compatible license before
-doing so. Attribution: openWakeWord, © the openWakeWord project and contributors
-([github.com/dscripka/openWakeWord](https://github.com/dscripka/openWakeWord)), licensed
-CC BY-NC-SA 4.0 for the model files specifically (full text bundled at
-[`THIRD_PARTY_LICENSES/CC-BY-NC-SA-4.0.txt`](THIRD_PARTY_LICENSES/CC-BY-NC-SA-4.0.txt) and
-`assets/legal/licenses/CC-BY-NC-SA-4.0.txt`).
+No hash is pinned for these files because they are fetched from the vendor at runtime rather than
+redistributed by this project; the archive is validated structurally (it must unpack to the
+expected model directory) before it is used, and is discarded if it does not.
+
+Because nothing is redistributed and both the library and the models are Apache-2.0, the wake-word
+feature carries no `REQUIRES_LICENSE_REVIEW` flag. Downloading is subject to whatever terms the
+Vosk project applies to its own hosting.
+
+**This replaces the previous openWakeWord implementation**, whose three bundled `.tflite` model
+files were licensed CC BY-NC-SA 4.0 (Attribution-**NonCommercial**-ShareAlike) and were flagged
+`REQUIRES_LICENSE_REVIEW` here, because this project could not determine which downstream uses
+would qualify as NonCommercial. Those files and the `org.tensorflow:tensorflow-lite` dependency
+that ran them have been removed, so that question no longer arises.
 
 ## Generating a full SBOM
 

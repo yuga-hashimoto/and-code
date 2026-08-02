@@ -14,6 +14,11 @@ import com.yugahashimoto.andcode.data.settings.AppPreferences
 import com.yugahashimoto.andcode.data.settings.AppPreferencesRepository
 import com.yugahashimoto.andcode.feature.assistant.TtsSettings
 import com.yugahashimoto.andcode.feature.assistant.ttsSettings
+import com.yugahashimoto.andcode.feature.wakeword.VoskModelCatalog
+import com.yugahashimoto.andcode.feature.wakeword.VoskModelLanguage
+import com.yugahashimoto.andcode.feature.wakeword.VoskModelState
+import com.yugahashimoto.andcode.feature.wakeword.VoskModelStore
+import com.yugahashimoto.andcode.feature.wakeword.WakeWordGrammar
 import com.yugahashimoto.andcode.runtime.BackendKind
 import com.yugahashimoto.andcode.runtime.LocalAgent
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
@@ -28,6 +33,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 data class SettingsUiState(
     val providers: List<OpenCodeProvider> = emptyList(),
@@ -51,8 +57,10 @@ data class SettingsUiState(
     val ttsBargeInEnabled: Boolean = true,
     val continuousConversation: Boolean = false,
     val wakeWordEnabled: Boolean = false,
-    val wakeWordModel: String = "hey_mycroft",
-    val availableWakeWordModels: List<String> = emptyList(),
+    val wakeWordPhrase: String = WakeWordGrammar.DEFAULT_PHRASE,
+    val wakeWordSensitivity: Float = 0.7f,
+    val wakeWordModelLanguage: VoskModelLanguage = VoskModelLanguage.ENGLISH,
+    val wakeWordModelStates: Map<VoskModelLanguage, VoskModelState> = emptyMap(),
     val autoAcceptPermissions: Boolean = false,
     val credentialStatuses: Map<String, Boolean> = emptyMap(),
     val draftProviderId: String = "",
@@ -85,6 +93,7 @@ class SettingsViewModel(
     private val credentials: LocalProviderCredentialStore,
     private val settings: SecureSettingsRepository,
     private val registry: RuntimeRegistry,
+    private val voskModels: VoskModelStore,
 ) : ViewModel() {
     private val settingsTick = MutableStateFlow(0)
     private val oauthState = MutableStateFlow(OAuthState())
@@ -152,7 +161,8 @@ class SettingsViewModel(
             settingsTick,
             oauthState,
             githubState,
-        ) { core, _, oauth, github ->
+            voskModels.state,
+        ) { core, _, oauth, github, voskModelStates ->
             // Two different questions, two different catalogues.
             //
             // `providers` answers "what can this chat talk to", so it follows the selected runtime.
@@ -183,8 +193,10 @@ class SettingsViewModel(
                 ttsBargeInEnabled = core.preferences.ttsBargeInEnabled,
                 continuousConversation = core.preferences.continuousConversation,
                 wakeWordEnabled = core.preferences.wakeWordEnabled,
-                wakeWordModel = core.preferences.wakeWordModel,
-                availableWakeWordModels = WAKE_WORD_MODELS,
+                wakeWordPhrase = core.preferences.wakeWordPhrase,
+                wakeWordSensitivity = core.preferences.wakeWordSensitivity,
+                wakeWordModelLanguage = wakeWordLanguage(core.preferences.wakeWordModelLanguage),
+                wakeWordModelStates = voskModelStates,
                 autoAcceptPermissions = core.preferences.autoAcceptPermissions,
                 runtimeOptions = core.targets.map { it.id to it.displayName },
                 assistantRuntimeId = settings.assistantRuntimeId ?: core.selected?.id,
@@ -221,6 +233,15 @@ class SettingsViewModel(
 
     fun setTtsAndroidEngine(engine: String?) = preferences.setTtsAndroidEngine(engine)
 
+    /**
+     * The stored model language, or the one matching the device's own language the first time.
+     *
+     * Guessing beats defaulting everyone to English: a Japanese phrase against the English model
+     * cannot match at all, and that failure looks identical to a broken microphone.
+     */
+    private fun wakeWordLanguage(stored: String?): VoskModelLanguage =
+        VoskModelLanguage.fromId(stored) ?: VoskModelCatalog.defaultLanguageFor(Locale.getDefault())
+
     /** The voice preferences as they stand, for the settings screen's own test playback. */
     internal fun ttsSettings(): TtsSettings = settings.ttsSettings()
 
@@ -246,7 +267,17 @@ class SettingsViewModel(
 
     fun setWakeWordEnabled(enabled: Boolean) = preferences.setWakeWordEnabled(enabled)
 
-    fun setWakeWordModel(model: String) = preferences.setWakeWordModel(model)
+    fun setWakeWordPhrase(phrase: String) = preferences.setWakeWordPhrase(phrase)
+
+    fun setWakeWordSensitivity(sensitivity: Float) = preferences.setWakeWordSensitivity(sensitivity)
+
+    fun setWakeWordModelLanguage(language: VoskModelLanguage) = preferences.setWakeWordModelLanguage(language.id)
+
+    fun downloadWakeWordModel(language: VoskModelLanguage) = voskModels.install(language)
+
+    fun cancelWakeWordModelDownload(language: VoskModelLanguage) = voskModels.cancel(language)
+
+    fun removeWakeWordModel(language: VoskModelLanguage) = voskModels.remove(language)
 
     fun setAutoAcceptPermissions(enabled: Boolean) = preferences.setAutoAcceptPermissions(enabled)
 
@@ -646,9 +677,5 @@ class SettingsViewModel(
         const val TAG = "SettingsVM"
         const val AUTO_OAUTH_TIMEOUT_MS = 6 * 60 * 1000L
         const val AUTO_OAUTH_POLL_MS = 3000L
-        val WAKE_WORD_MODELS =
-            listOf(
-                "hey_mycroft",
-            )
     }
 }

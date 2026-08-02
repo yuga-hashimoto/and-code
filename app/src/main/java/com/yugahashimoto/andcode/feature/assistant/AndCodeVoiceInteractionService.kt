@@ -10,7 +10,10 @@ import android.service.voice.VoiceInteractionSession
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.yugahashimoto.andcode.AndCodeApplication
+import com.yugahashimoto.andcode.feature.wakeword.VoskModelCatalog
+import com.yugahashimoto.andcode.feature.wakeword.VoskModelLanguage
 import com.yugahashimoto.andcode.feature.wakeword.WakeWordService
+import java.util.Locale
 
 class AndCodeVoiceInteractionService : VoiceInteractionService() {
     private var ready = false
@@ -42,7 +45,10 @@ class AndCodeVoiceInteractionService : VoiceInteractionService() {
         val app = application as? AndCodeApplication
         val preferences = app?.preferences?.state?.value
         if (preferences?.wakeWordEnabled == true) {
-            val started = WakeWordService.start(this, preferences.wakeWordModel)
+            val language =
+                VoskModelLanguage.fromId(preferences.wakeWordModelLanguage)
+                    ?: VoskModelCatalog.defaultLanguageFor(Locale.getDefault())
+            val started = WakeWordService.start(this, language)
             if (!started) app.preferences.setWakeWordEnabled(false)
         }
     }

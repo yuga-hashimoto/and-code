@@ -4,6 +4,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeAgent
 import com.yugahashimoto.andcode.core.api.ProviderCatalog
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
 import com.yugahashimoto.andcode.feature.assistant.TtsTuning
+import com.yugahashimoto.andcode.feature.wakeword.WakeWordGrammar
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -27,7 +28,9 @@ data class AppPreferences(
     val ttsBargeInEnabled: Boolean = true,
     val continuousConversation: Boolean = false,
     val wakeWordEnabled: Boolean = false,
-    val wakeWordModel: String = "hey_mycroft",
+    val wakeWordPhrase: String = WakeWordGrammar.DEFAULT_PHRASE,
+    val wakeWordSensitivity: Float = 0.7f,
+    val wakeWordModelLanguage: String? = null,
     val autoAcceptPermissions: Boolean = false,
     val favoriteModelKeys: Set<String> = emptySet(),
     val recentModelKeys: List<String> = emptyList(),
@@ -69,7 +72,9 @@ class AppPreferencesRepository(
                 ttsBargeInEnabled = settings.ttsBargeInEnabled,
                 continuousConversation = settings.continuousConversation,
                 wakeWordEnabled = settings.wakeWordEnabled,
-                wakeWordModel = settings.wakeWordModel,
+                wakeWordPhrase = settings.wakeWordPhrase,
+                wakeWordSensitivity = settings.wakeWordSensitivity,
+                wakeWordModelLanguage = settings.wakeWordModelLanguage,
                 autoAcceptPermissions = settings.autoAcceptPermissions,
                 favoriteModelKeys = settings.favoriteModelKeys,
                 recentModelKeys = settings.recentModelKeys,
@@ -230,9 +235,20 @@ class AppPreferencesRepository(
         mutableState.update { it.copy(wakeWordEnabled = enabled) }
     }
 
-    fun setWakeWordModel(model: String) {
-        settings.wakeWordModel = model
-        mutableState.update { it.copy(wakeWordModel = model) }
+    fun setWakeWordPhrase(phrase: String) {
+        settings.wakeWordPhrase = phrase
+        mutableState.update { it.copy(wakeWordPhrase = phrase) }
+    }
+
+    fun setWakeWordSensitivity(sensitivity: Float) {
+        val clamped = sensitivity.coerceIn(0f, 1f)
+        settings.wakeWordSensitivity = clamped
+        mutableState.update { it.copy(wakeWordSensitivity = clamped) }
+    }
+
+    fun setWakeWordModelLanguage(language: String?) {
+        settings.wakeWordModelLanguage = language
+        mutableState.update { it.copy(wakeWordModelLanguage = language) }
     }
 
     fun setAutoAcceptPermissions(enabled: Boolean) {

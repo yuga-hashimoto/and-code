@@ -159,30 +159,37 @@ class LegalDisclosureComplianceTest {
     }
 
     @Test
-    fun `THIRD_PARTY_NOTICES documents the openWakeWord CC BY-NC-SA model files with matching hashes`() {
+    fun `THIRD_PARTY_NOTICES documents the Vosk wake-word model as downloaded rather than bundled`() {
         val text = readRepoFile("THIRD_PARTY_NOTICES.md")
-        assertTrue(text.contains("openWakeWord"))
-        assertTrue(text.contains("CC BY-NC-SA"))
-        val wakewordDir = File(repoRoot, "app/src/main/assets/wakeword")
-        listOf("hey_mycroft_v0.1.tflite", "melspectrogram.tflite", "embedding_model.tflite").forEach { name ->
-            val file = File(wakewordDir, name)
-            assertTrue("Expected bundled wake-word model ${file.absolutePath} to exist", file.exists())
-            val hash =
-                file.inputStream().use { stream ->
-                    val digest = java.security.MessageDigest.getInstance("SHA-256")
-                    val buffer = ByteArray(8192)
-                    while (true) {
-                        val read = stream.read(buffer)
-                        if (read < 0) break
-                        digest.update(buffer, 0, read)
-                    }
-                    digest.digest().joinToString("") { "%02x".format(it) }
-                }
-            assertTrue(
-                "THIRD_PARTY_NOTICES.md should document the SHA-256 of bundled $name ($hash)",
-                text.contains(hash),
-            )
+        assertTrue("Vosk should be named as the wake-word engine", text.contains("vosk-android"))
+        assertTrue(
+            "The document should say the speech model is downloaded rather than shipped",
+            text.contains("not part of the APK"),
+        )
+        VOSK_MODEL_DIRECTORIES.forEach { name ->
+            assertTrue("THIRD_PARTY_NOTICES.md should name the $name model", text.contains(name))
         }
+    }
+
+    @Test
+    fun `no wake-word model files are bundled in the APK`() {
+        // The previous openWakeWord models were CC BY-NC-SA 4.0 - a NonCommercial license this
+        // project could not clear for downstream distribution. Nothing may quietly reappear under
+        // assets without that question coming back with it.
+        val wakewordDir = File(repoRoot, "app/src/main/assets/wakeword")
+        assertFalse(
+            "Wake-word model files must not be bundled: ${wakewordDir.absolutePath} exists",
+            wakewordDir.exists(),
+        )
+    }
+
+    @Test
+    fun `the retired openWakeWord models are no longer claimed as bundled`() {
+        val text = readRepoFile("THIRD_PARTY_NOTICES.md")
+        assertFalse(
+            "THIRD_PARTY_NOTICES.md should not still present openWakeWord models as bundled",
+            text.contains("| `hey_mycroft_v0.1.tflite` |"),
+        )
     }
 
     @Test
@@ -273,5 +280,9 @@ class LegalDisclosureComplianceTest {
                 sourceText == assetText,
             )
         }
+    }
+
+    private companion object {
+        val VOSK_MODEL_DIRECTORIES = listOf("vosk-model-small-en-us-0.15", "vosk-model-small-ja-0.22")
     }
 }

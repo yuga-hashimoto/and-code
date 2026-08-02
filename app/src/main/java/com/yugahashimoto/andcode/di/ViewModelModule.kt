@@ -38,6 +38,7 @@ val viewModelModule =
                 credentials = get(),
                 settings = get(),
                 registry = get(),
+                voskModels = get(),
             )
         }
 

@@ -232,9 +232,10 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
-    // TensorFlow Lite (wake word detection)
-    implementation("org.tensorflow:tensorflow-lite:2.16.1")
-    implementation("org.tensorflow:tensorflow-lite-support:0.4.4")
+    // Vosk (wake word detection). The speech model is downloaded on first use rather than
+    // packaged: the smallest usable pair is about 90 MB against a 37 MB APK, and it is only
+    // needed by people who switch the wake word on.
+    implementation("com.alphacephei:vosk-android:0.3.75")
 
     // DI
     implementation("io.insert-koin:koin-android:4.0.1")

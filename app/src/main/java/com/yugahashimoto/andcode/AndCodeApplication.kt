@@ -30,6 +30,7 @@ import com.yugahashimoto.andcode.di.viewModelModule
 import com.yugahashimoto.andcode.feature.schedule.ScheduleManager
 import com.yugahashimoto.andcode.feature.support.GitHubStarCoordinator
 import com.yugahashimoto.andcode.feature.support.GitHubStarService
+import com.yugahashimoto.andcode.feature.wakeword.VoskModelStore
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 import com.yugahashimoto.andcode.runtime.local.AdbConnectionManager
 import com.yugahashimoto.andcode.runtime.local.AdbShellRunner
@@ -108,6 +109,9 @@ class AndCodeApplication : Application() {
     lateinit var providerCredentials: LocalProviderCredentialStore
         private set
 
+    lateinit var voskModels: VoskModelStore
+        private set
+
     lateinit var gitCloneRepository: GitCloneRepository
         private set
 
@@ -172,6 +176,9 @@ class AndCodeApplication : Application() {
         notifications = RuntimeNotificationHelper(this)
         providerCredentials = LocalProviderCredentialStore(settings)
         val httpClient = OkHttpClient()
+        // Application-scoped so that navigating away from voice settings does not abandon a model
+        // download half-written.
+        voskModels = VoskModelStore(this, applicationScope, httpClient)
         githubStarCoordinator =
             GitHubStarCoordinator(
                 settings = settings,

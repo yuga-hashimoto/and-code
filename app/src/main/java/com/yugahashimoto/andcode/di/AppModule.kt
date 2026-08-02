@@ -11,6 +11,7 @@ import com.yugahashimoto.andcode.data.repository.RuntimeActivityRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeCatalogRepository
 import com.yugahashimoto.andcode.data.settings.AppPreferencesRepository
 import com.yugahashimoto.andcode.data.settings.DraftRepository
+import com.yugahashimoto.andcode.feature.wakeword.VoskModelStore
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 import com.yugahashimoto.andcode.runtime.local.AndroidLocalRuntimeMessages
 import com.yugahashimoto.andcode.runtime.local.AntigravityRuntime
@@ -57,6 +58,8 @@ val appModule =
         single { AndroidRuntimeCatalogMessages(androidContext()) }
 
         single { LocalProviderCredentialStore(get()) }
+
+        single { VoskModelStore(androidContext(), get(), get()) }
 
         single { OkHttpClient() }
 
