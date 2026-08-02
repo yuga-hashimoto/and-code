@@ -13,15 +13,24 @@ AndCodeはAIコーディングエージェントをスマートフォンで使�
 
 [Releases](https://github.com/yuga-hashimoto/and-code/releases/latest) · [English README](README.md)
 
-<p align="center">
-  <img src="screenshots/navigation.png" width="240" alt="エージェント・プロジェクト・最近のチャットを表示するナビゲーションドロワー" />
-  &nbsp;
-  <img src="screenshots/chat.png" width="240" alt="リポジトリを調査して状態を要約するエージェントとのチャット画面" />
-  &nbsp;
-  <img src="screenshots/model-picker.png" width="240" alt="お気に入り付きのモデル・実行先ピッカー" />
-  &nbsp;
-  <img src="screenshots/schedules.png" width="240" alt="定期実行されるスケジュール済みプロンプト" />
-</p>
+<div align="center">
+
+### スクリーンショット
+
+<table>
+  <tr>
+    <td align="center"><img src="screenshots/navigation-drawer.jpg" width="180" alt="エージェント、プロジェクト、最近のチャットを表示するナビゲーションドロワー"><br><em>ナビゲーションドロワー</em></td>
+    <td align="center"><img src="screenshots/model-picker.jpg" width="180" alt="お気に入りのモデルを検索できるモデル・実行先ピッカー"><br><em>モデル・実行先ピッカー</em></td>
+    <td align="center"><img src="screenshots/repository-chat.jpg" width="180" alt="AndCodeのリポジトリを調査するエージェントとのチャット"><br><em>リポジトリチャット</em></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/image-generation.jpg" width="180" alt="会話内に表示されたエージェント生成画像"><br><em>画像生成</em></td>
+    <td align="center"><img src="screenshots/schedules.jpg" width="180" alt="毎日実行される有効なスケジュール済みプロンプト"><br><em>スケジュール</em></td>
+    <td align="center"><img src="screenshots/run-result.jpg" width="180" alt="チャットを開ける完了済みスケジュール実行"><br><em>実行結果</em></td>
+  </tr>
+</table>
+
+</div>
 
 > [!IMPORTANT]
 > AndCodeは独立したオープンソースプロジェクトです。OpenCode、Anthropic、Googleのいずれとも一切関係ありません。

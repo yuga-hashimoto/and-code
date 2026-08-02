@@ -13,15 +13,24 @@ AndCode is a native Android GUI app that brings AI coding agents to your phone. 
 
 [Releases](https://github.com/yuga-hashimoto/and-code/releases/latest) · [日本語のREADME](README.ja.md)
 
-<p align="center">
-  <img src="screenshots/navigation.png" width="240" alt="Navigation drawer with agents, projects, and recent chats" />
-  &nbsp;
-  <img src="screenshots/chat.png" width="240" alt="Chat with an agent that inspected the repository and summarized its state" />
-  &nbsp;
-  <img src="screenshots/model-picker.png" width="240" alt="Model and runtime picker with favorites" />
-  &nbsp;
-  <img src="screenshots/schedules.png" width="240" alt="Scheduled prompts running on a recurring schedule" />
-</p>
+<div align="center">
+
+### Screenshots
+
+<table>
+  <tr>
+    <td align="center"><img src="screenshots/navigation-drawer.jpg" width="180" alt="Navigation drawer with agents, projects, and recent chats"><br><em>Navigation drawer</em></td>
+    <td align="center"><img src="screenshots/model-picker.jpg" width="180" alt="Model and runtime picker with searchable favorite models"><br><em>Model &amp; runtime picker</em></td>
+    <td align="center"><img src="screenshots/repository-chat.jpg" width="180" alt="Chat with an agent inspecting the AndCode repository"><br><em>Repository chat</em></td>
+  </tr>
+  <tr>
+    <td align="center"><img src="screenshots/image-generation.jpg" width="180" alt="Agent-generated image displayed inside a conversation"><br><em>Image generation</em></td>
+    <td align="center"><img src="screenshots/schedules.jpg" width="180" alt="Scheduled prompt with a daily run enabled"><br><em>Schedules</em></td>
+    <td align="center"><img src="screenshots/run-result.jpg" width="180" alt="Completed scheduled run with an option to open the chat"><br><em>Run result</em></td>
+  </tr>
+</table>
+
+</div>
 
 > [!IMPORTANT]
 > AndCode is an independent open-source project. It is **not** affiliated with OpenCode, Anthropic, or Google.
