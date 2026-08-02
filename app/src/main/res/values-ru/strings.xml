@@ -916,4 +916,17 @@
     <string name="schedule_timing_daily_label">Ежедневно %1$s</string>
     <string name="schedule_timing_weekly_label">Еженедельно %1$s %2$s</string>
     <string name="schedule_timing_monthly_label">Ежемесячно в день %1$d в %2$s</string>
+
+    <string name="pr_diff_label">Изменения</string>
+    <string name="pr_state_open">Открыт</string>
+    <string name="pr_state_draft">Черновик</string>
+    <string name="pr_state_merged">Влит</string>
+    <string name="pr_state_closed">Закрыт</string>
+    <string name="pr_state_conflict">Конфликт</string>
+    <string name="cd_pull_request_link">Открыть пул-реквест #%1$d на GitHub</string>
+    <string name="cd_pull_request_link_state">Пул-реквест #%1$d, %2$s. Откроется на GitHub</string>
+    <string name="cd_pull_request_files">Пул-реквест #%1$d, добавлено строк: %2$d, удалено: %3$d. Откроет изменённые файлы на GitHub</string>
+    <string name="pr_collapse">Свернуть</string>
+    <string name="cd_pull_request_expand">Показать ещё пул-реквестов: %1$d</string>
+    <string name="cd_pull_request_collapse">Показать меньше пул-реквестов</string>
 </resources>

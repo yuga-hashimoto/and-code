@@ -111,8 +111,12 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/** How often the open chat asks GitHub whether its pull requests have moved on. */
+private const val PULL_REQUEST_REFRESH_INTERVAL_MS = 30_000L
 
 private fun speechLocaleTag(context: android.content.Context): String {
     val locale =
@@ -273,6 +277,7 @@ fun AndCodeApp(
                         },
                         monitorConnectionQuality = true,
                         resolvedPermissionFlow = app.activityRepository.resolvedPermissions,
+                        pullRequestStatuses = app.pullRequestStatusRepository,
                     )
                 },
         )
@@ -821,6 +826,17 @@ fun AndCodeApp(
                             handoffReady = false
                         }
                     }
+                    // A pull request is usually merged or closed on GitHub, not from here, so the
+                    // badges are refreshed while the chat is on screen. The repository decides what
+                    // is actually stale, so this only costs a request when something can change.
+                    if (chatState.pullRequests.isNotEmpty()) {
+                        LaunchedEffect(Unit) {
+                            while (true) {
+                                delay(PULL_REQUEST_REFRESH_INTERVAL_MS)
+                                chatViewModel.refreshPullRequests()
+                            }
+                        }
+                    }
                     ChatHomeScreen(
                         state = chatState,
                         providers = settingsState.providers,
@@ -914,6 +930,9 @@ fun AndCodeApp(
                         onReturnToParentSession = {
                             pendingSession = null
                             chatViewModel.openParentSession()
+                        },
+                        onOpenUrl = { url ->
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
                         },
                     )
                 }

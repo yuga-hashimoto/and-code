@@ -14,9 +14,11 @@ import com.yugahashimoto.andcode.core.api.OpenCodeSkill
 import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.core.api.PromptAttachment
 import com.yugahashimoto.andcode.core.api.PromptRequest
+import com.yugahashimoto.andcode.core.api.PullRequestRef
 import com.yugahashimoto.andcode.core.api.QuestionPrompt
 import com.yugahashimoto.andcode.core.api.QuestionRequest
 import com.yugahashimoto.andcode.core.util.safeMessage
+import com.yugahashimoto.andcode.data.repository.PullRequestStatusRepository
 import com.yugahashimoto.andcode.data.settings.Draft
 import com.yugahashimoto.andcode.data.settings.DraftRepository
 import com.yugahashimoto.andcode.runtime.OpenCodeBackend
@@ -29,6 +31,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -159,6 +163,9 @@ private const val TRANSIENT_RECOVERY_MAX_BACKOFF_MS = 30_000L
 private const val TRANSIENT_RECOVERY_MAX_ATTEMPTS = 20
 private const val HEALTH_CHECK_ATTEMPTS = 15
 private const val HEALTH_CHECK_DELAY_MS = 2000L
+
+/** Floor between transcript scans for pull request links, so streaming does not drive them. */
+private const val PULL_REQUEST_SCAN_THROTTLE_MS = 300L
 
 private data class QueuedPrompt(
     val text: String,
@@ -300,6 +307,8 @@ data class ChatUiState(
     val offlineQueue: List<String> = emptyList(),
     val isOfflineQueued: Boolean = false,
     val connectionQuality: ConnectionQuality? = null,
+    /** Pull requests linked in this chat, newest first, for the badges above the composer. */
+    val pullRequests: List<ChatPullRequest> = emptyList(),
     val error: String? = null,
 )
 
@@ -320,6 +329,8 @@ class ChatViewModel(
      */
     private val monitorConnectionQuality: Boolean = false,
     private val resolvedPermissionFlow: Flow<String>? = null,
+    /** Absent in tests and previews, where the pull request badges stay unresolved. */
+    private val pullRequestStatuses: PullRequestStatusRepository? = null,
 ) : ViewModel() {
     private val _uiState =
         MutableStateFlow(
@@ -336,6 +347,8 @@ class ChatViewModel(
     private val _workspaceTitleSource = MutableStateFlow("title")
     val workspaceTitleSource: StateFlow<String> = _workspaceTitleSource.asStateFlow()
 
+    private val pullRequestRefs = MutableStateFlow<List<PullRequestRef>>(emptyList())
+
     private val messageQueue = MutableStateFlow<List<QueuedPrompt>>(emptyList())
     private val offlineMessageQueue = MutableStateFlow<List<QueuedPrompt>>(emptyList())
 
@@ -350,6 +363,7 @@ class ChatViewModel(
     private val connectionMonitor = ConnectionQualityMonitor(viewModelScope)
 
     init {
+        pullRequestStatuses?.let(::trackPullRequests)
         // A permission answered from the notification (or the activity screen) never comes back
         // as an event, so without this the chat keeps showing a card for a settled request.
         resolvedPermissionFlow?.let { flow ->
@@ -426,6 +440,44 @@ class ChatViewModel(
                 }
             }
         }
+    }
+
+    /**
+     * Keeps the pull request badges above the composer in step with the transcript.
+     *
+     * Scanning is conflated rather than run per update: a streaming answer rewrites the message
+     * list many times a second, and the links it contains do not change that fast. State and links
+     * are combined separately so a badge appears the moment its link is printed, then fills in with
+     * the diff size and state once GitHub answers.
+     */
+    private fun trackPullRequests(statuses: PullRequestStatusRepository) {
+        viewModelScope.launch {
+            uiState
+                .map { it.messages }
+                .distinctUntilChanged()
+                .conflate()
+                .collect { messages ->
+                    val refs = pullRequestRefsIn(messages)
+                    pullRequestRefs.value = refs
+                    statuses.track(refs)
+                    delay(PULL_REQUEST_SCAN_THROTTLE_MS)
+                }
+        }
+        viewModelScope.launch {
+            combine(pullRequestRefs, statuses.statuses) { refs, byKey ->
+                refs.map { ref -> ChatPullRequest(ref, byKey[ref.key]) }
+            }
+                .distinctUntilChanged()
+                .collect { pullRequests -> _uiState.update { it.copy(pullRequests = pullRequests) } }
+        }
+    }
+
+    /**
+     * Refetches any pull request state that has gone stale. The chat screen calls this on a timer
+     * while it is on screen, so a badge follows a pull request that is merged or closed elsewhere.
+     */
+    fun refreshPullRequests() {
+        pullRequestStatuses?.track(pullRequestRefs.value)
     }
 
     /**

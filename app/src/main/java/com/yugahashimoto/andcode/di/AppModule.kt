@@ -1,8 +1,10 @@
 package com.yugahashimoto.andcode.di
 
 import android.os.Build
+import com.yugahashimoto.andcode.core.api.GitHubApiClient
 import com.yugahashimoto.andcode.core.notification.RuntimeNotificationHelper
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
+import com.yugahashimoto.andcode.data.repository.PullRequestStatusRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeActivityRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeCatalogRepository
 import com.yugahashimoto.andcode.data.settings.AppPreferencesRepository
@@ -152,6 +154,15 @@ val appModule =
                         ),
                     ),
             )
+        }
+
+        single {
+            val settings: SecureSettingsRepository = get()
+            GitHubApiClient(token = { settings.githubToken }, client = get())
+        }
+
+        single {
+            PullRequestStatusRepository(api = get(), scope = get())
         }
 
         single {

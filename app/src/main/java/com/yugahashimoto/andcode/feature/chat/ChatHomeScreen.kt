@@ -190,6 +190,7 @@ fun ChatHomeScreen(
     onSubagentClick: (String) -> Unit = {},
     onReturnToParentSession: () -> Unit = {},
     githubRefs: List<GitHubReference> = emptyList(),
+    onOpenUrl: (String) -> Unit = {},
     onImageAttachment: (Bitmap) -> Unit = {},
 ) {
     var input by remember { mutableStateOf("") }
@@ -563,6 +564,8 @@ fun ChatHomeScreen(
                         showSlashCommands = false
                     },
                     githubRefs = githubRefs,
+                    pullRequests = state.pullRequests,
+                    onOpenUrl = onOpenUrl,
                     attachedImages = attachedImages,
                     onRemoveImage = {
                         val removed = attachedImages.removeAt(it)
@@ -1009,6 +1012,8 @@ private fun ChatComposer(
     slashSkills: List<OpenCodeSkill>,
     onSlashCommandSelect: (SlashSuggestion) -> Unit,
     githubRefs: List<GitHubReference>,
+    pullRequests: List<ChatPullRequest>,
+    onOpenUrl: (String) -> Unit,
     attachedImages: List<Bitmap>,
     onRemoveImage: (Int) -> Unit,
     onCameraLaunch: () -> Unit,
@@ -1061,6 +1066,12 @@ private fun ChatComposer(
                 }
             }
         }
+
+        PullRequestLinkBar(
+            pullRequests = pullRequests,
+            onOpenUrl = onOpenUrl,
+            modifier = Modifier.padding(bottom = 6.dp),
+        )
 
         GitHubAutoAttachChips(
             references = githubRefs,

@@ -916,4 +916,17 @@
     <string name="schedule_timing_daily_label">Diario %1$s</string>
     <string name="schedule_timing_weekly_label">Semanal %1$s %2$s</string>
     <string name="schedule_timing_monthly_label">Mensual el día %1$d a las %2$s</string>
+
+    <string name="pr_diff_label">Diff</string>
+    <string name="pr_state_open">Abierta</string>
+    <string name="pr_state_draft">Borrador</string>
+    <string name="pr_state_merged">Fusionada</string>
+    <string name="pr_state_closed">Cerrada</string>
+    <string name="pr_state_conflict">Conflicto</string>
+    <string name="cd_pull_request_link">Abrir la pull request #%1$d en GitHub</string>
+    <string name="cd_pull_request_link_state">Pull request #%1$d, %2$s. Se abre en GitHub</string>
+    <string name="cd_pull_request_files">Pull request #%1$d, %2$d añadidas, %3$d eliminadas. Abre los archivos modificados en GitHub</string>
+    <string name="pr_collapse">Menos</string>
+    <string name="cd_pull_request_expand">Mostrar %1$d pull requests más</string>
+    <string name="cd_pull_request_collapse">Mostrar menos pull requests</string>
 </resources>

@@ -15,6 +15,7 @@ val viewModelModule =
         viewModel {
             ChatViewModel(
                 draftRepo = get(),
+                pullRequestStatuses = get(),
             )
         }
 

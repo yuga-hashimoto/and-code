@@ -43,6 +43,7 @@ On-device agents run inside an Alpine Linux environment via PRoot. Google Antigr
 - **Repository & workspace** — Open and work within git repositories on-device
 - **Git support** — Stage, diff, commit, and manage branches from the GUI
 - **Diff viewer** — Review code changes inline before accepting
+- **Pull request badges** — Pull requests opened in a chat stay pinned above the composer with their diff size and state (draft, open, conflict, merged, closed); tap to open them on GitHub
 - **Tool approvals** — Approve or reject dangerous tool operations
 - **Session management** — Create, resume, rename, and delete sessions
 - **Dynamic models** — Models, providers, and agents fetched live from your connected agent instance

@@ -931,4 +931,17 @@
     <string name="schedule_timing_monthly_label">Monthly on day %1$d at %2$s</string>
 
     <string name="schedule_auto_accept_default">App default</string>
+
+    <string name="pr_diff_label">Diff</string>
+    <string name="pr_state_open">Open</string>
+    <string name="pr_state_draft">Draft</string>
+    <string name="pr_state_merged">Merged</string>
+    <string name="pr_state_closed">Closed</string>
+    <string name="pr_state_conflict">Conflict</string>
+    <string name="cd_pull_request_link">Open pull request #%1$d on GitHub</string>
+    <string name="cd_pull_request_link_state">Pull request #%1$d, %2$s. Opens on GitHub</string>
+    <string name="cd_pull_request_files">Pull request #%1$d, %2$d added, %3$d removed. Opens the changed files on GitHub</string>
+    <string name="pr_collapse">Fewer</string>
+    <string name="cd_pull_request_expand">Show %1$d more pull requests</string>
+    <string name="cd_pull_request_collapse">Show fewer pull requests</string>
 </resources>

@@ -916,4 +916,17 @@
     <string name="schedule_timing_daily_label">يوميًا %1$s</string>
     <string name="schedule_timing_weekly_label">أسبوعيًا %1$s %2$s</string>
     <string name="schedule_timing_monthly_label">شهريًا في اليوم %1$d في %2$s</string>
+
+    <string name="pr_diff_label">الفروق</string>
+    <string name="pr_state_open">مفتوح</string>
+    <string name="pr_state_draft">مسودة</string>
+    <string name="pr_state_merged">مدمج</string>
+    <string name="pr_state_closed">مغلق</string>
+    <string name="pr_state_conflict">تعارض</string>
+    <string name="cd_pull_request_link">فتح طلب السحب رقم %1$d على GitHub</string>
+    <string name="cd_pull_request_link_state">طلب السحب رقم %1$d، %2$s. يُفتح على GitHub</string>
+    <string name="cd_pull_request_files">طلب السحب رقم %1$d، %2$d إضافة و%3$d حذف. يُفتح الملفات المُعدّلة على GitHub</string>
+    <string name="pr_collapse">طيّ</string>
+    <string name="cd_pull_request_expand">عرض %1$d طلبات سحب إضافية</string>
+    <string name="cd_pull_request_collapse">عرض عدد أقل من طلبات السحب</string>
 </resources>

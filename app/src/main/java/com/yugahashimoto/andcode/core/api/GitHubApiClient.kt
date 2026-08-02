@@ -10,8 +10,17 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 
-class GitHubApiClient(private val token: String?) {
-    private val client: OkHttpClient = OkHttpClient()
+/**
+ * Reads GitHub over the REST API.
+ *
+ * The token is read per request rather than captured once, because it is stored encrypted and can
+ * be connected, replaced, or disconnected while the app is running.
+ */
+class GitHubApiClient(
+    private val token: () -> String?,
+    private val client: OkHttpClient = OkHttpClient(),
+    private val baseUrl: String = "https://api.github.com",
+) {
     private val json: Json =
         Json {
             ignoreUnknownKeys = true
@@ -27,7 +36,7 @@ class GitHubApiClient(private val token: String?) {
             try {
                 val request =
                     buildRequest(
-                        "https://api.github.com/repos/$owner/$repo/pulls".toHttpUrl().newBuilder()
+                        "$baseUrl/repos/$owner/$repo/pulls".toHttpUrl().newBuilder()
                             .addQueryParameter("head", "$owner:$branch")
                             .build().toString(),
                     )
@@ -49,6 +58,36 @@ class GitHubApiClient(private val token: String?) {
             }
         }
 
+    /**
+     * The live state of a single pull request, or null when GitHub cannot be reached, the pull
+     * request is private to an account the app is not signed in to, or the response is unusable.
+     * Callers keep whatever they showed before rather than blanking the badge on a failed refresh.
+     */
+    suspend fun getPullRequest(ref: PullRequestRef): PullRequestStatus? =
+        withContext(Dispatchers.IO) {
+            try {
+                val request = buildRequest("$baseUrl/repos/${ref.owner}/${ref.repo}/pulls/${ref.number}")
+                client.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) return@withContext null
+                    val detail = json.decodeFromString<GitHubPullDetail>(response.body?.string().orEmpty())
+                    PullRequestStatus(
+                        ref = ref,
+                        state =
+                            pullRequestState(
+                                state = detail.state,
+                                draft = detail.draft,
+                                merged = detail.merged,
+                                mergeableState = detail.mergeableState,
+                            ),
+                        additions = detail.additions,
+                        deletions = detail.deletions,
+                    )
+                }
+            } catch (_: Exception) {
+                null
+            }
+        }
+
     suspend fun searchIssues(
         owner: String,
         repo: String,
@@ -58,7 +97,7 @@ class GitHubApiClient(private val token: String?) {
             try {
                 val request =
                     buildRequest(
-                        "https://api.github.com/search/issues".toHttpUrl().newBuilder()
+                        "$baseUrl/search/issues".toHttpUrl().newBuilder()
                             .addQueryParameter("q", "repo:$owner/$repo $query")
                             .build().toString(),
                     )
@@ -85,7 +124,7 @@ class GitHubApiClient(private val token: String?) {
             .url(url)
             .header("Accept", "application/vnd.github+json")
             .apply {
-                token?.takeIf { it.isNotBlank() }?.let {
+                token()?.takeIf { it.isNotBlank() }?.let {
                     header("Authorization", "Bearer $it")
                 }
             }
@@ -96,6 +135,16 @@ class GitHubApiClient(private val token: String?) {
         val number: Int = 0,
         val title: String = "",
         @SerialName("html_url") val htmlUrl: String = "",
+    )
+
+    @Serializable
+    private data class GitHubPullDetail(
+        val state: String = "open",
+        val draft: Boolean = false,
+        val merged: Boolean = false,
+        @SerialName("mergeable_state") val mergeableState: String? = null,
+        val additions: Int = 0,
+        val deletions: Int = 0,
     )
 
     @Serializable

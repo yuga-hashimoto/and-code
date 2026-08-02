@@ -931,4 +931,17 @@
     <string name="schedule_timing_monthly_label">毎月%1$d日 %2$s</string>
 
     <string name="schedule_auto_accept_default">アプリの設定に従う</string>
+
+    <string name="pr_diff_label">差分</string>
+    <string name="pr_state_open">オープン</string>
+    <string name="pr_state_draft">ドラフト</string>
+    <string name="pr_state_merged">マージ済み</string>
+    <string name="pr_state_closed">クローズ</string>
+    <string name="pr_state_conflict">コンフリクト</string>
+    <string name="cd_pull_request_link">プルリクエスト #%1$d を GitHub で開く</string>
+    <string name="cd_pull_request_link_state">プルリクエスト #%1$d、%2$s。GitHub で開きます</string>
+    <string name="cd_pull_request_files">プルリクエスト #%1$d、%2$d 行追加、%3$d 行削除。変更されたファイルを GitHub で開きます</string>
+    <string name="pr_collapse">閉じる</string>
+    <string name="cd_pull_request_expand">他 %1$d 件のプルリクエストを表示</string>
+    <string name="cd_pull_request_collapse">プルリクエストの表示を減らす</string>
 </resources>

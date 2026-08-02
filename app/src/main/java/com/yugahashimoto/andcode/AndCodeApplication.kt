@@ -7,10 +7,12 @@ import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import androidx.startup.AppInitializer
+import com.yugahashimoto.andcode.core.api.GitHubApiClient
 import com.yugahashimoto.andcode.core.diagnostics.CrashLog
 import com.yugahashimoto.andcode.core.notification.RuntimeNotificationHelper
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
 import com.yugahashimoto.andcode.data.repository.ProviderCatalogCache
+import com.yugahashimoto.andcode.data.repository.PullRequestStatusRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeActivityRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeCatalogRepository
 import com.yugahashimoto.andcode.data.schedule.ScheduleRepository
@@ -131,6 +133,9 @@ class AndCodeApplication : Application() {
     lateinit var githubStarCoordinator: GitHubStarCoordinator
         private set
 
+    lateinit var pullRequestStatusRepository: PullRequestStatusRepository
+        private set
+
     override fun onCreate() {
         super.onCreate()
         // First, so a crash in the rest of this method is recorded too.
@@ -148,6 +153,11 @@ class AndCodeApplication : Application() {
             GitHubStarCoordinator(
                 settings = settings,
                 service = GitHubStarService(client = httpClient, tokenProvider = { settings.githubToken }),
+                scope = applicationScope,
+            )
+        pullRequestStatusRepository =
+            PullRequestStatusRepository(
+                api = GitHubApiClient(token = { settings.githubToken }, client = httpClient),
                 scope = applicationScope,
             )
         val runtimeDirectory = File(filesDir, "runtime")
