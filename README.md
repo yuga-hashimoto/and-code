@@ -5,14 +5,13 @@
   <a href="https://github.com/yuga-hashimoto/and-code/releases/latest"><img src="https://img.shields.io/github/v/release/yuga-hashimoto/and-code" alt="Release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/yuga-hashimoto/and-code" alt="License: MIT" /></a>
   <a href="https://github.com/yuga-hashimoto/and-code/releases/latest"><img src="https://img.shields.io/github/downloads/yuga-hashimoto/and-code/total" alt="Downloads" /></a>
-  <a href="https://hosted.weblate.org/engage/and-code/"><img src="https://hosted.weblate.org/widget/and-code/svg-badge.svg" alt="Translation status" /></a>
 </p>
 
 **Run coding agents locally on Android through a native GUI — no terminal required.**
 
 AndCode is a native Android GUI app that brings AI coding agents to your phone. Chat with [OpenCode](https://github.com/sst/opencode), [Claude Code](https://github.com/anthropics/claude-code), and [Google Antigravity](https://github.com/google-antigravity/antigravity-cli) through a touch-first interface — no terminal, no SSH, no PC required for on-device use. It wraps agent runtimes via PRoot (on-device) or connects remotely to your existing OpenCode server on PC/Mac/Linux.
 
-[Website](https://yuga-hashimoto.github.io/and-code/) · [Releases](https://github.com/yuga-hashimoto/and-code/releases/latest) · [日本語のREADME](README.ja.md)
+[Releases](https://github.com/yuga-hashimoto/and-code/releases/latest) · [日本語のREADME](README.ja.md)
 
 <p align="center">
   <img src="screenshots/navigation.png" width="240" alt="Navigation drawer with agents, projects, and recent chats" />
@@ -77,7 +76,7 @@ On-device agents run inside a Linux environment via PRoot. OpenCode and Claude C
 - **Digital assistant** — Register as Android's default assistant (home gesture / corner swipe)
 - **Home screen widget** — Fire off a prompt straight from the launcher without opening the app first
 - **Secure storage** — Connection credentials encrypted with Android Keystore
-- **Localized UI** — English, Japanese, Chinese (Simplified), Russian, Spanish, French, Portuguese (Brazil), and Arabic, switchable from Settings; translations are managed on [Weblate](https://hosted.weblate.org/projects/and-code/)
+- **Localized UI** — English, Japanese, Chinese (Simplified), Russian, Spanish, French, Portuguese (Brazil), and Arabic, switchable from Settings
 
 ## Antigravity
 
@@ -228,7 +227,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## Contributing
 
-Contributions are welcome — code, bug reports, and translations! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for setup and workflow, and [docs/TRANSLATION.md](docs/TRANSLATION.md) if you'd like to help translate the app on [Weblate](https://hosted.weblate.org/projects/and-code/).
+Contributions are welcome — code, bug reports, and translations! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for setup and workflow, and [docs/TRANSLATION.md](docs/TRANSLATION.md) if you'd like to help translate the app.
 
 ## Third-Party Software
 

@@ -5,14 +5,13 @@
   <a href="https://github.com/yuga-hashimoto/and-code/releases/latest"><img src="https://img.shields.io/github/v/release/yuga-hashimoto/and-code" alt="Release" /></a>
   <a href="LICENSE"><img src="https://img.shields.io/github/license/yuga-hashimoto/and-code" alt="License: MIT" /></a>
   <a href="https://github.com/yuga-hashimoto/and-code/releases/latest"><img src="https://img.shields.io/github/downloads/yuga-hashimoto/and-code/total" alt="Downloads" /></a>
-  <a href="https://hosted.weblate.org/engage/and-code/"><img src="https://hosted.weblate.org/widget/and-code/svg-badge.svg" alt="Translation status" /></a>
 </p>
 
 **AIコーディングエージェントをAndroidのネイティブGUIでローカル実行 — ターミナル不要です。**
 
 AndCodeはAIコーディングエージェントをスマートフォンで使えるようにするネイティブAndroid GUIアプリです。[OpenCode](https://github.com/sst/opencode)、[Claude Code](https://github.com/anthropics/claude-code)、[Google Antigravity](https://github.com/google-antigravity/antigravity-cli)とタッチ操作中心のインターフェースで対話できます — 端末エミュレータもSSHもPCも、オンデバイス実行には一切不要です。PRootによるオンデバイスランタイムか、PC/Mac/Linux上の既存OpenCodeサーバーへのリモート接続で動作します。
 
-[Webサイト](https://yuga-hashimoto.github.io/and-code/) · [Releases](https://github.com/yuga-hashimoto/and-code/releases/latest) · [English README](README.md)
+[Releases](https://github.com/yuga-hashimoto/and-code/releases/latest) · [English README](README.md)
 
 <p align="center">
   <img src="screenshots/navigation.png" width="240" alt="エージェント・プロジェクト・最近のチャットを表示するナビゲーションドロワー" />
@@ -77,7 +76,7 @@ AndCodeはAIコーディングエージェントをスマートフォンで使�
 - **デジタルアシスタント** — Androidの既定アシスタントとして登録（ホームジェスチャー／コーナースワイプ）
 - **ホーム画面ウィジェット** — アプリを開かずにランチャーから直接プロンプトを送信
 - **安全な保存** — 接続情報をAndroid Keystoreで暗号化
-- **多言語UI** — 英語、日本語、中国語（簡体字）、ロシア語、スペイン語、フランス語、ポルトガル語（ブラジル）、アラビア語に対応。設定画面から切替可能。翻訳は[Weblate](https://hosted.weblate.org/projects/and-code/)で管理されています
+- **多言語UI** — 英語、日本語、中国語（簡体字）、ロシア語、スペイン語、フランス語、ポルトガル語（ブラジル）、アラビア語に対応。設定画面から切替可能
 
 ## Antigravity
 
@@ -228,7 +227,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 ## コントリビューション
 
-コード、バグ報告、翻訳など、どんな貢献も歓迎します！セットアップと開発フローは[CONTRIBUTING.md](CONTRIBUTING.md)を、翻訳で協力したい場合は[docs/TRANSLATION.md](docs/TRANSLATION.md)（[Weblate](https://hosted.weblate.org/projects/and-code/)）を参照してください。
+コード、バグ報告、翻訳など、どんな貢献も歓迎します！セットアップと開発フローは[CONTRIBUTING.md](CONTRIBUTING.md)を、翻訳で協力したい場合は[docs/TRANSLATION.md](docs/TRANSLATION.md)を参照してください。
 
 ## 第三者ソフトウェア
 
