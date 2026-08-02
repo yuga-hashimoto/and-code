@@ -85,6 +85,14 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         get() = preferences.getString(KEY_TTS_ANDROID_ENGINE, null)
         set(value) = preferences.edit().putString(KEY_TTS_ANDROID_ENGINE, value).apply()
 
+    var ttsSpeechRate: Float
+        get() = preferences.getFloat(KEY_TTS_SPEECH_RATE, 1.0f)
+        set(value) = preferences.edit().putFloat(KEY_TTS_SPEECH_RATE, value).apply()
+
+    var ttsPitch: Float
+        get() = preferences.getFloat(KEY_TTS_PITCH, 1.0f)
+        set(value) = preferences.edit().putFloat(KEY_TTS_PITCH, value).apply()
+
     var ttsOpenAiApiKey: String
         get() = preferences.getString(KEY_TTS_OPENAI_API_KEY, "").orEmpty()
         set(value) = preferences.edit().putString(KEY_TTS_OPENAI_API_KEY, value).apply()
@@ -412,6 +420,8 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         private const val KEY_TTS_ENABLED = "tts_enabled"
         private const val KEY_TTS_PROVIDER = "tts_provider"
         private const val KEY_TTS_ANDROID_ENGINE = "tts_android_engine"
+        private const val KEY_TTS_SPEECH_RATE = "tts_speech_rate"
+        private const val KEY_TTS_PITCH = "tts_pitch"
         private const val KEY_TTS_OPENAI_API_KEY = "tts_openai_api_key"
         private const val KEY_TTS_OPENAI_VOICE = "tts_openai_voice"
         private const val KEY_TTS_OPENAI_MODEL = "tts_openai_model"
