@@ -11,7 +11,7 @@
 ## Global Constraints
 
 - The LP remains English-only.
-- Use `brand/andcode_icon_master_1024.png` as the product mark; do not redraw or generate a replacement logo.
+- Use `brand/andcode_composite_square_1024.png` as the dark-surface product mark; do not redraw or generate a replacement logo.
 - Preserve the existing screenshots in `pages/` and reuse them instead of fabricating product UI.
 - Replace every emoji in feature/step UI with consistent inline SVG icons.
 - Keep GitHub Pages dependency-free: no npm package, icon library, or JS framework.
@@ -77,11 +77,12 @@ git commit -m "feat: add AndCode LP hero atmosphere"
 
 **Files:**
 - Modify: `pages/index.html`
+- Create: `pages/andcode-icon.png`
 - Create: `pages/navigation-drawer.jpg`, `pages/model-picker.jpg`, `pages/repository-chat.jpg`, `pages/image-generation.jpg`, `pages/schedules.jpg`, `pages/run-result.jpg`
 - Create: `screenshots/navigation-drawer.jpg`, `screenshots/model-picker.jpg`, `screenshots/repository-chat.jpg`, `screenshots/image-generation.jpg`, `screenshots/schedules.jpg`, `screenshots/run-result.jpg`
 
 **Interfaces:**
-- Consumes: `brand/andcode_icon_master_1024.png`, the six supplied Downloads screenshots, and `pages/andcode-hero-atmosphere.png`.
+- Consumes: `brand/andcode_composite_square_1024.png`, the six supplied Downloads screenshots, and `pages/andcode-hero-atmosphere.png`.
 - Produces: a complete semantic page with `#features` and `#how-it-works` anchors, working download/GitHub links, inline SVG icon definitions, and responsive presentation styles.
 
 - [ ] **Step 1: Copy and rename the supplied screenshots into the repository**
@@ -136,7 +137,7 @@ Run:
 
 ```bash
 rg -n '📱|⚡|🤖|🧠|🚀|📂|🌿|📋|🔗|✅|💬|⏰|🎙️|🖥️' pages/index.html
-rg -n 'id="features"|id="how-it-works"|andcode_icon_master_1024|andcode-hero-atmosphere' pages/index.html
+rg -n 'id="features"|id="how-it-works"|andcode-icon|andcode-hero-atmosphere' pages/index.html
 git diff --check
 ```
 
@@ -145,7 +146,7 @@ Expected: the first command returns no output; the second finds the two anchors 
 - [ ] **Step 7: Commit the structural/content change**
 
 ```bash
-git add pages/index.html pages/*.jpg
+git add pages/index.html pages/andcode-icon.png pages/*.jpg
 git commit -m "feat: redesign AndCode landing page structure"
 ```
 
@@ -211,7 +212,7 @@ git commit -m "docs: add descriptive AndCode screenshot galleries"
 ### Task 4: Validate responsive visuals, accessibility, and links
 
 **Files:**
-- Verify: `pages/index.html`, `pages/andcode-hero-atmosphere.png`, `brand/andcode_icon_master_1024.png`, the six `pages/*.jpg` screenshot assets, and both README galleries.
+- Verify: `pages/index.html`, `pages/andcode-icon.png`, `pages/andcode-hero-atmosphere.png`, the six `pages/*.jpg` screenshot assets, and both README galleries.
 
 **Interfaces:**
 - Consumes: the finished static LP.

@@ -59,7 +59,7 @@ The change covers the static GitHub Pages site under `pages/`, the repository sc
 - Surfaces: layered navy panels with restrained borders.
 - Primary accent: the app's light blue (`#6EA8FE` family).
 - Secondary accent: the app's teal (`#55C6C1` family).
-- Product mark: use the existing `brand/andcode_icon_master_1024.png` as the source asset; do not redraw or generate a replacement logo.
+- Product mark: use the existing `brand/andcode_composite_square_1024.png` as the dark-surface source asset; do not redraw or generate a replacement logo.
 - Type: retain the existing system/Inter-style sans-serif stack, but use tighter display sizing and stronger hierarchy.
 - Motion: only subtle hover/focus transitions; no auto-playing animation or scrolling marquee.
 
