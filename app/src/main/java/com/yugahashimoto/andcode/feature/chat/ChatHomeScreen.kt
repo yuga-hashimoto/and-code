@@ -101,6 +101,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -1769,6 +1770,11 @@ private fun CompactContextMeter(
                     .clip(RoundedCornerShape(2.dp)),
             color = barColor,
             trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            // Material3 defaults round the bar's cap, gap it from the track and draw a stop dot at
+            // the far end. At this size that reads as two dots instead of one bar filling L to R.
+            strokeCap = StrokeCap.Butt,
+            gapSize = 0.dp,
+            drawStopIndicator = {},
         )
         Text(
             text = "${formatTokenCount(displayedTokens)}/${formatTokenCount(contextLimit)}",
