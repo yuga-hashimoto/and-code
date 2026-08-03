@@ -660,13 +660,21 @@ fun AndCodeApp(
         if (drawerState.isOpen) keyboardController?.hide()
     }
 
+    val drawerGesturesEnabled = currentRoute in DRAWER_ROOT_ROUTES
+
     AndCodeTheme(
         appTheme = AppTheme.fromKey(preferences.theme),
         uiFontSize = preferences.uiFontSize,
     ) {
         ModalNavigationDrawer(
+            modifier =
+                if (drawerGesturesEnabled) {
+                    Modifier.onlyAllowDrawerEdgeSwipe(drawerIsOpen = drawerState.isOpen)
+                } else {
+                    Modifier
+                },
             drawerState = drawerState,
-            gesturesEnabled = currentRoute in DRAWER_ROOT_ROUTES,
+            gesturesEnabled = drawerGesturesEnabled,
             drawerContent = {
                 ModalDrawerSheet {
                     AppDrawerContent(
