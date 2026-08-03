@@ -49,6 +49,21 @@
 -keep class com.yugahashimoto.andcode.data.settings.Draft { *; }
 -keep class com.yugahashimoto.andcode.runtime.local.LocalRuntimeMetadata { *; }
 
+# Vosk wake word spotting, and the JNA bridge it reaches the native library through.
+#
+# Neither artifact ships consumer rules, so without these R8 renames the fields JNA's own native
+# code resolves by name from Native.initIDs() — "Can't obtain peer field ID for class
+# com.sun.jna.Pointer" — which fails com.sun.jna.Native's static initializer and leaves every
+# org.vosk class permanently unloadable in a release build. Members have to be kept, not just the
+# class names. Callbacks and Structure subclasses are read reflectively from native code too, so
+# anything deriving from a JNA type keeps its members as well.
+-keep class com.sun.jna.** { *; }
+-keep class org.vosk.** { *; }
+-keepclassmembers class * extends com.sun.jna.** { *; }
+-keepclassmembers class * implements com.sun.jna.** { *; }
+-dontwarn com.sun.jna.**
+-dontwarn java.awt.**
+
 # Firebase Crashlytics
 -keep class com.google.firebase.crashlytics.** { *; }
 -dontwarn com.google.firebase.crashlytics.**

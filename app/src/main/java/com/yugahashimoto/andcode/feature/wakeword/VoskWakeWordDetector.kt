@@ -39,9 +39,16 @@ internal class VoskWakeWordDetector(
             recognizer = recogniser
             Log.i(TAG, "Initialized for \"${WakeWordGrammar.normalize(phrase)}\"")
             true
-        } catch (e: UnsatisfiedLinkError) {
-            // No native library for this ABI. Nothing to retry, and the caller switches the wake
-            // word back off rather than looping on a service that can never listen.
+        } catch (e: LinkageError) {
+            // The native library is unusable: missing for this ABI, or failed to bind to the Java
+            // side. Either way it surfaces as an error rather than an exception, and it arrives as
+            // UnsatisfiedLinkError only on the very first attempt — once a class has failed to
+            // initialize it stays marked as failed, and later attempts report NoClassDefFoundError
+            // instead. Catching the shared supertype covers both, plus the
+            // ExceptionInInitializerError that wraps a failure thrown out of a static initializer.
+            //
+            // Nothing here is retryable, and the caller switches the wake word back off rather than
+            // looping on a service that can never listen.
             Log.e(TAG, "Vosk native library is unavailable on this device", e)
             release()
             false

@@ -143,6 +143,13 @@ android {
             }
         }
     }
+    testOptions {
+        unitTests {
+            // android.util.Log is a stub on the unit test classpath and throws on every call.
+            // Returning defaults instead lets tests exercise code that logs on its error paths.
+            isReturnDefaultValues = true
+        }
+    }
     lint {
         // The androidx.startup Initializers are deliberately not auto-started: the manifest removes
         // their <meta-data> entries with tools:node="remove" so they cannot run inside
