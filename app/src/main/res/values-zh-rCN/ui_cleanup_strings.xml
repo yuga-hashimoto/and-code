@@ -64,6 +64,12 @@
     <string name="wake_word_barge_in_description">说出唤醒词即可中断正在朗读的回复。</string>
     <string name="wake_word_phrase_label">唤醒词</string>
     <string name="wake_word_phrase_hint">任何短语都可以。留空则使用“%1$s”。</string>
+    <string name="wake_word_phrase_unknown_words">语音模型中没有 %1$s 这一条目，因此永远无法识别。请尝试拆分成常见词语。</string>
+    <string name="wake_word_apply">应用</string>
+    <string name="wake_word_pending_changes">尚未应用。</string>
+    <string name="wake_word_listening_for">正在等待“%1$s”。</string>
+    <string name="wake_word_applied_phrase">已应用的唤醒词：“%1$s”。</string>
+    <string name="wake_word_blocked_by_phrase">在唤醒词是语音模型认识的词之前不可用。</string>
     <string name="wake_word_sensitivity_label">灵敏度</string>
     <string name="wake_word_sensitivity_hint">数值越高越难触发，误触也越少。</string>
     <string name="wake_word_model_language_label">语音模型</string>

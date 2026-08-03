@@ -18,12 +18,14 @@ import com.yugahashimoto.andcode.feature.wakeword.VoskModelCatalog
 import com.yugahashimoto.andcode.feature.wakeword.VoskModelLanguage
 import com.yugahashimoto.andcode.feature.wakeword.VoskModelState
 import com.yugahashimoto.andcode.feature.wakeword.VoskModelStore
+import com.yugahashimoto.andcode.feature.wakeword.VoskVocabulary
 import com.yugahashimoto.andcode.feature.wakeword.WakeWordGrammar
 import com.yugahashimoto.andcode.runtime.BackendKind
 import com.yugahashimoto.andcode.runtime.LocalAgent
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.local.LocalProviderCredentialStore
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -33,6 +35,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Locale
 
 data class SettingsUiState(
@@ -270,6 +273,22 @@ class SettingsViewModel(
     fun setWakeWordPhrase(phrase: String) = preferences.setWakeWordPhrase(phrase)
 
     fun setWakeWordSensitivity(sensitivity: Float) = preferences.setWakeWordSensitivity(sensitivity)
+
+    /**
+     * Which words of [phrase] the model for [language] cannot recognise.
+     *
+     * Empty also covers "cannot tell": with no model on disk, or a dictionary that will not read,
+     * there is nothing to hold against the phrase, and blocking on a failed check would be a worse
+     * outcome than the silent mis-detection it exists to prevent.
+     */
+    suspend fun unknownWakeWordWords(
+        language: VoskModelLanguage,
+        phrase: String,
+    ): List<String> =
+        withContext(Dispatchers.IO) {
+            val directory = voskModels.directoryFor(language) ?: return@withContext emptyList()
+            VoskVocabulary.unknownWords(directory, phrase).orEmpty()
+        }
 
     fun setWakeWordModelLanguage(language: VoskModelLanguage) = preferences.setWakeWordModelLanguage(language.id)
 

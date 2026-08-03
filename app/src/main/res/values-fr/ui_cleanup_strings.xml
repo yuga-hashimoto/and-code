@@ -64,6 +64,12 @@
     <string name="wake_word_barge_in_description">Dites le mot de réveil pour couper une réponse lue à voix haute.</string>
     <string name="wake_word_phrase_label">Mot de réveil</string>
     <string name="wake_word_phrase_hint">Toute phrase courte convient. Laissez vide pour utiliser \"%1$s\".</string>
+    <string name="wake_word_phrase_unknown_words">Le modèle vocal n\'a aucune entrée pour %1$s : il ne pourra jamais l\'entendre. Essayez de le découper en mots ordinaires.</string>
+    <string name="wake_word_apply">Appliquer</string>
+    <string name="wake_word_pending_changes">Pas encore appliqué.</string>
+    <string name="wake_word_listening_for">À l\'écoute de \"%1$s\".</string>
+    <string name="wake_word_applied_phrase">Mot de réveil appliqué : \"%1$s\".</string>
+    <string name="wake_word_blocked_by_phrase">Indisponible tant que le mot de réveil n\'est pas connu du modèle vocal.</string>
     <string name="wake_word_sensitivity_label">Sensibilité</string>
     <string name="wake_word_sensitivity_hint">Plus la valeur est haute, plus le déclenchement est difficile et les faux positifs rares.</string>
     <string name="wake_word_model_language_label">Modèle vocal</string>

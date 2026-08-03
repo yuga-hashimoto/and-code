@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.VoiceChat
+import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -74,6 +75,7 @@ import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.ui.runtimeAgentIcon
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
+import kotlinx.coroutines.delay
 import java.util.Locale
 
 /** Voice settings with explicit wake-word capability status. */
@@ -120,8 +122,8 @@ fun VoiceSettingsScreen(
     onTtsBargeInChange: (Boolean) -> Unit = {},
     onContinuousChange: (Boolean) -> Unit,
     onWakeWordChange: (Boolean) -> Unit,
-    onWakeWordPhraseChange: (String) -> Unit = {},
-    onWakeWordSensitivityChange: (Float) -> Unit = {},
+    onWakeWordApply: (String, Float) -> Unit = { _, _ -> },
+    unknownWakeWordWords: suspend (VoskModelLanguage, String) -> List<String> = { _, _ -> emptyList() },
     onWakeWordModelLanguageChange: (VoskModelLanguage) -> Unit = {},
     onWakeWordModelDownload: () -> Unit = {},
     onWakeWordModelCancel: () -> Unit = {},
@@ -131,6 +133,26 @@ fun VoiceSettingsScreen(
     onAssistantWorkspaceChange: (String) -> Unit = {},
     onBack: () -> Unit,
 ) {
+    // The wake word being edited, held here rather than beside the fields: those live in a
+    // LazyColumn item, and scrolling the section off screen would throw a half-typed phrase away.
+    var draftPhrase by remember(wakeWordPhrase) { mutableStateOf(wakeWordPhrase) }
+    var draftSensitivity by remember(wakeWordSensitivity) { mutableStateOf(wakeWordSensitivity) }
+    var unknownWords by remember { mutableStateOf(emptyList<String>()) }
+    var unknownAppliedWords by remember { mutableStateOf(emptyList<String>()) }
+    val modelState = wakeWordModelStates[wakeWordModelLanguage] ?: VoskModelState.Missing
+    LaunchedEffect(draftPhrase, wakeWordModelLanguage, modelState) {
+        // Settled input only: the dictionary is megabytes, and half-typed words are all unknown.
+        delay(PHRASE_CHECK_DELAY_MS)
+        unknownWords = unknownWakeWordWords(wakeWordModelLanguage, draftPhrase)
+    }
+    // The applied phrase is checked apart from the draft because it is the one the service would
+    // be handed. Editing an unusable phrase does not make it usable until the edit is applied, and
+    // switching detection on before then would only start a service that stops itself again.
+    LaunchedEffect(wakeWordPhrase, wakeWordModelLanguage, modelState) {
+        unknownAppliedWords = unknownWakeWordWords(wakeWordModelLanguage, wakeWordPhrase)
+    }
+    val appliedIsUsable = unknownAppliedWords.isEmpty()
+
     Column(modifier = Modifier.fillMaxSize()) {
         CenterAlignedTopAppBar(
             title = {
@@ -231,18 +253,29 @@ fun VoiceSettingsScreen(
                     VoiceToggleRow(
                         icon = Icons.Default.VoiceChat,
                         title = stringResource(R.string.settings_wake_word_row),
-                        description = stringResource(R.string.wake_word_description),
+                        description =
+                            if (appliedIsUsable) {
+                                stringResource(R.string.wake_word_description)
+                            } else {
+                                stringResource(R.string.wake_word_blocked_by_phrase)
+                            },
                         checked = wakeWordEnabled,
+                        enabled = appliedIsUsable,
                         onCheckedChange = onWakeWordChange,
                     )
                     VoiceDivider()
                     WakeWordSection(
-                        phrase = wakeWordPhrase,
-                        sensitivity = wakeWordSensitivity,
+                        appliedPhrase = wakeWordPhrase,
+                        appliedSensitivity = wakeWordSensitivity,
+                        draftPhrase = draftPhrase,
+                        draftSensitivity = draftSensitivity,
+                        unknownWords = unknownWords,
+                        listening = wakeWordEnabled,
                         language = wakeWordModelLanguage,
-                        modelState = wakeWordModelStates[wakeWordModelLanguage] ?: VoskModelState.Missing,
-                        onPhraseChange = onWakeWordPhraseChange,
-                        onSensitivityChange = onWakeWordSensitivityChange,
+                        modelState = modelState,
+                        onDraftPhraseChange = { draftPhrase = it },
+                        onDraftSensitivityChange = { draftSensitivity = it },
+                        onApply = { onWakeWordApply(draftPhrase, draftSensitivity) },
                         onLanguageChange = onWakeWordModelLanguageChange,
                         onDownload = onWakeWordModelDownload,
                         onCancelDownload = onWakeWordModelCancel,
@@ -418,6 +451,9 @@ private fun VoiceSlider(
 
 private const val SLIDER_STEPS = 29
 
+/** How long typing has to settle before the phrase is looked up in the model's dictionary. */
+private const val PHRASE_CHECK_DELAY_MS = 350L
+
 /**
  * Reads a sample line back with the settings as they stand.
  *
@@ -507,11 +543,13 @@ private fun VoiceTextField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,
+    isError: Boolean = false,
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         label = { Text(label) },
+        isError = isError,
         modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp),
         singleLine = true,
     )
@@ -757,45 +795,77 @@ private fun WorkspaceDropdown(
  * does the recognising.
  *
  * The phrase is free text rather than a fixed list because the recogniser is constrained to a
- * grammar at start-up, so any phrase works - the previous build could only offer the one phrase
- * someone had trained a network for. The model is downloaded on demand and is the one part of
- * this that can be absent, so its state is shown here rather than failing silently later.
+ * grammar at start-up, so any phrase the model has words for works - the previous build could only
+ * offer the one phrase someone had trained a network for. Which is also why what is typed is not
+ * what is listening: the recogniser is built once from the phrase, so the edit and the applied
+ * value are shown as two separate things rather than pretending a keystroke reaches detection.
  */
 @Composable
 private fun WakeWordSection(
-    phrase: String,
-    sensitivity: Float,
+    appliedPhrase: String,
+    appliedSensitivity: Float,
+    draftPhrase: String,
+    draftSensitivity: Float,
+    unknownWords: List<String>,
+    listening: Boolean,
     language: VoskModelLanguage,
     modelState: VoskModelState,
-    onPhraseChange: (String) -> Unit,
-    onSensitivityChange: (Float) -> Unit,
+    onDraftPhraseChange: (String) -> Unit,
+    onDraftSensitivityChange: (Float) -> Unit,
+    onApply: () -> Unit,
     onLanguageChange: (VoskModelLanguage) -> Unit,
     onDownload: () -> Unit,
     onCancelDownload: () -> Unit,
     onRemove: () -> Unit,
 ) {
+    val edited =
+        WakeWordGrammar.normalize(draftPhrase) != WakeWordGrammar.normalize(appliedPhrase) ||
+            draftSensitivity != appliedSensitivity
     VoiceTextField(
         label = stringResource(R.string.wake_word_phrase_label),
-        value = phrase,
-        onValueChange = onPhraseChange,
+        value = draftPhrase,
+        onValueChange = onDraftPhraseChange,
+        isError = unknownWords.isNotEmpty(),
     )
-    Text(
-        text = stringResource(R.string.wake_word_phrase_hint, WakeWordGrammar.DEFAULT_PHRASE),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 8.dp),
-    )
+    if (unknownWords.isEmpty()) {
+        Text(
+            text = stringResource(R.string.wake_word_phrase_hint, WakeWordGrammar.DEFAULT_PHRASE),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+    } else {
+        // Named, not just rejected: "andcode" is one keystroke from "and code", and the failure it
+        // causes is otherwise completely silent.
+        Text(
+            text =
+                stringResource(
+                    R.string.wake_word_phrase_unknown_words,
+                    unknownWords.joinToString(", "),
+                ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.error,
+            modifier = Modifier.padding(horizontal = 8.dp),
+        )
+    }
     VoiceSlider(
         label = stringResource(R.string.wake_word_sensitivity_label),
-        value = sensitivity,
+        value = draftSensitivity,
         range = 0f..1f,
-        onValueChange = onSensitivityChange,
+        onValueChange = onDraftSensitivityChange,
     )
     Text(
         text = stringResource(R.string.wake_word_sensitivity_hint),
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(horizontal = 8.dp),
+    )
+    WakeWordApplyRow(
+        appliedPhrase = appliedPhrase,
+        listening = listening,
+        edited = edited,
+        canApply = edited && unknownWords.isEmpty(),
+        onApply = onApply,
     )
     VoiceDivider()
     ChoiceDropdown(
@@ -815,6 +885,48 @@ private fun WakeWordSection(
         onCancelDownload = onCancelDownload,
         onRemove = onRemove,
     )
+}
+
+/**
+ * What detection is listening for right now, and the button that changes it.
+ *
+ * Applying is a deliberate press rather than something that follows typing: the recogniser is
+ * rebuilt from scratch each time, which means reloading a 40 MB model, and a phrase is not worth
+ * building one for until it is finished being typed.
+ */
+@Composable
+private fun WakeWordApplyRow(
+    appliedPhrase: String,
+    listening: Boolean,
+    edited: Boolean,
+    canApply: Boolean,
+    onApply: () -> Unit,
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text =
+                when {
+                    edited -> stringResource(R.string.wake_word_pending_changes)
+                    listening -> stringResource(R.string.wake_word_listening_for, WakeWordGrammar.normalize(appliedPhrase))
+                    else -> stringResource(R.string.wake_word_applied_phrase, WakeWordGrammar.normalize(appliedPhrase))
+                },
+            style = MaterialTheme.typography.bodySmall,
+            color =
+                if (edited) {
+                    MaterialTheme.colorScheme.onSurface
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            modifier = Modifier.weight(1f).padding(start = 4.dp),
+        )
+        Button(onClick = onApply, enabled = canApply) {
+            Text(stringResource(R.string.wake_word_apply))
+        }
+    }
 }
 
 /** The download state of the selected speech model, and the one action it currently offers. */

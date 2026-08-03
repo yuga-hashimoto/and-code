@@ -64,6 +64,12 @@
     <string name="wake_word_barge_in_description">Скажите слово активации, чтобы прервать зачитывание ответа.</string>
     <string name="wake_word_phrase_label">Слово активации</string>
     <string name="wake_word_phrase_hint">Подойдёт любая короткая фраза. Оставьте пустым, чтобы использовать «%1$s».</string>
+    <string name="wake_word_phrase_unknown_words">В речевой модели нет записи для %1$s, поэтому услышать это слово невозможно. Попробуйте разбить его на обычные слова.</string>
+    <string name="wake_word_apply">Применить</string>
+    <string name="wake_word_pending_changes">Ещё не применено.</string>
+    <string name="wake_word_listening_for">Ожидание \"%1$s\".</string>
+    <string name="wake_word_applied_phrase">Применённое ключевое слово: \"%1$s\".</string>
+    <string name="wake_word_blocked_by_phrase">Недоступно, пока ключевое слово не станет известным речевой модели.</string>
     <string name="wake_word_sensitivity_label">Чувствительность</string>
     <string name="wake_word_sensitivity_hint">Чем выше, тем труднее сработать и тем реже ложные срабатывания.</string>
     <string name="wake_word_model_language_label">Речевая модель</string>

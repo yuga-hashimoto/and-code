@@ -64,6 +64,12 @@
     <string name="wake_word_barge_in_description">Say the wake word to cut a spoken answer short.</string>
     <string name="wake_word_phrase_label">Wake word</string>
     <string name="wake_word_phrase_hint">Any short phrase works. Leave empty to use \"%1$s\".</string>
+    <string name="wake_word_phrase_unknown_words">The speech model has no entry for %1$s, so it can never be heard. Try splitting it into ordinary words.</string>
+    <string name="wake_word_apply">Apply</string>
+    <string name="wake_word_pending_changes">Not applied yet.</string>
+    <string name="wake_word_listening_for">Listening for \"%1$s\".</string>
+    <string name="wake_word_applied_phrase">Applied wake word: \"%1$s\".</string>
+    <string name="wake_word_blocked_by_phrase">Unavailable until the wake word is one the speech model knows.</string>
     <string name="wake_word_sensitivity_label">Sensitivity</string>
     <string name="wake_word_sensitivity_hint">Higher is harder to trigger and less likely to fire by accident.</string>
     <string name="wake_word_model_language_label">Speech model</string>

@@ -128,7 +128,9 @@ fun NavGraphBuilder.settingsNavGraph(
         val previewSample = stringResource(R.string.tts_preview_sample)
         DisposableEffect(preview) { onDispose(preview::release) }
         // The phrase, sensitivity and model are all read when the recogniser is built, so a change
-        // only takes effect once the service has been restarted with it.
+        // only takes effect once the service has been restarted with it. Which is why applying is
+        // an explicit press rather than something that follows typing: restarting per keystroke
+        // reloaded a 40 MB model for every character of a phrase that was not finished yet.
         val restartWakeWord = {
             if (settingsState.wakeWordEnabled) {
                 val restarted =
@@ -223,14 +225,12 @@ fun NavGraphBuilder.settingsNavGraph(
                     com.yugahashimoto.andcode.feature.wakeword.WakeWordService.stop(context)
                 }
             },
-            onWakeWordPhraseChange = { phrase ->
+            onWakeWordApply = { phrase, sensitivity ->
                 settingsViewModel.setWakeWordPhrase(phrase)
-                restartWakeWord()
-            },
-            onWakeWordSensitivityChange = { sensitivity ->
                 settingsViewModel.setWakeWordSensitivity(sensitivity)
                 restartWakeWord()
             },
+            unknownWakeWordWords = settingsViewModel::unknownWakeWordWords,
             onWakeWordModelLanguageChange = { language ->
                 settingsViewModel.setWakeWordModelLanguage(language)
                 restartWakeWord()

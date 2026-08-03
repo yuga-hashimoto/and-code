@@ -64,6 +64,12 @@
     <string name="wake_word_barge_in_description">読み上げ中にウェイクワードで停止できるようにします。</string>
     <string name="wake_word_phrase_label">ウェイクワード</string>
     <string name="wake_word_phrase_hint">短いフレーズなら何でも使えます。空欄の場合は「%1$s」になります。</string>
+    <string name="wake_word_phrase_unknown_words">音声モデルに %1$s の登録がないため、この語は永久に認識されません。通常の単語に分けてみてください。</string>
+    <string name="wake_word_apply">適用</string>
+    <string name="wake_word_pending_changes">まだ適用されていません。</string>
+    <string name="wake_word_listening_for">「%1$s」を待機中です。</string>
+    <string name="wake_word_applied_phrase">適用中のウェイクワード:「%1$s」</string>
+    <string name="wake_word_blocked_by_phrase">音声モデルが認識できるウェイクワードにするまで使用できません。</string>
     <string name="wake_word_sensitivity_label">感度</string>
     <string name="wake_word_sensitivity_hint">高くすると反応しにくくなり、誤検出も減ります。</string>
     <string name="wake_word_model_language_label">音声モデル</string>

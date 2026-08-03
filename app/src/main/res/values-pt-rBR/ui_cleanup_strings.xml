@@ -64,6 +64,12 @@
     <string name="wake_word_barge_in_description">Diga a palavra de ativação para cortar uma resposta falada.</string>
     <string name="wake_word_phrase_label">Palavra de ativação</string>
     <string name="wake_word_phrase_hint">Qualquer frase curta serve. Deixe vazio para usar \"%1$s\".</string>
+    <string name="wake_word_phrase_unknown_words">O modelo de voz não tem entrada para %1$s, então nunca poderá ouvi-lo. Tente dividir em palavras comuns.</string>
+    <string name="wake_word_apply">Aplicar</string>
+    <string name="wake_word_pending_changes">Ainda não aplicado.</string>
+    <string name="wake_word_listening_for">Ouvindo \"%1$s\".</string>
+    <string name="wake_word_applied_phrase">Palavra de ativação aplicada: \"%1$s\".</string>
+    <string name="wake_word_blocked_by_phrase">Indisponível até que a palavra de ativação seja uma que o modelo de voz conheça.</string>
     <string name="wake_word_sensitivity_label">Sensibilidade</string>
     <string name="wake_word_sensitivity_hint">Valores mais altos dificultam o acionamento e reduzem disparos acidentais.</string>
     <string name="wake_word_model_language_label">Modelo de voz</string>

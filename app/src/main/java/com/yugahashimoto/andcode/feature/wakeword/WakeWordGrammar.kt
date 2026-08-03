@@ -24,6 +24,12 @@ object WakeWordGrammar {
      */
     fun normalize(phrase: String): String = phrase.trim().lowercase().replace(WHITESPACE, " ").ifBlank { DEFAULT_PHRASE }
 
+    /**
+     * The individual words the recogniser will be asked for, which is what the model's dictionary
+     * is checked against - a phrase is only recognisable if every word of it is.
+     */
+    fun words(phrase: String): List<String> = normalize(phrase).split(' ').filter(String::isNotBlank)
+
     fun grammarFor(phrase: String): String {
         val normalized = normalize(phrase)
         val entries = if (normalized == UNKNOWN) listOf(UNKNOWN) else listOf(normalized, UNKNOWN)

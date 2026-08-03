@@ -64,6 +64,12 @@
     <string name="wake_word_barge_in_description">قل كلمة التنبيه لإيقاف الإجابة المقروءة.</string>
     <string name="wake_word_phrase_label">كلمة التنبيه</string>
     <string name="wake_word_phrase_hint">أي عبارة قصيرة تصلح. اتركه فارغًا لاستخدام \"%1$s\".</string>
+    <string name="wake_word_phrase_unknown_words">لا يحتوي نموذج الكلام على مدخل لـ %1$s، لذا لن يُسمع أبدًا. جرّب تقسيمه إلى كلمات عادية.</string>
+    <string name="wake_word_apply">تطبيق</string>
+    <string name="wake_word_pending_changes">لم يُطبَّق بعد.</string>
+    <string name="wake_word_listening_for">الاستماع إلى \"%1$s\".</string>
+    <string name="wake_word_applied_phrase">كلمة التنبيه المطبَّقة: \"%1$s\".</string>
+    <string name="wake_word_blocked_by_phrase">غير متاح حتى تصبح كلمة التنبيه معروفة لنموذج الكلام.</string>
     <string name="wake_word_sensitivity_label">الحساسية</string>
     <string name="wake_word_sensitivity_hint">القيمة الأعلى تجعل التفعيل أصعب وتقلّل الإطلاق العرضي.</string>
     <string name="wake_word_model_language_label">نموذج الكلام</string>

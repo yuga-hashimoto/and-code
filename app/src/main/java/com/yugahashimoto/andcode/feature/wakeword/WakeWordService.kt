@@ -40,7 +40,14 @@ class WakeWordService : Service() {
     @Volatile private var audioRecord: AudioRecord? = null
     private var wakeLock: PowerManager.WakeLock? = null
 
+    // What the running recogniser was actually built from, which is not the same as what settings
+    // hold: all three are read once when it is built, so a change to any of them only reaches
+    // detection by building a new one.
     @Volatile private var currentLanguage = VoskModelLanguage.ENGLISH
+
+    @Volatile private var currentPhrase: String? = null
+
+    @Volatile private var currentSensitivity: Float? = null
 
     @Volatile private var assistantRequestId: String? = null
     private var assistantTimeoutJob: Job? = null
@@ -115,6 +122,10 @@ class WakeWordService : Service() {
         return START_STICKY
     }
 
+    private fun phrase(): String = settings()?.wakeWordPhrase.orEmpty()
+
+    private fun sensitivity(): Float = settings()?.wakeWordSensitivity ?: DEFAULT_SENSITIVITY
+
     override fun onDestroy() {
         stopListening()
         assistantTimeoutJob?.cancel()
@@ -186,14 +197,29 @@ class WakeWordService : Service() {
         resetSession: Boolean = true,
     ) {
         if (micHoldToken != null) {
-            // The holder gets detection back when it releases the microphone.
+            // The holder gets detection back when it releases the microphone, and the recogniser it
+            // comes back with is built then - so a phrase applied during a hold still lands.
             currentLanguage = language
             return
         }
-        if (listenJob?.isActive == true && currentLanguage == language) return
+        val phrase = phrase()
+        val sensitivity = sensitivity()
+        // Comparing the language alone used to make an in-place restart a no-op, so editing the
+        // phrase left the old recogniser listening while the notification already advertised the
+        // new one - the only way to actually apply a phrase was to switch the wake word off and on.
+        if (
+            listenJob?.isActive == true &&
+            currentLanguage == language &&
+            currentPhrase == phrase &&
+            currentSensitivity == sensitivity
+        ) {
+            return
+        }
 
         val previousJob = listenJob
         currentLanguage = language
+        currentPhrase = phrase
+        currentSensitivity = sensitivity
         stopAudioRecord()
         previousJob?.cancel()
         if (resetSession) {
@@ -219,11 +245,22 @@ class WakeWordService : Service() {
                     stopSelf()
                     return@launch
                 }
+                // Vosk drops grammar entries the model has no dictionary entry for, leaving a
+                // recogniser that can never fire. Listening with one burns the battery and holds
+                // the microphone indicator on while looking, from the outside, exactly like a bug
+                // in the microphone - so it is refused rather than run.
+                val unknown = VoskVocabulary.unknownWords(modelDirectory, phrase)
+                if (!unknown.isNullOrEmpty()) {
+                    Log.e(TAG, "The ${language.id} model does not know $unknown - refusing to listen")
+                    persistEnabled(false)
+                    stopSelf()
+                    return@launch
+                }
                 val det =
                     VoskWakeWordDetector(
                         modelDirectory = modelDirectory,
-                        phrase = settings()?.wakeWordPhrase.orEmpty(),
-                        sensitivity = settings()?.wakeWordSensitivity ?: DEFAULT_SENSITIVITY,
+                        phrase = phrase,
+                        sensitivity = sensitivity,
                     )
                 if (!det.initialize()) {
                     Log.e(TAG, "Detector initialization failed")
