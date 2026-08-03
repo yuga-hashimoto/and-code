@@ -236,6 +236,16 @@
     <string name="runtime_usage_label">Uso del entorno de ejecución</string>
     <string name="device_free_space_label">Espacio libre del dispositivo</string>
     <string name="opencode_update_title">Actualizaciones de OpenCode</string>
+    <string name="runtime_start_button">Iniciar</string>
+    <string name="runtime_stop_button">Detener</string>
+    <string name="runtime_restart_button">Reiniciar</string>
+    <string name="agent_version_label">Versión</string>
+    <string name="agent_status_ready">Listo</string>
+    <string name="agent_status_sign_in_required">Requiere inicio de sesión</string>
+    <string name="agent_status_install_failed">Error de instalación</string>
+    <string name="opencode_not_installed_note">OpenCode aún no está instalado en este dispositivo. Ejecute la configuración para instalarlo.</string>
+    <string name="opencode_open_setup_button">Abrir configuración</string>
+    <string name="local_runtime_shared_note">El entorno Linux que comparten todos los agentes locales de Android. La versión y las actualizaciones de cada agente están en sus propios ajustes.</string>
     <string name="check_update_source_note">Comprueba la última versión desde la Release oficial de GitHub.</string>
     <string name="check_for_update_button">Buscar actualizaciones</string>
     <string name="up_to_date_label">OpenCode %1$s está actualizado</string>

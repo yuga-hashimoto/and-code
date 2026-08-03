@@ -59,6 +59,8 @@ fun ClaudeCodeCard(
     onOpenUrl: (String) -> Unit,
     /** False in the setup guide, where installation is already driven by the guide's own step. */
     showInstallActions: Boolean = true,
+    /** False on the settings screen, whose status card already states the installed version. */
+    showVersion: Boolean = true,
 ) {
     Spacer(Modifier.height(12.dp))
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -94,6 +96,7 @@ fun ClaudeCodeCard(
                     onSignOut,
                     onOpenUrl,
                     showInstallActions,
+                    showVersion,
                 )
             ClaudeInstallStatus.Idle ->
                 if (claude.installed) {
@@ -107,6 +110,7 @@ fun ClaudeCodeCard(
                         onSignOut,
                         onOpenUrl,
                         showInstallActions,
+                        showVersion,
                     )
                 } else if (showInstallActions) {
                     Button(onClick = onInstall, modifier = Modifier.fillMaxWidth()) {
@@ -130,8 +134,9 @@ private fun InstalledSection(
     onSignOut: () -> Unit,
     onOpenUrl: (String) -> Unit,
     showInstallActions: Boolean,
+    showVersion: Boolean,
 ) {
-    claude.version?.takeIf(String::isNotBlank)?.let { InstalledVersionRow(it) }
+    if (showVersion) claude.version?.takeIf(String::isNotBlank)?.let { InstalledVersionRow(it) }
     when (val auth = claude.auth) {
         ClaudeAuthCoordinator.State.Starting -> {
             Text(stringResource(R.string.claude_auth_starting), style = MaterialTheme.typography.bodySmall)

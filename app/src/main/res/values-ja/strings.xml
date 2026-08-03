@@ -236,6 +236,16 @@
     <string name="runtime_usage_label">ランタイム使用量</string>
     <string name="device_free_space_label">端末の空き容量</string>
     <string name="opencode_update_title">OpenCodeの更新</string>
+    <string name="runtime_start_button">起動</string>
+    <string name="runtime_stop_button">停止</string>
+    <string name="runtime_restart_button">再起動</string>
+    <string name="agent_version_label">バージョン</string>
+    <string name="agent_status_ready">使用可能</string>
+    <string name="agent_status_sign_in_required">サインインが必要</string>
+    <string name="agent_status_install_failed">導入に失敗</string>
+    <string name="opencode_not_installed_note">OpenCodeはまだこの端末に導入されていません。セットアップから導入してください。</string>
+    <string name="opencode_open_setup_button">セットアップを開く</string>
+    <string name="local_runtime_shared_note">Android内の各エージェントが共有するLinux環境です。各エージェントのバージョンと更新はそれぞれの設定にあります。</string>
     <string name="check_update_source_note">公式GitHub Releaseから最新版を確認します。</string>
     <string name="check_for_update_button">更新を確認</string>
     <string name="up_to_date_label">OpenCode %1$sは最新です</string>

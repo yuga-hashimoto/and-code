@@ -6,9 +6,6 @@ import com.yugahashimoto.andcode.runtime.local.AdbConnectionState
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeDiagnostics
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeOperationResult
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeProcessMetrics
-import com.yugahashimoto.andcode.runtime.local.LocalRuntimeRelease
-import com.yugahashimoto.andcode.runtime.local.LocalRuntimeReleaseAsset
-import com.yugahashimoto.andcode.runtime.local.LocalRuntimeUpdateCheck
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +39,7 @@ class LocalRuntimeManagementViewModelTest {
     }
 
     @Test
-    fun `initial load collects diagnostics update state and rollback target`() =
+    fun `initial load collects diagnostics`() =
         runTest(dispatcher) {
             val runtimeState = MutableStateFlow<LocalRuntimeStatus>(LocalRuntimeStatus.Ready("1.18.3", 4097))
             val expected = diagnostics(runtimeState.value)
@@ -50,17 +47,13 @@ class LocalRuntimeManagementViewModelTest {
                 viewModel(
                     runtimeState = runtimeState,
                     diagnosticsProvider = { expected },
-                    updateCheckProvider = { Result.success(upToDate()) },
-                    rollbackVersionProvider = { "1.17.0" },
                 )
 
             advanceUntilIdle()
 
             assertFalse(viewModel.state.value.isLoading)
-            assertFalse(viewModel.state.value.isCheckingUpdate)
             assertEquals(expected, viewModel.state.value.diagnostics)
-            assertEquals(upToDate(), viewModel.state.value.updateCheck)
-            assertEquals("1.17.0", viewModel.state.value.rollbackVersion)
+            assertEquals(expected.status, viewModel.state.value.runtimeStatus)
             assertEquals(null, viewModel.state.value.error)
         }
 
@@ -78,69 +71,6 @@ class LocalRuntimeManagementViewModelTest {
 
             assertEquals("diagnostic failed", viewModel.state.value.error)
             assertEquals(null, viewModel.state.value.diagnostics)
-        }
-
-    @Test
-    fun `available update can be confirmed and dispatched`() =
-        runTest(dispatcher) {
-            val runtimeState = MutableStateFlow<LocalRuntimeStatus>(LocalRuntimeStatus.Ready("1.18.3", 4097))
-            var updateCalls = 0
-            val viewModel =
-                viewModel(
-                    runtimeState = runtimeState,
-                    updateCheckProvider = { Result.success(available()) },
-                    updateAction = { updateCalls++ },
-                )
-            advanceUntilIdle()
-
-            assertTrue(viewModel.state.value.updateCheck is LocalRuntimeUpdateCheck.Available)
-            viewModel.requestUpdate()
-            assertTrue(viewModel.state.value.showUpdateConfirmation)
-
-            viewModel.confirmUpdate()
-
-            assertEquals(1, updateCalls)
-            assertFalse(viewModel.state.value.showUpdateConfirmation)
-        }
-
-    @Test
-    fun `rollback requires confirmation and dispatches selected target`() =
-        runTest(dispatcher) {
-            val runtimeState = MutableStateFlow<LocalRuntimeStatus>(LocalRuntimeStatus.Ready("1.19.0", 4097))
-            var rollbackCalls = 0
-            val viewModel =
-                viewModel(
-                    runtimeState = runtimeState,
-                    updateCheckProvider = { Result.success(upToDate("1.19.0")) },
-                    rollbackVersionProvider = { "1.18.3" },
-                    rollbackAction = { rollbackCalls++ },
-                )
-            advanceUntilIdle()
-
-            viewModel.requestRollback()
-            assertTrue(viewModel.state.value.showRollbackConfirmation)
-
-            viewModel.confirmRollback()
-
-            assertEquals(1, rollbackCalls)
-            assertFalse(viewModel.state.value.showRollbackConfirmation)
-        }
-
-    @Test
-    fun `update check failure keeps diagnostics and exposes update error`() =
-        runTest(dispatcher) {
-            val runtimeState = MutableStateFlow<LocalRuntimeStatus>(LocalRuntimeStatus.Ready("1.18.3", 4097))
-            val viewModel =
-                viewModel(
-                    runtimeState = runtimeState,
-                    updateCheckProvider = { Result.failure(IllegalStateException("network failed")) },
-                )
-
-            advanceUntilIdle()
-
-            assertNotNull(viewModel.state.value.diagnostics)
-            assertEquals("network failed", viewModel.state.value.updateError)
-            assertFalse(viewModel.state.value.isCheckingUpdate)
         }
 
     @Test
@@ -332,12 +262,8 @@ class LocalRuntimeManagementViewModelTest {
     private fun viewModel(
         runtimeState: MutableStateFlow<LocalRuntimeStatus>,
         diagnosticsProvider: suspend () -> LocalRuntimeDiagnostics = { diagnostics(runtimeState.value) },
-        updateCheckProvider: suspend () -> Result<LocalRuntimeUpdateCheck> = { Result.success(upToDate()) },
-        rollbackVersionProvider: suspend () -> String? = { null },
         lastOperationState: MutableStateFlow<LocalRuntimeOperationResult?> = MutableStateFlow(null),
         repairAction: () -> Unit = {},
-        updateAction: () -> Unit = {},
-        rollbackAction: () -> Unit = {},
         deleteAction: () -> Unit = {},
         deleteTimeoutMillis: Long = 30_000L,
         adbState: MutableStateFlow<AdbConnectionState>? = null,
@@ -349,11 +275,7 @@ class LocalRuntimeManagementViewModelTest {
         runtimeState = runtimeState,
         lastOperationState = lastOperationState,
         diagnosticsProvider = diagnosticsProvider,
-        updateCheckProvider = updateCheckProvider,
-        rollbackVersionProvider = rollbackVersionProvider,
         repairAction = repairAction,
-        updateAction = updateAction,
-        rollbackAction = rollbackAction,
         deleteAction = deleteAction,
         getString = { resId -> "string/$resId" },
         deleteTimeoutMillis = deleteTimeoutMillis,
@@ -376,24 +298,5 @@ class LocalRuntimeManagementViewModelTest {
             tools = emptyList(),
             logTail = "ok",
             collectedAtMillis = 123,
-        )
-
-    private fun upToDate(version: String = "1.18.3") = LocalRuntimeUpdateCheck.UpToDate(version, version)
-
-    private fun available() =
-        LocalRuntimeUpdateCheck.Available(
-            currentVersion = "1.18.3",
-            release =
-                LocalRuntimeRelease(
-                    version = "1.19.0",
-                    releaseNotes = "Improved Android support",
-                    asset =
-                        LocalRuntimeReleaseAsset(
-                            name = "opencode-linux-arm64-musl.tar.gz",
-                            url = "https://example.test/opencode.tar.gz",
-                            sha256 = "a".repeat(64),
-                            sizeBytes = 100,
-                        ),
-                ),
         )
 }

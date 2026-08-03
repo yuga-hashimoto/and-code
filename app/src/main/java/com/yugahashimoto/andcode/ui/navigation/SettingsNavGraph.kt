@@ -23,6 +23,7 @@ import com.yugahashimoto.andcode.feature.settings.ClaudeCodeAgentSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.GitHubSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.ModelVisibilityScreen
 import com.yugahashimoto.andcode.feature.settings.OpenCodeAgentSettingsScreen
+import com.yugahashimoto.andcode.feature.settings.OpenCodeAgentSettingsViewModel
 import com.yugahashimoto.andcode.feature.settings.ProviderSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.SettingsScreenV2
 import com.yugahashimoto.andcode.feature.settings.SettingsViewModel
@@ -266,11 +267,44 @@ fun NavGraphBuilder.settingsNavGraph(
     }
 
     composable(ROUTE_SETTINGS_AGENT_OPENCODE) {
+        val app = context.applicationContext as com.yugahashimoto.andcode.AndCodeApplication
+        val openCodeViewModel: OpenCodeAgentSettingsViewModel =
+            androidx.lifecycle.viewmodel.compose.viewModel(
+                key = "settings-agent-opencode",
+                factory =
+                    com.yugahashimoto.andcode.ui.ViewModelFactory {
+                        OpenCodeAgentSettingsViewModel(
+                            runtimeState = app.localRuntimeManager.state,
+                            lastOperationState = app.localRuntimeManager.lastOperation,
+                            updateCheckProvider = app.localRuntimeManager::checkForUpdate,
+                            rollbackVersionProvider = app.localRuntimeManager::rollbackVersion,
+                            freeBytesProvider = { app.filesDir.usableSpace },
+                            startAction = app.localRuntimeController::start,
+                            stopAction = app.localRuntimeController::stop,
+                            restartAction = app.localRuntimeController::restart,
+                            updateAction = app.localRuntimeController::update,
+                            rollbackAction = app.localRuntimeController::rollback,
+                            getString = { app.getString(it) },
+                        )
+                    },
+            )
+        val openCodeState by openCodeViewModel.state.collectAsState()
         OpenCodeAgentSettingsScreen(
+            state = openCodeState,
+            onStart = openCodeViewModel::start,
+            onStop = openCodeViewModel::stop,
+            onRestart = openCodeViewModel::restart,
+            onCheckForUpdate = openCodeViewModel::checkForUpdate,
+            onRequestUpdate = openCodeViewModel::requestUpdate,
+            onDismissUpdate = openCodeViewModel::dismissUpdate,
+            onConfirmUpdate = openCodeViewModel::confirmUpdate,
+            onRequestRollback = openCodeViewModel::requestRollback,
+            onDismissRollback = openCodeViewModel::dismissRollback,
+            onConfirmRollback = openCodeViewModel::confirmRollback,
+            onOpenSetup = { navController.navigate(ROUTE_ANDROID_SETUP) },
             onOpenProviderSettings = { navController.navigate(ROUTE_SETTINGS_PROVIDERS) },
             onOpenModelVisibility = { navController.navigate(ROUTE_SETTINGS_MODEL_VISIBILITY) },
             onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP) },
-            onOpenLocalRuntime = { navController.navigate(LOCAL_RUNTIME_MANAGEMENT_ROUTE) },
             onBack = { navController.popBackStack() },
         )
     }
@@ -318,7 +352,6 @@ fun NavGraphBuilder.settingsNavGraph(
             onOpenUrl = { url ->
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
             },
-            onOpenLocalRuntime = { navController.navigate(ROUTE_ANDROID_SETUP) },
             onBack = { navController.popBackStack() },
         )
     }

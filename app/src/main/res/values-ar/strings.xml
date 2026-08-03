@@ -236,6 +236,16 @@
     <string name="runtime_usage_label">استخدام بيئة التشغيل</string>
     <string name="device_free_space_label">المساحة الحرة على الجهاز</string>
     <string name="opencode_update_title">تحديثات OpenCode</string>
+    <string name="runtime_start_button">تشغيل</string>
+    <string name="runtime_stop_button">إيقاف</string>
+    <string name="runtime_restart_button">إعادة التشغيل</string>
+    <string name="agent_version_label">الإصدار</string>
+    <string name="agent_status_ready">جاهز</string>
+    <string name="agent_status_sign_in_required">يلزم تسجيل الدخول</string>
+    <string name="agent_status_install_failed">فشل التثبيت</string>
+    <string name="opencode_not_installed_note">لم يتم تثبيت OpenCode على هذا الجهاز بعد. شغّل الإعداد لتثبيته.</string>
+    <string name="opencode_open_setup_button">فتح الإعداد</string>
+    <string name="local_runtime_shared_note">بيئة لينكس التي تشترك فيها كل الوكلاء المحليين على أندرويد. إصدار كل وكيل وتحديثاته موجودة في إعداداته الخاصة.</string>
     <string name="check_update_source_note">يتحقق من أحدث إصدار من GitHub Release الرسمي.</string>
     <string name="check_for_update_button">التحقق من التحديثات</string>
     <string name="up_to_date_label">OpenCode %1$s محدث</string>

@@ -56,6 +56,8 @@ fun AntigravityCard(
     onOpenUrl: (String) -> Unit,
     /** False in the setup guide, where installation is already driven by the guide's own step. */
     showInstallActions: Boolean = true,
+    /** False on the settings screen, whose status card already states the installed version. */
+    showVersion: Boolean = true,
 ) {
     Spacer(Modifier.height(12.dp))
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -95,6 +97,7 @@ fun AntigravityCard(
                     onSignOut,
                     onOpenUrl,
                     showInstallActions,
+                    showVersion,
                 )
             AntigravityInstallStatus.Idle ->
                 if (antigravity.installed) {
@@ -108,6 +111,7 @@ fun AntigravityCard(
                         onSignOut,
                         onOpenUrl,
                         showInstallActions,
+                        showVersion,
                     )
                 } else if (showInstallActions) {
                     Button(
@@ -130,13 +134,16 @@ private fun InstalledSection(
     onSignOut: () -> Unit,
     onOpenUrl: (String) -> Unit,
     showInstallActions: Boolean,
+    showVersion: Boolean,
 ) {
-    antigravity.version?.takeIf(String::isNotBlank)?.let { version ->
-        Text(
-            text = stringResource(R.string.antigravity_installed_version, version),
-            style = MaterialTheme.typography.bodyMedium,
-            fontWeight = FontWeight.Medium,
-        )
+    if (showVersion) {
+        antigravity.version?.takeIf(String::isNotBlank)?.let { version ->
+            Text(
+                text = stringResource(R.string.antigravity_installed_version, version),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium,
+            )
+        }
     }
     when (val auth = antigravity.auth) {
         AntigravityAuthCoordinator.State.Idle -> {
