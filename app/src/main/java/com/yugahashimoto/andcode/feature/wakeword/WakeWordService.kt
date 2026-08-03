@@ -52,6 +52,13 @@ class WakeWordService : Service() {
 
     @Volatile private var speaking = false
 
+    // Detection is not the only microphone reader in the app: chat dictation runs through
+    // SpeechRecognizer, which records from *another* process. Two live capture clients make the
+    // platform silence one of them, and the one it keeps is this service - so the recogniser hears
+    // nothing but zeroes and reports "no match". Whoever needs the microphone takes this hold and
+    // detection stands down until it is handed back.
+    @Volatile private var micHoldToken: String? = null
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
@@ -178,6 +185,11 @@ class WakeWordService : Service() {
         language: VoskModelLanguage,
         resetSession: Boolean = true,
     ) {
+        if (micHoldToken != null) {
+            // The holder gets detection back when it releases the microphone.
+            currentLanguage = language
+            return
+        }
         if (listenJob?.isActive == true && currentLanguage == language) return
 
         val previousJob = listenJob
@@ -348,6 +360,22 @@ class WakeWordService : Service() {
     }
 
     @Synchronized
+    private fun holdMicrophoneInternal(token: String) {
+        micHoldToken = token
+        stopListening()
+    }
+
+    @Synchronized
+    private fun releaseMicrophoneInternal(token: String) {
+        if (micHoldToken != token) return
+        micHoldToken = null
+        // An assistant session owns the microphone on its own terms, and hands detection back
+        // itself through setSpeaking and resumeAfterSession.
+        if (assistantRequestId != null) return
+        startListening(currentLanguage, resetSession = false)
+    }
+
+    @Synchronized
     private fun setSpeakingInternal(
         requestId: String,
         isSpeaking: Boolean,
@@ -432,6 +460,19 @@ class WakeWordService : Service() {
             speaking: Boolean,
         ) {
             activeInstance?.setSpeakingInternal(requestId, speaking)
+        }
+
+        /**
+         * Stops wake-word capture so another recogniser in this app can actually hear the user.
+         * A no-op when the service is not running, and safe to call more than once.
+         */
+        fun holdMicrophone(token: String) {
+            activeInstance?.holdMicrophoneInternal(token)
+        }
+
+        /** Hands the microphone back and resumes detection, unless a session is holding it. */
+        fun releaseMicrophone(token: String) {
+            activeInstance?.releaseMicrophoneInternal(token)
         }
 
         fun pauseForSession(requestId: String) {

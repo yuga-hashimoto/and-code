@@ -22,7 +22,11 @@ private const val MAX_RESULTS = 3
 // A short pause is common inside a Japanese sentence. Giving the recognizer more time here
 // avoids finalizing a segment before the user has finished the thought; chat then starts the next
 // segment after a genuine recognition result so long dictation remains in one composer value.
-private const val SILENCE_LENGTH_MS = 3000L
+//
+// Int, not Long: these extras are read with Bundle.getInt, and a Long is dropped for the default
+// ("expected Integer but value was a java.lang.Long" in the recognizer's log) - which is how this
+// spent a release having no effect at all.
+private const val SILENCE_LENGTH_MS = 3000
 
 /**
  * 音声認識マネージャー

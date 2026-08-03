@@ -70,6 +70,8 @@ import com.yugahashimoto.andcode.feature.activity.ActivityViewModel
 import com.yugahashimoto.andcode.feature.assistant.SpeechRecognizerManager
 import com.yugahashimoto.andcode.feature.assistant.SpeechResult
 import com.yugahashimoto.andcode.feature.assistant.SpeechTranscriptAccumulator
+import com.yugahashimoto.andcode.feature.assistant.VoiceDictationOutcome
+import com.yugahashimoto.andcode.feature.assistant.VoiceDictationPolicy
 import com.yugahashimoto.andcode.feature.chat.ChatHomeScreen
 import com.yugahashimoto.andcode.feature.chat.ChatViewModel
 import com.yugahashimoto.andcode.feature.chat.SubagentInfo
@@ -83,6 +85,7 @@ import com.yugahashimoto.andcode.feature.schedule.ScheduleViewModel
 import com.yugahashimoto.andcode.feature.settings.DiagnosticsSheet
 import com.yugahashimoto.andcode.feature.settings.GitHubRepo
 import com.yugahashimoto.andcode.feature.settings.SettingsViewModel
+import com.yugahashimoto.andcode.feature.wakeword.WakeWordService
 import com.yugahashimoto.andcode.feature.wakeword.WakeWordSettingsPolicy
 import com.yugahashimoto.andcode.feature.workspace.WorkspaceViewModel
 import com.yugahashimoto.andcode.runtime.RuntimeState
@@ -116,6 +119,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.UUID
 
 /** How often the open chat asks GitHub whether its pull requests have moved on. */
 private const val PULL_REQUEST_REFRESH_INTERVAL_MS = 30_000L
@@ -316,9 +320,15 @@ fun AndCodeApp(
         voiceJob =
             voiceScope.launch {
                 val transcript = SpeechTranscriptAccumulator()
+                // Wake-word detection records straight from the microphone, while this dictation
+                // records through SpeechRecognizer in another process. Left running, detection wins
+                // the platform's arbitration and the recogniser is handed silence.
+                val micToken = UUID.randomUUID().toString()
+                WakeWordService.holdMicrophone(micToken)
                 try {
+                    var silentSegments = 0
                     while (true) {
-                        var restart = true
+                        var outcome = VoiceDictationOutcome.RESTART
                         speechManager.startListening(speechLocaleTag(context)).collect { result ->
                             when (result) {
                                 SpeechResult.Ready,
@@ -329,16 +339,25 @@ fun AndCodeApp(
                                     chatViewModel.updateSpeechPartial(transcript.preview(result.text))
                                 }
                                 is SpeechResult.Result -> {
+                                    silentSegments = 0
                                     transcript.append(result.text)
                                     chatViewModel.updateSpeechPartial(transcript.text)
                                 }
                                 is SpeechResult.Error -> {
-                                    restart = false
-                                    chatViewModel.reportSpeechError(result.message)
+                                    silentSegments += 1
+                                    outcome =
+                                        VoiceDictationPolicy.outcomeFor(
+                                            code = result.code,
+                                            hasTranscript = transcript.text.isNotBlank(),
+                                            consecutiveFailures = silentSegments,
+                                        )
+                                    if (outcome == VoiceDictationOutcome.REPORT) {
+                                        chatViewModel.reportSpeechError(result.message)
+                                    }
                                 }
                             }
                         }
-                        if (!restart) break
+                        if (outcome != VoiceDictationOutcome.RESTART) break
                         delay(VOICE_RESTART_DELAY_MS)
                         chatViewModel.startListening()
                         if (transcript.text.isNotBlank()) {
@@ -346,6 +365,7 @@ fun AndCodeApp(
                         }
                     }
                 } finally {
+                    WakeWordService.releaseMicrophone(micToken)
                     chatViewModel.stopListening()
                 }
             }
@@ -363,7 +383,7 @@ fun AndCodeApp(
                 if (WakeWordSettingsPolicy.canEnable(microphonePermission = true, assistantActive = assistantActive)) {
                     settingsViewModel.setWakeWordEnabled(true)
                     val started =
-                        com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
+                        WakeWordService.start(
                             context,
                             settingsState.wakeWordModelLanguage,
                         )
@@ -456,13 +476,13 @@ fun AndCodeApp(
     LaunchedEffect(preferences.wakeWordEnabled, settingsState.wakeWordModelLanguage, assistantActive) {
         if (preferences.wakeWordEnabled && hasMicrophonePermission() && assistantActive) {
             val started =
-                com.yugahashimoto.andcode.feature.wakeword.WakeWordService.start(
+                WakeWordService.start(
                     context,
                     language = settingsState.wakeWordModelLanguage,
                 )
             if (!started) settingsViewModel.setWakeWordEnabled(false)
         } else {
-            com.yugahashimoto.andcode.feature.wakeword.WakeWordService.stop(context)
+            WakeWordService.stop(context)
             if (preferences.wakeWordEnabled) settingsViewModel.setWakeWordEnabled(false)
         }
     }
