@@ -4,6 +4,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeAgent
 import com.yugahashimoto.andcode.core.api.OpenCodeEvent
 import com.yugahashimoto.andcode.core.api.OpenCodeHealth
 import com.yugahashimoto.andcode.core.api.OpenCodeMessage
+import com.yugahashimoto.andcode.core.api.OpenCodeMessageInfo
 import com.yugahashimoto.andcode.core.api.OpenCodeSession
 import com.yugahashimoto.andcode.core.api.PromptRequest
 import com.yugahashimoto.andcode.core.api.ProviderCatalog
@@ -171,6 +172,59 @@ class RuntimeActivityRepositoryTest {
             assertEquals(setOf("ses_1"), repository.state.value.completedSessionIds)
 
             repository.markSessionRead("ses_1")
+            assertTrue(repository.state.value.completedSessionIds.isEmpty())
+        }
+
+    @Test
+    fun `late message events do not resurrect a chat finished locally`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val repository = RuntimeActivityRepository(registry, TestScope(dispatcher))
+            advanceUntilIdle()
+
+            repository.markSessionRunning("ses_1")
+            repository.markSessionFinished("ses_1", unread = false)
+            target.eventFlow.emit(
+                OpenCodeEvent.MessageUpdated(
+                    OpenCodeMessageInfo(
+                        id = "msg_final",
+                        sessionId = "ses_1",
+                        role = "assistant",
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+
+            assertTrue(repository.state.value.activeSessionIds.isEmpty())
+        }
+
+    @Test
+    fun `a new busy status can reactivate a previously settled chat`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val repository = RuntimeActivityRepository(registry, TestScope(dispatcher))
+            advanceUntilIdle()
+
+            repository.markSessionRunning("ses_1")
+            repository.markSessionFinished("ses_1", unread = true)
+            target.eventFlow.emit(OpenCodeEvent.SessionStatusChanged("ses_1", "busy"))
+            advanceUntilIdle()
+
+            assertEquals(setOf("ses_1"), repository.state.value.activeSessionIds)
             assertTrue(repository.state.value.completedSessionIds.isEmpty())
         }
 

@@ -37,6 +37,8 @@ interface UnreadSessionStore {
 data class RuntimeActivityState(
     val activeSessionIds: Set<String> = emptySet(),
     val completedSessionIds: Set<String> = emptySet(),
+    /** Sessions whose current run has ended; late stream events must not resurrect them. */
+    val settledSessionIds: Set<String> = emptySet(),
     val permissions: List<PermissionRequest> = emptyList(),
     val logs: List<RuntimeEventLog> = emptyList(),
     val streamError: String? = null,
@@ -165,6 +167,7 @@ class RuntimeActivityRepository(
             current.copy(
                 activeSessionIds = current.activeSessionIds + sessionId,
                 completedSessionIds = current.completedSessionIds - sessionId,
+                settledSessionIds = current.settledSessionIds - sessionId,
             )
         }
         persistUnread()
@@ -185,6 +188,7 @@ class RuntimeActivityRepository(
                     } else {
                         current.completedSessionIds - sessionId
                     },
+                settledSessionIds = current.settledSessionIds + sessionId,
             )
         }
         persistUnread()
@@ -203,7 +207,7 @@ class RuntimeActivityRepository(
             is OpenCodeEvent.MessagePartUpdated -> {
                 val sessionId = event.part.sessionId ?: return
                 mutableState.update { current ->
-                    if (sessionId in current.completedSessionIds) {
+                    if (sessionId in current.settledSessionIds || sessionId in current.completedSessionIds) {
                         current
                     } else {
                         current.copy(activeSessionIds = current.activeSessionIds + sessionId)
@@ -216,7 +220,7 @@ class RuntimeActivityRepository(
             }
             is OpenCodeEvent.MessagePartDelta -> {
                 mutableState.update { current ->
-                    if (event.sessionId in current.completedSessionIds) {
+                    if (event.sessionId in current.settledSessionIds || event.sessionId in current.completedSessionIds) {
                         current
                     } else {
                         current.copy(activeSessionIds = current.activeSessionIds + event.sessionId)
@@ -242,6 +246,7 @@ class RuntimeActivityRepository(
                     current.copy(
                         activeSessionIds = current.activeSessionIds - event.sessionId,
                         completedSessionIds = current.completedSessionIds + event.sessionId,
+                        settledSessionIds = current.settledSessionIds + event.sessionId,
                     )
                 }
                 appendLog(messages.eventCompleted, null, event.sessionId)
@@ -254,7 +259,7 @@ class RuntimeActivityRepository(
             }
             is OpenCodeEvent.MessageUpdated -> {
                 mutableState.update { current ->
-                    if (event.info.sessionId in current.completedSessionIds) {
+                    if (event.info.sessionId in current.settledSessionIds || event.info.sessionId in current.completedSessionIds) {
                         current
                     } else {
                         current.copy(activeSessionIds = current.activeSessionIds + event.info.sessionId)
@@ -274,10 +279,22 @@ class RuntimeActivityRepository(
                         activeSessionIds =
                             if (event.status == "idle") {
                                 current.activeSessionIds - event.sessionId
-                            } else if (event.sessionId in current.completedSessionIds) {
-                                current.activeSessionIds
                             } else {
                                 current.activeSessionIds + event.sessionId
+                            },
+                        completedSessionIds =
+                            if (event.status == "idle") {
+                                current.completedSessionIds + event.sessionId
+                            } else if (event.sessionId in current.completedSessionIds) {
+                                current.completedSessionIds - event.sessionId
+                            } else {
+                                current.completedSessionIds
+                            },
+                        settledSessionIds =
+                            if (event.status == "idle") {
+                                current.settledSessionIds + event.sessionId
+                            } else {
+                                current.settledSessionIds - event.sessionId
                             },
                     )
                 }
@@ -285,7 +302,10 @@ class RuntimeActivityRepository(
             is OpenCodeEvent.SessionError -> {
                 event.sessionId?.let { sessionId ->
                     mutableState.update { current ->
-                        current.copy(activeSessionIds = current.activeSessionIds - sessionId)
+                        current.copy(
+                            activeSessionIds = current.activeSessionIds - sessionId,
+                            settledSessionIds = current.settledSessionIds + sessionId,
+                        )
                     }
                 }
                 appendLog(messages.eventError, event.message, event.sessionId)

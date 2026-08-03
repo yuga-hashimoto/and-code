@@ -13,7 +13,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -173,7 +173,7 @@ fun AssistantActivitySheet(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            items(parts, key = { it.id }) { part ->
+            itemsIndexed(parts, key = ::activityPartKey) { _, part ->
                 when (part) {
                     is ChatPart.Reasoning -> ReasoningCard(part)
                     is ChatPart.Tool -> ToolCard(part)

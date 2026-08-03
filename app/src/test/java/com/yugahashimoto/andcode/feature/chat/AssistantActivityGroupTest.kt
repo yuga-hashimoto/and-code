@@ -293,4 +293,17 @@ class AssistantActivityGroupTest {
         assertEquals("image:i1", image.id)
         assertEquals("see above", (entries[2] as TimelineEntry.Body).part.text)
     }
+
+    @Test
+    fun `activity part keys are unique when streamed parts reuse an id`() {
+        val parts =
+            listOf(
+                tool("toolu_duplicate", "bash"),
+                tool("toolu_duplicate", "read"),
+            )
+
+        val keys = parts.mapIndexed(::activityPartKey)
+
+        assertEquals(parts.size, keys.toSet().size)
+    }
 }

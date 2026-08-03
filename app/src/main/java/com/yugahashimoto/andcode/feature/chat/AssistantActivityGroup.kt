@@ -36,6 +36,9 @@ sealed interface TimelineEntry {
     ) : TimelineEntry
 }
 
+/** Compose key for a detail-row part; the stream can repeat an OpenCode part id. */
+internal fun activityPartKey(index: Int, part: ChatPart): String = "activity-part:$index:${part.id}"
+
 /** Broad buckets used to summarise a run of tool calls in one line. */
 enum class ToolCategory { COMMAND, READ, EDIT, SUBAGENT, OTHER }
 
