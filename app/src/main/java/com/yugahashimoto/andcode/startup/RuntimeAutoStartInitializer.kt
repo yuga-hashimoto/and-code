@@ -21,22 +21,7 @@ class RuntimeAutoStartInitializer : Initializer<RuntimeAutoStartInitializer.Resu
         val app = context.applicationContext as AndCodeApplication
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
-        val runtimeStatus = app.localRuntimeManager.status()
-        val setupConfigured =
-            hasUsableRuntimeSetup(
-                localRuntimeStatus = runtimeStatus,
-                hasRemoteConnection = app.settings.connections().isNotEmpty(),
-            )
-        if (app.settings.onboardingCompleted != setupConfigured) {
-            app.settings.onboardingCompleted = setupConfigured
-        }
-
-        if (!app.settings.onboardingCompleted) return Result(null)
-        if (runtimeStatus is LocalRuntimeStatus.NotInstalled) return Result(null)
-        val selectedId = app.settings.selectedRuntimeId
-        if (selectedId != null && selectedId != LOCAL_RUNTIME_ID) return Result(null)
-
-        app.localRuntimeController.start()
+        if (!restoreIfConfigured(app)) return Result(null)
 
         var warmupJob: Job? = null
         scope.launch {
@@ -72,9 +57,38 @@ class RuntimeAutoStartInitializer : Initializer<RuntimeAutoStartInitializer.Resu
 
     override fun dependencies(): List<Class<out Initializer<*>>> = emptyList()
 
-    private companion object {
-        const val LOCAL_RUNTIME_ID = "local-android"
-        const val CATALOG_WARMUP_ATTEMPTS = 4
-        const val CATALOG_WARMUP_DELAY_MS = 2500L
+    companion object {
+        /**
+         * Reuses the same gate from both app startup and lifecycle broadcasts. Package updates
+         * stop every process belonging to the old APK, so the initializer alone is not a reliable
+         * recovery hook.
+         */
+        internal fun restoreIfConfigured(app: AndCodeApplication): Boolean {
+            val runtimeStatus = app.localRuntimeManager.status()
+            val setupConfigured =
+                hasUsableRuntimeSetup(
+                    localRuntimeStatus = runtimeStatus,
+                    hasRemoteConnection = app.settings.connections().isNotEmpty(),
+                )
+            if (app.settings.onboardingCompleted != setupConfigured) {
+                app.settings.onboardingCompleted = setupConfigured
+            }
+
+            if (
+                !shouldAutoStartLocalRuntime(
+                    onboardingCompleted = app.settings.onboardingCompleted,
+                    localRuntimeStatus = runtimeStatus,
+                    selectedRuntimeId = app.settings.selectedRuntimeId,
+                )
+            ) {
+                return false
+            }
+
+            app.localRuntimeController.start()
+            return true
+        }
+
+        private const val CATALOG_WARMUP_ATTEMPTS = 4
+        private const val CATALOG_WARMUP_DELAY_MS = 2500L
     }
 }
