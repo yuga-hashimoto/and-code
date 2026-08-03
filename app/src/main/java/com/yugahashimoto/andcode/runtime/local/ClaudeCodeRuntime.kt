@@ -225,7 +225,13 @@ class ClaudeCodeRuntime(
         auth.cancel()
     }
 
-    fun listMessages(sessionId: String): List<OpenCodeMessage> = messageStore.list(sessionId)
+    @Synchronized
+    fun listMessages(sessionId: String): List<OpenCodeMessage> {
+        if (sessions[sessionId]?.process?.isAlive != true) {
+            return messageStore.settleRunningTools(sessionId, INTERRUPTED_TOOL_ERROR)
+        }
+        return messageStore.list(sessionId)
+    }
 
     @Synchronized
     fun deleteSessionData(sessionId: String) {
@@ -642,5 +648,6 @@ class ClaudeCodeRuntime(
         const val TITLE_MAX_LENGTH = 60
         const val TITLE_TIMEOUT_SECONDS = 45L
         const val WORKSPACE_COMMAND_TIMEOUT_SECONDS = 60L
+        const val INTERRUPTED_TOOL_ERROR = "Claude Code session ended before the tool result was received"
     }
 }

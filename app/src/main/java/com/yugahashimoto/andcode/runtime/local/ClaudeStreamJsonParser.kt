@@ -45,6 +45,15 @@ class ClaudeStreamJsonParser(
 
     private var currentMessageId: String? = null
 
+    /** Tool calls that have not received a matching tool_result from Claude Code yet. */
+    private val openTools = linkedMapOf<String, OpenTool>()
+    private val messagesById = linkedMapOf<String, OpenCodeMessage>()
+
+    private data class OpenTool(
+        val messageId: String,
+        val partId: String,
+    )
+
     fun parse(line: String): Parsed {
         val root = runCatching { json.parseToJsonElement(line).jsonObject }.getOrNull() ?: return Parsed()
         return when (root.string("type")) {
@@ -78,27 +87,38 @@ class ClaudeStreamJsonParser(
                 is JsonPrimitive -> listOf(JsonObject(mapOf("type" to JsonPrimitive("text"), "text" to content)))
                 else -> emptyList()
             }
-        val parts = blocks.mapNotNull { block -> parseContentBlock(messageId, block) }
+        val parts =
+            buildList {
+                blocks.forEach { block ->
+                    val part = parseContentBlock(messageId, block) ?: return@forEach
+                    add(part)
+                    val partId = part.id ?: return@forEach
+                    when (block.string("type")) {
+                        "tool_use" -> openTools[partId] = OpenTool(messageId, partId)
+                        "tool_result" -> openTools.remove(block.string("tool_use_id") ?: partId)
+                    }
+                }
+            }
         if (parts.isEmpty()) return Parsed()
         // Tool results arrive on a "user" message; surfacing them as assistant activity keeps the
         // transcript readable instead of interleaving fake user turns.
         val effectiveRole = if (role == "user") "assistant" else role
+        val parsedMessage =
+            OpenCodeMessage(
+                info =
+                    OpenCodeMessageInfo(
+                        id = messageId,
+                        sessionId = sessionId,
+                        role = effectiveRole,
+                        time = now(),
+                        agent = "claude",
+                    ),
+                parts = parts,
+            )
+        messagesById[messageId] = parsedMessage
         return Parsed(
             events = parts.map { OpenCodeEvent.MessagePartUpdated(it) },
-            messages =
-                listOf(
-                    OpenCodeMessage(
-                        info =
-                            OpenCodeMessageInfo(
-                                id = messageId,
-                                sessionId = sessionId,
-                                role = effectiveRole,
-                                time = now(),
-                                agent = "claude",
-                            ),
-                        parts = parts,
-                    ),
-                ),
+            messages = listOf(parsedMessage),
             claudeSessionId = root.string("session_id"),
             resolvedModel = message.string("model"),
             todos = blocks.firstNotNullOfOrNull(::parseTodos),
@@ -122,8 +142,10 @@ class ClaudeStreamJsonParser(
         val subtype = root.string("subtype")
         if (isError || (subtype != null && subtype != "success")) {
             val message = root.string("result") ?: subtype ?: "Claude Code reported an error"
+            val settled = settleOpenTools(message)
             return Parsed(
-                events = listOf(OpenCodeEvent.SessionError(sessionId, message), OpenCodeEvent.SessionIdle(sessionId)),
+                events = settled.events + OpenCodeEvent.SessionError(sessionId, message) + OpenCodeEvent.SessionIdle(sessionId),
+                messages = settled.messages,
                 claudeSessionId = claudeSessionId,
                 turnFinished = true,
                 errorMessage = message,
@@ -135,6 +157,50 @@ class ClaudeStreamJsonParser(
             claudeSessionId = claudeSessionId,
             turnFinished = true,
         )
+    }
+
+    private data class SettledTools(
+        val messages: List<OpenCodeMessage>,
+        val events: List<OpenCodeEvent>,
+    )
+
+    /** Persists a terminal state for tools whose result was lost with the failed API turn. */
+    private fun settleOpenTools(error: String): SettledTools {
+        if (openTools.isEmpty()) return SettledTools(emptyList(), emptyList())
+        val settledPartIds = openTools.keys.toSet()
+        val openByMessage = openTools.values.groupBy(OpenTool::messageId)
+        val messages =
+            openByMessage.mapNotNull { (messageId, tools) ->
+                val original = messagesById[messageId] ?: return@mapNotNull null
+                val openPartIds = tools.mapTo(mutableSetOf(), OpenTool::partId)
+                val updatedParts =
+                    original.parts.map { part ->
+                        if (part.id !in openPartIds || part.type != "tool") {
+                            part
+                        } else {
+                            part.copy(
+                                state =
+                                    part.state.orEmpty() +
+                                        mapOf(
+                                            "status" to JsonPrimitive("error"),
+                                            "error" to JsonPrimitive(error),
+                                        ),
+                            )
+                        }
+                    }
+                val updated = original.copy(parts = updatedParts)
+                messagesById[messageId] = updated
+                updated
+            }
+        val events =
+            messages.flatMap { message ->
+                message.parts.filter { part ->
+                    part.type == "tool" && part.id?.let(settledPartIds::contains) == true
+                }
+                    .map(OpenCodeEvent::MessagePartUpdated)
+            }
+        openTools.clear()
+        return SettledTools(messages, events)
     }
 
     private fun parseContentBlock(

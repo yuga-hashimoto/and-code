@@ -2,6 +2,7 @@ package com.yugahashimoto.andcode.runtime.local
 
 import com.yugahashimoto.andcode.core.api.OpenCodeEvent
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -107,6 +108,27 @@ class ClaudeStreamJsonParserTest {
         assertEquals("boom", parsed.errorMessage)
         assertTrue(parsed.events.first() is OpenCodeEvent.SessionError)
         assertTrue(parsed.events.last() is OpenCodeEvent.SessionIdle)
+    }
+
+    @Test
+    fun `settles open tools when a turn ends with an error`() {
+        val parser = parser()
+        parser.parse(
+            """{"type":"assistant","message":{"id":"m-tool","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{"command":"grep"}}]}}""",
+        )
+
+        val failed =
+            parser.parse(
+                """{"type":"result","subtype":"error_during_execution","result":"API disconnected","session_id":"abc"}""",
+            )
+
+        val recovered = failed.messages.single()
+        val tool = recovered.parts.single()
+        assertEquals("m-tool", recovered.info.id)
+        assertEquals("t1", tool.id)
+        assertEquals("error", tool.state?.get("status")?.jsonPrimitive?.content)
+        assertEquals("API disconnected", tool.state?.get("error")?.jsonPrimitive?.content)
+        assertTrue(failed.events.any { event -> event is OpenCodeEvent.MessagePartUpdated })
     }
 
     @Test

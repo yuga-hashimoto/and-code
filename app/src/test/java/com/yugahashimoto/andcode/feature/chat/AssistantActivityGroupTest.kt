@@ -174,6 +174,16 @@ class AssistantActivityGroupTest {
     }
 
     @Test
+    fun `activity part keys stay unique when Claude repeats a call id`() {
+        val parts = listOf(tool("call-1", "bash"), tool("call-1", "bash", status = ToolStatus.ERROR))
+
+        assertEquals(
+            listOf("activity-part:0:call-1", "activity-part:1:call-1"),
+            parts.mapIndexed(::activityPartKey),
+        )
+    }
+
+    @Test
     fun `flags a run that contains a failed tool`() {
         val summary = summarizeActivity(listOf(tool("t1", "bash"), tool("t2", "bash", status = ToolStatus.ERROR)))
 

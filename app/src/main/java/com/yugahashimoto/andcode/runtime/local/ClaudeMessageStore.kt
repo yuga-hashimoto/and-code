@@ -3,6 +3,9 @@ package com.yugahashimoto.andcode.runtime.local
 import com.yugahashimoto.andcode.core.api.OpenCodeMessage
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 
 /**
@@ -28,6 +31,46 @@ class ClaudeMessageStore(
 
     @Synchronized
     fun list(sessionId: String): List<OpenCodeMessage> = messages[sessionId].orEmpty().toList()
+
+    /**
+     * Converts tool calls left in an in-flight state by a process that disappeared into a
+     * terminal error. This is also applied to history loaded after an app restart, where there is
+     * no stream event left to do the cleanup.
+     */
+    @Synchronized
+    fun settleRunningTools(
+        sessionId: String,
+        error: String,
+    ): List<OpenCodeMessage> {
+        val existing = messages[sessionId].orEmpty()
+        val updated =
+            existing.map { message ->
+                message.copy(
+                    parts =
+                        message.parts.map { part ->
+                            val status = part.state?.get("status")?.jsonPrimitive?.contentOrNull
+                            if (part.type == "tool" && status in setOf("running", "pending")) {
+                                part.copy(
+                                    state =
+                                        part.state.orEmpty() +
+                                            mapOf(
+                                                "status" to JsonPrimitive("error"),
+                                                "error" to JsonPrimitive(error),
+                                            ),
+                                )
+                            } else {
+                                part
+                            }
+                        },
+                )
+            }
+        if (updated != existing) {
+            messages[sessionId] = updated.toMutableList()
+            dirty = true
+            flush()
+        }
+        return updated.toList()
+    }
 
     /** Adds [message], replacing any earlier version of the same message id. */
     @Synchronized

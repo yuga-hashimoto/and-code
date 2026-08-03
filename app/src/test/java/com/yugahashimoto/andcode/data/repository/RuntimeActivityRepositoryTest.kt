@@ -5,6 +5,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeEvent
 import com.yugahashimoto.andcode.core.api.OpenCodeHealth
 import com.yugahashimoto.andcode.core.api.OpenCodeMessage
 import com.yugahashimoto.andcode.core.api.OpenCodeMessageInfo
+import com.yugahashimoto.andcode.core.api.OpenCodePart
 import com.yugahashimoto.andcode.core.api.OpenCodeSession
 import com.yugahashimoto.andcode.core.api.PromptRequest
 import com.yugahashimoto.andcode.core.api.ProviderCatalog
@@ -400,6 +401,37 @@ class RuntimeActivityRepositoryTest {
             advanceUntilIdle()
 
             assertTrue(completed.isEmpty())
+        }
+
+    @Test
+    fun `late tool events after a session error do not resurrect activity`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val repository = RuntimeActivityRepository(registry, TestScope(dispatcher))
+            advanceUntilIdle()
+
+            target.eventFlow.emit(OpenCodeEvent.SessionError("ses_1", "API disconnected"))
+            advanceUntilIdle()
+            target.eventFlow.emit(
+                OpenCodeEvent.MessagePartUpdated(
+                    OpenCodePart(
+                        id = "tool-1",
+                        sessionId = "ses_1",
+                        type = "tool",
+                        tool = "Bash",
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+
+            assertTrue(repository.state.value.activeSessionIds.isEmpty())
         }
 
     private class FakeUnreadStore(
