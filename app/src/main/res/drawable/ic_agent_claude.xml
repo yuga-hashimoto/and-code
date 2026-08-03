@@ -1,7 +1,8 @@
 <!--
   AndCode-original neutral mark for the Claude Code integration. This intentionally does not
-  reproduce Anthropic's Claude logo/favicon; it is a generic four-point "spark" glyph used only to
-  give the "Claude Code" label a visual anchor in pickers and cards. See TRADEMARKS.md.
+  reproduce Anthropic's Claude logo/favicon; it is a generic circle-badge monogram (a "C" cut out
+  of a solid disc, mirroring the Antigravity "A" badge style below) used only to give the "Claude
+  Code" label a visual anchor in pickers and cards. See TRADEMARKS.md.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
@@ -11,5 +12,6 @@
     android:tint="?attr/colorControlNormal">
     <path
         android:fillColor="#FFFFFFFF"
-        android:pathData="M12,2 L14.6,9.4 L22,12 L14.6,14.6 L12,22 L9.4,14.6 L2,12 L9.4,9.4 Z" />
+        android:fillType="evenOdd"
+        android:pathData="M12,2A10,10 0,1 0,12 22A10,10 0,1 0,12 2M17.36,16.19A6.8,6.8 0,1 1,17.36 7.81L15.39,9.35A4.3,4.3 0,1 0,15.39 14.65Z" />
 </vector>
