@@ -5,7 +5,8 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  # pull_request_target so secrets are available even for PRs from forks.
+  # pull_request_target so the job can post comments even on fork PRs
+  # (GITHUB_TOKEN is read-only for pull_request events from forks).
   # Safe because OCR only reads the diff and never executes PR code.
   pull_request_target:
     types: [opened, synchronize]
@@ -23,9 +24,12 @@ jobs:
         # alibaba/open-code-review v1.8.8, pinned by SHA (tags are mutable).
         uses: alibaba/open-code-review@6dc3eb067071c01e7234ac6032a9f7d656a29f84
         with:
-          llm_url: https://opencode.ai/zen/go/v1/chat/completions
-          llm_auth_token: ${{ secrets.OPENCODE_GO_API_KEY }}
-          llm_model: deepseek-v4-flash
+          # OpenCode Zen free tier: keyless anonymous access via the special
+          # "public" token (same mechanism opencode itself uses when no key
+          # is configured). $0 per token; rate-limited per IP.
+          llm_url: https://opencode.ai/zen/v1/chat/completions
+          llm_auth_token: public
+          llm_model: deepseek-v4-flash-free
           llm_use_anthropic: 'false'
           llm_extra_body: '{"enable_thinking": false}'
           language: 'Japanese'
