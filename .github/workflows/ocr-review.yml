@@ -1,0 +1,35 @@
+name: OCR PR Review
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  # pull_request_target so secrets are available even for PRs from forks.
+  # Safe because OCR only reads the diff and never executes PR code.
+  pull_request_target:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  code-review:
+    if: ${{ secrets.OPENCODE_ZEN_API_KEY != '' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Run OpenCodeReview
+        uses: alibaba/open-code-review@v1.8.8
+        with:
+          llm_url: https://opencode.ai/zen/v1/chat/completions
+          llm_auth_token: ${{ secrets.OPENCODE_ZEN_API_KEY }}
+          llm_model: deepseek-v4-flash
+          llm_use_anthropic: 'false'
+          llm_extra_body: '{}'
+          language: 'Japanese'
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          sticky_summary: 'true'
+          incremental: 'true'
+          upload_artifacts: 'true'
