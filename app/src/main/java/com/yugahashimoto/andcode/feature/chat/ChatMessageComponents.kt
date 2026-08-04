@@ -247,12 +247,11 @@ private fun InlineText(
     style: TextStyle,
     linkColor: Color,
     codeBackground: Color,
-    onFilePathClick: (String) -> Unit,
 ) {
     val context = LocalContext.current
     val annotated =
         remember(inlines, linkColor, codeBackground) {
-            annotateFilePaths(renderInline(inlines, codeBackground, linkColor), linkColor)
+            renderInline(inlines, codeBackground, linkColor)
         }
     var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     SelectionContainer {
@@ -269,8 +268,7 @@ private fun InlineText(
                                     runCatching {
                                         context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(ann.item)))
                                     }
-                                } ?: annotated.getStringAnnotations("filepath", position, position)
-                                .firstOrNull()?.let { onFilePathClick(it.item) }
+                                }
                         }
                     }
                 },
@@ -328,7 +326,6 @@ private fun LinkedText(
 @Composable
 private fun MarkdownText(
     text: String,
-    onFilePathClick: (String) -> Unit = {},
     onImageClick: (ChatImageSource) -> Unit = {},
 ) {
     val blocks = remember(text) { MarkdownLite.parse(text) }
@@ -352,7 +349,6 @@ private fun MarkdownText(
                             }.copy(fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface),
                         linkColor = linkColor,
                         codeBackground = codeInlineBackground,
-                        onFilePathClick = onFilePathClick,
                     )
                 is MarkdownBlock.Paragraph -> {
                     val currentInlines = mutableListOf<MarkdownInline>()
@@ -365,7 +361,6 @@ private fun MarkdownText(
                                 style = bodyStyle,
                                 linkColor = linkColor,
                                 codeBackground = codeInlineBackground,
-                                onFilePathClick = onFilePathClick,
                             )
                             currentInlines.clear()
                         }
@@ -402,7 +397,7 @@ private fun MarkdownText(
                         block.items.forEach { item ->
                             Row {
                                 Text("•  ", color = MaterialTheme.colorScheme.onSurface)
-                                InlineText(item, bodyStyle, linkColor, codeInlineBackground, onFilePathClick)
+                                InlineText(item, bodyStyle, linkColor, codeInlineBackground)
                             }
                         }
                     }
@@ -411,7 +406,7 @@ private fun MarkdownText(
                         block.items.forEachIndexed { index, item ->
                             Row {
                                 Text("${index + 1}.  ", color = MaterialTheme.colorScheme.onSurface)
-                                InlineText(item, bodyStyle, linkColor, codeInlineBackground, onFilePathClick)
+                                InlineText(item, bodyStyle, linkColor, codeInlineBackground)
                             }
                         }
                     }
@@ -436,7 +431,6 @@ private fun MarkdownText(
                                 style = bodyStyle.copy(color = MaterialTheme.colorScheme.onSurfaceVariant),
                                 linkColor = linkColor,
                                 codeBackground = codeInlineBackground,
-                                onFilePathClick = onFilePathClick,
                             )
                         }
                     }
@@ -635,34 +629,6 @@ private fun ChatImageThumbnail(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-            }
-        }
-    }
-}
-
-private val FILE_PATH_REGEX = Regex("[\\w./-]+\\.\\w+")
-
-private fun annotateFilePaths(
-    source: AnnotatedString,
-    linkColor: Color,
-): AnnotatedString {
-    val excludeRanges =
-        source.getStringAnnotations("link", 0, source.text.length) +
-            source.getStringAnnotations("code", 0, source.text.length)
-    return buildAnnotatedString {
-        append(source)
-        FILE_PATH_REGEX.findAll(source.text).forEach { match ->
-            val overlapsProtected =
-                excludeRanges.any { ann ->
-                    match.range.first < ann.end && match.range.last + 1 > ann.start
-                }
-            if (!overlapsProtected) {
-                addStyle(
-                    SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
-                    match.range.first,
-                    match.range.last + 1,
-                )
-                addStringAnnotation("filepath", match.value, match.range.first, match.range.last + 1)
             }
         }
     }

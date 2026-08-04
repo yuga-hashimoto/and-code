@@ -205,6 +205,17 @@ class MarkdownLiteTest {
     }
 
     @Test
+    fun `dotted numbers stay plain text`() {
+        val paragraph =
+            MarkdownLite.parse("versionName 1.2.2, 19.5 MB, v1.2.2")
+                .single() as MarkdownBlock.Paragraph
+        assertEquals(
+            listOf(MarkdownInline.Plain("versionName 1.2.2, 19.5 MB, v1.2.2")),
+            paragraph.inlines,
+        )
+    }
+
+    @Test
     fun `markdown image is parsed`() {
         val paragraph =
             MarkdownLite.parse("Look at ![rabbit](/path/to/rabbit.png) image")
