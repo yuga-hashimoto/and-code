@@ -72,6 +72,7 @@ import com.yugahashimoto.andcode.feature.assistant.SpeechResult
 import com.yugahashimoto.andcode.feature.assistant.SpeechTranscriptAccumulator
 import com.yugahashimoto.andcode.feature.assistant.VoiceDictationOutcome
 import com.yugahashimoto.andcode.feature.assistant.VoiceDictationPolicy
+import com.yugahashimoto.andcode.feature.browser.GuestBrowserCommandWatcher
 import com.yugahashimoto.andcode.feature.chat.ChatHomeScreen
 import com.yugahashimoto.andcode.feature.chat.ChatViewModel
 import com.yugahashimoto.andcode.feature.chat.SubagentInfo
@@ -105,6 +106,7 @@ import com.yugahashimoto.andcode.ui.navigation.SCHEDULE_DETAIL_ROUTE_PATTERN
 import com.yugahashimoto.andcode.ui.navigation.SCHEDULE_EDIT_ARG_ID
 import com.yugahashimoto.andcode.ui.navigation.SCHEDULE_EDIT_ROUTE_PATTERN
 import com.yugahashimoto.andcode.ui.navigation.decodeRouteArg
+import com.yugahashimoto.andcode.ui.navigation.guestBrowserRoute
 import com.yugahashimoto.andcode.ui.navigation.scheduleDetailRoute
 import com.yugahashimoto.andcode.ui.navigation.scheduleEditRoute
 import com.yugahashimoto.andcode.ui.navigation.settingsNavGraph
@@ -562,6 +564,15 @@ fun AndCodeApp(
             navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
         }
     }
+
+    // Lets the in-guest agent pop the guest browser open for the user by dropping a command
+    // file into the active workspace (see GuestBrowserCommandWatcher).
+    GuestBrowserCommandWatcher(
+        workspacePath = chatState.selectedWorkspacePath,
+        onOpenUrl = { url ->
+            navController.navigate(guestBrowserRoute(url)) { launchSingleTop = true }
+        },
+    )
 
     val onHandoff: (String) -> Unit = { targetRuntimeId ->
         val prompt = buildHandoffPrompt(chatState.messages)

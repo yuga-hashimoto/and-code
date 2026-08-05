@@ -44,6 +44,11 @@ const val SCHEDULE_EDIT_ROUTE_PATTERN = "$ROUTE_SCHEDULE_EDIT?$SCHEDULE_EDIT_ARG
 const val ROUTE_CODE_VIEWER = "code-viewer"
 const val ROUTE_TERMINAL = "terminal"
 const val ROUTE_GUEST_BROWSER = "guest-browser"
+const val GUEST_BROWSER_ARG_URL = "url"
+const val GUEST_BROWSER_ROUTE_PATTERN = "$ROUTE_GUEST_BROWSER?$GUEST_BROWSER_ARG_URL={$GUEST_BROWSER_ARG_URL}"
+
+fun guestBrowserRoute(url: String): String =
+    "$ROUTE_GUEST_BROWSER?$GUEST_BROWSER_ARG_URL=${encodeRouteArg(url)}"
 
 const val CODE_VIEWER_ROUTE_PATTERN = "$ROUTE_CODE_VIEWER/{runtimeId}/{workspacePath}/{filePath}"
 

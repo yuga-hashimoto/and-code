@@ -82,6 +82,10 @@ fun GuestBrowserScreen(
             AndroidView(
                 modifier = Modifier.weight(1f),
                 factory = { context ->
+                    // Lets the in-guest agent drive this WebView over CDP (the devtools abstract
+                    // socket is reachable from the guest, which shares the app's UID), so a page
+                    // can be shown to the user and operated by human and agent at the same time.
+                    WebView.setWebContentsDebuggingEnabled(true)
                     WebView(context).apply {
                         layoutParams =
                             ViewGroup.LayoutParams(

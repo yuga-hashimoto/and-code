@@ -185,9 +185,12 @@ fun NavGraphBuilder.workspaceNavGraph(
         )
     }
 
-    composable(ROUTE_GUEST_BROWSER) {
+    composable(GUEST_BROWSER_ROUTE_PATTERN) { backStack ->
+        val requestedUrl = backStack.arguments?.getString(GUEST_BROWSER_ARG_URL)?.let { decodeRouteArg(it) }
         GuestBrowserScreen(
-            initialUrl = app.localRuntimeManager.installedPort()?.let { "http://127.0.0.1:$it/" }.orEmpty(),
+            initialUrl =
+                requestedUrl
+                    ?: app.localRuntimeManager.installedPort()?.let { "http://127.0.0.1:$it/" }.orEmpty(),
             onBack = { navController.popBackStack() },
         )
     }
