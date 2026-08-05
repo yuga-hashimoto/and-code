@@ -8,6 +8,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.yugahashimoto.andcode.AndCodeApplication
+import com.yugahashimoto.andcode.feature.browser.GuestBrowserScreen
 import com.yugahashimoto.andcode.feature.workspace.CodeViewerScreen
 import com.yugahashimoto.andcode.feature.workspace.CodeViewerViewModel
 import com.yugahashimoto.andcode.feature.workspace.LocalRuntimeManagementScreen
@@ -181,6 +182,13 @@ fun NavGraphBuilder.workspaceNavGraph(
             onCommand = terminalViewModel::executeCommand,
             onInputChange = terminalViewModel::updateInput,
             onClear = terminalViewModel::clear,
+        )
+    }
+
+    composable(ROUTE_GUEST_BROWSER) {
+        GuestBrowserScreen(
+            initialUrl = app.localRuntimeManager.installedPort()?.let { "http://127.0.0.1:$it/" }.orEmpty(),
+            onBack = { navController.popBackStack() },
         )
     }
 

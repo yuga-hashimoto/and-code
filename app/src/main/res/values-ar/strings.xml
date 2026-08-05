@@ -1032,4 +1032,11 @@
     <string name="activity_event_question">سؤال</string>
     <string name="activity_event_unknown">حدث غير مدعوم</string>
     <string name="connection_info_incomplete">معلومات الاتصال غير مكتملة</string>
+    <string name="guest_browser_title">المتصفح الضيف</string>
+    <string name="guest_browser_row">المتصفح الضيف</string>
+    <string name="guest_browser_url_hint">http://127.0.0.1:port</string>
+    <string name="guest_browser_go">فتح</string>
+    <string name="guest_browser_back">رجوع</string>
+    <string name="guest_browser_forward">تقدم</string>
+    <string name="guest_browser_reload">إعادة تحميل</string>
 </resources>

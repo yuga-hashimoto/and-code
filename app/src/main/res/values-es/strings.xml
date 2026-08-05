@@ -1032,4 +1032,11 @@
     <string name="activity_event_question">Pregunta</string>
     <string name="activity_event_unknown">Evento no compatible</string>
     <string name="connection_info_incomplete">La información de conexión está incompleta</string>
+    <string name="guest_browser_title">Navegador invitado</string>
+    <string name="guest_browser_row">Navegador invitado</string>
+    <string name="guest_browser_url_hint">http://127.0.0.1:puerto</string>
+    <string name="guest_browser_go">Abrir</string>
+    <string name="guest_browser_back">Atrás</string>
+    <string name="guest_browser_forward">Avanzar</string>
+    <string name="guest_browser_reload">Recargar</string>
 </resources>

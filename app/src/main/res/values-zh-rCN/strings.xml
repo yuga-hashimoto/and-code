@@ -1032,4 +1032,11 @@
     <string name="activity_event_question">问题</string>
     <string name="activity_event_unknown">不支持的事件</string>
     <string name="connection_info_incomplete">连接信息不完整</string>
+    <string name="guest_browser_title">访客浏览器</string>
+    <string name="guest_browser_row">访客浏览器</string>
+    <string name="guest_browser_url_hint">http://127.0.0.1:端口</string>
+    <string name="guest_browser_go">打开</string>
+    <string name="guest_browser_back">后退</string>
+    <string name="guest_browser_forward">前进</string>
+    <string name="guest_browser_reload">重新加载</string>
 </resources>

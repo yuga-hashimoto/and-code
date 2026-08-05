@@ -43,6 +43,7 @@ const val SCHEDULE_EDIT_ARG_ID = "scheduleId"
 const val SCHEDULE_EDIT_ROUTE_PATTERN = "$ROUTE_SCHEDULE_EDIT?$SCHEDULE_EDIT_ARG_ID={$SCHEDULE_EDIT_ARG_ID}"
 const val ROUTE_CODE_VIEWER = "code-viewer"
 const val ROUTE_TERMINAL = "terminal"
+const val ROUTE_GUEST_BROWSER = "guest-browser"
 
 const val CODE_VIEWER_ROUTE_PATTERN = "$ROUTE_CODE_VIEWER/{runtimeId}/{workspacePath}/{filePath}"
 

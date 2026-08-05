@@ -1052,4 +1052,11 @@
     <string name="pr_collapse">閉じる</string>
     <string name="cd_pull_request_expand">他 %1$d 件のプルリクエストを表示</string>
     <string name="cd_pull_request_collapse">プルリクエストの表示を減らす</string>
+    <string name="guest_browser_title">ゲストブラウザ</string>
+    <string name="guest_browser_row">ゲストブラウザ</string>
+    <string name="guest_browser_url_hint">http://127.0.0.1:ポート</string>
+    <string name="guest_browser_go">開く</string>
+    <string name="guest_browser_back">戻る</string>
+    <string name="guest_browser_forward">進む</string>
+    <string name="guest_browser_reload">再読み込み</string>
 </resources>

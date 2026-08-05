@@ -1032,4 +1032,11 @@
     <string name="activity_event_question">Вопрос</string>
     <string name="activity_event_unknown">Неподдерживаемое событие</string>
     <string name="connection_info_incomplete">Недостаточно данных подключения</string>
+    <string name="guest_browser_title">Гостевой браузер</string>
+    <string name="guest_browser_row">Гостевой браузер</string>
+    <string name="guest_browser_url_hint">http://127.0.0.1:порт</string>
+    <string name="guest_browser_go">Открыть</string>
+    <string name="guest_browser_back">Назад</string>
+    <string name="guest_browser_forward">Вперёд</string>
+    <string name="guest_browser_reload">Обновить</string>
 </resources>

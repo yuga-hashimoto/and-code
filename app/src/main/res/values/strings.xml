@@ -1052,4 +1052,11 @@
     <string name="pr_collapse">Fewer</string>
     <string name="cd_pull_request_expand">Show %1$d more pull requests</string>
     <string name="cd_pull_request_collapse">Show fewer pull requests</string>
+    <string name="guest_browser_title">Guest Browser</string>
+    <string name="guest_browser_row">Guest Browser</string>
+    <string name="guest_browser_url_hint">http://127.0.0.1:port</string>
+    <string name="guest_browser_go">Open</string>
+    <string name="guest_browser_back">Back</string>
+    <string name="guest_browser_forward">Forward</string>
+    <string name="guest_browser_reload">Reload</string>
 </resources>
