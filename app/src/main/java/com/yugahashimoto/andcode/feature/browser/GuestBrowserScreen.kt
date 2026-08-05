@@ -186,19 +186,24 @@ private fun WebView.configure(
     // Guest pages (dev servers, dashboards, tool UIs) are interactive web apps that need JS.
     settings.javaScriptEnabled = true
     settings.domStorageEnabled = true
-    webChromeClient = object : WebChromeClient() {
-        override fun onProgressChanged(view: WebView?, newProgress: Int) {
-            onProgress(newProgress)
+    webChromeClient =
+        object : WebChromeClient() {
+            override fun onProgressChanged(
+                view: WebView?,
+                newProgress: Int,
+            ) {
+                onProgress(newProgress)
+            }
         }
-    }
-    webViewClient = object : WebViewClient() {
-        override fun onPageFinished(view: WebView?, url: String?) {
-            onProgress(100)
-            onNavigationStateChange(
-                url.orEmpty(),
-                view?.canGoBack() == true,
-                view?.canGoForward() == true,
-            )
+    webViewClient =
+        object : WebViewClient() {
+            override fun onPageFinished(view: WebView?, url: String?) {
+                onProgress(100)
+                onNavigationStateChange(
+                    url.orEmpty(),
+                    view?.canGoBack() == true,
+                    view?.canGoForward() == true,
+                )
+            }
         }
-    }
 }
