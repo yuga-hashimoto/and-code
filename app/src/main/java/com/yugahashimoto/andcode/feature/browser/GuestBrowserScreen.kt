@@ -83,10 +83,11 @@ fun GuestBrowserScreen(
                 modifier = Modifier.weight(1f),
                 factory = { context ->
                     WebView(context).apply {
-                        layoutParams = ViewGroup.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                        )
+                        layoutParams =
+                            ViewGroup.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                            )
                         configure(
                             onProgress = { progress = it },
                             onNavigationStateChange = { url, back, forward ->
@@ -197,7 +198,10 @@ private fun WebView.configure(
         }
     webViewClient =
         object : WebViewClient() {
-            override fun onPageFinished(view: WebView?, url: String?) {
+            override fun onPageFinished(
+                view: WebView?,
+                url: String?,
+            ) {
                 onProgress(100)
                 onNavigationStateChange(
                     url.orEmpty(),
