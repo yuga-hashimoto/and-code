@@ -2,11 +2,11 @@ package com.yugahashimoto.andcode.feature.browser
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.io.File
 
 private const val COMMAND_FILE_RELATIVE_PATH = ".and-code/browser-command.json"
 private const val POLL_INTERVAL_MILLIS = 1000L
