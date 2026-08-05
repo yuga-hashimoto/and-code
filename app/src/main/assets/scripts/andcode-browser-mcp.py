@@ -1,19 +1,16 @@
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["fastmcp>=2.0.0"]
-# ///
-"""AndCode guest-browser MCP server.
+#!/usr/bin/env python3
+"""AndCode guest-browser MCP server (stdlib only).
 
 Bridges the agent to the in-app Guest Browser of the AndCode Android app:
 
 - ``browser_show`` asks the app (via a command file in the active workspace) to
   open the guest browser so the user can watch and operate the page.
 - The remaining tools drive the same WebView over CDP. The app enables WebView
-  debugging, which exposes ``webview_devtools_remote_<pid>`` as an Linux abstract
-  socket; the guest shares the kernel (and the app UID), so it can attach directly.
+  debugging, which exposes ``webview_devtools_remote_<pid>`` as a Linux abstract
+  socket; the guest shares the kernel (and the app UID), so it can attach.
 
-The CDP client (HTTP /json + WebSocket) is implemented on AF_UNIX sockets and
-needs no extra dependencies.
+Speaks MCP over stdio (newline-delimited JSON-RPC) with no third-party deps so
+it runs on the bare runtime rootfs python3.
 """
 
 import base64
@@ -21,15 +18,11 @@ import json
 import os
 import socket
 import struct
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-from fastmcp import FastMCP
-
-mcp = FastMCP("and-code-browser")
-
 COMMAND_FILE = Path(".and-code") / "browser-command.json"
-CDP_BRIDGE_PORT_NOTE = "abstract socket only; no TCP bridge needed"
 
 
 def _find_devtools_socket() -> str | None:
@@ -42,9 +35,8 @@ def _find_devtools_socket() -> str | None:
         parts = line.split()
         if len(parts) < 8:
             continue
-        hexname = parts[-1]
         try:
-            name = bytes.fromhex(hexname).decode("ascii")
+            name = bytes.fromhex(parts[-1]).decode("ascii")
         except (ValueError, UnicodeDecodeError):
             continue
         if name.startswith("webview_devtools_remote_"):
@@ -123,7 +115,6 @@ class _UnixWs:
                 raise CdpError("server closed ws")
             if opcode == 0x9:
                 self._send_pong(payload)
-            # ignore pong/continuation fragments (CDP messages are single-frame)
 
     def _send_pong(self, payload: bytes) -> None:
         mask = os.urandom(4)
@@ -141,7 +132,6 @@ class _UnixWs:
 class CdpSession:
     def __init__(self, socket_name: str):
         self.socket_name = socket_name
-        self._next_id = 0
 
     def _connect(self) -> socket.socket:
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
@@ -154,7 +144,7 @@ class CdpSession:
         try:
             sock.sendall(b"GET /json HTTP/1.1\r\nHost: localhost\r\n\r\n")
             data = b""
-            while b"\r\n0\r\n\r\n" not in data and not data.endswith(b"]"):
+            while not data.endswith(b"]"):
                 chunk = sock.recv(65536)
                 if not chunk:
                     break
@@ -162,7 +152,6 @@ class CdpSession:
         finally:
             sock.close()
         body = data.split(b"\r\n\r\n", 1)[1] if b"\r\n\r\n" in data else data
-        # chunked bodies: strip chunk-size lines if present
         if b"\r\n0\r\n\r\n" in body:
             chunks = []
             rest = body
@@ -184,8 +173,7 @@ class CdpSession:
             raise CdpError("no WebView page target found; is the guest browser open?")
         ws_url = targets[0]["webSocketDebuggerUrl"]
         parsed = urlparse(ws_url)
-        sock = self._connect()
-        ws = _UnixWs(sock, parsed.netloc or "localhost", parsed.path or "/")
+        ws = _UnixWs(self._connect(), parsed.netloc or "localhost", parsed.path or "/")
         return _PageSession(ws)
 
 
@@ -210,77 +198,62 @@ def _session() -> CdpSession:
     name = _find_devtools_socket()
     if name is None:
         raise CdpError(
-            "WebView devtools socket not found. Open the Guest Browser in the app first "
-            "(browser_show) and make sure the app build enables WebView debugging."
+            "WebView devtools socket not found. Open the Guest Browser first (browser_show) "
+            "and make sure the app build enables WebView debugging."
         )
     return CdpSession(name)
 
 
-@mcp.tool()
-def browser_show(url: str) -> str:
-    """ユーザーの画面でゲストブラウザを開かせます(アプリがコマンドファイルを検知して起動)。
-
-    Args:
-        url: 表示するURL (例: http://127.0.0.1:8080/)
-    """
+def tool_show(args: dict) -> str:
+    url = args["url"]
     COMMAND_FILE.parent.mkdir(parents=True, exist_ok=True)
     COMMAND_FILE.write_text(json.dumps({"action": "open", "url": url}), encoding="utf-8")
-    return f"アプリに {url} を開くよう要求しました(約1秒で表示されます)"
+    return f"requested the app to open {url}"
 
 
-@mcp.tool()
-def browser_status() -> str:
-    """ゲストブラウザ(WebView)へのCDP接続状況と現在のページ情報を返します。"""
+def tool_status(args: dict) -> str:
     name = _find_devtools_socket()
     if name is None:
-        return "未接続: WebView のデバッグソケットが見つかりません。browser_show でブラウザを開かせてください。"
-    session = CdpSession(name)
-    targets = session.list_targets()
-    pages = [t.get("url", "") for t in targets if t.get("type") in ("document", "page")]
-    return f"接続可: {name} / ページ: {pages}"
+        return "not connected: no WebView devtools socket; call browser_show first"
+    pages = [t.get("url", "") for t in CdpSession(name).list_targets() if t.get("type") in ("document", "page")]
+    return f"connected: {name} / pages: {pages}"
 
 
-@mcp.tool()
-def browser_navigate(url: str) -> str:
-    """開いているゲストブラウザで URL へ遷移します。"""
+def tool_navigate(args: dict) -> str:
     page = _session().open_page_session()
     try:
-        page.call("Page.navigate", url=url)
-        return f"{url} へ遷移しました"
+        page.call("Page.navigate", url=args["url"])
+        return f"navigated to {args['url']}"
     finally:
         page.close()
 
 
-@mcp.tool()
-def browser_click(x: float, y: float) -> str:
-    """ページ内のビューポート座標 (x, y) をタップ/クリックします。"""
+def tool_click(args: dict) -> str:
     page = _session().open_page_session()
     try:
         expr = (
             "(() => { const el = document.elementFromPoint(%f, %f); "
-            "if (!el) return 'no element'; el.click(); return el.tagName; })()" % (x, y)
+            "if (!el) return 'no element'; el.click(); return el.tagName; })()"
+            % (float(args["x"]), float(args["y"]))
         )
         result = page.call("Runtime.evaluate", expression=expr, returnByValue=True)
-        return f"クリックしました: {result.get('result', {}).get('value')}"
+        return f"clicked: {result.get('result', {}).get('value')}"
     finally:
         page.close()
 
 
-@mcp.tool()
-def browser_type(text: str) -> str:
-    """フォーカス中の入力要素に文字列を入力します。"""
+def tool_type(args: dict) -> str:
     page = _session().open_page_session()
     try:
         page.call("Runtime.evaluate", expression="document.activeElement && document.activeElement.focus()")
-        page.call("Input.insertText", text=text)
-        return "入力しました"
+        page.call("Input.insertText", text=args["text"])
+        return "typed"
     finally:
         page.close()
 
 
-@mcp.tool()
-def browser_screenshot(save_path: str = "/tmp/opencode/browser.png") -> str:
-    """現在のページを PNG で保存し、パスを返します(Read で確認できます)。"""
+def tool_screenshot(args: dict) -> str:
+    save_path = args.get("save_path") or "/tmp/andcode-browser.png"
     page = _session().open_page_session()
     try:
         result = page.call("Page.captureScreenshot", format="png")
@@ -292,9 +265,7 @@ def browser_screenshot(save_path: str = "/tmp/opencode/browser.png") -> str:
         page.close()
 
 
-@mcp.tool()
-def browser_info() -> str:
-    """現在のページの URL とタイトルを返します。"""
+def tool_info(args: dict) -> str:
     page = _session().open_page_session()
     try:
         result = page.call(
@@ -307,5 +278,151 @@ def browser_info() -> str:
         page.close()
 
 
+TOOLS = [
+    {
+        "name": "browser_show",
+        "description": (
+            "Open the AndCode in-app Guest Browser at the given URL so the user can watch and "
+            "operate the page. Call this before other browser_* tools."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {"url": {"type": "string"}},
+            "required": ["url"],
+        },
+    },
+    {
+        "name": "browser_status",
+        "description": "Report CDP connectivity to the Guest Browser WebView and the current pages.",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "browser_navigate",
+        "description": "Navigate the open Guest Browser to a URL.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"url": {"type": "string"}},
+            "required": ["url"],
+        },
+    },
+    {
+        "name": "browser_click",
+        "description": "Click/tap viewport coordinates (x, y) in the Guest Browser page.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"x": {"type": "number"}, "y": {"type": "number"}},
+            "required": ["x", "y"],
+        },
+    },
+    {
+        "name": "browser_type",
+        "description": "Type text into the focused input of the Guest Browser page.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"text": {"type": "string"}},
+            "required": ["text"],
+        },
+    },
+    {
+        "name": "browser_screenshot",
+        "description": "Capture the Guest Browser page as PNG and return the saved path.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {"save_path": {"type": "string"}},
+        },
+    },
+    {
+        "name": "browser_info",
+        "description": "Return the current URL and title of the Guest Browser page.",
+        "inputSchema": {"type": "object", "properties": {}},
+    },
+]
+
+HANDLERS = {
+    "browser_show": tool_show,
+    "browser_status": tool_status,
+    "browser_navigate": tool_navigate,
+    "browser_click": tool_click,
+    "browser_type": tool_type,
+    "browser_screenshot": tool_screenshot,
+    "browser_info": tool_info,
+}
+
+
+def respond(obj: dict) -> None:
+    sys.stdout.write(json.dumps(obj) + "\n")
+    sys.stdout.flush()
+
+
+def main() -> None:
+    for line in sys.stdin:
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            msg = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        method = msg.get("method")
+        mid = msg.get("id")
+        if method == "initialize":
+            respond(
+                {
+                    "jsonrpc": "2.0",
+                    "id": mid,
+                    "result": {
+                        "protocolVersion": msg.get("params", {}).get("protocolVersion", "2024-11-05"),
+                        "capabilities": {"tools": {}},
+                        "serverInfo": {"name": "and-code-browser", "version": "1.0.0"},
+                    },
+                }
+            )
+        elif method in ("notifications/initialized", "initialized"):
+            continue
+        elif method == "tools/list":
+            respond({"jsonrpc": "2.0", "id": mid, "result": {"tools": TOOLS}})
+        elif method == "tools/call":
+            params = msg.get("params", {})
+            name = params.get("name")
+            args = params.get("arguments", {}) or {}
+            handler = HANDLERS.get(name)
+            if handler is None:
+                respond(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": mid,
+                        "result": {
+                            "content": [{"type": "text", "text": f"unknown tool: {name}"}],
+                            "isError": True,
+                        },
+                    }
+                )
+            else:
+                try:
+                    text = handler(args)
+                    respond(
+                        {"jsonrpc": "2.0", "id": mid, "result": {"content": [{"type": "text", "text": text}]}}
+                    )
+                except Exception as exc:  # noqa: BLE001 - report any failure to the agent
+                    respond(
+                        {
+                            "jsonrpc": "2.0",
+                            "id": mid,
+                            "result": {
+                                "content": [{"type": "text", "text": f"{type(exc).__name__}: {exc}"}],
+                                "isError": True,
+                            },
+                        }
+                    )
+        elif mid is not None:
+            respond(
+                {
+                    "jsonrpc": "2.0",
+                    "id": mid,
+                    "error": {"code": -32601, "message": f"method not found: {method}"},
+                }
+            )
+
+
 if __name__ == "__main__":
-    mcp.run()
+    main()

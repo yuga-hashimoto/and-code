@@ -9,6 +9,8 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
 
 class LocalRuntimeInstaller(
@@ -139,6 +141,7 @@ class LocalRuntimeInstaller(
                     // to agy's Debian tool runner as well. The scripts still fail closed when adb
                     // or Pillow is not installed; they are never silently replaced by a fork.
                     installAndroidHelperScripts(antigravityRootfs)
+                    provisionBrowserMcp(antigravityRootfs)
                 }
                 // Credentials and agent config live under /root inside the rootfs. Activation swaps
                 // the whole environment directory, so without this the user is signed out of every
@@ -433,7 +436,78 @@ class LocalRuntimeInstaller(
             Os.symlink("libapk.so.3.0.0", libApk.absolutePath)
         }
         installAndroidHelperScripts(rootfs)
+        provisionBrowserMcp(rootfs)
         require(suite.proot.isFile) { "PRoot launcher is unavailable" }
+    }
+
+    /**
+     * Re-seeds the guest-browser MCP server and its agent registrations on runtimes that were
+     * installed before the provisioning existed. Idempotent and safe to call on every start.
+     */
+    fun provisionBrowserMcpForExistingInstall() {
+        val active = File(runtimeDirectory, "environment")
+        listOf(File(active, "rootfs"), File(active, "antigravity-rootfs"))
+            .filter(File::isDirectory)
+            .forEach { rootfs ->
+                installAndroidHelperScripts(rootfs)
+                provisionBrowserMcp(rootfs)
+            }
+    }
+
+    /**
+     * Registers the guest-browser MCP server with every agent (OpenCode, Claude Code,
+     * Antigravity) so they all expose the same browser_* tools. User-added servers are kept.
+     */
+    private fun provisionBrowserMcp(rootfs: File) {
+        mergeJsonConfig(File(rootfs, "root/.config/opencode/opencode.json")) { root ->
+            val mcp = root.optJSONObject("mcp") ?: JSONObject()
+            mcp.put(BROWSER_MCP_NAME, browserMcpEntry("opencode"))
+            root.put("mcp", mcp)
+        }
+        mergeJsonConfig(File(rootfs, "root/.claude.json")) { root ->
+            val servers = root.optJSONObject("mcpServers") ?: JSONObject()
+            servers.put(BROWSER_MCP_NAME, browserMcpEntry("claude"))
+            root.put("mcpServers", servers)
+        }
+        mergeJsonConfig(File(rootfs, "root/.gemini/config/mcp_config.json")) { root ->
+            val servers = root.optJSONObject("mcpServers") ?: JSONObject()
+            servers.put(BROWSER_MCP_NAME, browserMcpEntry("antigravity"))
+            root.put("mcpServers", servers)
+        }
+    }
+
+    private fun browserMcpEntry(agent: String): JSONObject =
+        when (agent) {
+            "claude" ->
+                JSONObject()
+                    .put("type", "stdio")
+                    .put("command", BROWSER_MCP_BIN)
+                    .put("args", JSONArray())
+            "antigravity" -> JSONObject().put("command", BROWSER_MCP_BIN)
+            else ->
+                JSONObject()
+                    .put("type", "local")
+                    .put("command", JSONArray(listOf(BROWSER_MCP_BIN)))
+                    .put("enabled", true)
+                    .put("timeout", BROWSER_MCP_TIMEOUT_MILLIS)
+        }
+
+    private fun mergeJsonConfig(
+        file: File,
+        mutate: (JSONObject) -> Unit,
+    ) {
+        file.parentFile?.mkdirs()
+        val root =
+            if (file.isFile) {
+                runCatching { JSONObject(file.readText()) }.getOrNull() ?: JSONObject()
+            } else {
+                JSONObject()
+            }
+        val before = root.toString()
+        mutate(root)
+        if (root.toString() != before) {
+            file.writeText(root.toString(2) + "\n")
+        }
     }
 
     private fun installAndroidHelperScripts(rootfs: File) {
@@ -444,6 +518,7 @@ class LocalRuntimeInstaller(
             "android-screenshot.sh" to "android-screenshot",
             "android-instrument.sh" to "android-instrument",
             "android-app.sh" to "android-app",
+            "andcode-browser-mcp.py" to "andcode-browser-mcp.py",
         ).forEach {
                 (assetName, scriptName) ->
             val scriptFile = File(binDir, scriptName)
@@ -467,5 +542,8 @@ class LocalRuntimeInstaller(
 
     companion object {
         private const val METADATA_FILE = "metadata.json"
+        private const val BROWSER_MCP_NAME = "and-code-browser"
+        private const val BROWSER_MCP_BIN = "/usr/local/bin/andcode-browser-mcp.py"
+        private const val BROWSER_MCP_TIMEOUT_MILLIS = 30000
     }
 }
