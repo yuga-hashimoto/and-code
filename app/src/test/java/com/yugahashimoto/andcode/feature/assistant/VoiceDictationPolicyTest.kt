@@ -18,9 +18,9 @@ class VoiceDictationPolicyTest {
     }
 
     @Test
-    fun `silence after something was dictated ends the dictation without an error`() {
-        // The user stopped talking. Their words are in the composer, so a red "could not
-        // recognise" banner would be both wrong and alarming.
+    fun `a partial result followed by silence finishes without an error`() {
+        // The voice session submits the partial transcript when the final callback is empty, so a
+        // red "could not recognise" banner would be both wrong and alarming.
         assertEquals(
             VoiceDictationOutcome.FINISH,
             VoiceDictationPolicy.outcomeFor(

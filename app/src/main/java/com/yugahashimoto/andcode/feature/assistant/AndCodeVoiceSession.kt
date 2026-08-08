@@ -66,6 +66,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.util.UUID
 
@@ -312,22 +313,51 @@ class AndCodeVoiceSession(context: Context) :
 
         listeningJob =
             scope.launch {
-                speech.startListening(language = speechLanguageTag(context)).collect { result ->
-                    when (result) {
-                        SpeechResult.Ready,
-                        SpeechResult.Listening,
-                        -> assistantState.value = VoiceState.LISTENING
-                        SpeechResult.Processing -> assistantState.value = VoiceState.THINKING
-                        is SpeechResult.PartialResult -> partialText.value = result.text
-                        is SpeechResult.Result -> {
-                            userText.value = result.text
-                            partialText.value = ""
-                            sendToOpenCode(result.text)
+                var silentSegments = 0
+                while (isActive) {
+                    var outcome = VoiceDictationOutcome.REPORT
+                    speech.startListening(language = speechLanguageTag(context)).collect { result ->
+                        when (result) {
+                            SpeechResult.Ready,
+                            SpeechResult.Listening,
+                            -> assistantState.value = VoiceState.LISTENING
+                            SpeechResult.Processing -> assistantState.value = VoiceState.THINKING
+                            is SpeechResult.PartialResult -> partialText.value = result.text
+                            is SpeechResult.Result -> {
+                                silentSegments = 0
+                                submitRecognizedText(result.text)
+                                outcome = VoiceDictationOutcome.FINISH
+                            }
+                            is SpeechResult.Error -> {
+                                // Some recognisers deliver a partial utterance followed by an
+                                // empty final bundle. Keep that utterance instead of discarding it.
+                                val partial = partialText.value.trim()
+                                outcome =
+                                    VoiceDictationPolicy.outcomeFor(
+                                        code = result.code,
+                                        hasTranscript = partial.isNotBlank(),
+                                        consecutiveFailures = silentSegments + 1,
+                                    )
+                                when (outcome) {
+                                    VoiceDictationOutcome.RESTART -> silentSegments++
+                                    VoiceDictationOutcome.FINISH -> submitRecognizedText(partial)
+                                    VoiceDictationOutcome.REPORT -> showError(result.message)
+                                }
+                            }
                         }
-                        is SpeechResult.Error -> showError(result.message)
                     }
+                    if (outcome != VoiceDictationOutcome.RESTART) break
+                    partialText.value = ""
+                    assistantState.value = VoiceState.LISTENING
+                    delay(SPEECH_RESTART_DELAY_MS)
                 }
             }
+    }
+
+    private fun submitRecognizedText(text: String) {
+        userText.value = text
+        partialText.value = ""
+        sendToOpenCode(text)
     }
 
     private fun sendToOpenCode(text: String) {
@@ -445,6 +475,8 @@ private enum class VoiceState {
     DONE,
     ERROR,
 }
+
+private const val SPEECH_RESTART_DELAY_MS = 200L
 
 private fun speechLanguageTag(context: Context): String {
     val locale =
