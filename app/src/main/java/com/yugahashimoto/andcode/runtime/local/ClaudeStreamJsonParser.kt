@@ -77,8 +77,6 @@ class ClaudeStreamJsonParser(
         role: String,
     ): Parsed {
         val message = root["message"]?.jsonObject ?: return Parsed()
-        val messageId = message.string("id") ?: newMessageId()
-        currentMessageId = messageId
         val content = message["content"]
         // A plain string content block is valid in the protocol for simple user turns.
         val blocks: List<JsonObject> =
@@ -87,7 +85,17 @@ class ClaudeStreamJsonParser(
                 is JsonPrimitive -> listOf(JsonObject(mapOf("type" to JsonPrimitive("text"), "text" to content)))
                 else -> emptyList()
             }
-        val parts =
+        // Claude Code reports tool results on a fresh "user" message with its own (or no) id, but
+        // each result belongs to the assistant message whose tool_use block it answers. Route it
+        // back there so the still-running tool card is updated in place instead of being left stuck
+        // while a second, orphaned "completed" copy appears elsewhere.
+        val originMessageId =
+            blocks.firstNotNullOfOrNull { block ->
+                if (block.string("type") == "tool_result") openTools[block.string("tool_use_id")]?.messageId else null
+            }
+        val messageId = originMessageId ?: message.string("id") ?: newMessageId()
+        currentMessageId = messageId
+        val newParts =
             buildList {
                 blocks.forEach { block ->
                     val part = parseContentBlock(messageId, block) ?: return@forEach
@@ -99,25 +107,37 @@ class ClaudeStreamJsonParser(
                     }
                 }
             }
-        if (parts.isEmpty()) return Parsed()
+        if (newParts.isEmpty()) return Parsed()
         // Tool results arrive on a "user" message; surfacing them as assistant activity keeps the
         // transcript readable instead of interleaving fake user turns.
         val effectiveRole = if (role == "user") "assistant" else role
+        val existing = messagesById[messageId]
+        // Merge rather than replace: a tool_result routed back onto an earlier assistant message
+        // must update that message's existing tool part in place, not wipe out its other parts.
+        val mergedParts =
+            if (existing != null) {
+                val byId = linkedMapOf<String?, OpenCodePart>()
+                existing.parts.forEach { byId[it.id] = it }
+                newParts.forEach { byId[it.id] = it }
+                byId.values.toList()
+            } else {
+                newParts
+            }
         val parsedMessage =
             OpenCodeMessage(
                 info =
-                    OpenCodeMessageInfo(
+                    existing?.info ?: OpenCodeMessageInfo(
                         id = messageId,
                         sessionId = sessionId,
                         role = effectiveRole,
                         time = now(),
                         agent = "claude",
                     ),
-                parts = parts,
+                parts = mergedParts,
             )
         messagesById[messageId] = parsedMessage
         return Parsed(
-            events = parts.map { OpenCodeEvent.MessagePartUpdated(it) },
+            events = newParts.map { OpenCodeEvent.MessagePartUpdated(it) },
             messages = listOf(parsedMessage),
             claudeSessionId = root.string("session_id"),
             resolvedModel = message.string("model"),
@@ -208,13 +228,21 @@ class ClaudeStreamJsonParser(
         block: JsonObject,
     ): OpenCodePart? {
         val blockType = block.string("type") ?: return null
-        val partId = block.string("id") ?: "$messageId-${block.string("tool_use_id") ?: UUID.randomUUID()}"
         return when (blockType) {
             "text" ->
-                OpenCodePart(partId, sessionId, messageId, "text", text = block.string("text").orEmpty())
+                // Must match parsePartialDelta's id for the same field so the final full-message
+                // replay overwrites the streamed-in text instead of appearing as a duplicate block.
+                OpenCodePart("$messageId-text", sessionId, messageId, "text", text = block.string("text").orEmpty())
             "thinking" ->
-                OpenCodePart(partId, sessionId, messageId, "reasoning", text = block.string("thinking").orEmpty())
-            "tool_use" ->
+                OpenCodePart(
+                    "$messageId-reasoning",
+                    sessionId,
+                    messageId,
+                    "reasoning",
+                    text = block.string("thinking").orEmpty(),
+                )
+            "tool_use" -> {
+                val partId = block.string("id") ?: "$messageId-${UUID.randomUUID()}"
                 OpenCodePart(
                     id = partId,
                     sessionId = sessionId,
@@ -228,8 +256,9 @@ class ClaudeStreamJsonParser(
                             "input" to (block["input"] ?: JsonObject(emptyMap())),
                         ),
                 )
+            }
             "tool_result" -> {
-                val callId = block.string("tool_use_id") ?: partId
+                val callId = block.string("tool_use_id") ?: block.string("id") ?: "$messageId-${UUID.randomUUID()}"
                 val failed = block["is_error"]?.jsonPrimitive?.contentOrNull == "true"
                 OpenCodePart(
                     id = callId,

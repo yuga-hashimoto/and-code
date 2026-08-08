@@ -111,6 +111,43 @@ class ClaudeStreamJsonParserTest {
     }
 
     @Test
+    fun `merges the final assistant message onto the streamed text instead of duplicating it`() {
+        val parser = parser()
+        parser.parse("""{"type":"assistant","message":{"id":"m5","content":[{"type":"text","text":""}]}}""")
+        parser.parse("""{"type":"stream_event","event":{"delta":{"type":"text_delta","text":"chunk"}}}""")
+
+        // Claude Code replays the full text as a final "assistant" line once streaming for the
+        // block is done; a text content block never carries an "id", so this must land on the same
+        // synthesized part id the deltas used above rather than becoming a second, duplicate part.
+        val replayed =
+            parser.parse("""{"type":"assistant","message":{"id":"m5","content":[{"type":"text","text":"chunk"}]}}""")
+
+        val parts = replayed.messages.single().parts
+        assertEquals(1, parts.size)
+        assertEquals("chunk", parts.single().text)
+    }
+
+    @Test
+    fun `routes a tool_result back onto the message that started the tool instead of stranding it`() {
+        val parser = parser()
+        parser.parse(
+            """{"type":"assistant","message":{"id":"m-tool","content":[{"type":"tool_use","id":"t1","name":"Bash","input":{}}]}}""",
+        )
+
+        // The result line reports its own, unrelated message id ("m-result"), the way Claude Code's
+        // CLI actually behaves; the running tool card lives on "m-tool" and must be updated there.
+        val resultParsed =
+            parser.parse(
+                """{"type":"user","message":{"id":"m-result","content":[{"type":"tool_result","tool_use_id":"t1","content":"done"}]}}""",
+            )
+
+        val message = resultParsed.messages.single()
+        assertEquals("m-tool", message.info.id)
+        val tool = message.parts.single { it.id == "t1" }
+        assertEquals("completed", tool.state?.get("status")?.jsonPrimitive?.content)
+    }
+
+    @Test
     fun `settles open tools when a turn ends with an error`() {
         val parser = parser()
         parser.parse(
