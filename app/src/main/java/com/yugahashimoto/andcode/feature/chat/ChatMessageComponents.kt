@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -278,6 +279,29 @@ private fun InlineText(
 }
 
 @Composable
+private fun RowScope.TableCellText(
+    text: String,
+    style: TextStyle,
+    linkColor: Color,
+    codeBackground: Color,
+) {
+    val inlines = remember(text) { MarkdownLite.parseInline(text) }
+    Box(
+        modifier =
+            Modifier
+                .weight(1f)
+                .padding(end = 8.dp),
+    ) {
+        InlineText(
+            inlines = inlines,
+            style = style,
+            linkColor = linkColor,
+            codeBackground = codeBackground,
+        )
+    }
+}
+
+@Composable
 private fun LinkedText(
     text: String,
     linkColor: Color,
@@ -447,14 +471,11 @@ private fun MarkdownText(
                         ) {
                             Row(modifier = Modifier.fillMaxWidth()) {
                                 block.headers.forEach { header ->
-                                    Text(
+                                    TableCellText(
                                         text = header,
-                                        modifier =
-                                            Modifier
-                                                .weight(1f)
-                                                .padding(end = 8.dp),
-                                        fontWeight = FontWeight.SemiBold,
-                                        style = MaterialTheme.typography.bodyMedium,
+                                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                                        linkColor = linkColor,
+                                        codeBackground = codeInlineBackground,
                                     )
                                 }
                             }
@@ -465,13 +486,11 @@ private fun MarkdownText(
                                         List((block.headers.size - row.size).coerceAtLeast(0)) { "" }
                                 Row(modifier = Modifier.fillMaxWidth()) {
                                     padded.forEach { cell ->
-                                        Text(
+                                        TableCellText(
                                             text = cell,
-                                            modifier =
-                                                Modifier
-                                                    .weight(1f)
-                                                    .padding(end = 8.dp),
                                             style = MaterialTheme.typography.bodyMedium,
+                                            linkColor = linkColor,
+                                            codeBackground = codeInlineBackground,
                                         )
                                     }
                                 }
