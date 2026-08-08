@@ -74,6 +74,10 @@ object ClaudeSandboxLauncher {
             add("/system")
             add("-b")
             add("${workspaceHostDir.absolutePath}:/workspace")
+            // PermissionRequest hook ↔ Android approval UI file bridge.
+            val bridgeHost = File(workspaceHostDir.parentFile, ClaudePermissionBridge.HOST_DIR_NAME).apply { mkdirs() }
+            add("-b")
+            add("${bridgeHost.absolutePath}:${ClaudePermissionBridge.GUEST_BRIDGE_PATH}")
             // Empty until the user grants all-files access, so the sandbox is unchanged without it.
             addAll(DeviceStorage.bindArguments())
             add("-w")
@@ -98,5 +102,6 @@ object ClaudeSandboxLauncher {
                 "BUN_OPTIONS" to "--preload ${ClaudeCodeInstaller.DNS_PRELOAD}",
                 "TERM" to "xterm-256color",
                 "CI" to "1",
+                "ANDCODE_CLAUDE_BRIDGE" to ClaudePermissionBridge.GUEST_BRIDGE_PATH,
             )
 }

@@ -839,6 +839,8 @@
     <string name="antigravity_permission_full_access_desc">Antigravity 可以在不询问的情况下运行任何命令。请谨慎使用。</string>
     <string name="claude_permission_plan">仅制定计划</string>
     <string name="claude_permission_plan_desc">Claude 只读取和规划，不会修改文件或执行命令。</string>
+    <string name="claude_permission_ask">每次询问</string>
+    <string name="claude_permission_ask_desc">在需要批准的工具前询问。可在应用或通知中允许或拒绝。</string>
     <string name="claude_permission_accept_edits">允许编辑</string>
     <string name="claude_permission_accept_edits_desc">Claude 可在工作区内编辑文件并运行命令，无需确认。推荐。</string>
     <string name="claude_permission_full_access">完全访问</string>

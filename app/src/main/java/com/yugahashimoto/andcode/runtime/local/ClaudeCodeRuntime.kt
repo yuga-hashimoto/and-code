@@ -7,15 +7,18 @@ import com.yugahashimoto.andcode.core.api.OpenCodePart
 import com.yugahashimoto.andcode.core.api.OpenCodeTime
 import com.yugahashimoto.andcode.core.api.OpenCodeTodo
 import com.yugahashimoto.andcode.core.api.PromptAttachment
+import com.yugahashimoto.andcode.runtime.PermissionResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.builtins.MapSerializer
 import kotlinx.serialization.builtins.serializer
@@ -23,6 +26,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import java.io.File
 import java.util.UUID
 
@@ -56,6 +60,9 @@ class ClaudeCodeRuntime(
     private val events = MutableSharedFlow<OpenCodeEvent>(extraBufferCapacity = 256)
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val messageStore = ClaudeMessageStore(File(runtimeDirectory, "claude-messages.json"), json)
+    internal val permissionBridge =
+        ClaudePermissionBridge(File(runtimeDirectory, ClaudePermissionBridge.HOST_DIR_NAME))
+    private var bridgeWatchJob: Job? = null
 
     /** One live CLI process, plus what is needed to decide whether it can be reused. */
     private class SessionProcess(
@@ -178,6 +185,64 @@ class ClaudeCodeRuntime(
         }
     }
 
+    /** True when the PermissionRequest hook is present in the guest rootfs. */
+    fun permissionBridgeReady(): Boolean {
+        val rootfs = installedRuntimeProvider()?.rootfs ?: return false
+        return ClaudePermissionHooks.isInstalled(rootfs)
+    }
+
+    fun respondToPermission(
+        permissionId: String,
+        response: PermissionResponse,
+        remember: Boolean,
+    ): Boolean = permissionBridge.respond(permissionId, response, remember)
+
+    fun answerQuestion(
+        requestId: String,
+        answers: List<List<String>>,
+    ): Boolean {
+        val pending = permissionBridge.readPending(requestId) ?: return false
+        val question = permissionBridge.toQuestionRequest(pending) ?: return false
+        val mapped = linkedMapOf<String, String>()
+        question.questions.forEachIndexed { index, prompt ->
+            val selected = answers.getOrNull(index).orEmpty().joinToString(", ")
+            if (selected.isNotBlank()) mapped[prompt.question] = selected
+        }
+        val questionsJson =
+            runCatching {
+                json.parseToJsonElement(pending.toolInputJson).jsonObject["questions"]?.toString() ?: "[]"
+            }.getOrDefault("[]")
+        return permissionBridge.answerQuestion(requestId, questionsJson, mapped)
+    }
+
+    private fun ensureBridgeWatcher() {
+        if (bridgeWatchJob?.isActive == true) return
+        bridgeWatchJob =
+            scope.launch {
+                while (isActive) {
+                    permissionBridge.pollPending().forEach { request ->
+                        when (request.kind) {
+                            ClaudePermissionBridge.Kind.QUESTION -> {
+                                val question = permissionBridge.toQuestionRequest(request)
+                                if (question != null) {
+                                    events.tryEmit(OpenCodeEvent.QuestionAsked(question))
+                                } else {
+                                    events.tryEmit(
+                                        OpenCodeEvent.PermissionAsked(permissionBridge.toPermissionRequest(request)),
+                                    )
+                                }
+                            }
+                            else ->
+                                events.tryEmit(
+                                    OpenCodeEvent.PermissionAsked(permissionBridge.toPermissionRequest(request)),
+                                )
+                        }
+                    }
+                    delay(250)
+                }
+            }
+    }
+
     fun update() {
         val runtime = installedRuntimeProvider() ?: error(messages.runtimeMissing)
         cachedVersion = null
@@ -266,6 +331,14 @@ class ClaudeCodeRuntime(
         val runtime = installedRuntimeProvider() ?: error(messages.runtimeMissing)
         require(ClaudeCodeInstaller.isInstalledIn(runtime.rootfs)) { "Claude Code is not installed" }
         ClaudeCodeInstaller.ensureDnsPreload(runtime.rootfs)
+        ensureBridgeWatcher()
+
+        val effectiveMode =
+            if (permissionMode.requiresBridge && !ClaudePermissionHooks.isInstalled(runtime.rootfs)) {
+                ClaudePermissionMode.ACCEPT_EDITS
+            } else {
+                permissionMode
+            }
 
         val stderrLog = File(runtimeDirectory, "logs/claude-stderr.log").also { it.parentFile?.mkdirs() }
         val process =
@@ -274,7 +347,7 @@ class ClaudeCodeRuntime(
                     runtime = runtime,
                     workspaceHostDir = File(runtimeDirectory, "workspace").apply { mkdirs() },
                     workingDirectory = directory,
-                    arguments = processArguments(sessionId, permissionMode, model, effort),
+                    arguments = processArguments(sessionId, effectiveMode, model, effort),
                     pty = false,
                 ),
             ).directory(runtimeDirectory)
@@ -282,7 +355,8 @@ class ClaudeCodeRuntime(
                 .apply {
                     environment().clear()
                     environment().putAll(
-                        ClaudeSandboxLauncher.environment(runtime, File(runtimeDirectory, "proot-tmp").apply { mkdirs() }, githubToken()),
+                        ClaudeSandboxLauncher.environment(runtime, File(runtimeDirectory, "proot-tmp").apply { mkdirs() }, githubToken()) +
+                            mapOf("ANDCODE_ANDROID_SESSION_ID" to sessionId),
                     )
                 }
                 .start()
@@ -304,7 +378,7 @@ class ClaudeCodeRuntime(
                 }
             }
 
-        return SessionProcess(process, readerJob, permissionMode, directory, model, effort)
+        return SessionProcess(process, readerJob, effectiveMode, directory, model, effort)
             .also { sessions[sessionId] = it }
     }
 

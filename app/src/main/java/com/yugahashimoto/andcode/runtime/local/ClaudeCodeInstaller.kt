@@ -102,7 +102,7 @@ object ClaudeCodeInstaller {
     ) = """
         $apk update
         ${repairBrokenPackages(apk)}
-        if ! $apk add --no-cache claude-code util-linux; then
+        if ! $apk add --no-cache claude-code util-linux jq; then
           if [ -z "$S($apk info -e claude-code)" ] || [ -z "$S($apk info -e util-linux)" ]; then
             echo 'and-code: apk failed and the requested packages are not installed' >&2
             exit 1
@@ -196,7 +196,7 @@ object ClaudeCodeInstaller {
         $APK policy claude-code 2>&1 || true
         """.trimIndent()
 
-    private val INSTALL_DIAGNOSTICS_SCRIPT = diagnosticsScript("add -s claude-code util-linux")
+    private val INSTALL_DIAGNOSTICS_SCRIPT = diagnosticsScript("add -s claude-code util-linux jq")
 
     private val UPDATE_DIAGNOSTICS_SCRIPT = diagnosticsScript("add -s --upgrade claude-code")
 

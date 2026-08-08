@@ -851,6 +851,8 @@
     <string name="antigravity_permission_full_access_desc">Antigravity may run any command without asking. Use with care.</string>
     <string name="claude_permission_plan">Plan only</string>
     <string name="claude_permission_plan_desc">Claude reads and plans but never edits files or runs commands.</string>
+    <string name="claude_permission_ask">Ask each time</string>
+    <string name="claude_permission_ask_desc">Claude asks before tools that need approval. Approve or reject in the app or notification.</string>
     <string name="claude_permission_accept_edits">Accept edits</string>
     <string name="claude_permission_accept_edits_desc">Claude may edit files and run commands in the workspace without asking. Recommended.</string>
     <string name="claude_permission_full_access">Full access</string>

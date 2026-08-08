@@ -851,6 +851,8 @@
     <string name="antigravity_permission_full_access_desc">Antigravityが確認なしにあらゆるコマンドを実行できます。取り扱いにご注意ください。</string>
     <string name="claude_permission_plan">プランのみ</string>
     <string name="claude_permission_plan_desc">Claudeは読み取りと計画のみ行い、ファイル編集やコマンド実行はしません。</string>
+    <string name="claude_permission_ask">毎回確認</string>
+    <string name="claude_permission_ask_desc">承認が必要なツールの前に確認します。アプリまたは通知で許可／拒否できます。</string>
     <string name="claude_permission_accept_edits">編集を許可</string>
     <string name="claude_permission_accept_edits_desc">Claudeがワークスペース内のファイル編集とコマンド実行を確認なしに行えます。推奨設定です。</string>
     <string name="claude_permission_full_access">フルアクセス</string>

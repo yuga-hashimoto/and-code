@@ -215,7 +215,7 @@ class ClaudeCodeInstallerTest {
             runPackageCommands(
                 ClaudeCodeInstaller::installPackageCommands,
                 "ADD_STATUS" to "1",
-                "INSTALLED" to "claude-code util-linux",
+                "INSTALLED" to "claude-code util-linux jq",
             )
 
         assertEquals(0, run.exitCode)

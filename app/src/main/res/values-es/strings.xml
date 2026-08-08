@@ -839,6 +839,8 @@
     <string name="antigravity_permission_full_access_desc">Antigravity puede ejecutar cualquier comando sin preguntar. Úsalo con cuidado.</string>
     <string name="claude_permission_plan">Solo planificar</string>
     <string name="claude_permission_plan_desc">Claude lee y planifica, pero nunca edita archivos ni ejecuta comandos.</string>
+    <string name="claude_permission_ask">Preguntar cada vez</string>
+    <string name="claude_permission_ask_desc">Claude pregunta antes de herramientas que requieren aprobación. Permite o rechaza en la app o la notificación.</string>
     <string name="claude_permission_accept_edits">Aceptar ediciones</string>
     <string name="claude_permission_accept_edits_desc">Claude puede editar archivos y ejecutar comandos en el espacio de trabajo sin preguntar. Recomendado.</string>
     <string name="claude_permission_full_access">Acceso completo</string>

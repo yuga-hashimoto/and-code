@@ -20,6 +20,7 @@ import com.yugahashimoto.andcode.core.api.PromptRequest
 import com.yugahashimoto.andcode.runtime.BackendKind
 import com.yugahashimoto.andcode.runtime.LocalAgent
 import com.yugahashimoto.andcode.runtime.PermissionResponse
+import com.yugahashimoto.andcode.runtime.RuntimeCapabilities
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.RuntimeType
@@ -62,6 +63,17 @@ class ClaudeCodeTarget(
     override val agent = LocalAgent.CLAUDE_CODE
     override val kind = BackendKind.LOCAL
     override val type = RuntimeType.LOCAL
+
+    override val capabilities: RuntimeCapabilities
+        get() {
+            val bridge = runtime.permissionBridgeReady()
+            return RuntimeCapabilities(
+                permissions = bridge,
+                questions = bridge,
+                toolEvents = true,
+                resume = true,
+            )
+        }
 
     private val mutableState = MutableStateFlow<RuntimeState>(RuntimeState.Disconnected)
     override val state: StateFlow<RuntimeState> = mutableState.asStateFlow()
@@ -303,26 +315,39 @@ class ClaudeCodeTarget(
     }
 
     /**
-     * Permission responses are not part of this runtime's contract.
+     * Answers a PermissionRequest that the guest hook parked on the file bridge.
      *
-     * Streaming-JSON mode has no channel for answering an individual tool prompt, so permissions are
-     * decided per session through [ClaudePermissionMode] instead. Reporting false keeps the chat
-     * layer from believing a prompt was answered.
+     * Returns false when the bridge has no matching request (already timed out or unknown id).
      */
     override suspend fun respondToPermission(
         sessionId: String,
         permissionId: String,
         response: PermissionResponse,
         remember: Boolean,
-    ): Boolean = false
+    ): Boolean = withContext(Dispatchers.IO) { runtime.respondToPermission(permissionId, response, remember) }
 
     override suspend fun answerQuestion(
         requestId: String,
         answers: List<List<String>>,
         directory: String?,
-    ): Boolean = false
+    ): Boolean = withContext(Dispatchers.IO) { runtime.answerQuestion(requestId, answers) }
 
     override fun events(): Flow<OpenCodeEvent> = runtime.events()
+
+    /**
+     * Working-tree diff for the session's workspace.
+     *
+     * Claude Code has no server-side sessionDiff; the workspace git diff is the equivalent surface
+     * OpenCode exposes for local review.
+     */
+    override suspend fun sessionDiff(
+        sessionId: String,
+        directory: String?,
+        messageId: String?,
+    ): List<OpenCodeFileChange> {
+        val dir = directory ?: records[sessionId]?.session?.directory ?: WORKSPACE_ROOT
+        return vcsDiff(dir, mode = "unified", context = 3)
+    }
 
     // OpenCode answers these over HTTP. Claude Code has no server, but /workspace is a real
     // directory on the device, so they are read from disk instead of throwing "unsupported".

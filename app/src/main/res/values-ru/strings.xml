@@ -839,6 +839,8 @@
     <string name="antigravity_permission_full_access_desc">Antigravity может выполнять любые команды без подтверждения. Используйте с осторожностью.</string>
     <string name="claude_permission_plan">Только планирование</string>
     <string name="claude_permission_plan_desc">Claude только читает и планирует, не изменяя файлы и не выполняя команды.</string>
+    <string name="claude_permission_ask">Спрашивать каждый раз</string>
+    <string name="claude_permission_ask_desc">Claude спрашивает перед инструментами, требующими одобрения. Разрешите или отклоните в приложении или уведомлении.</string>
     <string name="claude_permission_accept_edits">Разрешить правки</string>
     <string name="claude_permission_accept_edits_desc">Claude может изменять файлы и выполнять команды в рабочей папке без подтверждения. Рекомендуется.</string>
     <string name="claude_permission_full_access">Полный доступ</string>

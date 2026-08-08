@@ -153,6 +153,7 @@ class LocalRuntimeInstaller(
                 if (LocalAgent.CLAUDE_CODE in requestedAgents) {
                     onClaude(0.93f, context.getString(R.string.install_step_installing_claude_code))
                     ClaudeCodeInstaller.installInto(rootfs, commandSuite, runtimeDirectory)
+                    provisionClaudePermissionHook(rootfs)
                 }
                 if (LocalAgent.ANTIGRAVITY in requestedAgents) {
                     onAntigravity(0.94f, context.getString(R.string.install_step_downloading_antigravity))
@@ -451,7 +452,18 @@ class LocalRuntimeInstaller(
             .forEach { rootfs ->
                 installAndroidHelperScripts(rootfs)
                 provisionBrowserMcp(rootfs)
+                provisionClaudePermissionHook(rootfs)
             }
+    }
+
+    /** Installs the Claude Code PermissionRequest hook into an Alpine rootfs. */
+    fun provisionClaudePermissionHook(rootfs: File = File(runtimeDirectory, "environment/rootfs")) {
+        if (!rootfs.isDirectory) return
+        runCatching {
+            val script =
+                context.assets.open("scripts/and-code-claude-permission-hook.sh").bufferedReader().use { it.readText() }
+            ClaudePermissionHooks.installInto(rootfs, script)
+        }
     }
 
     /**

@@ -839,6 +839,8 @@
     <string name="antigravity_permission_full_access_desc">يمكن لـ Antigravity تنفيذ أي أمر دون سؤال. استخدمه بحذر.</string>
     <string name="claude_permission_plan">التخطيط فقط</string>
     <string name="claude_permission_plan_desc">يقرأ Claude ويخطّط فقط دون تعديل الملفات أو تنفيذ الأوامر.</string>
+    <string name="claude_permission_ask">السؤال في كل مرة</string>
+    <string name="claude_permission_ask_desc">يسأل Claude قبل الأدوات التي تحتاج موافقة. اسمح أو ارفض من التطبيق أو الإشعار.</string>
     <string name="claude_permission_accept_edits">قبول التعديلات</string>
     <string name="claude_permission_accept_edits_desc">يمكن لـ Claude تعديل الملفات وتنفيذ الأوامر في مساحة العمل دون سؤال. موصى به.</string>
     <string name="claude_permission_full_access">وصول كامل</string>

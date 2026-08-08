@@ -5,10 +5,9 @@ import com.yugahashimoto.andcode.R
 /**
  * How Claude Code handles tool permissions for a session.
  *
- * Claude Code's streaming-JSON mode has no channel for answering a per-call permission prompt
- * without hosting an MCP permission tool, so the decision is made once per session instead. The
- * CLI's own `default` mode is deliberately not offered: with no prompt channel it can only deny,
- * which looks like a hang to the user.
+ * When AndCode's PermissionRequest hook bridge is installed, [ASK] routes unmatched tools to the
+ * Android approval UI. Without the bridge, prefer [ACCEPT_EDITS] (pre-approves Bash) so the CLI
+ * does not hang waiting for a prompt nobody can answer.
  */
 enum class ClaudePermissionMode(
     val cliValue: String,
@@ -17,25 +16,33 @@ enum class ClaudePermissionMode(
     /**
      * Tools pre-approved for the session, passed as `--allowedTools`.
      *
-     * Without this, `acceptEdits` asks before every command and the answer never arrives: git, gh
-     * and everything else simply stop, with Claude explaining that it needs approval nobody can
-     * give. Naming the tools up front is how a transport with no prompt channel says yes.
+     * Used when the mode auto-approves a subset and still needs a prompt channel for the rest.
+     * [ASK] leaves this empty so every unmatched call reaches the PermissionRequest hook.
      */
     val allowedTools: List<String> = emptyList(),
+    /** True when this mode expects the AndCode permission bridge to answer prompts. */
+    val requiresBridge: Boolean = false,
 ) {
     PLAN("plan", R.string.claude_permission_plan, R.string.claude_permission_plan_desc),
+    ASK(
+        "default",
+        R.string.claude_permission_ask,
+        R.string.claude_permission_ask_desc,
+        requiresBridge = true,
+    ),
     ACCEPT_EDITS(
         "acceptEdits",
         R.string.claude_permission_accept_edits,
         R.string.claude_permission_accept_edits_desc,
-        // Commands, but still inside Claude Code's own permission system: unlike full access it
-        // keeps the checks that stop it writing outside the directories it was given.
+        // Commands stay auto-approved so Accept edits remains useful without prompting every Bash.
+        // File edits are covered by acceptEdits itself; other tools may still hit the bridge.
         allowedTools = listOf("Bash"),
     ),
     FULL_ACCESS("bypassPermissions", R.string.claude_permission_full_access, R.string.claude_permission_full_access_desc),
     ;
 
     companion object {
+        /** Safe default until the user opts into [ASK] after the bridge is ready. */
         val DEFAULT = ACCEPT_EDITS
 
         fun fromCliValue(value: String?): ClaudePermissionMode = entries.firstOrNull { it.cliValue == value } ?: DEFAULT

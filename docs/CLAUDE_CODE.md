@@ -99,18 +99,25 @@ stable line structure, and the heuristics needed to read it misfire on ordinary 
 
 ## Permissions
 
-Streaming-JSON mode has no channel for answering an individual tool prompt without hosting an MCP
-permission tool, so permissions are decided per session via `--permission-mode`:
+Per-tool approvals use Claude Code's **PermissionRequest hook** bridged to the Android approval UI
+(chat chip + notification). AndCode installs `and-code-claude-permission-hook.sh` into the guest and
+merges a `PermissionRequest` handler into `~/.claude/settings.json`. The hook writes a request under
+`/root/.andcode/claude-bridge` (bind-mounted from the app runtime directory); the app responds with
+allow/deny JSON the hook is polling for.
 
 | Mode | CLI value | Effect |
 | --- | --- | --- |
 | Plan only | `plan` | Reads and plans; never edits or runs commands |
-| Accept edits (default) | `acceptEdits` | May edit files in the workspace |
+| Ask each time | `default` | Unmatched tools prompt in AndCode (requires the hook bridge) |
+| Accept edits (default) | `acceptEdits` | Auto file ops; Bash pre-approved via `--allowedTools` |
 | Full access | `bypassPermissions` | Runs any command without asking |
 
-The CLI's own `default` mode is not offered: with no prompt channel it can only deny, which is
-indistinguishable from a hang. `ClaudeCodeTarget.respondToPermission` therefore returns false rather
-than pretending a prompt was answered.
+If the hook is missing (older install not yet re-provisioned), Ask mode falls back to Accept edits
+for that process so the CLI cannot hang. `ClaudeCodeTarget.capabilities.permissions` / `questions`
+are true only when the bridge is installed. "Always allow" stores a rule in the bridge's
+`always-rules.json` so matching tools skip the UI on later turns.
+
+See `docs/superpowers/specs/2026-08-08-claude-code-opencode-local-parity-design.md`.
 
 ## Sign-in
 

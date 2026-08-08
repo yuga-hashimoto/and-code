@@ -839,6 +839,8 @@
     <string name="antigravity_permission_full_access_desc">Antigravity peut exécuter n\'importe quelle commande sans demander. À utiliser avec prudence.</string>
     <string name="claude_permission_plan">Planification seule</string>
     <string name="claude_permission_plan_desc">Claude lit et planifie, sans jamais modifier de fichiers ni exécuter de commandes.</string>
+    <string name="claude_permission_ask">Demander à chaque fois</string>
+    <string name="claude_permission_ask_desc">Claude demande avant les outils nécessitant une approbation. Autorisez ou refusez dans l’app ou la notification.</string>
     <string name="claude_permission_accept_edits">Accepter les modifications</string>
     <string name="claude_permission_accept_edits_desc">Claude peut modifier des fichiers et exécuter des commandes dans l\'espace de travail sans demander. Recommandé.</string>
     <string name="claude_permission_full_access">Accès complet</string>

@@ -6,15 +6,19 @@ import org.junit.Test
 
 class ClaudePermissionModeTest {
     @Test
-    fun `accept edits pre-approves commands because nothing can answer a prompt`() {
-        // Without this the CLI asks before every command and the answer never arrives: git and gh
-        // stopped working while Claude explained it needed approval the transport cannot give.
+    fun `accept edits pre-approves bash so common commands keep working`() {
         assertEquals(listOf("Bash"), ClaudePermissionMode.ACCEPT_EDITS.allowedTools)
     }
 
     @Test
+    fun `ask mode uses default CLI permission mode and needs the bridge`() {
+        assertEquals("default", ClaudePermissionMode.ASK.cliValue)
+        assertTrue(ClaudePermissionMode.ASK.requiresBridge)
+        assertTrue(ClaudePermissionMode.ASK.allowedTools.isEmpty())
+    }
+
+    @Test
     fun `plan approves nothing`() {
-        // Plan is the mode that is meant to stop before acting, so silence is correct there.
         assertTrue(ClaudePermissionMode.PLAN.allowedTools.isEmpty())
     }
 
@@ -29,5 +33,11 @@ class ClaudePermissionModeTest {
         assertEquals(ClaudePermissionMode.DEFAULT, ClaudePermissionMode.fromCliValue("nonsense"))
         assertEquals(ClaudePermissionMode.DEFAULT, ClaudePermissionMode.fromCliValue(null))
         assertEquals(ClaudePermissionMode.PLAN, ClaudePermissionMode.fromCliValue("plan"))
+        assertEquals(ClaudePermissionMode.ASK, ClaudePermissionMode.fromCliValue("default"))
+    }
+
+    @Test
+    fun `default remains accept edits until ask is opted in`() {
+        assertEquals(ClaudePermissionMode.ACCEPT_EDITS, ClaudePermissionMode.DEFAULT)
     }
 }
