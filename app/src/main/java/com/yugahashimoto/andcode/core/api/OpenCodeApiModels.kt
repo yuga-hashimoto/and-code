@@ -317,6 +317,12 @@ sealed interface OpenCodeEvent {
 
     data class SessionIdle(val sessionId: String) : OpenCodeEvent
 
+    /** A new session appeared. Its [OpenCodeSession.parentId] names the session that spawned it. */
+    data class SessionCreated(val session: OpenCodeSession) : OpenCodeEvent
+
+    /** A session's metadata changed; carries the same payload as [SessionCreated]. */
+    data class SessionUpdated(val session: OpenCodeSession) : OpenCodeEvent
+
     /** Replacement for the deprecated `session.idle`: status is `idle`, `busy` or `retry`. */
     data class SessionStatusChanged(val sessionId: String, val status: String) : OpenCodeEvent
 

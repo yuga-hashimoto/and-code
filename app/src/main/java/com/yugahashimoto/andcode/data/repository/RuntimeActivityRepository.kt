@@ -81,6 +81,26 @@ class RuntimeActivityRepository(
     private val mutableResolvedPermissions = MutableSharedFlow<String>(extraBufferCapacity = 64)
     val resolvedPermissions: SharedFlow<String> = mutableResolvedPermissions.asSharedFlow()
 
+    /**
+     * Child session id to the session that spawned it, learned from `session.created` /
+     * `session.updated` events and resolved through the runtime API when the stream missed the
+     * creation (app restart mid-run, reconnected stream). A key present with a null value means
+     * the session is known to have no parent, so it is resolved only once.
+     *
+     * Events arrive on the stream collector while [markSessionRunning] arrives from the UI, so
+     * both maps are guarded by [parentLock].
+     */
+    private val parentIds = mutableMapOf<String, String?>()
+    private val parentLock = Any()
+
+    /**
+     * Sessions the runtime itself reported as no longer running. Subagent events must not
+     * resurrect a parent whose own turn already ended (a background subagent outlives it), but
+     * must resurrect one that was only settled locally by [markSessionFinished] and is in fact
+     * still blocked on the subagent.
+     */
+    private val runtimeIdleSessionIds = mutableSetOf<String>()
+
     init {
         scope.launch {
             registry.selected.collectLatest selected@{ target ->
@@ -163,6 +183,7 @@ class RuntimeActivityRepository(
      */
     fun markSessionRunning(sessionId: String) {
         if (sessionId.isBlank()) return
+        synchronized(parentLock) { runtimeIdleSessionIds.remove(sessionId) }
         mutableState.update { current ->
             current.copy(
                 activeSessionIds = current.activeSessionIds + sessionId,
@@ -204,35 +225,22 @@ class RuntimeActivityRepository(
     ) {
         when (event) {
             OpenCodeEvent.ServerConnected -> appendLog(messages.eventConnectedTitle, messages.eventConnectedDetail)
+            is OpenCodeEvent.SessionCreated -> rememberParent(event.session.id, event.session.parentId)
+            is OpenCodeEvent.SessionUpdated -> rememberParent(event.session.id, event.session.parentId)
             is OpenCodeEvent.MessagePartUpdated -> {
                 val sessionId = event.part.sessionId ?: return
-                mutableState.update { current ->
-                    if (sessionId in current.settledSessionIds || sessionId in current.completedSessionIds) {
-                        current
-                    } else {
-                        current.copy(activeSessionIds = current.activeSessionIds + sessionId)
-                    }
-                }
+                activateSession(target, sessionId)
                 when (event.part.type) {
                     "tool", "tool-invocation" -> appendLog(messages.eventTool, event.part.tool, sessionId)
                     "reasoning" -> appendLog(messages.eventReasoning, null, sessionId)
                 }
             }
-            is OpenCodeEvent.MessagePartDelta -> {
-                mutableState.update { current ->
-                    if (event.sessionId in current.settledSessionIds || event.sessionId in current.completedSessionIds) {
-                        current
-                    } else {
-                        current.copy(activeSessionIds = current.activeSessionIds + event.sessionId)
-                    }
-                }
-            }
+            is OpenCodeEvent.MessagePartDelta -> activateSession(target, event.sessionId)
             is OpenCodeEvent.PermissionAsked -> {
+                // A live request proves the session is waiting, settled or not.
+                activateSession(target, event.request.sessionId, force = true)
                 mutableState.update { current ->
-                    current.copy(
-                        permissions = current.permissions.filterNot { it.id == event.request.id } + event.request,
-                        activeSessionIds = current.activeSessionIds + event.request.sessionId,
-                    )
+                    current.copy(permissions = current.permissions.filterNot { it.id == event.request.id } + event.request)
                 }
                 appendLog(messages.eventPermission, event.request.permission, event.request.sessionId)
                 onPermissionAsked?.invoke(
@@ -242,6 +250,7 @@ class RuntimeActivityRepository(
                 )
             }
             is OpenCodeEvent.SessionIdle -> {
+                markRuntimeIdle(event.sessionId)
                 mutableState.update { current ->
                     current.copy(
                         activeSessionIds = current.activeSessionIds - event.sessionId,
@@ -250,22 +259,11 @@ class RuntimeActivityRepository(
                     )
                 }
                 appendLog(messages.eventCompleted, null, event.sessionId)
-                val isSubagent =
-                    runCatching { target.session(event.sessionId).parentId != null }
-                        .getOrDefault(false)
-                if (!isSubagent) {
+                if (parentIdOf(target, event.sessionId) == null) {
                     onSessionIdle?.invoke(event.sessionId, sessionTitle(target, event.sessionId), target.id)
                 }
             }
-            is OpenCodeEvent.MessageUpdated -> {
-                mutableState.update { current ->
-                    if (event.info.sessionId in current.settledSessionIds || event.info.sessionId in current.completedSessionIds) {
-                        current
-                    } else {
-                        current.copy(activeSessionIds = current.activeSessionIds + event.info.sessionId)
-                    }
-                }
-            }
+            is OpenCodeEvent.MessageUpdated -> activateSession(target, event.info.sessionId)
             is OpenCodeEvent.PermissionReplied -> {
                 mutableState.update { current ->
                     current.copy(permissions = current.permissions.filterNot { it.id == event.requestId })
@@ -274,6 +272,11 @@ class RuntimeActivityRepository(
                 onPermissionResolved?.invoke(event.requestId)
             }
             is OpenCodeEvent.SessionStatusChanged -> {
+                if (event.status == "idle") {
+                    markRuntimeIdle(event.sessionId)
+                } else {
+                    markRuntimeRunning(event.sessionId)
+                }
                 mutableState.update { current ->
                     current.copy(
                         activeSessionIds =
@@ -298,9 +301,13 @@ class RuntimeActivityRepository(
                             },
                     )
                 }
+                if (event.status != "idle") {
+                    activateAncestors(target, event.sessionId)
+                }
             }
             is OpenCodeEvent.SessionError -> {
                 event.sessionId?.let { sessionId ->
+                    markRuntimeIdle(sessionId)
                     mutableState.update { current ->
                         current.copy(
                             activeSessionIds = current.activeSessionIds - sessionId,
@@ -312,9 +319,7 @@ class RuntimeActivityRepository(
                 onSessionError?.invoke(event.sessionId, event.message, target.id)
             }
             is OpenCodeEvent.QuestionAsked -> {
-                mutableState.update { current ->
-                    current.copy(activeSessionIds = current.activeSessionIds + event.request.sessionId)
-                }
+                activateSession(target, event.request.sessionId, force = true)
                 appendLog(messages.eventQuestion, event.request.questions.firstOrNull()?.question, event.request.sessionId)
                 onQuestionAsked?.invoke(
                     event.request,
@@ -325,6 +330,86 @@ class RuntimeActivityRepository(
             is OpenCodeEvent.Unknown -> appendLog(messages.eventUnknown, event.type)
         }
     }
+
+    /**
+     * Marks a session active unless it was settled, and reports the same for every ancestor.
+     *
+     * A session blocked on the task tool emits nothing while its subagent works, so the runtime
+     * events of the child are the only signal that the parent's turn is still in flight. Without
+     * forwarding them, a parent the user navigated away from (which [markSessionFinished] then
+     * settles) sat on the grey idle dot in the drawer for the subagent's entire run.
+     */
+    private suspend fun activateSession(
+        target: RuntimeTarget,
+        sessionId: String,
+        force: Boolean = false,
+    ) {
+        if (sessionId.isBlank()) return
+        mutableState.update { current ->
+            if (!force && (sessionId in current.settledSessionIds || sessionId in current.completedSessionIds)) {
+                current
+            } else {
+                current.copy(activeSessionIds = current.activeSessionIds + sessionId)
+            }
+        }
+        activateAncestors(target, sessionId)
+    }
+
+    /**
+     * Walks up the parent chain keeping every ancestor marked running. An ancestor the runtime
+     * already reported idle ends the walk: its turn no longer waits on this subagent chain (only
+     * experimental background subagents outlive their parent's turn).
+     */
+    private suspend fun activateAncestors(
+        target: RuntimeTarget,
+        sessionId: String,
+    ) {
+        var parentId = parentIdOf(target, sessionId)
+        while (parentId != null) {
+            if (isRuntimeIdle(parentId)) break
+            val ancestorId = parentId
+            mutableState.update { current ->
+                current.copy(
+                    activeSessionIds = current.activeSessionIds + ancestorId,
+                    completedSessionIds = current.completedSessionIds - ancestorId,
+                    settledSessionIds = current.settledSessionIds - ancestorId,
+                )
+            }
+            parentId = parentIdOf(target, ancestorId)
+        }
+    }
+
+    private fun rememberParent(
+        sessionId: String,
+        parentId: String?,
+    ) {
+        if (sessionId.isBlank()) return
+        synchronized(parentLock) { parentIds[sessionId] = parentId }
+    }
+
+    /** Parent of a subagent session, resolved once per session and cached. */
+    private suspend fun parentIdOf(
+        target: RuntimeTarget,
+        sessionId: String,
+    ): String? {
+        synchronized(parentLock) {
+            if (sessionId in parentIds) return parentIds[sessionId]
+        }
+        // Misses the creation event when the stream reconnected mid-run; ask the runtime instead.
+        val parentId = runCatching { target.session(sessionId).parentId }.getOrNull()
+        synchronized(parentLock) { parentIds[sessionId] = parentId }
+        return parentId
+    }
+
+    private fun markRuntimeIdle(sessionId: String) {
+        synchronized(parentLock) { runtimeIdleSessionIds.add(sessionId) }
+    }
+
+    private fun markRuntimeRunning(sessionId: String) {
+        synchronized(parentLock) { runtimeIdleSessionIds.remove(sessionId) }
+    }
+
+    private fun isRuntimeIdle(sessionId: String): Boolean = synchronized(parentLock) { sessionId in runtimeIdleSessionIds }
 
     private suspend fun sessionTitle(
         target: RuntimeTarget,

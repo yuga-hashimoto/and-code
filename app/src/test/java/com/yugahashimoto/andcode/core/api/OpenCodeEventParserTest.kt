@@ -208,6 +208,29 @@ class OpenCodeEventParserTest {
     }
 
     @Test
+    fun `parses session created event with its parent link`() {
+        val event =
+            parser.parse(
+                """{"type":"session.created","properties":{"sessionID":"child1","info":{"id":"child1","slug":"happy-forest","parentID":"parent1","title":"Check dir (@general subagent)","time":{"created":1}}}}""",
+            ) as OpenCodeEvent.SessionCreated
+
+        assertEquals("child1", event.session.id)
+        assertEquals("parent1", event.session.parentId)
+        assertEquals("Check dir (@general subagent)", event.session.title)
+    }
+
+    @Test
+    fun `parses session updated event`() {
+        val event =
+            parser.parse(
+                """{"type":"session.updated","properties":{"sessionID":"parent1","info":{"id":"parent1","title":"Investigation","time":{"created":1,"updated":2}}}}""",
+            ) as OpenCodeEvent.SessionUpdated
+
+        assertEquals("parent1", event.session.id)
+        assertEquals(null, event.session.parentId)
+    }
+
+    @Test
     fun `session error reports the readable message instead of raw json`() {
         val event =
             parser.parse(

@@ -88,6 +88,22 @@ class OpenCodeEventParser(
                         requestId = properties["requestID"]!!.jsonPrimitive.content,
                     )
                 "session.idle" -> OpenCodeEvent.SessionIdle(properties["sessionID"]!!.jsonPrimitive.content)
+                "session.created" -> {
+                    val session =
+                        json.decodeFromJsonElement(
+                            OpenCodeSession.serializer(),
+                            properties["info"]!!.jsonObject,
+                        )
+                    OpenCodeEvent.SessionCreated(session)
+                }
+                "session.updated" -> {
+                    val session =
+                        json.decodeFromJsonElement(
+                            OpenCodeSession.serializer(),
+                            properties["info"]!!.jsonObject,
+                        )
+                    OpenCodeEvent.SessionUpdated(session)
+                }
                 "session.status" ->
                     OpenCodeEvent.SessionStatusChanged(
                         sessionId = properties["sessionID"]!!.jsonPrimitive.content,

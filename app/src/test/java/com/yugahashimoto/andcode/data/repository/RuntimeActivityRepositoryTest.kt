@@ -436,6 +436,158 @@ class RuntimeActivityRepositoryTest {
             assertTrue(repository.state.value.activeSessionIds.isEmpty())
         }
 
+    @Test
+    fun `subagent activity resurrects a parent settled by local navigation`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val repository = RuntimeActivityRepository(registry, TestScope(dispatcher))
+            advanceUntilIdle()
+
+            repository.markSessionRunning("ses_parent")
+            // The user opened another chat mid-turn; the parent is still blocked on the task tool.
+            repository.markSessionFinished("ses_parent", unread = true)
+            assertTrue(repository.state.value.activeSessionIds.isEmpty())
+
+            target.eventFlow.emit(
+                OpenCodeEvent.SessionCreated(OpenCodeSession(id = "child_1", parentId = "ses_parent")),
+            )
+            target.eventFlow.emit(
+                OpenCodeEvent.MessagePartDelta(
+                    sessionId = "child_1",
+                    messageId = "msg_1",
+                    partId = "part_1",
+                    field = "text",
+                    delta = "searching",
+                ),
+            )
+            advanceUntilIdle()
+
+            // The parent emits nothing while the subagent works, so the child's events must
+            // keep it marked running instead of leaving it on the idle/completed dot.
+            assertEquals(setOf("ses_parent", "child_1"), repository.state.value.activeSessionIds)
+            assertTrue("ses_parent" !in repository.state.value.completedSessionIds)
+            assertTrue("ses_parent" !in repository.state.value.settledSessionIds)
+        }
+
+    @Test
+    fun `subagent events do not resurrect a parent the runtime reported idle`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val repository = RuntimeActivityRepository(registry, TestScope(dispatcher))
+            advanceUntilIdle()
+
+            target.eventFlow.emit(
+                OpenCodeEvent.SessionCreated(OpenCodeSession(id = "child_1", parentId = "ses_parent")),
+            )
+            // A background subagent outlives its parent's turn; once the runtime declares the
+            // parent idle, the child's events must not wind the parent back up.
+            target.eventFlow.emit(OpenCodeEvent.SessionIdle("ses_parent"))
+            advanceUntilIdle()
+            target.eventFlow.emit(
+                OpenCodeEvent.MessagePartDelta(
+                    sessionId = "child_1",
+                    messageId = "msg_1",
+                    partId = "part_1",
+                    field = "text",
+                    delta = "still working",
+                ),
+            )
+            advanceUntilIdle()
+
+            assertTrue("ses_parent" !in repository.state.value.activeSessionIds)
+            assertEquals(setOf("child_1"), repository.state.value.activeSessionIds)
+        }
+
+    @Test
+    fun `subagent going idle keeps the parent running until its own idle`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val completed = mutableListOf<String>()
+            val repository =
+                RuntimeActivityRepository(
+                    registry = registry,
+                    scope = TestScope(dispatcher),
+                    onSessionIdle = { sessionId, _ -> completed += sessionId },
+                )
+            advanceUntilIdle()
+
+            repository.markSessionRunning("ses_parent")
+            target.eventFlow.emit(
+                OpenCodeEvent.SessionCreated(OpenCodeSession(id = "child_1", parentId = "ses_parent")),
+            )
+            target.eventFlow.emit(OpenCodeEvent.SessionStatusChanged("child_1", "busy"))
+            advanceUntilIdle()
+
+            target.eventFlow.emit(OpenCodeEvent.SessionIdle("child_1"))
+            advanceUntilIdle()
+
+            // The parent resumes its own loop after the task tool returns; only its own idle
+            // ends the turn. The subagent's idle also raises no completion notification.
+            assertEquals(setOf("ses_parent"), repository.state.value.activeSessionIds)
+            assertTrue(completed.isEmpty())
+
+            target.eventFlow.emit(OpenCodeEvent.SessionIdle("ses_parent"))
+            advanceUntilIdle()
+
+            assertTrue(repository.state.value.activeSessionIds.isEmpty())
+            assertEquals(listOf("ses_parent"), completed)
+        }
+
+    @Test
+    fun `parent link falls back to the runtime when the creation event was missed`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            target.sessions =
+                listOf(OpenCodeSession(id = "child_1", parentId = "ses_parent", title = "Explore"))
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val repository = RuntimeActivityRepository(registry, TestScope(dispatcher))
+            advanceUntilIdle()
+
+            repository.markSessionRunning("ses_parent")
+            repository.markSessionFinished("ses_parent", unread = false)
+            target.eventFlow.emit(
+                OpenCodeEvent.MessagePartUpdated(
+                    OpenCodePart(
+                        id = "part_1",
+                        sessionId = "child_1",
+                        messageId = "msg_1",
+                        type = "text",
+                        text = "searching",
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+
+            assertEquals(setOf("ses_parent", "child_1"), repository.state.value.activeSessionIds)
+        }
+
     private class FakeUnreadStore(
         override var unreadSessionIds: Set<String>,
     ) : UnreadSessionStore
