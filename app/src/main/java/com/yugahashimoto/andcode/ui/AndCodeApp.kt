@@ -1207,7 +1207,7 @@ fun AndCodeApp(
                 remember(selectedRuntime) {
                     selectedRuntime?.state ?: MutableStateFlow(RuntimeState.Disconnected)
                 }
-            val runtimeState by runtimeStateFlow.collectAsState()
+            val runtimeState = runtimeStateFlow.collectAsState().value
             DiagnosticsSheet(
                 onDismiss = { showDiagnostics = false },
                 appVersion = BuildConfig.VERSION_NAME,
@@ -1219,7 +1219,7 @@ fun AndCodeApp(
                     },
                 runtimeStatus =
                     when (runtimeState) {
-                        null, RuntimeState.Disconnected -> stringResource(R.string.disconnected_label)
+                        RuntimeState.Disconnected -> stringResource(R.string.disconnected_label)
                         RuntimeState.Connecting -> stringResource(R.string.runtime_status_starting)
                         is RuntimeState.Connected -> stringResource(R.string.connected_version, runtimeState.version)
                         is RuntimeState.Unavailable -> runtimeState.reason
