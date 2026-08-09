@@ -1534,6 +1534,8 @@ class ChatViewModel(
                     )
                 }
             }
+            is OpenCodeEvent.SessionCreated -> Unit
+            is OpenCodeEvent.SessionUpdated -> Unit
             is OpenCodeEvent.Unknown -> Unit
         }
     }

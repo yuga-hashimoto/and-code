@@ -289,6 +289,8 @@ class AndCodeVoiceSession(context: Context) :
                             // handling session.status too would finish the same turn twice.
                             OpenCodeEvent.ServerConnected,
                             is OpenCodeEvent.MessageUpdated,
+                            is OpenCodeEvent.SessionCreated,
+                            is OpenCodeEvent.SessionUpdated,
                             is OpenCodeEvent.SessionStatusChanged,
                             is OpenCodeEvent.QuestionAsked,
                             is OpenCodeEvent.Unknown,
