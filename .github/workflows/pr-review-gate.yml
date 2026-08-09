@@ -1,0 +1,34 @@
+name: PR Review Gate
+
+on:
+  pull_request:
+    # "edited" re-runs the gate when the PR description changes, so the review report can be
+    # added after the PR exists and the check turns green without a new push.
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  review-gate:
+    runs-on: ubuntu-latest
+    # Weblate opens automated translation PRs; they cannot run the agent-side review skill.
+    if: github.event.pull_request.user.login != 'weblate'
+    steps:
+      - name: Require an approved pre-PR review
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          if printf '%s' "$PR_BODY" | grep -qi 'pre-pr-review: approved'; then
+            echo "Approved pre-PR review is recorded in the PR description."
+          else
+            echo "::error::This PR has no approved pre-PR review."
+            echo ""
+            echo "Every PR must be reviewed by the repo-reviewer subagent before it is opened."
+            echo "Run the 'pre-pr-review' skill (see .opencode/skills/pre-pr-review/SKILL.md):"
+            echo "  1. Let the repo-reviewer subagent review the branch diff against origin/main."
+            echo "  2. Fix any blocking findings and re-review until the verdict is APPROVE."
+            echo "  3. Paste the reviewer's report into this PR's description inside the marker:"
+            echo "     <!-- pre-pr-review: approved -->"
+            exit 1
+          fi
