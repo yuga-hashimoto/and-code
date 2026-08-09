@@ -279,6 +279,7 @@ fun AndCodeApp(
                         onPermissionResolved = app.activityRepository::resolvePermission,
                         onQuestionResolved = app.notifications::cancelQuestion,
                         onSessionCreated = app.catalogRepository::refreshSessionsOnly,
+                        onSessionAborted = app.activityRepository::markSessionAborted,
                         onRunStateChanged = { sessionId, running ->
                             if (running) {
                                 app.activityRepository.markSessionRunning(sessionId)

@@ -39,6 +39,7 @@ data class RuntimeActivityState(
     val completedSessionIds: Set<String> = emptySet(),
     /** Sessions whose current run has ended; late stream events must not resurrect them. */
     val settledSessionIds: Set<String> = emptySet(),
+    val mutedSessionIds: Set<String> = emptySet(),
     val permissions: List<PermissionRequest> = emptyList(),
     val logs: List<RuntimeEventLog> = emptyList(),
     val streamError: String? = null,
@@ -189,9 +190,20 @@ class RuntimeActivityRepository(
                 activeSessionIds = current.activeSessionIds + sessionId,
                 completedSessionIds = current.completedSessionIds - sessionId,
                 settledSessionIds = current.settledSessionIds - sessionId,
+                mutedSessionIds = current.mutedSessionIds - sessionId,
             )
         }
         persistUnread()
+    }
+
+    fun markSessionAborted(sessionId: String) {
+        if (sessionId.isBlank()) return
+        mutableState.update { current ->
+            current.copy(
+                activeSessionIds = current.activeSessionIds - sessionId,
+                mutedSessionIds = current.mutedSessionIds + sessionId,
+            )
+        }
     }
 
     /** Records that a run finished, leaving the chat unread until it is opened. */
@@ -251,14 +263,18 @@ class RuntimeActivityRepository(
             }
             is OpenCodeEvent.SessionIdle -> {
                 markRuntimeIdle(event.sessionId)
+                var muted = false
                 mutableState.update { current ->
+                    muted = event.sessionId in current.mutedSessionIds
                     current.copy(
                         activeSessionIds = current.activeSessionIds - event.sessionId,
                         completedSessionIds = current.completedSessionIds + event.sessionId,
                         settledSessionIds = current.settledSessionIds + event.sessionId,
+                        mutedSessionIds = current.mutedSessionIds - event.sessionId,
                     )
                 }
                 appendLog(messages.eventCompleted, null, event.sessionId)
+                if (muted) return
                 parentResolutionOf(target, event.sessionId).onSuccess { parentId ->
                     if (parentId == null) {
                         onSessionIdle?.invoke(event.sessionId, sessionTitle(target, event.sessionId), target.id)
@@ -301,6 +317,7 @@ class RuntimeActivityRepository(
                             } else {
                                 current.settledSessionIds - event.sessionId
                             },
+                        mutedSessionIds = current.mutedSessionIds - event.sessionId,
                     )
                 }
                 if (event.status != "idle") {
@@ -314,6 +331,7 @@ class RuntimeActivityRepository(
                         current.copy(
                             activeSessionIds = current.activeSessionIds - sessionId,
                             settledSessionIds = current.settledSessionIds + sessionId,
+                            mutedSessionIds = current.mutedSessionIds + sessionId,
                         )
                     }
                 }

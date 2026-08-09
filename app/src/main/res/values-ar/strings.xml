@@ -897,6 +897,7 @@
     <string name="claude_error_submit_code">تعذّر إرسال الرمز</string>
     <string name="claude_error_install_failed">فشل تثبيت Claude Code</string>
     <string name="claude_error_update_failed">فشل تحديث Claude Code</string>
+    <string name="claude_error_process_exited">توقف Claude Code قبل إنهاء الدور (%1$s)</string>
     <string name="setup_download_agents_description">تحضير بيئة Linux المشتركة والوكلاء الذين اخترتهم.</string>
     <string name="settings_agents_row">الوكلاء</string>
     <string name="settings_agents_section">الوكلاء</string>

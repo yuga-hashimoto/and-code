@@ -328,6 +328,7 @@ class ChatViewModel(
      * events arrive. Deriving it from events alone left every chat on the idle marker.
      */
     private val onRunStateChanged: (String, Boolean) -> Unit = { _, _ -> },
+    private val onSessionAborted: (String) -> Unit = {},
     private val draftRepo: DraftRepository? = null,
     /**
      * Starts the periodic connection probe. It runs an unbounded polling loop, which a virtual
@@ -793,6 +794,7 @@ class ChatViewModel(
             _uiState.update { it.copy(attachments = emptyList(), imagePreviews = emptyList()) }
             return
         }
+        val interrupting = _uiState.value.isRunning
 
         val userMessage =
             ChatMessage(
@@ -848,6 +850,7 @@ class ChatViewModel(
                     }
                     refreshContextUsage(targetSessionId)
                 }
+                if (interrupting) onSessionAborted(targetSessionId)
                 currentBackend.sendMessage(
                     targetSessionId,
                     PromptRequest(
@@ -1395,6 +1398,7 @@ class ChatViewModel(
         val currentBackend = backend ?: return
         val sessionId = _uiState.value.sessionId ?: return
         viewModelScope.launch {
+            onSessionAborted(sessionId)
             runCatching { currentBackend.abortSession(sessionId) }
                 .onSuccess {
                     _uiState.update {

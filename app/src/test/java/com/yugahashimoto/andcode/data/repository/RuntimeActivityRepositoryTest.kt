@@ -406,6 +406,121 @@ class RuntimeActivityRepositoryTest {
         }
 
     @Test
+    fun `session idle without a resolvable session does not notify`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val completed = mutableListOf<String>()
+            RuntimeActivityRepository(
+                registry = registry,
+                scope = TestScope(dispatcher),
+                onSessionIdle = { sessionId, _, _ -> completed += sessionId },
+            )
+            advanceUntilIdle()
+
+            target.eventFlow.emit(OpenCodeEvent.SessionIdle("unknown"))
+            advanceUntilIdle()
+
+            assertTrue(completed.isEmpty())
+        }
+
+    @Test
+    fun `a session error mutes the completion callback for the trailing idle`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            target.sessions = listOf(OpenCodeSession(id = "ses_1", title = "Main"))
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val completed = mutableListOf<String>()
+            val repository =
+                RuntimeActivityRepository(
+                    registry = registry,
+                    scope = TestScope(dispatcher),
+                    onSessionIdle = { sessionId, _, _ -> completed += sessionId },
+                )
+            advanceUntilIdle()
+
+            target.eventFlow.emit(OpenCodeEvent.SessionError("ses_1", "boom"))
+            advanceUntilIdle()
+            target.eventFlow.emit(OpenCodeEvent.SessionIdle("ses_1"))
+            advanceUntilIdle()
+
+            assertTrue(completed.isEmpty())
+            assertTrue(repository.state.value.mutedSessionIds.isEmpty())
+        }
+
+    @Test
+    fun `a muted session notifies again once a new run starts`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            target.sessions = listOf(OpenCodeSession(id = "ses_1", title = "Main"))
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val completed = mutableListOf<String>()
+            RuntimeActivityRepository(
+                registry = registry,
+                scope = TestScope(dispatcher),
+                onSessionIdle = { sessionId, _, _ -> completed += sessionId },
+            )
+            advanceUntilIdle()
+
+            target.eventFlow.emit(OpenCodeEvent.SessionError("ses_1", "boom"))
+            target.eventFlow.emit(OpenCodeEvent.SessionIdle("ses_1"))
+            advanceUntilIdle()
+            target.eventFlow.emit(OpenCodeEvent.SessionStatusChanged("ses_1", "busy"))
+            target.eventFlow.emit(OpenCodeEvent.SessionIdle("ses_1"))
+            advanceUntilIdle()
+
+            assertEquals(listOf("ses_1"), completed)
+        }
+
+    @Test
+    fun `markSessionAborted mutes the completion callback for the trailing idle`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            target.sessions = listOf(OpenCodeSession(id = "ses_1", title = "Main"))
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val completed = mutableListOf<String>()
+            val repository =
+                RuntimeActivityRepository(
+                    registry = registry,
+                    scope = TestScope(dispatcher),
+                    onSessionIdle = { sessionId, _, _ -> completed += sessionId },
+                )
+            advanceUntilIdle()
+
+            repository.markSessionRunning("ses_1")
+            repository.markSessionAborted("ses_1")
+            target.eventFlow.emit(OpenCodeEvent.SessionIdle("ses_1"))
+            advanceUntilIdle()
+
+            assertTrue(completed.isEmpty())
+            assertTrue(repository.state.value.activeSessionIds.isEmpty())
+        }
+
+    @Test
     fun `late tool events after a session error do not resurrect activity`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)

@@ -9,6 +9,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeTodo
 import com.yugahashimoto.andcode.core.api.PromptAttachment
 import com.yugahashimoto.andcode.core.api.QuestionRequest
 import com.yugahashimoto.andcode.runtime.PermissionResponse
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -69,6 +70,7 @@ class ClaudeCodeRuntime(
     private class SessionProcess(
         val process: Process,
         val readerJob: Job,
+        val parser: ClaudeStreamJsonParser,
         val permissionMode: ClaudePermissionMode,
         val directory: String,
         val model: String?,
@@ -280,6 +282,7 @@ class ClaudeCodeRuntime(
     ): Result<Unit> =
         runCatching {
             val session = ensureProcess(sessionId, directory.ifBlank { "/workspace" }, permissionMode, model, effort)
+            session.parser.beginTurn()
             recordUserMessage(sessionId, prompt, attachments)
             session.process.outputStream.apply {
                 write((json.encodeToString(JsonObject.serializer(), userMessage(prompt, attachments)) + "\n").toByteArray())
@@ -382,20 +385,33 @@ class ClaudeCodeRuntime(
         val requestedModel = model
         val readerJob =
             scope.launch {
-                runCatching {
-                    process.inputStream.bufferedReader().forEachLine { line ->
-                        handleLine(sessionId, parser, line, requestedModel)
-                    }
-                }
+                val streamFailure =
+                    runCatching {
+                        process.inputStream.bufferedReader().forEachLine { line ->
+                            handleLine(sessionId, parser, line, requestedModel)
+                        }
+                    }.exceptionOrNull()
+                        .takeUnless { it is CancellationException }
                 messageStore.flush()
-                // A CLI that exits mid-turn would otherwise leave the chat spinning forever.
-                events.tryEmit(OpenCodeEvent.SessionIdle(sessionId))
                 synchronized(this@ClaudeCodeRuntime) {
                     if (sessions[sessionId]?.process === process) sessions.remove(sessionId)
                 }
+                // stop() cancels this job; the abort path owns the state transitions, and an idle
+                // emitted here would announce the killed run as completed.
+                if (!isActive) return@launch
+                // A CLI that exits before its result line would otherwise leave the chat spinning
+                // forever; that is a failure, not a completion. A finished turn already emitted its
+                // own idle, and repeating it on process exit would re-announce the old run.
+                if (!parser.turnFinished) {
+                    val exitCode = runCatching { process.exitValue() }.getOrNull()
+                    events.tryEmit(
+                        OpenCodeEvent.SessionError(sessionId, messages.processExited(exitCode, streamFailure?.message)),
+                    )
+                    events.tryEmit(OpenCodeEvent.SessionIdle(sessionId))
+                }
             }
 
-        return SessionProcess(process, readerJob, effectiveMode, directory, model, effort)
+        return SessionProcess(process, readerJob, parser, permissionMode, directory, model, effort)
             .also { sessions[sessionId] = it }
     }
 

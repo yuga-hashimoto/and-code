@@ -658,6 +658,22 @@ class ChatViewModelTest {
         }
 
     @Test
+    fun `abort reports the session as aborted so its trailing idle does not notify`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val aborted = mutableListOf<String>()
+            val viewModel = ChatViewModel(backend, onSessionAborted = { aborted += it })
+            advanceUntilIdle()
+            viewModel.sendMessage("Do things")
+            advanceUntilIdle()
+
+            viewModel.abort()
+            advanceUntilIdle()
+
+            assertEquals(listOf("s1"), aborted)
+        }
+
+    @Test
     fun `history load maps tool parts alongside text parts`() =
         runTest(dispatcher) {
             val backend = FakeBackend()

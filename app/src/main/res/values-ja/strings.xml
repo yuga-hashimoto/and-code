@@ -943,6 +943,7 @@
     <string name="claude_error_submit_code">コードを送信できませんでした</string>
     <string name="claude_error_install_failed">Claude Codeのインストールに失敗しました</string>
     <string name="claude_error_update_failed">Claude Codeの更新に失敗しました</string>
+    <string name="claude_error_process_exited">Claude Codeがターンを完了する前に停止しました（%1$s）</string>
     <string name="setup_download_agents_description">共有のLinux環境と、選んだエージェントを準備します。</string>
     <string name="settings_agents_row">エージェント</string>
     <string name="settings_agents_section">エージェント</string>

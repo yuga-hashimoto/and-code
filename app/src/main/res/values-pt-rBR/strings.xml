@@ -897,6 +897,7 @@
     <string name="claude_error_submit_code">Não foi possível enviar o código</string>
     <string name="claude_error_install_failed">A instalação do Claude Code falhou</string>
     <string name="claude_error_update_failed">A atualização do Claude Code falhou</string>
+    <string name="claude_error_process_exited">O Claude Code parou antes de concluir o turno (%1$s)</string>
     <string name="setup_download_agents_description">Prepara o ambiente Linux compartilhado e os agentes escolhidos.</string>
     <string name="settings_agents_row">Agentes</string>
     <string name="settings_agents_section">Agentes</string>

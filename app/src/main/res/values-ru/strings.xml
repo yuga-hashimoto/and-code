@@ -897,6 +897,7 @@
     <string name="claude_error_submit_code">Не удалось отправить код</string>
     <string name="claude_error_install_failed">Не удалось установить Claude Code</string>
     <string name="claude_error_update_failed">Не удалось обновить Claude Code</string>
+    <string name="claude_error_process_exited">Claude Code остановился, не завершив ход (%1$s)</string>
     <string name="setup_download_agents_description">Подготовка общей среды Linux и выбранных агентов.</string>
     <string name="settings_agents_row">Агенты</string>
     <string name="settings_agents_section">Агенты</string>

@@ -4,6 +4,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeEvent
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -99,6 +100,16 @@ class ClaudeStreamJsonParserTest {
         assertTrue(parsed.turnFinished)
         assertNull(parsed.errorMessage)
         assertTrue(parsed.events.single() is OpenCodeEvent.SessionIdle)
+    }
+
+    @Test
+    fun `turnFinished tracks the live turn and resets on beginTurn`() {
+        val parser = parser()
+        parser.parse("""{"type":"result","subtype":"success","session_id":"abc"}""")
+        assertTrue(parser.turnFinished)
+
+        parser.beginTurn()
+        assertFalse(parser.turnFinished)
     }
 
     @Test

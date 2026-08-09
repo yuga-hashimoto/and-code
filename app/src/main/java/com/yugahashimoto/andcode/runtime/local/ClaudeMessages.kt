@@ -19,6 +19,11 @@ interface ClaudeMessages {
 
     fun signInExited(exitCode: Int): String
 
+    fun processExited(
+        exitCode: Int?,
+        detail: String?,
+    ): String
+
     /** English fallbacks for unit tests and any construction path without a [Context]. */
     companion object Default : ClaudeMessages {
         override val runtimeMissing = "The Linux environment is not installed yet"
@@ -29,6 +34,14 @@ interface ClaudeMessages {
         override val updateFailed = "Claude Code update failed"
 
         override fun signInExited(exitCode: Int) = "Claude Code sign-in stopped (exit code $exitCode)"
+
+        override fun processExited(
+            exitCode: Int?,
+            detail: String?,
+        ): String {
+            val cause = detail ?: exitCode?.let { "exit code $it" } ?: "process exited"
+            return "Claude Code stopped before finishing the turn ($cause)"
+        }
     }
 }
 
@@ -41,4 +54,12 @@ class AndroidClaudeMessages(private val context: Context) : ClaudeMessages {
     override val updateFailed get() = context.getString(R.string.claude_error_update_failed)
 
     override fun signInExited(exitCode: Int): String = context.getString(R.string.claude_error_sign_in_exit, exitCode)
+
+    override fun processExited(
+        exitCode: Int?,
+        detail: String?,
+    ): String {
+        val cause = detail ?: exitCode?.let { "exit code $it" } ?: "process exited"
+        return context.getString(R.string.claude_error_process_exited, cause)
+    }
 }

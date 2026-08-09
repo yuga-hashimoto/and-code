@@ -45,6 +45,14 @@ class ClaudeStreamJsonParser(
 
     private var currentMessageId: String? = null
 
+    @Volatile
+    var turnFinished: Boolean = false
+        private set
+
+    fun beginTurn() {
+        turnFinished = false
+    }
+
     /** Tool calls that have not received a matching tool_result from Claude Code yet. */
     private val openTools = linkedMapOf<String, OpenTool>()
     private val messagesById = linkedMapOf<String, OpenCodeMessage>()
@@ -157,6 +165,7 @@ class ClaudeStreamJsonParser(
     }
 
     private fun parseResult(root: JsonObject): Parsed {
+        turnFinished = true
         val claudeSessionId = root.string("session_id")
         val isError = root["is_error"]?.jsonPrimitive?.contentOrNull == "true"
         val subtype = root.string("subtype")
