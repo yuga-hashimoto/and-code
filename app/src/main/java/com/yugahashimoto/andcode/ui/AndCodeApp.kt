@@ -120,6 +120,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -1202,7 +1203,11 @@ fun AndCodeApp(
         }
 
         if (showDiagnostics) {
-            val runtimeState = selectedRuntime?.state?.value
+            val runtimeStateFlow =
+                remember(selectedRuntime) {
+                    selectedRuntime?.state ?: MutableStateFlow(RuntimeState.Disconnected)
+                }
+            val runtimeState by runtimeStateFlow.collectAsState()
             DiagnosticsSheet(
                 onDismiss = { showDiagnostics = false },
                 appVersion = BuildConfig.VERSION_NAME,
