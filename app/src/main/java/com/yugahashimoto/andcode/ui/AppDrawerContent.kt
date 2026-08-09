@@ -695,11 +695,11 @@ private fun AppDrawerContentPreview() {
         AppDrawerContent(
             recentSessions =
                 listOf(
-                    DrawerRecentSession("1", "認証バグの調査", "3時間前", "/workspace/android-code"),
-                    DrawerRecentSession("2", "READMEの更新", "昨日", "/workspace/android-code"),
-                    DrawerRecentSession("3", "テスト失敗を修正", "2日前", "/workspace/api-server"),
-                    DrawerRecentSession("4", "APIレスポンスを整理", "4日前", "/workspace/api-server"),
-                    DrawerRecentSession("5", "依存関係を更新", "1週間前", null),
+                    DrawerRecentSession("1", "Investigate auth bug", "3 hours ago", "/workspace/android-code"),
+                    DrawerRecentSession("2", "Update README", "Yesterday", "/workspace/android-code"),
+                    DrawerRecentSession("3", "Fix failing tests", "2 days ago", "/workspace/api-server"),
+                    DrawerRecentSession("4", "Clean up API responses", "4 days ago", "/workspace/api-server"),
+                    DrawerRecentSession("5", "Update dependencies", "1 week ago", null),
                 ),
             workspaces =
                 listOf(

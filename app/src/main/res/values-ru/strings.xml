@@ -75,6 +75,7 @@
     <string name="workspace_clone_url_tab">URL</string>
     <string name="workspace_clone_search">Поиск репозиториев</string>
     <string name="workspace_clone_loading_repos">Загрузка репозиториев…</string>
+    <string name="workspace_clone_failed">Не удалось клонировать (код выхода %1$d)</string>
     <string name="workspace_more_options">Дополнительные параметры</string>
     <string name="workspace_remove_from_list">Удалить из списка</string>
     <string name="workspace_delete_files">Удалить файлы</string>
@@ -569,6 +570,8 @@
     <string name="mcp_auth_help">Завершите аутентификацию в браузере и вставьте код авторизации.</string>
     <string name="mcp_auth_code_hint">Код авторизации</string>
     <string name="mcp_auth_complete">Завершить</string>
+    <string name="mcp_auth_not_removed">Аутентификация не была удалена</string>
+    <string name="mcp_auth_failed_status">Ошибка аутентификации: %1$s</string>
     <string name="mcp_remove_server">Удалить сервер</string>
     <string name="mcp_tools_count">%1$d инструментов</string>
     <string name="mcp_name_hint">Имя сервера</string>
@@ -578,6 +581,7 @@
     <string name="mcp_settings_row">Серверы MCP</string>
 
     <string name="server_info_title">Информация о сервере</string>
+    <string name="server_info_config_saved">Конфигурация сохранена</string>
     <string name="server_info_tab_config">Конфигурация</string>
     <string name="server_info_tab_providers">Провайдеры</string>
     <string name="server_info_tab_commands">Команды</string>
@@ -1034,6 +1038,7 @@
     <string name="activity_event_question">Вопрос</string>
     <string name="activity_event_unknown">Неподдерживаемое событие</string>
     <string name="connection_info_incomplete">Недостаточно данных подключения</string>
+    <string name="provider_disconnect_rejected">Отключение провайдера не было принято</string>
     <string name="guest_browser_title">Гостевой браузер</string>
     <string name="guest_browser_row">Гостевой браузер</string>
     <string name="guest_browser_url_hint">http://127.0.0.1:порт</string>

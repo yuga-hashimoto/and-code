@@ -19,7 +19,7 @@ private const val TAG = "SpeechRecognizerManager"
 private const val CLEANUP_DELAY_MS = 300L
 private const val MAX_RESULTS = 3
 
-// A short pause is common inside a Japanese sentence. Giving the recognizer more time here
+// A short pause is common in the middle of a sentence. Giving the recognizer more time here
 // avoids finalizing a segment before the user has finished the thought; chat then starts the next
 // segment after a genuine recognition result so long dictation remains in one composer value.
 //
@@ -29,22 +29,24 @@ private const val MAX_RESULTS = 3
 private const val SILENCE_LENGTH_MS = 3000
 
 /**
- * 音声認識マネージャー
+ * Manages the platform speech recognizer.
  */
 class SpeechRecognizerManager(private val context: Context) {
     private var recognizer: SpeechRecognizer? = null
 
     /**
-     * 音声認識を利用可能かチェック
+     * Checks whether speech recognition is available on this device.
      */
     fun isAvailable(): Boolean {
         return SpeechRecognizer.isRecognitionAvailable(context)
     }
 
     /**
-     * 音声認識を開始し、結果をFlowで返す
+     * Starts listening and returns the results as a Flow. The caller must pass the user's
+     * language tag; there is no default so a missing locale can never silently fall back to
+     * the wrong language.
      */
-    fun startListening(language: String = "ja-JP"): Flow<SpeechResult> =
+    fun startListening(language: String): Flow<SpeechResult> =
         callbackFlow {
             Log.d(TAG, "startListening called, isAvailable=${isAvailable()}")
 
@@ -195,7 +197,7 @@ class SpeechRecognizerManager(private val context: Context) {
 }
 
 /**
- * 音声認識の結果
+ * A speech recognition result.
  */
 sealed interface SpeechResult {
     data object Ready : SpeechResult

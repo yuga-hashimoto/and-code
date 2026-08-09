@@ -71,10 +71,11 @@ fun ServerInfoScreen(
     val state by viewModel.state.collectAsState()
     var selectedTab by remember { mutableIntStateOf(0) }
     val snackbarHostState = remember { SnackbarHostState() }
+    val configSavedMessage = stringResource(R.string.server_info_config_saved)
 
     LaunchedEffect(state.saveSuccess) {
         if (state.saveSuccess) {
-            snackbarHostState.showSnackbar("Config saved")
+            snackbarHostState.showSnackbar(configSavedMessage)
             viewModel.consumeSaveSuccess()
         }
     }

@@ -75,6 +75,7 @@
     <string name="workspace_clone_url_tab">URL</string>
     <string name="workspace_clone_search">Rechercher des dépôts</string>
     <string name="workspace_clone_loading_repos">Chargement des dépôts…</string>
+    <string name="workspace_clone_failed">Échec du clone (code de sortie %1$d)</string>
     <string name="workspace_more_options">Plus d\'options</string>
     <string name="workspace_remove_from_list">Retirer de la liste</string>
     <string name="workspace_delete_files">Supprimer les fichiers</string>
@@ -569,6 +570,8 @@
     <string name="mcp_auth_help">Terminez l’authentification dans le navigateur, puis collez le code d’autorisation.</string>
     <string name="mcp_auth_code_hint">Code d’autorisation</string>
     <string name="mcp_auth_complete">Terminer</string>
+    <string name="mcp_auth_not_removed">L\'authentification n\'a pas été supprimée</string>
+    <string name="mcp_auth_failed_status">Échec de l\'authentification : %1$s</string>
     <string name="mcp_remove_server">Supprimer le serveur</string>
     <string name="mcp_tools_count">%1$d outils</string>
     <string name="mcp_name_hint">Nom du serveur</string>
@@ -578,6 +581,7 @@
     <string name="mcp_settings_row">Serveurs MCP</string>
 
     <string name="server_info_title">Informations du serveur</string>
+    <string name="server_info_config_saved">Configuration enregistrée</string>
     <string name="server_info_tab_config">Configuration</string>
     <string name="server_info_tab_providers">Fournisseurs</string>
     <string name="server_info_tab_commands">Commandes</string>
@@ -1034,6 +1038,7 @@
     <string name="activity_event_question">Question</string>
     <string name="activity_event_unknown">Événement non pris en charge</string>
     <string name="connection_info_incomplete">Les informations de connexion sont incomplètes</string>
+    <string name="provider_disconnect_rejected">La déconnexion du fournisseur a été refusée</string>
     <string name="guest_browser_title">Navigateur invité</string>
     <string name="guest_browser_row">Navigateur invité</string>
     <string name="guest_browser_url_hint">http://127.0.0.1:port</string>

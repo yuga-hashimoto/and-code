@@ -97,6 +97,7 @@ class SettingsViewModel(
     private val settings: SecureSettingsRepository,
     private val registry: RuntimeRegistry,
     private val voskModels: VoskModelStore,
+    private val providerDisconnectRejectedMessage: String = "Provider disconnect was not accepted",
 ) : ViewModel() {
     private val settingsTick = MutableStateFlow(0)
     private val oauthState = MutableStateFlow(OAuthState())
@@ -555,7 +556,7 @@ class SettingsViewModel(
                             }
                             finishProviderAuth(ProviderAuthNotice.DISCONNECTED)
                         } else {
-                            oauthState.update { it.copy(message = "Provider disconnect was not accepted") }
+                            oauthState.update { it.copy(message = providerDisconnectRejectedMessage) }
                         }
                     }
                     .onFailure { error ->

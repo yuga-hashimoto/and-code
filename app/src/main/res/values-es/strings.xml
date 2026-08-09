@@ -75,6 +75,7 @@
     <string name="workspace_clone_url_tab">URL</string>
     <string name="workspace_clone_search">Buscar repositorios</string>
     <string name="workspace_clone_loading_repos">Cargando repositorios…</string>
+    <string name="workspace_clone_failed">Error al clonar (código de salida %1$d)</string>
     <string name="workspace_more_options">Más opciones</string>
     <string name="workspace_remove_from_list">Quitar de la lista</string>
     <string name="workspace_delete_files">Eliminar archivos</string>
@@ -569,6 +570,8 @@
     <string name="mcp_auth_help">Completa la autenticación en el navegador y pega el código de autorización.</string>
     <string name="mcp_auth_code_hint">Código de autorización</string>
     <string name="mcp_auth_complete">Completar</string>
+    <string name="mcp_auth_not_removed">No se eliminó la autenticación</string>
+    <string name="mcp_auth_failed_status">Error de autenticación: %1$s</string>
     <string name="mcp_remove_server">Eliminar servidor</string>
     <string name="mcp_tools_count">%1$d herramientas</string>
     <string name="mcp_name_hint">Nombre del servidor</string>
@@ -578,6 +581,7 @@
     <string name="mcp_settings_row">Servidores MCP</string>
 
     <string name="server_info_title">Información del servidor</string>
+    <string name="server_info_config_saved">Configuración guardada</string>
     <string name="server_info_tab_config">Configuración</string>
     <string name="server_info_tab_providers">Proveedores</string>
     <string name="server_info_tab_commands">Comandos</string>
@@ -1034,6 +1038,7 @@
     <string name="activity_event_question">Pregunta</string>
     <string name="activity_event_unknown">Evento no compatible</string>
     <string name="connection_info_incomplete">La información de conexión está incompleta</string>
+    <string name="provider_disconnect_rejected">No se aceptó la desconexión del proveedor</string>
     <string name="guest_browser_title">Navegador invitado</string>
     <string name="guest_browser_row">Navegador invitado</string>
     <string name="guest_browser_url_hint">http://127.0.0.1:puerto</string>

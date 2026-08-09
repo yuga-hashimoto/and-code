@@ -75,6 +75,7 @@
     <string name="workspace_clone_url_tab">URL</string>
     <string name="workspace_clone_search">Search repositories</string>
     <string name="workspace_clone_loading_repos">Loading repositories…</string>
+    <string name="workspace_clone_failed">Clone failed (exit code %1$d)</string>
     <string name="workspace_more_options">More options</string>
     <string name="workspace_remove_from_list">Remove from list</string>
     <string name="workspace_delete_files">Delete files</string>
@@ -587,6 +588,8 @@
     <string name="mcp_auth_help">Complete authentication in the browser, then paste the authorization code.</string>
     <string name="mcp_auth_code_hint">Authorization code</string>
     <string name="mcp_auth_complete">Complete</string>
+    <string name="mcp_auth_not_removed">Authentication was not removed</string>
+    <string name="mcp_auth_failed_status">Authentication failed: %1$s</string>
     <string name="mcp_remove_server">Remove server</string>
     <string name="mcp_tools_count">%1$d tools</string>
     <string name="mcp_name_hint">Server name</string>
@@ -597,6 +600,7 @@
 
     <!-- Server info -->
     <string name="server_info_title">Server info</string>
+    <string name="server_info_config_saved">Config saved</string>
     <string name="server_info_tab_config">Config</string>
     <string name="server_info_tab_providers">Providers</string>
     <string name="server_info_tab_commands">Commands</string>
@@ -931,6 +935,7 @@
     <string name="activity_event_question">Question</string>
     <string name="activity_event_unknown">Unsupported event</string>
     <string name="connection_info_incomplete">Connection information is incomplete</string>
+    <string name="provider_disconnect_rejected">Provider disconnect was not accepted</string>
     <string name="claude_error_runtime_missing">The Linux environment is not installed yet</string>
     <string name="claude_error_sign_in_start">Could not start Claude Code sign-in</string>
     <string name="claude_error_sign_in_incomplete">Sign-in did not complete</string>

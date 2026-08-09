@@ -75,6 +75,7 @@
     <string name="workspace_clone_url_tab">URL</string>
     <string name="workspace_clone_search">搜索仓库</string>
     <string name="workspace_clone_loading_repos">正在加载仓库…</string>
+    <string name="workspace_clone_failed">克隆失败（退出代码 %1$d）</string>
     <string name="workspace_more_options">更多选项</string>
     <string name="workspace_remove_from_list">从列表中移除</string>
     <string name="workspace_delete_files">删除文件</string>
@@ -569,6 +570,8 @@
     <string name="mcp_auth_help">在浏览器中完成身份验证，然后粘贴授权码。</string>
     <string name="mcp_auth_code_hint">授权码</string>
     <string name="mcp_auth_complete">完成</string>
+    <string name="mcp_auth_not_removed">认证未被移除</string>
+    <string name="mcp_auth_failed_status">认证失败：%1$s</string>
     <string name="mcp_remove_server">移除服务器</string>
     <string name="mcp_tools_count">%1$d 个工具</string>
     <string name="mcp_name_hint">服务器名称</string>
@@ -578,6 +581,7 @@
     <string name="mcp_settings_row">MCP 服务器</string>
 
     <string name="server_info_title">服务器信息</string>
+    <string name="server_info_config_saved">配置已保存</string>
     <string name="server_info_tab_config">配置</string>
     <string name="server_info_tab_providers">提供商</string>
     <string name="server_info_tab_commands">命令</string>
@@ -1034,6 +1038,7 @@
     <string name="activity_event_question">问题</string>
     <string name="activity_event_unknown">不支持的事件</string>
     <string name="connection_info_incomplete">连接信息不完整</string>
+    <string name="provider_disconnect_rejected">提供商断开连接未被接受</string>
     <string name="guest_browser_title">访客浏览器</string>
     <string name="guest_browser_row">访客浏览器</string>
     <string name="guest_browser_url_hint">http://127.0.0.1:端口</string>

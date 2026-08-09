@@ -1,5 +1,7 @@
 package com.yugahashimoto.andcode.feature.chat
 
+import androidx.annotation.StringRes
+import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.OpenCodeCommand
 import com.yugahashimoto.andcode.core.api.OpenCodeSkill
 
@@ -7,7 +9,7 @@ enum class SlashAction { NEW_CHAT, CLEAR, MODEL, AGENT, ATTACH, HELP }
 
 data class SlashCommand(
     val name: String,
-    val description: String,
+    @StringRes val descriptionRes: Int,
     val action: SlashAction,
 )
 
@@ -15,14 +17,22 @@ data class SlashCommand(
  * One entry in the composer's slash-command popup: either an app-level command or a command/skill
  * the connected backend advertises. All of them end up inserting `/<name> ` into the input; the
  * send path then routes backend commands and skills through the runtime's command handling.
+ *
+ * App commands carry a string resource so their description follows the app language; backend
+ * entries carry the text the backend advertised.
  */
 sealed interface SlashSuggestion {
     val name: String
     val description: String
 
+    @get:StringRes
+    val descriptionRes: Int?
+        get() = null
+
     data class App(val command: SlashCommand) : SlashSuggestion {
         override val name: String = command.name
-        override val description: String = command.description
+        override val description: String = ""
+        override val descriptionRes: Int = command.descriptionRes
     }
 
     data class Backend(
@@ -35,12 +45,12 @@ sealed interface SlashSuggestion {
 object SlashCommandRegistry {
     val commands: List<SlashCommand> =
         listOf(
-            SlashCommand("/new", "Start a new session", SlashAction.NEW_CHAT),
-            SlashCommand("/clear", "Clear current conversation", SlashAction.CLEAR),
-            SlashCommand("/model", "Switch model", SlashAction.MODEL),
-            SlashCommand("/agent", "Switch agent", SlashAction.AGENT),
-            SlashCommand("/attach", "Attach a file", SlashAction.ATTACH),
-            SlashCommand("/help", "Show help", SlashAction.HELP),
+            SlashCommand("/new", R.string.slash_desc_new, SlashAction.NEW_CHAT),
+            SlashCommand("/clear", R.string.slash_desc_clear, SlashAction.CLEAR),
+            SlashCommand("/model", R.string.slash_desc_model, SlashAction.MODEL),
+            SlashCommand("/agent", R.string.slash_desc_agent, SlashAction.AGENT),
+            SlashCommand("/attach", R.string.slash_desc_attach, SlashAction.ATTACH),
+            SlashCommand("/help", R.string.slash_desc_help, SlashAction.HELP),
         )
 
     /**

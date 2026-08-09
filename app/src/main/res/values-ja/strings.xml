@@ -75,6 +75,7 @@
     <string name="workspace_clone_url_tab">URL</string>
     <string name="workspace_clone_search">リポジトリを検索</string>
     <string name="workspace_clone_loading_repos">リポジトリを読み込み中…</string>
+    <string name="workspace_clone_failed">クローンに失敗しました（終了コード %1$d）</string>
     <string name="workspace_more_options">その他のオプション</string>
     <string name="workspace_remove_from_list">一覧から削除</string>
     <string name="workspace_delete_files">ファイルを削除</string>
@@ -583,6 +584,8 @@
     <string name="mcp_auth_help">ブラウザで認証を完了し、認証コードを貼り付けてください。</string>
     <string name="mcp_auth_code_hint">認証コード</string>
     <string name="mcp_auth_complete">完了</string>
+    <string name="mcp_auth_not_removed">認証を削除できませんでした</string>
+    <string name="mcp_auth_failed_status">認証に失敗しました: %1$s</string>
     <string name="mcp_remove_server">サーバーを削除</string>
     <string name="mcp_tools_count">%1$dツール</string>
     <string name="mcp_name_hint">サーバー名</string>
@@ -593,6 +596,7 @@
 
     <!-- Server info -->
     <string name="server_info_title">サーバー情報</string>
+    <string name="server_info_config_saved">設定を保存しました</string>
     <string name="server_info_tab_config">設定</string>
     <string name="server_info_tab_providers">プロバイダ</string>
     <string name="server_info_tab_commands">コマンド</string>
@@ -931,6 +935,7 @@
     <string name="activity_event_question">質問</string>
     <string name="activity_event_unknown">未対応イベント</string>
     <string name="connection_info_incomplete">接続情報が不足しています</string>
+    <string name="provider_disconnect_rejected">プロバイダーの切断が受け付けられませんでした</string>
     <string name="claude_error_runtime_missing">Linux環境がまだ導入されていません</string>
     <string name="claude_error_sign_in_start">Claude Codeのサインインを開始できませんでした</string>
     <string name="claude_error_sign_in_incomplete">サインインが完了しませんでした</string>

@@ -39,6 +39,8 @@ val viewModelModule =
                 settings = get(),
                 registry = get(),
                 voskModels = get(),
+                providerDisconnectRejectedMessage =
+                    androidContext().getString(com.yugahashimoto.andcode.R.string.provider_disconnect_rejected),
             )
         }
 

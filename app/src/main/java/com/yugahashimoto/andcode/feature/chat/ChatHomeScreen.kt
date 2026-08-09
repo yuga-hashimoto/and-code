@@ -1021,6 +1021,9 @@ private fun ChatComposer(
                 ) {
                     Column(modifier = Modifier.padding(vertical = 4.dp)) {
                         filtered.forEach { suggestion ->
+                            val description =
+                                suggestion.descriptionRes?.let { stringResource(it) }
+                                    ?: suggestion.description
                             DropdownMenuItem(
                                 text = {
                                     Row(
@@ -1033,7 +1036,7 @@ private fun ChatComposer(
                                             fontWeight = FontWeight.SemiBold,
                                         )
                                         Text(
-                                            text = suggestion.description,
+                                            text = description,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )

@@ -37,6 +37,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,10 +58,19 @@ fun McpScreen(
     onOpenBrowser: (String) -> Unit,
     onBack: () -> Unit,
 ) {
+    val context = LocalContext.current
     val viewModel: McpViewModel =
         viewModel(
             key = "mcp-${agent.id}",
-            factory = ViewModelFactory { McpViewModel(registry, agent) },
+            factory =
+                ViewModelFactory {
+                    McpViewModel(
+                        registry,
+                        agent,
+                        authNotRemovedMessage = context.getString(R.string.mcp_auth_not_removed),
+                        authFailedTemplate = context.getString(R.string.mcp_auth_failed_status),
+                    )
+                },
         )
     val state by viewModel.state.collectAsState()
 

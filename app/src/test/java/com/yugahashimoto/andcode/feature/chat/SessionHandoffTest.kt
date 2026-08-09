@@ -28,9 +28,13 @@ class SessionHandoffTest {
 
         val prompt = buildHandoffPrompt(messages)
 
-        assertTrue(prompt.startsWith("以下は別の実行先から引き継いだ会話の要約です。続きから対応してください。"))
-        assertTrue(prompt.contains("ユーザー: Hello there"))
-        assertTrue(prompt.contains("アシスタント: Hi, how can I help?"))
+        assertTrue(
+            prompt.startsWith(
+                "Below is a summary of a conversation handed over from another session. Continue from where it left off.",
+            ),
+        )
+        assertTrue(prompt.contains("User: Hello there"))
+        assertTrue(prompt.contains("Assistant: Hi, how can I help?"))
     }
 
     @Test
@@ -50,8 +54,8 @@ class SessionHandoffTest {
 
         val prompt = buildHandoffPrompt(messages)
 
-        assertTrue(prompt.contains("ユーザー: Real question"))
-        assertTrue(prompt.contains("アシスタント: Answer"))
+        assertTrue(prompt.contains("User: Real question"))
+        assertTrue(prompt.contains("Assistant: Answer"))
         assertFalse(prompt.contains("bash"))
     }
 
@@ -65,8 +69,8 @@ class SessionHandoffTest {
 
         val prompt = buildHandoffPrompt(messages)
 
-        assertFalse(prompt.contains("ユーザー:"))
-        assertTrue(prompt.contains("アシスタント: Kept"))
+        assertFalse(prompt.contains("User:"))
+        assertTrue(prompt.contains("Assistant: Kept"))
     }
 
     @Test
@@ -106,6 +110,9 @@ class SessionHandoffTest {
     fun `returns just the header when there is nothing to transcribe`() {
         val prompt = buildHandoffPrompt(emptyList())
 
-        assertEquals("以下は別の実行先から引き継いだ会話の要約です。続きから対応してください。", prompt)
+        assertEquals(
+            "Below is a summary of a conversation handed over from another session. Continue from where it left off.",
+            prompt,
+        )
     }
 }

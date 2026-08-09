@@ -48,11 +48,15 @@ data class McpUiState(
 class McpViewModel(
     private val backendProvider: (LocalAgent) -> OpenCodeBackend?,
     private val agent: LocalAgent = LocalAgent.OPEN_CODE,
+    private val authNotRemovedMessage: String = "Authentication was not removed",
+    private val authFailedTemplate: String = "Authentication failed: %1\$s",
 ) : ViewModel() {
     constructor(
         registry: RuntimeRegistry,
         agent: LocalAgent = LocalAgent.OPEN_CODE,
-    ) : this(registry::targetFor, agent)
+        authNotRemovedMessage: String = "Authentication was not removed",
+        authFailedTemplate: String = "Authentication failed: %1\$s",
+    ) : this(registry::targetFor, agent, authNotRemovedMessage, authFailedTemplate)
 
     private val _state =
         MutableStateFlow(
@@ -110,7 +114,7 @@ class McpViewModel(
             runCatching { backend.removeMcpAuth(name) }
                 .onSuccess { result ->
                     _state.update { it.copy(isAuthenticating = false) }
-                    if (result.success) refresh() else _state.update { it.copy(error = "Authentication was not removed") }
+                    if (result.success) refresh() else _state.update { it.copy(error = authNotRemovedMessage) }
                 }
                 .onFailure { e -> _state.update { it.copy(error = e.message, isAuthenticating = false) } }
         }
@@ -170,7 +174,7 @@ class McpViewModel(
                     } else {
                         _state.update {
                             it.copy(
-                                error = status.error ?: "Authentication failed: ${status.status}",
+                                error = status.error ?: authFailedTemplate.format(status.status),
                                 isAuthenticating = false,
                             )
                         }

@@ -1,7 +1,7 @@
 package com.yugahashimoto.andcode.feature.chat
 
 private const val HANDOFF_HEADER =
-    "以下は別の実行先から引き継いだ会話の要約です。続きから対応してください。"
+    "Below is a summary of a conversation handed over from another session. Continue from where it left off."
 
 fun buildHandoffPrompt(
     messages: List<ChatMessage>,
@@ -11,7 +11,7 @@ fun buildHandoffPrompt(
         messages.mapNotNull { message ->
             val text = message.text.trim()
             if (text.isEmpty()) return@mapNotNull null
-            val role = if (message.isUser) "ユーザー" else "アシスタント"
+            val role = if (message.isUser) "User" else "Assistant"
             "$role: $text"
         }
     if (lines.isEmpty()) return HANDOFF_HEADER

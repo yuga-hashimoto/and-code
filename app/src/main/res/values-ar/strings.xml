@@ -75,6 +75,7 @@
     <string name="workspace_clone_url_tab">URL</string>
     <string name="workspace_clone_search">البحث في المستودعات</string>
     <string name="workspace_clone_loading_repos">جارٍ تحميل المستودعات…</string>
+    <string name="workspace_clone_failed">فشل الاستنساخ (رمز الخروج %1$d)</string>
     <string name="workspace_more_options">خيارات إضافية</string>
     <string name="workspace_remove_from_list">إزالة من القائمة</string>
     <string name="workspace_delete_files">حذف الملفات</string>
@@ -569,6 +570,8 @@
     <string name="mcp_auth_help">أكمل المصادقة في المتصفح، ثم ألصق رمز التفويض.</string>
     <string name="mcp_auth_code_hint">رمز التفويض</string>
     <string name="mcp_auth_complete">إكمال</string>
+    <string name="mcp_auth_not_removed">لم تتم إزالة المصادقة</string>
+    <string name="mcp_auth_failed_status">فشلت المصادقة: %1$s</string>
     <string name="mcp_remove_server">إزالة الخادم</string>
     <string name="mcp_tools_count">%1$d أدوات</string>
     <string name="mcp_name_hint">اسم الخادم</string>
@@ -578,6 +581,7 @@
     <string name="mcp_settings_row">خوادم MCP</string>
 
     <string name="server_info_title">معلومات الخادم</string>
+    <string name="server_info_config_saved">تم حفظ الإعدادات</string>
     <string name="server_info_tab_config">التكوين</string>
     <string name="server_info_tab_providers">الموفرون</string>
     <string name="server_info_tab_commands">الأوامر</string>
@@ -1034,6 +1038,7 @@
     <string name="activity_event_question">سؤال</string>
     <string name="activity_event_unknown">حدث غير مدعوم</string>
     <string name="connection_info_incomplete">معلومات الاتصال غير مكتملة</string>
+    <string name="provider_disconnect_rejected">لم يتم قبول فصل المزود</string>
     <string name="guest_browser_title">المتصفح الضيف</string>
     <string name="guest_browser_row">المتصفح الضيف</string>
     <string name="guest_browser_url_hint">http://127.0.0.1:port</string>
