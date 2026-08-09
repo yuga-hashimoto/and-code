@@ -1207,10 +1207,10 @@ fun AndCodeApp(
                 onDismiss = { showDiagnostics = false },
                 appVersion = BuildConfig.VERSION_NAME,
                 connectionStatus =
-                    if (runtimeState is RuntimeState.Connected) {
-                        stringResource(R.string.connected_label)
-                    } else {
-                        stringResource(R.string.disconnected_label)
+                    when (runtimeState) {
+                        is RuntimeState.Connected -> stringResource(R.string.connected_label)
+                        RuntimeState.Connecting -> stringResource(R.string.runtime_status_starting)
+                        else -> stringResource(R.string.disconnected_label)
                     },
                 runtimeStatus =
                     when (runtimeState) {

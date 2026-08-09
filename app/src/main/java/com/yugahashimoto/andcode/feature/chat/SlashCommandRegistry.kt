@@ -29,6 +29,10 @@ sealed interface SlashSuggestion {
     val descriptionRes: Int?
         get() = null
 
+    /**
+     * [description] is empty by design: UI must resolve [descriptionRes] so the text follows the
+     * app language. Only backend entries carry literal text.
+     */
     data class App(val command: SlashCommand) : SlashSuggestion {
         override val name: String = command.name
         override val description: String = ""
