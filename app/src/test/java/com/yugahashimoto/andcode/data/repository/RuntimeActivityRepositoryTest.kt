@@ -528,7 +528,7 @@ class RuntimeActivityRepositoryTest {
                 RuntimeActivityRepository(
                     registry = registry,
                     scope = TestScope(dispatcher),
-                    onSessionIdle = { sessionId, _ -> completed += sessionId },
+                    onSessionIdle = { sessionId, _, _ -> completed += sessionId },
                 )
             advanceUntilIdle()
 
@@ -603,7 +603,7 @@ class RuntimeActivityRepositoryTest {
             RuntimeActivityRepository(
                 registry = registry,
                 scope = TestScope(dispatcher),
-                onSessionIdle = { sessionId, _ -> completed += sessionId },
+                onSessionIdle = { sessionId, _, _ -> completed += sessionId },
             )
             advanceUntilIdle()
 
