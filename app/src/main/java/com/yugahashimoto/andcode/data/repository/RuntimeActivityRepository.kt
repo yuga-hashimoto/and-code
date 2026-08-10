@@ -259,8 +259,10 @@ class RuntimeActivityRepository(
                     )
                 }
                 appendLog(messages.eventCompleted, null, event.sessionId)
-                if (parentIdOf(target, event.sessionId) == null) {
-                    onSessionIdle?.invoke(event.sessionId, sessionTitle(target, event.sessionId), target.id)
+                parentResolutionOf(target, event.sessionId).onSuccess { parentId ->
+                    if (parentId == null) {
+                        onSessionIdle?.invoke(event.sessionId, sessionTitle(target, event.sessionId), target.id)
+                    }
                 }
             }
             is OpenCodeEvent.MessageUpdated -> activateSession(target, event.info.sessionId)
@@ -395,14 +397,18 @@ class RuntimeActivityRepository(
     private suspend fun parentIdOf(
         target: RuntimeTarget,
         sessionId: String,
-    ): String? {
+    ): String? = parentResolutionOf(target, sessionId).getOrNull()
+
+    private suspend fun parentResolutionOf(
+        target: RuntimeTarget,
+        sessionId: String,
+    ): Result<String?> {
         synchronized(parentLock) {
-            if (sessionId in parentIds) return parentIds[sessionId]
+            if (sessionId in parentIds) return Result.success(parentIds[sessionId])
         }
         // Misses the creation event when the stream reconnected mid-run; ask the runtime instead.
-        val session = runCatching { target.session(sessionId) }.getOrNull() ?: return null
-        synchronized(parentLock) { parentIds[sessionId] = session.parentId }
-        return session.parentId
+        return runCatching { target.session(sessionId).parentId }
+            .onSuccess { parentId -> synchronized(parentLock) { parentIds[sessionId] = parentId } }
     }
 
     private fun markRuntimeIdle(sessionId: String) {

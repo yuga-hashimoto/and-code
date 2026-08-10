@@ -588,6 +588,31 @@ class RuntimeActivityRepositoryTest {
             assertEquals(setOf("ses_parent", "child_1"), repository.state.value.activeSessionIds)
         }
 
+    @Test
+    fun `unresolved subagent parent does not raise a completion callback`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget(requireConnected = false)
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val completed = mutableListOf<String>()
+            RuntimeActivityRepository(
+                registry = registry,
+                scope = TestScope(dispatcher),
+                onSessionIdle = { sessionId, _ -> completed += sessionId },
+            )
+            advanceUntilIdle()
+
+            target.eventFlow.emit(OpenCodeEvent.SessionIdle("child_1"))
+            advanceUntilIdle()
+
+            assertTrue(completed.isEmpty())
+        }
+
     private class FakeUnreadStore(
         override var unreadSessionIds: Set<String>,
     ) : UnreadSessionStore
