@@ -517,6 +517,8 @@ class RuntimeActivityRepositoryTest {
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
             val target = FakeTarget(requireConnected = false)
+            target.state.value = RuntimeState.Connected("1.0")
+            target.sessions = listOf(OpenCodeSession(id = "ses_parent", title = "Main"))
             val registry =
                 RuntimeRegistry(
                     store = FakeStore(selectedRuntimeId = target.id),
