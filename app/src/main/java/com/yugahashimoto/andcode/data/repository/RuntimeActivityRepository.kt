@@ -387,7 +387,11 @@ class RuntimeActivityRepository(
         synchronized(parentLock) { parentIds[sessionId] = parentId }
     }
 
-    /** Parent of a subagent session, resolved once per session and cached. */
+    /**
+     * Parent of a subagent session. A successful lookup is cached (a top-level session caches a
+     * null parent and is resolved only once); a failed lookup is not, so a transient error is
+     * retried on the next event instead of permanently disabling propagation for that session.
+     */
     private suspend fun parentIdOf(
         target: RuntimeTarget,
         sessionId: String,
@@ -396,9 +400,9 @@ class RuntimeActivityRepository(
             if (sessionId in parentIds) return parentIds[sessionId]
         }
         // Misses the creation event when the stream reconnected mid-run; ask the runtime instead.
-        val parentId = runCatching { target.session(sessionId).parentId }.getOrNull()
-        synchronized(parentLock) { parentIds[sessionId] = parentId }
-        return parentId
+        val session = runCatching { target.session(sessionId) }.getOrNull() ?: return null
+        synchronized(parentLock) { parentIds[sessionId] = session.parentId }
+        return session.parentId
     }
 
     private fun markRuntimeIdle(sessionId: String) {
