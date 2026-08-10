@@ -788,7 +788,7 @@ class ChatViewModelTest {
     @Test
     fun `a runtime that forces queue never interrupts a running turn`() =
         runTest(dispatcher) {
-            val backend = FakeQueueForcingBackend()
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(forcesQueue = true))
             val viewModel = ChatViewModel(backend)
             advanceUntilIdle()
 
@@ -809,6 +809,119 @@ class ChatViewModelTest {
             advanceUntilIdle()
 
             assertEquals(listOf("first", "second"), backend.sentPrompts.map { it.second.text })
+        }
+
+    /**
+     * OpenCode drops a prompt that arrives while a turn is still in flight: it stores the message
+     * and hands it to a session runner that is already running, which attaches to the run instead of
+     * starting one for the new message. A wedged turn - a tool that never returns - therefore
+     * swallowed the send, and the chat waited for a reply that was never coming. Interrupting has to
+     * abort the wedged run first, which is what stopping by hand and re-sending used to do.
+     */
+    @Test
+    fun `interrupting a running turn aborts it before the replacement prompt is sent`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(abortsBeforeInterrupt = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("first")
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isRunning)
+
+            viewModel.sendMessage("second")
+            advanceUntilIdle()
+
+            assertEquals(listOf("prompt:first", "abort:s1", "prompt:second"), backend.calls)
+            assertTrue(viewModel.uiState.value.isRunning)
+        }
+
+    /**
+     * The abort above makes the server report the cancelled run as idle - as both `session.status`
+     * and the deprecated `session.idle`, for one and the same run. Those arrive after the
+     * replacement prompt has gone out, so treating either as the end of a turn would park the
+     * composer on the send button while the new run is only starting.
+     */
+    @Test
+    fun `idles answering an interrupt do not end the turn that replaced it`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(abortsBeforeInterrupt = true))
+            val viewModel = ChatViewModel(backend, backend.events)
+            advanceUntilIdle()
+
+            // Time is only ever run to the next suspension point: letting it run free would expire
+            // the send's fallback poll, which closes the window on its way out.
+            viewModel.sendMessage("first")
+            runCurrent()
+            viewModel.sendMessage("second")
+            runCurrent()
+
+            backend.events.tryEmit(OpenCodeEvent.SessionStatusChanged("s1", "idle"))
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            runCurrent()
+            assertTrue(viewModel.uiState.value.isRunning)
+
+            // The replacement run reporting itself closes the window, so its own end-of-turn idle
+            // lands as usual.
+            backend.events.tryEmit(OpenCodeEvent.SessionStatusChanged("s1", "busy"))
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            runCurrent()
+            assertFalse(viewModel.uiState.value.isRunning)
+        }
+
+    /**
+     * Messages held while the runtime was unreachable used to all go out the moment it came back.
+     * Now that a send interrupts, each one would abort the turn the one before it just started, so
+     * they have to be spread over the turns instead.
+     */
+    @Test
+    fun `messages queued offline are sent one turn at a time`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(abortsBeforeInterrupt = true))
+            val viewModel = ChatViewModel(backend, backend.events)
+
+            // Sent before the first health check lands, so the chat is still offline and holds them.
+            viewModel.sendMessage("first")
+            viewModel.sendMessage("second")
+            viewModel.sendMessage("third")
+            advanceUntilIdle()
+            assertEquals(emptyList<String>(), backend.calls)
+
+            backend.events.tryEmit(OpenCodeEvent.ServerConnected)
+            advanceUntilIdle()
+            assertEquals(listOf("prompt:first"), backend.calls)
+
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+            assertEquals(listOf("prompt:first", "prompt:second"), backend.calls)
+
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+            assertEquals(listOf("prompt:first", "prompt:second", "prompt:third"), backend.calls)
+        }
+
+    /**
+     * Runtimes that accept a prompt mid-turn (Claude Code queues it on the process it already has
+     * open) must not have that process killed and resumed on every interrupting send. They still
+     * report the interrupt: the superseded turn ends with an idle of its own - Claude Code emits one
+     * per `result` - and announcing that as a completed run would announce the turn the user just
+     * replaced.
+     */
+    @Test
+    fun `a runtime that accepts prompts mid-turn is reported interrupted but not aborted`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities())
+            val aborted = mutableListOf<String>()
+            val viewModel = ChatViewModel(backend, onSessionAborted = { aborted += it })
+            advanceUntilIdle()
+
+            viewModel.sendMessage("first")
+            advanceUntilIdle()
+            viewModel.sendMessage("second")
+            advanceUntilIdle()
+
+            assertEquals(listOf("prompt:first", "prompt:second"), backend.calls)
+            assertEquals(listOf("s1"), aborted)
         }
 
     @Test
@@ -1050,21 +1163,25 @@ class ChatViewModelTest {
     }
 
     /**
-     * A [RuntimeTarget] whose [RuntimeCapabilities.forcesQueue] is set - the same shape
-     * [com.yugahashimoto.andcode.runtime.local.AntigravityTarget] exposes - to verify the chat
-     * ViewModel queues a send instead of interrupting a running turn for such a backend, independent
-     * of whatever the user's sendBehavior preference is set to.
+     * A [RuntimeTarget] declaring whichever [RuntimeCapabilities] a test needs, so send behaviour
+     * that keys off a capability - queueing for
+     * [com.yugahashimoto.andcode.runtime.local.AntigravityTarget], aborting before an interrupt for
+     * the OpenCode targets - can be exercised without standing up a real runtime.
      */
-    private class FakeQueueForcingBackend : RuntimeTarget {
-        override val id: String = "fake-queue-forcing"
-        override val displayName: String = "Fake queue-forcing"
+    private class FakeRuntimeTargetBackend(
+        override val capabilities: RuntimeCapabilities,
+    ) : RuntimeTarget {
+        override val id: String = "fake-runtime-target"
+        override val displayName: String = "Fake runtime target"
         override val kind: BackendKind = BackendKind.LOCAL
         override val type: RuntimeType = RuntimeType.LOCAL
         override val agent: LocalAgent? = null
-        override val capabilities: RuntimeCapabilities = RuntimeCapabilities(forcesQueue = true)
         override val state: StateFlow<RuntimeState> = MutableStateFlow<RuntimeState>(RuntimeState.Connected("test")).asStateFlow()
         val events = MutableSharedFlow<OpenCodeEvent>(extraBufferCapacity = 20)
         val sentPrompts = mutableListOf<Pair<String, PromptRequest>>()
+
+        /** Aborts and prompt sends in the order the ViewModel issued them. */
+        val calls = mutableListOf<String>()
 
         override suspend fun connect(): Result<OpenCodeHealth> = Result.success(OpenCodeHealth(true, "test"))
 
@@ -1092,9 +1209,13 @@ class ChatViewModelTest {
             request: PromptRequest,
         ) {
             sentPrompts += sessionId to request
+            calls += "prompt:${request.text}"
         }
 
-        override suspend fun abortSession(sessionId: String): Boolean = true
+        override suspend fun abortSession(sessionId: String): Boolean {
+            calls += "abort:$sessionId"
+            return true
+        }
 
         override suspend fun respondToPermission(
             sessionId: String,

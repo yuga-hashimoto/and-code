@@ -49,7 +49,8 @@ class LocalRuntimeTarget(
     override val agent: LocalAgent = LocalAgent.OPEN_CODE
     override val type: RuntimeType = RuntimeType.LOCAL
     override val kind: BackendKind = BackendKind.LOCAL
-    override val capabilities = RuntimeCapabilities(permissions = true, providerModelList = true)
+    override val capabilities =
+        RuntimeCapabilities(permissions = true, providerModelList = true, abortsBeforeInterrupt = true)
 
     private val mutableState = MutableStateFlow(mapStatus(runtimeManager.status()))
     override val state: StateFlow<RuntimeState> = mutableState.asStateFlow()

@@ -16,4 +16,15 @@ data class RuntimeCapabilities(
      * [com.yugahashimoto.andcode.runtime.local.AntigravityRuntime.send] for the failure this avoids.
      */
     val forcesQueue: Boolean = false,
+    /**
+     * True when interrupting a running turn means aborting it before the new prompt is sent, because
+     * the runtime silently drops a prompt that arrives while a turn is still in flight.
+     *
+     * OpenCode's `prompt_async` stores the message and then asks its session runner to run; when the
+     * runner is already running it attaches to the run in flight instead of starting one for the new
+     * message. If that run is wedged (a tool that never returns) or is already unwinding, the stored
+     * prompt is never picked up: the server answers `204 No Content` and the chat waits forever.
+     * Aborting first puts the runner back to idle so the prompt starts a run of its own.
+     */
+    val abortsBeforeInterrupt: Boolean = false,
 )

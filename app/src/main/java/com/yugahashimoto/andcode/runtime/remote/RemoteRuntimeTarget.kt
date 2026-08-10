@@ -42,7 +42,8 @@ class RemoteRuntimeTarget(
     override val displayName: String = profile.name
     override val type: RuntimeType = RuntimeType.REMOTE
     override val kind: BackendKind = BackendKind.REMOTE
-    override val capabilities = RuntimeCapabilities(permissions = true, providerModelList = true)
+    override val capabilities =
+        RuntimeCapabilities(permissions = true, providerModelList = true, abortsBeforeInterrupt = true)
 
     private val mutableState = MutableStateFlow<RuntimeState>(RuntimeState.Disconnected)
     override val state: StateFlow<RuntimeState> = mutableState.asStateFlow()

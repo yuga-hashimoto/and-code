@@ -380,6 +380,17 @@ class ChatViewModel(
 
     private val pullRequestRefs = MutableStateFlow<List<PullRequestRef>>(emptyList())
 
+    /**
+     * Sessions whose idles currently belong to a run this chat interrupted rather than to the prompt
+     * sent in its place.
+     *
+     * OpenCode reports one cancelled run as both `session.status: idle` and the deprecated
+     * `session.idle`, so counting idles would not do; the window instead stays open until the
+     * replacement run reports itself busy, and is closed by [closeInterruptWindow] if that turn ends
+     * without ever getting there.
+     */
+    private val pendingInterrupts = mutableSetOf<String>()
+
     private val messageQueue = MutableStateFlow<List<QueuedPrompt>>(emptyList())
     private val offlineMessageQueue = MutableStateFlow<List<QueuedPrompt>>(emptyList())
 
@@ -653,6 +664,7 @@ class ChatViewModel(
         // state too — otherwise the composer opens the new chat already stuck on the stop button
         // because the old chat happened to be mid-turn when the user navigated away.
         val switchingSession = _uiState.value.sessionId != sessionId
+        if (switchingSession) pendingInterrupts.clear()
         streamedParts.clear()
         messageRoles.clear()
         // Opening the chat is an explicit act of attention, so questions the user hid earlier are
@@ -741,6 +753,7 @@ class ChatViewModel(
         streamedParts.clear()
         messageRoles.clear()
         dismissedQuestionIds.clear()
+        pendingInterrupts.clear()
         _uiState.update {
             it.copy(
                 sessionId = null,
@@ -874,7 +887,7 @@ class ChatViewModel(
                     }
                     refreshContextUsage(targetSessionId)
                 }
-                if (interrupting) onSessionAborted(targetSessionId)
+                if (interrupting) interruptRunningTurn(currentBackend, targetSessionId)
                 currentBackend.sendMessage(
                     targetSessionId,
                     PromptRequest(
@@ -926,6 +939,7 @@ class ChatViewModel(
                                 }
                         }
                     }
+                closeInterruptWindow(targetSessionId)
                 // Some runtimes deliver the final message but drop session.idle. Do not
                 // leave the UI in the running state when the bounded fallback poll ends.
                 if (isStillActive() && (sessionCompleted || pollFinished == null)) {
@@ -961,6 +975,7 @@ class ChatViewModel(
                         }
                 }
             }.onFailure { error ->
+                capturedSessionId?.let(::closeInterruptWindow)
                 if (capturedSessionId == null || _uiState.value.sessionId == capturedSessionId) {
                     _uiState.update {
                         it.copy(
@@ -1015,6 +1030,7 @@ class ChatViewModel(
             messageQueue.update { it + QueuedPrompt(displayText, emptyList(), emptyList()) }
             return
         }
+        val interrupting = _uiState.value.isRunning
 
         val userMessage =
             ChatMessage(
@@ -1052,6 +1068,8 @@ class ChatViewModel(
                     }
                     onSessionCreated()
                 }
+
+                if (interrupting) interruptRunningTurn(currentBackend, targetSessionId)
 
                 // The command endpoint on OpenCode runs the whole turn before answering, so it is
                 // fired in its own coroutine: the poll loop below (and the SSE stream) drive the UI
@@ -1097,6 +1115,7 @@ class ChatViewModel(
                                 }
                         }
                     }
+                closeInterruptWindow(targetSessionId)
                 if (isStillActive() && (sessionCompleted || pollFinished == null)) {
                     runCatching { currentBackend.listMessages(targetSessionId) }
                         .onSuccess { serverMessages ->
@@ -1122,6 +1141,7 @@ class ChatViewModel(
                         }
                 }
             }.onFailure { error ->
+                capturedSessionId?.let(::closeInterruptWindow)
                 if (capturedSessionId == null || _uiState.value.sessionId == capturedSessionId) {
                     _uiState.update {
                         it.copy(
@@ -1421,6 +1441,9 @@ class ChatViewModel(
     fun abort() {
         val currentBackend = backend ?: return
         val sessionId = _uiState.value.sessionId ?: return
+        // Stopping by hand ends the turn outright, so the idle it produces is the one the chat is
+        // waiting for rather than a leftover to skip past.
+        closeInterruptWindow(sessionId)
         viewModelScope.launch {
             onSessionAborted(sessionId)
             runCatching { currentBackend.abortSession(sessionId) }
@@ -1433,6 +1456,50 @@ class ChatViewModel(
                     _uiState.update { it.copy(error = error.safeMessage("OpenCode operation failed")) }
                 }
         }
+    }
+
+    /**
+     * Ends the turn in flight before the prompt that replaces it is sent.
+     *
+     * Sending alone is not enough on a runtime that drops a prompt arriving mid-turn (see
+     * [com.yugahashimoto.andcode.runtime.RuntimeCapabilities.abortsBeforeInterrupt]): OpenCode
+     * stores the message, hands it to a session runner that is already running, and never starts a
+     * run for it. That is the "sent a message and nothing came back" case, and it is why stopping
+     * the wedged turn by hand and then sending again worked. Aborting here does that stop
+     * automatically.
+     */
+    private suspend fun interruptRunningTurn(
+        currentBackend: OpenCodeBackend,
+        sessionId: String,
+    ) {
+        // Reported whether or not this runtime is aborted below: a runtime that instead queues the
+        // prompt on the turn in flight still ends that turn with an idle of its own (Claude Code
+        // emits one per `result`), and announcing it as a completed run would be announcing the turn
+        // the user just replaced.
+        onSessionAborted(sessionId)
+        if ((currentBackend as? RuntimeTarget)?.capabilities?.abortsBeforeInterrupt != true) return
+        val aborted = runCatching { currentBackend.abortSession(sessionId) }.getOrDefault(false)
+        // A backend that had nothing to cancel reports no run aborted and emits no idle for one, so
+        // opening the window then would only cost the replacement turn its own end-of-turn idle.
+        if (!aborted) return
+        pendingInterrupts += sessionId
+        // Settling the cancelled run's bubble is normally the idle's job, and that idle is about to
+        // be skipped, so it is done here instead rather than leaving it spinning over work that has
+        // already stopped.
+        if (_uiState.value.sessionId != sessionId) return
+        _uiState.update { state ->
+            state.copy(
+                messages = state.messages.map { if (it.isStreaming) it.copy(isStreaming = false) else it },
+            )
+        }
+    }
+
+    /**
+     * Stops treating [sessionId]'s idles as leftovers of an interrupted run, so a turn that ends
+     * without the replacement run ever reporting busy cannot leave idles ignored for good.
+     */
+    private fun closeInterruptWindow(sessionId: String) {
+        pendingInterrupts -= sessionId
     }
 
     private fun handleEvent(event: OpenCodeEvent) {
@@ -1542,10 +1609,12 @@ class ChatViewModel(
                 if (event.sessionId != activeSession) return
                 when (event.status) {
                     "idle" -> handleSessionIdle(event.sessionId)
-                    "busy", "retry" ->
+                    "busy", "retry" -> {
+                        closeInterruptWindow(event.sessionId)
                         if (!_uiState.value.isRunning) {
                             _uiState.update { it.copy(isRunning = true) }
                         }
+                    }
                 }
             }
             is OpenCodeEvent.SessionIdle -> {
@@ -1554,6 +1623,7 @@ class ChatViewModel(
             }
             is OpenCodeEvent.SessionError -> {
                 if (event.sessionId != null && event.sessionId != activeSession) return
+                event.sessionId?.let(::closeInterruptWindow)
                 _uiState.update {
                     it.copy(
                         isRunning = false,
@@ -1569,6 +1639,10 @@ class ChatViewModel(
     }
 
     private fun handleSessionIdle(sessionId: String) {
+        // An idle answering an interrupt belongs to the run that was just cancelled, not to the
+        // prompt sent in its place; acting on it would park the composer on the send button and
+        // drain another queued prompt over a turn that is only starting.
+        if (sessionId in pendingInterrupts) return
         streamedParts.clear()
         _uiState.update { state ->
             state.copy(
@@ -1734,16 +1808,8 @@ class ChatViewModel(
     private fun drainQueue() {
         val queued = messageQueue.value
         if (queued.isEmpty()) return
-        messageQueue.value = emptyList()
-        queued.forEach { queuedPrompt ->
-            _uiState.update {
-                it.copy(
-                    attachments = queuedPrompt.attachments,
-                    imagePreviews = queuedPrompt.imagePreviews,
-                )
-            }
-            sendMessage(queuedPrompt.text)
-        }
+        messageQueue.value = queued.drop(1)
+        sendQueued(queued.first())
     }
 
     private fun drainOfflineQueue() {
@@ -1751,15 +1817,25 @@ class ChatViewModel(
         if (queued.isEmpty()) return
         offlineMessageQueue.value = emptyList()
         _uiState.update { it.copy(offlineQueue = emptyList(), isOfflineQueued = false) }
-        queued.forEach { queuedPrompt ->
-            _uiState.update {
-                it.copy(
-                    attachments = queuedPrompt.attachments,
-                    imagePreviews = queuedPrompt.imagePreviews,
-                )
-            }
-            sendMessage(queuedPrompt.text)
+        messageQueue.update { it + queued.drop(1) }
+        sendQueued(queued.first())
+    }
+
+    /**
+     * Sends one held prompt and leaves the rest of the queue for the next idle.
+     *
+     * Firing a whole queue at once only worked while a send could not interrupt: the first prompt
+     * marks the chat as running, so every prompt after it would now abort the turn the one before it
+     * just started and take its place. See [interruptRunningTurn].
+     */
+    private fun sendQueued(queuedPrompt: QueuedPrompt) {
+        _uiState.update {
+            it.copy(
+                attachments = queuedPrompt.attachments,
+                imagePreviews = queuedPrompt.imagePreviews,
+            )
         }
+        sendMessage(queuedPrompt.text)
     }
 
     override fun onCleared() {
