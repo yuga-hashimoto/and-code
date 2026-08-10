@@ -139,6 +139,7 @@ class LocalRuntimeService : Service() {
     private val backoff = RestartBackoff()
     private var inForeground = false
     private var wakeLock: PowerManager.WakeLock? = null
+    private var shuttingDown = false
 
     override fun onCreate() {
         super.onCreate()
@@ -249,7 +250,7 @@ class LocalRuntimeService : Service() {
         exitMonitorJob?.cancel()
         watchdogJob?.cancel()
         scope.cancel()
-        releaseWakeLock()
+        shutDownWakeLock()
         super.onDestroy()
     }
 
@@ -267,11 +268,13 @@ class LocalRuntimeService : Service() {
                 val watchdog = LocalRuntimeWatchdog()
                 while (isActive) {
                     delay(WATCHDOG_INTERVAL_MILLIS)
-                    if (!autoRestartEnabled) continue
                     val status = manager.status()
                     // Re-arms the wake lock's timeout well inside it, so a run lasting hours keeps
                     // the CPU up while a service that died without onDestroy still lets it lapse.
+                    // Ahead of the auto-restart check so that a runtime left running by a path that
+                    // never enables it - an unknown action, a stop that threw - still stays awake.
                     syncWakeLock(status)
+                    if (!autoRestartEnabled) continue
                     if (watchdog.observe(status)) {
                         manager.ensureRunning()
                     }
@@ -288,7 +291,7 @@ class LocalRuntimeService : Service() {
      */
     @Synchronized
     private fun syncWakeLock(status: LocalRuntimeStatus) {
-        if (!localRuntimeNeedsWakeLock(status)) {
+        if (shuttingDown || !localRuntimeNeedsWakeLock(status)) {
             releaseWakeLock()
             return
         }
@@ -307,6 +310,20 @@ class LocalRuntimeService : Service() {
         if (!lock.isHeld) return
         runCatching { lock.release() }
             .onFailure { error -> Log.w(TAG, "Could not let the CPU sleep", error) }
+    }
+
+    /**
+     * Drops the lock for good.
+     *
+     * [android.app.Service.onDestroy] cancelling the scope does not interrupt a watchdog tick that
+     * is already inside [syncWakeLock], so a plain release can be followed by that tick's acquire
+     * and leave the lock held past the service. The flag closes that window from inside the same
+     * monitor: whichever of the two runs first, the tick ends up a no-op.
+     */
+    @Synchronized
+    private fun shutDownWakeLock() {
+        shuttingDown = true
+        releaseWakeLock()
     }
 
     private fun notification(status: LocalRuntimeStatus): android.app.Notification {
