@@ -25,6 +25,7 @@ import com.yugahashimoto.andcode.core.diagnostics.StallEvidence
 import com.yugahashimoto.andcode.core.diagnostics.StallReason
 import com.yugahashimoto.andcode.core.diagnostics.diagnoseStall
 import com.yugahashimoto.andcode.core.diagnostics.inspectRun
+import com.yugahashimoto.andcode.core.diagnostics.provesRunProgress
 import com.yugahashimoto.andcode.core.util.safeMessage
 import com.yugahashimoto.andcode.data.repository.PullRequestStatusRepository
 import com.yugahashimoto.andcode.data.settings.Draft
@@ -32,6 +33,7 @@ import com.yugahashimoto.andcode.data.settings.DraftRepository
 import com.yugahashimoto.andcode.runtime.OpenCodeBackend
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -188,6 +190,14 @@ internal const val STALL_THRESHOLD_MS = 150_000L
 
 /** How often a run in flight is measured against [STALL_THRESHOLD_MS]. */
 internal const val STALL_CHECK_INTERVAL_MS = 30_000L
+
+/**
+ * How often a run already reported as stalled is probed again. Once the chat has said its piece
+ * there is nothing left to be timely about, and a wedged run left open for an hour should not cost
+ * an hour of health checks and transcript reads on a phone battery. Any progress at all takes the
+ * warning down and returns to [STALL_CHECK_INTERVAL_MS], and the card's own button probes now.
+ */
+internal const val STALL_RECHECK_INTERVAL_MS = 300_000L
 
 /** Floor between transcript scans for pull request links, so streaming does not drive them. */
 private const val PULL_REQUEST_SCAN_THROTTLE_MS = 300L
@@ -547,7 +557,13 @@ class ChatViewModel(
                         recordProgress()
                         if (!monitorStalls) return@collectLatest
                         while (true) {
-                            delay(STALL_CHECK_INTERVAL_MS)
+                            delay(
+                                if (_uiState.value.stall == null) {
+                                    STALL_CHECK_INTERVAL_MS
+                                } else {
+                                    STALL_RECHECK_INTERVAL_MS
+                                },
+                            )
                             checkForStall()
                         }
                     }
@@ -1602,6 +1618,13 @@ class ChatViewModel(
         viewModelScope.launch {
             try {
                 diagnoseSilentRun(currentBackend, sessionId, silentFor)
+            } catch (cancellation: CancellationException) {
+                throw cancellation
+            } catch (error: Exception) {
+                // Nothing here is worth crashing the app over: this coroutine has no handler above
+                // it, and a feature whose whole job is to report that something went wrong is the
+                // last thing that should take the chat down when it does.
+                _uiState.update { it.copy(stall = null) }
             } finally {
                 stallCheckRunning = false
             }
@@ -1645,17 +1668,23 @@ class ChatViewModel(
                 refreshMessages(sessionId)
             }
             else -> {
+                val previous = _uiState.value.stall?.reason
                 _uiState.update { it.copy(stall = diagnosis) }
                 // A question the app never received blocks the turn for good. Fetching the open
-                // ones puts the card back, so answering it can get the run moving again.
-                if (diagnosis.reason == StallReason.NO_OUTPUT) refreshPendingQuestions(sessionId)
+                // ones puts the card back, so answering it can get the run moving again. Only worth
+                // doing when the verdict is new: re-probing an unchanged one just costs requests.
+                if (diagnosis.reason == StallReason.NO_OUTPUT && previous != StallReason.NO_OUTPUT) {
+                    refreshPendingQuestions(sessionId)
+                }
             }
         }
     }
 
     private fun handleEvent(event: OpenCodeEvent) {
         val activeSession = _uiState.value.sessionId
-        if (activeSession != null && event.sessionIdOrNull() == activeSession) recordProgress()
+        if (activeSession != null && event.sessionIdOrNull() == activeSession && event.provesRunProgress()) {
+            recordProgress()
+        }
         when (event) {
             OpenCodeEvent.ServerConnected -> {
                 _uiState.update { it.copy(isConnected = true, error = null) }

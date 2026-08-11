@@ -10,6 +10,7 @@ import com.yugahashimoto.andcode.core.diagnostics.StallEvidence
 import com.yugahashimoto.andcode.core.diagnostics.StallReason
 import com.yugahashimoto.andcode.core.diagnostics.diagnoseStall
 import com.yugahashimoto.andcode.core.diagnostics.inspectRun
+import com.yugahashimoto.andcode.core.diagnostics.provesRunProgress
 import com.yugahashimoto.andcode.core.util.safeMessage
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 import com.yugahashimoto.andcode.runtime.RuntimeState
@@ -193,7 +194,7 @@ class RuntimeActivityRepository(
             }
             .collect { event ->
                 mutableState.update { it.copy(streamError = null) }
-                event.sessionIdOrNull()?.let(::recordActivity)
+                if (event.provesRunProgress()) event.sessionIdOrNull()?.let(::recordActivity)
                 mutableEvents.emit(event)
                 handle(target, event)
             }

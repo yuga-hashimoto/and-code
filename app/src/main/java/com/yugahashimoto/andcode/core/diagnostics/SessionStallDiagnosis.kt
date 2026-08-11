@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.core.diagnostics
 
+import com.yugahashimoto.andcode.core.api.OpenCodeEvent
 import com.yugahashimoto.andcode.core.api.OpenCodeMessage
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
@@ -149,6 +150,34 @@ fun diagnoseStall(evidence: StallEvidence): StallDiagnosis {
     }
     return StallDiagnosis(reason = reason, detail = detail, silentForMillis = evidence.silentForMillis)
 }
+
+/**
+ * Whether an event is evidence that the run itself is getting somewhere, and so should restart the
+ * clock a stall is measured against.
+ *
+ * Metadata events are deliberately excluded. A session's title being rewritten says nothing about
+ * the turn, and `session.status: busy` is the runtime repeating a claim the watchdog exists to
+ * doubt — a runtime that re-announced a wedged run would otherwise keep the stall from ever being
+ * reported. The start of a run resets the clock through the running-state transition instead.
+ */
+fun OpenCodeEvent.provesRunProgress(): Boolean =
+    when (this) {
+        is OpenCodeEvent.MessageUpdated,
+        is OpenCodeEvent.MessagePartUpdated,
+        is OpenCodeEvent.MessagePartDelta,
+        is OpenCodeEvent.PermissionAsked,
+        is OpenCodeEvent.PermissionReplied,
+        is OpenCodeEvent.QuestionAsked,
+        is OpenCodeEvent.SessionIdle,
+        is OpenCodeEvent.SessionError,
+        -> true
+        is OpenCodeEvent.SessionCreated,
+        is OpenCodeEvent.SessionUpdated,
+        is OpenCodeEvent.SessionStatusChanged,
+        OpenCodeEvent.ServerConnected,
+        is OpenCodeEvent.Unknown,
+        -> false
+    }
 
 /**
  * Reads the last turn of a transcript.

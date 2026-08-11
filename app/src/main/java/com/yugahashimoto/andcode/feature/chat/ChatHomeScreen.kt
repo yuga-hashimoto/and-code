@@ -992,6 +992,7 @@ private fun ChatStallCard(
     val accent =
         if (stall.isStopped) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
     Surface(
+        modifier = Modifier.testTag("chat-stall-card"),
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
         border = BorderStroke(1.dp, if (stall.isStopped) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline),
@@ -1035,10 +1036,10 @@ private fun ChatStallCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Button(onClick = onRecheck, modifier = Modifier.weight(1f)) {
+                Button(onClick = onRecheck, modifier = Modifier.weight(1f).testTag("chat-stall-recheck")) {
                     Text(stringResource(R.string.chat_stall_recheck))
                 }
-                OutlinedButton(onClick = onStop, modifier = Modifier.weight(1f)) {
+                OutlinedButton(onClick = onStop, modifier = Modifier.weight(1f).testTag("chat-stall-stop")) {
                     Text(stringResource(R.string.chat_stall_stop))
                 }
             }

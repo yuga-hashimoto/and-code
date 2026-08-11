@@ -237,12 +237,40 @@ class ChatViewModelStallTest {
 
             assertEquals(StallReason.NO_OUTPUT, viewModel.uiState.value.stall?.reason)
 
+            // Having said its piece, it must stop asking every 30 seconds: a wedged run left open
+            // would otherwise spend the battery on health checks nobody is waiting for.
+            val probesWhenReported = backend.listMessagesCalls
+            advanceTimeBy(STALL_CHECK_INTERVAL_MS * 4)
+            runCurrent()
+
+            assertEquals(probesWhenReported, backend.listMessagesCalls)
+
             // The idle ends the turn, which also ends the polling this test must not leave running.
             backend.events.emit(OpenCodeEvent.SessionIdle("s1"))
             advanceUntilIdle()
 
             assertNull(viewModel.uiState.value.stall)
             assertFalse(viewModel.uiState.value.isRunning)
+        }
+
+    @Test
+    fun `a session title being rewritten is not mistaken for progress`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = viewModel(backend)
+
+            viewModel.sendMessage("Hello")
+            runSilentlyPastThePoll()
+            // Metadata, not work: a runtime that kept sending these would otherwise hold the
+            // watchdog off a genuinely dead turn for good.
+            backend.events.emit(
+                OpenCodeEvent.SessionUpdated(OpenCodeSession(id = "s1", title = "Renamed")),
+            )
+            advanceUntilIdle()
+            viewModel.checkForStall()
+            advanceUntilIdle()
+
+            assertEquals(StallReason.NO_OUTPUT, viewModel.uiState.value.stall?.reason)
         }
 
     @Test
@@ -339,7 +367,10 @@ class ChatViewModelStallTest {
             directory: String?,
         ): OpenCodeSession = OpenCodeSession(id = "s1", title = title ?: "", directory = directory, time = OpenCodeTime(created = 1))
 
+        var listMessagesCalls = 0
+
         override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> {
+            listMessagesCalls++
             if (listMessagesDelayMs > 0L) delay(listMessagesDelayMs)
             return historyMessages
         }
