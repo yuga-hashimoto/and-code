@@ -28,6 +28,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
@@ -46,6 +47,7 @@ class ScheduleExecutionService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var app: AndCodeApplication
     private var inForeground = false
+    private var executionJob: Job? = null
 
     override fun onCreate() {
         super.onCreate()
@@ -71,14 +73,16 @@ class ScheduleExecutionService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        scope.launch {
-            try {
-                execute(scheduleId)
-            } finally {
-                stopForeground(STOP_FOREGROUND_REMOVE)
-                stopSelf()
+        if (executionJob?.isActive == true) return START_NOT_STICKY
+        executionJob =
+            scope.launch {
+                try {
+                    execute(scheduleId)
+                } finally {
+                    stopForeground(STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
             }
-        }
         return START_NOT_STICKY
     }
 

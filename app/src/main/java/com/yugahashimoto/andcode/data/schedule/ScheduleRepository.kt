@@ -175,7 +175,8 @@ class ScheduleRepository(context: Context) {
         if (stored != null) return ScheduleCodec.decodeSchedules(stored)
         return legacyPreferences.getString(KEY_SCHEDULES, null)?.let { encoded ->
             val decoded = ScheduleCodec.decodeSchedules(encoded)
-            if (decoded.isNotEmpty()) preferences.edit().putString(KEY_SCHEDULES, encoded).apply()
+            preferences.edit().putString(KEY_SCHEDULES, encoded).apply()
+            legacyPreferences.edit().remove(KEY_SCHEDULES).apply()
             decoded
         }.orEmpty()
     }
@@ -185,7 +186,8 @@ class ScheduleRepository(context: Context) {
         if (stored != null) return ScheduleCodec.decodeRuns(stored)
         return legacyPreferences.getString(KEY_RUNS, null)?.let { encoded ->
             val decoded = ScheduleCodec.decodeRuns(encoded)
-            if (decoded.isNotEmpty()) preferences.edit().putString(KEY_RUNS, encoded).apply()
+            preferences.edit().putString(KEY_RUNS, encoded).apply()
+            legacyPreferences.edit().remove(KEY_RUNS).apply()
             decoded
         }.orEmpty()
     }
