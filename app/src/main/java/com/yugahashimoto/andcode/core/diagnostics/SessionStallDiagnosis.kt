@@ -62,9 +62,13 @@ data class StallDiagnosis(
         get() = reason == StallReason.PROVIDER_ERROR || reason == StallReason.COMPLETION_MISSED
 
     /**
-     * True when the evidence points at a run that is over or out of reach, rather than one that may
-     * still be working. A long build and a dead turn both go quiet, so only the second is worth
-     * showing in the colour of a failure.
+     * True when the evidence points at a run that is over, out of reach, or producing nothing at
+     * all — as opposed to one with a visible thing left to wait for.
+     *
+     * [StallReason.NO_OUTPUT] belongs here: it is reached only once a running tool, a pending
+     * approval, a question and a dead stream have all been ruled out, which leaves a runtime
+     * claiming to work with nothing to show for it. A long build is reported as
+     * [StallReason.TOOL_RUNNING] instead, and stays out of the colour of a failure.
      */
     val isStopped: Boolean
         get() = isTerminal || reason == StallReason.RUNTIME_UNREACHABLE || reason == StallReason.NO_OUTPUT
@@ -85,7 +89,13 @@ data class StallEvidence(
 
 /** The state of the last turn as recorded in the transcript the runtime persisted. */
 data class RunSignals(
-    /** The failure the provider recorded on the turn, if it recorded one. */
+    /**
+     * The provider recorded a failure on the turn. Kept apart from [providerError] because the
+     * failure is what ends the run, while its text is only what there is to show for it — an error
+     * carrying neither a message nor a name still means the turn is over.
+     */
+    val providerFailed: Boolean = false,
+    /** The failure the provider recorded on the turn, in the runtime's own words. */
     val providerError: String? = null,
     /** Name (or title) of the tool call the transcript still shows as in flight. */
     val runningTool: String? = null,
@@ -108,7 +118,7 @@ fun diagnoseStall(evidence: StallEvidence): StallDiagnosis {
             reason = StallReason.RUNTIME_UNREACHABLE
             detail = evidence.runtimeError
         }
-        evidence.transcript.providerError != null -> {
+        evidence.transcript.providerFailed -> {
             reason = StallReason.PROVIDER_ERROR
             detail = evidence.transcript.providerError
         }
@@ -150,13 +160,16 @@ fun diagnoseStall(evidence: StallEvidence): StallDiagnosis {
 fun inspectRun(messages: List<OpenCodeMessage>): RunSignals {
     val last = messages.lastOrNull() ?: return RunSignals()
     if (last.info.role != "assistant") return RunSignals()
-    // A stopped turn is recorded as an error too, and the user who stopped it needs no diagnosis.
-    val failure = last.info.error?.takeUnless { it.isAbort }
+    val failure = last.info.error
+    // A stopped turn is recorded as an error too. It is over, whatever else the transcript still
+    // shows: a tool call the stop left sitting in `running` is not something to report as working.
+    if (failure?.isAbort == true) return RunSignals(turnCompleted = true)
     val runningTool =
         last.parts
             .lastOrNull { part -> part.type == "tool" && part.state?.status() in IN_FLIGHT_TOOL_STATUSES }
             ?.let { part -> part.state?.get("title")?.stringOrNull()?.takeIf(String::isNotBlank) ?: part.tool }
     return RunSignals(
+        providerFailed = failure != null,
         providerError = failure?.let { it.message ?: it.name },
         runningTool = runningTool,
         // A turn holding an unfinished tool call is not complete, whatever its timestamps say.

@@ -441,6 +441,10 @@ class ChatViewModel(
     private val dismissedQuestionIds = mutableSetOf<String>()
     private val connectionMonitor = ConnectionQualityMonitor(viewModelScope)
 
+    // The three fields below are read and written only from the main thread: every writer is either
+    // a viewModelScope coroutine (main-dispatched) or a UI callback, and [checkForStall] is called
+    // from the watchdog and from the card's button, both of which are on it too.
+
     /** When the running turn last produced something the chat could see. */
     private var lastProgressAt: Long = now()
 
@@ -1612,9 +1616,11 @@ class ChatViewModel(
         val health = runCatching { currentBackend.health() }
         val transcript = runCatching { currentBackend.listMessages(sessionId) }
         // Probing is not instant. Anything it learned about a turn that has ended in the meantime,
-        // or about a chat the user has since left, is no longer this chat's business.
+        // about a chat the user has since left, or about a run that came back to life while the
+        // probe was in flight, is no longer this chat's business.
         val state = _uiState.value
         if (state.sessionId != sessionId || !state.isRunning) return
+        if (now() - lastProgressAt < STALL_THRESHOLD_MS) return
         val diagnosis =
             diagnoseStall(
                 StallEvidence(

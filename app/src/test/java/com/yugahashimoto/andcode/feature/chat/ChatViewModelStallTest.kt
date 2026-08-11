@@ -18,6 +18,7 @@ import com.yugahashimoto.andcode.runtime.OpenCodeBackend
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -245,6 +246,33 @@ class ChatViewModelStallTest {
         }
 
     @Test
+    fun `a run that comes back to life mid-probe is not flagged by the verdict`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = viewModel(backend)
+
+            viewModel.sendMessage("Hello")
+            runSilentlyPastThePoll()
+            // Hold the transcript read open, so the answer arrives after the run has resumed.
+            backend.listMessagesDelayMs = 5_000L
+            viewModel.checkForStall()
+            runCurrent()
+
+            backend.events.emit(
+                OpenCodeEvent.MessagePartDelta(
+                    sessionId = "s1",
+                    messageId = "m1",
+                    partId = "p1",
+                    field = "text",
+                    delta = "back to work",
+                ),
+            )
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.stall)
+        }
+
+    @Test
     fun `stopping the run clears the warning`() =
         runTest(dispatcher) {
             val backend = FakeBackend()
@@ -294,6 +322,9 @@ class ChatViewModelStallTest {
         val events = MutableSharedFlow<OpenCodeEvent>(extraBufferCapacity = 20)
         var historyMessages: List<OpenCodeMessage> = emptyList()
         var healthError: Throwable? = null
+
+        /** Holds a transcript read open, so a test can act while a probe is in flight. */
+        var listMessagesDelayMs: Long = 0L
         val abortedSessions = mutableListOf<String>()
 
         override suspend fun health(): OpenCodeHealth {
@@ -308,7 +339,10 @@ class ChatViewModelStallTest {
             directory: String?,
         ): OpenCodeSession = OpenCodeSession(id = "s1", title = title ?: "", directory = directory, time = OpenCodeTime(created = 1))
 
-        override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> = historyMessages
+        override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> {
+            if (listMessagesDelayMs > 0L) delay(listMessagesDelayMs)
+            return historyMessages
+        }
 
         override suspend fun listProviders(): ProviderCatalog = ProviderCatalog()
 

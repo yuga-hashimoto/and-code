@@ -37,7 +37,7 @@ class SessionStallDiagnosisTest {
             diagnoseStall(
                 StallEvidence(
                     silentForMillis = 200_000L,
-                    transcript = RunSignals(providerError = "rate limited"),
+                    transcript = RunSignals(providerFailed = true, providerError = "rate limited"),
                 ),
             )
 
@@ -156,13 +156,36 @@ class SessionStallDiagnosisTest {
     }
 
     @Test
-    fun `inspectRun ignores a turn the user stopped by hand`() {
+    fun `inspectRun treats a turn the user stopped as over, tool call and all`() {
         val signals =
             inspectRun(
-                listOf(assistantMessage(error = OpenCodeMessageError(name = "MessageAbortedError"))),
+                listOf(
+                    assistantMessage(
+                        error = OpenCodeMessageError(name = "MessageAbortedError"),
+                        tool = "bash" to "running",
+                    ),
+                ),
             )
 
         assertNull(signals.providerError)
+        assertFalse(signals.providerFailed)
+        // The stop left the tool call sitting in `running`; reporting that as work in flight would
+        // put a "still running" warning on a turn the user ended.
+        assertNull(signals.runningTool)
+        assertTrue(signals.turnCompleted)
+    }
+
+    @Test
+    fun `a failure with nothing to quote is still a failure`() {
+        val signals = inspectRun(listOf(assistantMessage(error = OpenCodeMessageError())))
+
+        assertTrue(signals.providerFailed)
+        assertNull(signals.providerError)
+
+        val diagnosis = diagnoseStall(StallEvidence(silentForMillis = 200_000L, transcript = signals))
+
+        assertEquals(StallReason.PROVIDER_ERROR, diagnosis.reason)
+        assertNull(diagnosis.detail)
     }
 
     @Test

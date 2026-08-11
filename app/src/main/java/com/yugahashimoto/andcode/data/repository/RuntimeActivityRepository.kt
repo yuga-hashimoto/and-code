@@ -14,6 +14,7 @@ import com.yugahashimoto.andcode.core.util.safeMessage
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
@@ -216,10 +217,19 @@ class RuntimeActivityRepository(
                 lastActivityAt.keys.retainAll(active)
             }
             for (sessionId in active) {
-                val silentFor = now() - lastActivitySince(sessionId)
-                if (silentFor < stallThresholdMillis) continue
+                if (now() - lastActivitySince(sessionId) < stallThresholdMillis) continue
                 if (synchronized(activityLock) { sessionId in reportedStalls }) continue
-                diagnoseSilentSession(target, sessionId, silentFor)
+                try {
+                    diagnoseSilentSession(target, sessionId)
+                } catch (cancellation: CancellationException) {
+                    throw cancellation
+                } catch (error: Exception) {
+                    // This watchdog shares a scope with the event stream. A diagnosis that throws —
+                    // a runtime call, or the notification the verdict posts — would otherwise take
+                    // the whole runtime's event handling down with it, which is a wildly
+                    // disproportionate price for a session that could not be diagnosed.
+                    appendLog(messages.eventStalled, error.safeMessage(), sessionId)
+                }
             }
         }
     }
@@ -227,7 +237,6 @@ class RuntimeActivityRepository(
     private suspend fun diagnoseSilentSession(
         target: RuntimeTarget,
         sessionId: String,
-        silentFor: Long,
     ) {
         val health = runCatching { target.health() }
         val transcript = runCatching { target.listMessages(sessionId) }
@@ -236,9 +245,17 @@ class RuntimeActivityRepository(
         // so a set of its own would keep blaming a question the user has long since dealt with.
         val openQuestions =
             runCatching { target.pendingQuestions(session?.directory) }.getOrDefault(emptyList())
-        // The probe takes a moment, in which the session may well have come back to life.
+        // The probe takes a moment, in which the session may well have come back to life. The last
+        // word on that and the claim on the session are taken together, so an event landing between
+        // them cannot leave a session both freshly active and reported stalled.
         if (sessionId !in mutableState.value.activeSessionIds) return
-        if (now() - lastActivitySince(sessionId) < stallThresholdMillis) return
+        val silentFor =
+            synchronized(activityLock) {
+                val silence = now() - lastActivityAt.getOrPut(sessionId) { now() }
+                if (silence < stallThresholdMillis) return
+                reportedStalls += sessionId
+                silence
+            }
         val diagnosis =
             diagnoseStall(
                 StallEvidence(
@@ -252,7 +269,6 @@ class RuntimeActivityRepository(
                     transcript = transcript.map(::inspectRun).getOrDefault(RunSignals()),
                 ),
             )
-        synchronized(activityLock) { reportedStalls += sessionId }
         when (diagnosis.reason) {
             // The run is over and only the news went missing, so replay the event that never came:
             // the chat is settled and the completion is announced exactly as usual. These replays

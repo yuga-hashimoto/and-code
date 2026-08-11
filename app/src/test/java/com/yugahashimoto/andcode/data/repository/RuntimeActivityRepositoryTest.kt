@@ -880,6 +880,48 @@ class RuntimeActivityRepositoryTest {
         }
 
     @Test
+    fun `a diagnosis that throws does not take the event stream down with it`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val scope = TestScope(dispatcher)
+            val target = FakeTarget(requireConnected = false)
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val repository =
+                RuntimeActivityRepository(
+                    registry = registry,
+                    scope = scope,
+                    // Posting the notification is the step most likely to throw in the real app.
+                    onSessionStalled = { _, _, _, _ -> throw IllegalStateException("notification failed") },
+                    stallThresholdMillis = 1_000L,
+                    stallCheckIntervalMillis = 100L,
+                    now = { testScheduler.currentTime },
+                )
+            try {
+                advanceTimeBy(200L)
+                runCurrent()
+
+                repository.markSessionRunning("ses_quiet")
+                advanceTimeBy(2_000L)
+                runCurrent()
+
+                // The watchdog shares its scope with the event stream, so a thrown diagnosis must
+                // not be allowed to cancel the collector alongside it.
+                target.eventFlow.emit(OpenCodeEvent.ServerConnected)
+                advanceTimeBy(100L)
+                runCurrent()
+
+                assertTrue(repository.state.value.logs.any { it.title == "Event connection" })
+            } finally {
+                scope.cancel()
+            }
+        }
+
+    @Test
     fun `a parent waiting on a subagent is kept alive by the child's events`() =
         runTest {
             // A parent blocked on the task tool emits nothing of its own for the subagent's whole

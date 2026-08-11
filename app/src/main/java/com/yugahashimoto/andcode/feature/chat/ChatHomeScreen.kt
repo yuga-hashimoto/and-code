@@ -986,8 +986,9 @@ private fun ChatStallCard(
 ) {
     val context = LocalContext.current
     val silentMinutes = (stall.silentForMillis / 60_000L).toInt().coerceAtLeast(1)
-    // A turn that may still be working (a long tool call, a dropped event stream) is reported in
-    // the neutral outline; only evidence of a run that is over or unreachable earns the error red.
+    // A turn with something visible left to wait for (a long tool call, an unanswered approval, a
+    // dropped event stream) is reported in the neutral outline; a run that is over, unreachable or
+    // producing nothing at all earns the error red.
     val accent =
         if (stall.isStopped) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
     Surface(
@@ -1028,11 +1029,16 @@ private fun ChatStallCard(
                 )
             }
             Spacer(Modifier.height(12.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(onClick = onRecheck) {
+            // Shared evenly rather than sized to their text: "Остановить выполнение" and its
+            // Arabic counterpart do not fit beside another button on a narrow screen.
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Button(onClick = onRecheck, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.chat_stall_recheck))
                 }
-                OutlinedButton(onClick = onStop) {
+                OutlinedButton(onClick = onStop, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.chat_stall_stop))
                 }
             }
