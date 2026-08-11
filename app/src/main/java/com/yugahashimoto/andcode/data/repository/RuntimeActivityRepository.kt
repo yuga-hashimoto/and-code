@@ -255,12 +255,19 @@ class RuntimeActivityRepository(
         synchronized(activityLock) { reportedStalls += sessionId }
         when (diagnosis.reason) {
             // The run is over and only the news went missing, so replay the event that never came:
-            // the chat is settled and the completion is announced exactly as usual.
+            // the chat is settled and the completion is announced exactly as usual. These replays
+            // are handled here rather than emitted on [events]; the open chat runs a watchdog of
+            // its own on a shorter threshold, so it has already settled the turn by now.
             StallReason.COMPLETION_MISSED -> handle(target, OpenCodeEvent.SessionIdle(sessionId))
             StallReason.PROVIDER_ERROR -> handle(target, OpenCodeEvent.SessionError(sessionId, diagnosis.detail))
             else -> {
                 appendLog(messages.eventStalled, diagnosis.reason.name, sessionId)
-                onSessionStalled?.invoke(sessionId, sessionTitle(target, sessionId), diagnosis, target.id)
+                onSessionStalled?.invoke(
+                    sessionId,
+                    session?.title?.trim()?.takeIf(String::isNotEmpty),
+                    diagnosis,
+                    target.id,
+                )
             }
         }
     }

@@ -758,22 +758,25 @@ class RuntimeActivityRepositoryTest {
                     stallCheckIntervalMillis = 100L,
                     now = { testScheduler.currentTime },
                 )
-            // Only advance in bounded steps: the watchdog polls for as long as a session runs.
-            advanceTimeBy(200L)
-            runCurrent()
+            try {
+                // Only advance in bounded steps: the watchdog polls for as long as a session runs.
+                advanceTimeBy(200L)
+                runCurrent()
 
-            repository.markSessionRunning("ses_quiet")
-            advanceTimeBy(2_000L)
-            runCurrent()
+                repository.markSessionRunning("ses_quiet")
+                advanceTimeBy(2_000L)
+                runCurrent()
 
-            assertEquals(listOf("ses_quiet" to StallReason.NO_OUTPUT), stalled)
+                assertEquals(listOf("ses_quiet" to StallReason.NO_OUTPUT), stalled)
 
-            // One dead run is announced once, not on every tick.
-            advanceTimeBy(2_000L)
-            runCurrent()
+                // One dead run is announced once, not on every tick.
+                advanceTimeBy(2_000L)
+                runCurrent()
 
-            assertEquals(1, stalled.size)
-            scope.cancel()
+                assertEquals(1, stalled.size)
+            } finally {
+                scope.cancel()
+            }
         }
 
     @Test
@@ -815,17 +818,20 @@ class RuntimeActivityRepositoryTest {
                     stallCheckIntervalMillis = 100L,
                     now = { testScheduler.currentTime },
                 )
-            advanceTimeBy(200L)
-            runCurrent()
+            try {
+                advanceTimeBy(200L)
+                runCurrent()
 
-            repository.markSessionRunning("ses_done")
-            advanceTimeBy(2_000L)
-            runCurrent()
+                repository.markSessionRunning("ses_done")
+                advanceTimeBy(2_000L)
+                runCurrent()
 
-            assertTrue(stalled.isEmpty())
-            assertEquals(listOf("ses_done"), completed)
-            assertTrue("ses_done" !in repository.state.value.activeSessionIds)
-            scope.cancel()
+                assertTrue(stalled.isEmpty())
+                assertEquals(listOf("ses_done"), completed)
+                assertTrue("ses_done" !in repository.state.value.activeSessionIds)
+            } finally {
+                scope.cancel()
+            }
         }
 
     @Test
@@ -849,25 +855,85 @@ class RuntimeActivityRepositoryTest {
                 stallCheckIntervalMillis = 100L,
                 now = { testScheduler.currentTime },
             )
-            advanceTimeBy(200L)
-            runCurrent()
-
-            repeat(6) {
-                target.eventFlow.emit(
-                    OpenCodeEvent.MessagePartDelta(
-                        sessionId = "ses_busy",
-                        messageId = "m1",
-                        partId = "p1",
-                        field = "text",
-                        delta = "still going",
-                    ),
-                )
-                advanceTimeBy(400L)
+            try {
+                advanceTimeBy(200L)
                 runCurrent()
-            }
 
-            assertTrue(stalled.isEmpty())
-            scope.cancel()
+                repeat(6) {
+                    target.eventFlow.emit(
+                        OpenCodeEvent.MessagePartDelta(
+                            sessionId = "ses_busy",
+                            messageId = "m1",
+                            partId = "p1",
+                            field = "text",
+                            delta = "still going",
+                        ),
+                    )
+                    advanceTimeBy(400L)
+                    runCurrent()
+                }
+
+                assertTrue(stalled.isEmpty())
+            } finally {
+                scope.cancel()
+            }
+        }
+
+    @Test
+    fun `a parent waiting on a subagent is kept alive by the child's events`() =
+        runTest {
+            // A parent blocked on the task tool emits nothing of its own for the subagent's whole
+            // run, which is exactly what a stalled session looks like from the outside.
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val scope = TestScope(dispatcher)
+            val target =
+                FakeTarget(requireConnected = false).apply {
+                    sessions =
+                        listOf(
+                            OpenCodeSession(id = "ses_parent", title = "Parent"),
+                            OpenCodeSession(id = "child_1", parentId = "ses_parent", title = "Child"),
+                        )
+                }
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val stalled = mutableListOf<String>()
+            val repository =
+                RuntimeActivityRepository(
+                    registry = registry,
+                    scope = scope,
+                    onSessionStalled = { sessionId, _, _, _ -> stalled += sessionId },
+                    stallThresholdMillis = 1_000L,
+                    stallCheckIntervalMillis = 100L,
+                    now = { testScheduler.currentTime },
+                )
+            try {
+                advanceTimeBy(200L)
+                runCurrent()
+                repository.markSessionRunning("ses_parent")
+
+                repeat(6) {
+                    target.eventFlow.emit(
+                        OpenCodeEvent.MessagePartDelta(
+                            sessionId = "child_1",
+                            messageId = "m1",
+                            partId = "p1",
+                            field = "text",
+                            delta = "subagent working",
+                        ),
+                    )
+                    advanceTimeBy(400L)
+                    runCurrent()
+                }
+
+                assertTrue(stalled.isEmpty())
+                assertTrue("ses_parent" in repository.state.value.activeSessionIds)
+            } finally {
+                scope.cancel()
+            }
         }
 
     private class FakeUnreadStore(

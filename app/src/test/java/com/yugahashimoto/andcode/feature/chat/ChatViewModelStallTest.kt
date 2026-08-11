@@ -195,6 +195,33 @@ class ChatViewModelStallTest {
         }
 
     @Test
+    fun `the watchdog reports a quiet run on its own, without being asked`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel =
+                ChatViewModel(
+                    backend = backend,
+                    eventFlow = backend.events,
+                    monitorStalls = true,
+                    now = { testScheduler.currentTime },
+                ).also { advanceUntilIdle() }
+
+            viewModel.sendMessage("Hello")
+            // Only bounded steps: the watchdog polls for as long as the turn is marked running.
+            advanceTimeBy(STALL_THRESHOLD_MS + STALL_CHECK_INTERVAL_MS)
+            runCurrent()
+
+            assertEquals(StallReason.NO_OUTPUT, viewModel.uiState.value.stall?.reason)
+
+            // The idle ends the turn, which also ends the polling this test must not leave running.
+            backend.events.emit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.stall)
+            assertFalse(viewModel.uiState.value.isRunning)
+        }
+
+    @Test
     fun `stopping the run clears the warning`() =
         runTest(dispatcher) {
             val backend = FakeBackend()

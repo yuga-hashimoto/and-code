@@ -129,7 +129,7 @@
     <string name="chat_stall_reason_runtime_unreachable">The runtime is not answering, so the run cannot be reached.</string>
     <string name="chat_stall_reason_provider_error">The model provider returned an error, so the run stopped.</string>
     <string name="chat_stall_reason_completion_missed">The run had already finished; the app never received the completion.</string>
-    <string name="chat_stall_reason_awaiting_permission">The run is blocked on an approval. Answer the request above to continue.</string>
+    <string name="chat_stall_reason_awaiting_permission">The run is blocked on an approval. Answer the approval request to continue.</string>
     <string name="chat_stall_reason_awaiting_question">The run is blocked on a question. Answer it to continue.</string>
     <string name="chat_stall_reason_stream_disconnected">The event connection is down, so progress is not reaching the app.</string>
     <string name="chat_stall_reason_tool_running">The tool %1$s is still running and has not reported back.</string>

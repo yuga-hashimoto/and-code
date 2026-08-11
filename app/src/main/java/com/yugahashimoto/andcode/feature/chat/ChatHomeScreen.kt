@@ -986,10 +986,14 @@ private fun ChatStallCard(
 ) {
     val context = LocalContext.current
     val silentMinutes = (stall.silentForMillis / 60_000L).toInt().coerceAtLeast(1)
+    // A turn that may still be working (a long tool call, a dropped event stream) is reported in
+    // the neutral outline; only evidence of a run that is over or unreachable earns the error red.
+    val accent =
+        if (stall.isStopped) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+        border = BorderStroke(1.dp, if (stall.isStopped) accent else MaterialTheme.colorScheme.outline),
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(
@@ -999,7 +1003,7 @@ private fun ChatStallCard(
                 Icon(
                     imageVector = Icons.Default.WarningAmber,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.error,
+                    tint = accent,
                     modifier = Modifier.size(18.dp),
                 )
                 Text(

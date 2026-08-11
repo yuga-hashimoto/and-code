@@ -129,7 +129,7 @@
     <string name="chat_stall_reason_runtime_unreachable">Среда выполнения не отвечает, поэтому состояние запуска неизвестно.</string>
     <string name="chat_stall_reason_provider_error">Провайдер модели вернул ошибку, выполнение остановилось.</string>
     <string name="chat_stall_reason_completion_missed">Выполнение уже завершилось, но приложение не получило уведомление об этом.</string>
-    <string name="chat_stall_reason_awaiting_permission">Выполнение ждёт подтверждения. Ответьте на запрос выше, чтобы продолжить.</string>
+    <string name="chat_stall_reason_awaiting_permission">Выполнение ждёт подтверждения. Ответьте на запрос подтверждения, чтобы продолжить.</string>
     <string name="chat_stall_reason_awaiting_question">Выполнение ждёт ответа на вопрос. Ответьте, чтобы продолжить.</string>
     <string name="chat_stall_reason_stream_disconnected">Соединение событий разорвано, поэтому прогресс не доходит до приложения.</string>
     <string name="chat_stall_reason_tool_running">Инструмент %1$s всё ещё работает и ничего не вернул.</string>

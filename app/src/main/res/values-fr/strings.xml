@@ -129,7 +129,7 @@
     <string name="chat_stall_reason_runtime_unreachable">Le runtime ne répond pas, impossible de suivre l’exécution.</string>
     <string name="chat_stall_reason_provider_error">Le fournisseur du modèle a renvoyé une erreur, l’exécution s’est arrêtée.</string>
     <string name="chat_stall_reason_completion_missed">L’exécution était déjà terminée ; l’application n’a jamais reçu la fin.</string>
-    <string name="chat_stall_reason_awaiting_permission">L’exécution est bloquée sur une approbation. Répondez à la demande ci-dessus pour continuer.</string>
+    <string name="chat_stall_reason_awaiting_permission">L’exécution est bloquée sur une approbation. Répondez à la demande d’approbation pour continuer.</string>
     <string name="chat_stall_reason_awaiting_question">L’exécution est bloquée sur une question. Répondez-y pour continuer.</string>
     <string name="chat_stall_reason_stream_disconnected">La connexion aux événements est coupée : la progression n’arrive plus à l’application.</string>
     <string name="chat_stall_reason_tool_running">L’outil %1$s est toujours en cours et n’a rien renvoyé.</string>

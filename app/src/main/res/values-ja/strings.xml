@@ -129,7 +129,7 @@
     <string name="chat_stall_reason_runtime_unreachable">ランタイムが応答しないため、実行の状態を確認できません。</string>
     <string name="chat_stall_reason_provider_error">モデルプロバイダーがエラーを返したため、実行が止まりました。</string>
     <string name="chat_stall_reason_completion_missed">実行はすでに完了していましたが、完了の通知がアプリに届いていませんでした。</string>
-    <string name="chat_stall_reason_awaiting_permission">承認待ちで止まっています。上の許可リクエストに回答すると再開します。</string>
+    <string name="chat_stall_reason_awaiting_permission">承認待ちで止まっています。許可リクエストに回答すると再開します。</string>
     <string name="chat_stall_reason_awaiting_question">質問への回答待ちで止まっています。回答すると再開します。</string>
     <string name="chat_stall_reason_stream_disconnected">イベント接続が切れているため、進捗がアプリに届いていません。</string>
     <string name="chat_stall_reason_tool_running">ツール %1$s の実行が終わっていません。</string>

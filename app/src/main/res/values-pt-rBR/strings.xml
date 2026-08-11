@@ -129,7 +129,7 @@
     <string name="chat_stall_reason_runtime_unreachable">O runtime não responde, então não dá para saber como está a execução.</string>
     <string name="chat_stall_reason_provider_error">O provedor do modelo retornou um erro e a execução parou.</string>
     <string name="chat_stall_reason_completion_missed">A execução já havia terminado; o app nunca recebeu o aviso de conclusão.</string>
-    <string name="chat_stall_reason_awaiting_permission">A execução está parada aguardando uma aprovação. Responda à solicitação acima para continuar.</string>
+    <string name="chat_stall_reason_awaiting_permission">A execução está parada aguardando uma aprovação. Responda à solicitação de aprovação para continuar.</string>
     <string name="chat_stall_reason_awaiting_question">A execução está parada aguardando a resposta de uma pergunta. Responda para continuar.</string>
     <string name="chat_stall_reason_stream_disconnected">A conexão de eventos caiu, então o progresso não chega ao app.</string>
     <string name="chat_stall_reason_tool_running">A ferramenta %1$s continua em execução e não retornou nada.</string>

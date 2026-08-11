@@ -3,6 +3,7 @@ package com.yugahashimoto.andcode.core.diagnostics
 import com.yugahashimoto.andcode.core.api.OpenCodeMessage
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 /**
  * Why a run the app still believes is working has produced nothing for a while.
@@ -55,6 +56,14 @@ data class StallDiagnosis(
      */
     val isTerminal: Boolean
         get() = reason == StallReason.PROVIDER_ERROR || reason == StallReason.COMPLETION_MISSED
+
+    /**
+     * True when the evidence points at a run that is over or out of reach, rather than one that may
+     * still be working. A long build and a dead turn both go quiet, so only the second is worth
+     * showing in the colour of a failure.
+     */
+    val isStopped: Boolean
+        get() = isTerminal || reason == StallReason.RUNTIME_UNREACHABLE || reason == StallReason.NO_OUTPUT
 }
 
 /** What a caller could learn about a quiet run before asking for a diagnosis. */
@@ -155,4 +164,4 @@ private val IN_FLIGHT_TOOL_STATUSES = setOf("running", "pending")
 
 private fun Map<String, JsonElement>.status(): String? = get("status")?.stringOrNull()
 
-private fun JsonElement.stringOrNull(): String? = (this as? JsonPrimitive)?.content
+private fun JsonElement.stringOrNull(): String? = (this as? JsonPrimitive)?.contentOrNull

@@ -121,6 +121,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -297,7 +298,12 @@ fun AndCodeApp(
                         resolvedPermissionFlow = app.activityRepository.resolvedPermissions,
                         pullRequestStatuses = app.pullRequestStatusRepository,
                         monitorStalls = true,
-                        streamErrorFlow = app.activityRepository.state.map { it.streamError },
+                        // Every activity event updates this state, so only real transitions of the
+                        // stream's own health are forwarded.
+                        streamErrorFlow =
+                            app.activityRepository.state
+                                .map { it.streamError }
+                                .distinctUntilChanged(),
                     )
                 },
         )

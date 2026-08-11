@@ -129,7 +129,7 @@
     <string name="chat_stall_reason_runtime_unreachable">لا تستجيب بيئة التشغيل، لذا يتعذّر معرفة حالة التنفيذ.</string>
     <string name="chat_stall_reason_provider_error">أعاد مزوّد النموذج خطأً، فتوقّف التنفيذ.</string>
     <string name="chat_stall_reason_completion_missed">كان التنفيذ قد انتهى بالفعل، لكن التطبيق لم يستلم إشعار الانتهاء.</string>
-    <string name="chat_stall_reason_awaiting_permission">التنفيذ متوقّف بانتظار موافقة. أجب عن الطلب أعلاه للمتابعة.</string>
+    <string name="chat_stall_reason_awaiting_permission">التنفيذ متوقّف بانتظار موافقة. أجب عن طلب الموافقة للمتابعة.</string>
     <string name="chat_stall_reason_awaiting_question">التنفيذ متوقّف بانتظار إجابة عن سؤال. أجب عنه للمتابعة.</string>
     <string name="chat_stall_reason_stream_disconnected">انقطع اتصال الأحداث، لذا لا يصل التقدّم إلى التطبيق.</string>
     <string name="chat_stall_reason_tool_running">الأداة %1$s ما زالت قيد التشغيل ولم تُرجع نتيجة.</string>
