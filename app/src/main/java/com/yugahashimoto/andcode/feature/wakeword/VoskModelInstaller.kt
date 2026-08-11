@@ -89,7 +89,7 @@ class VoskModelInstaller(
                 "Model archive exceeds the ${MAX_ARCHIVE_BYTES / (1024 * 1024)} MiB limit"
             }
             onProgress(VoskInstallProgress.Downloading(0, total))
-            extract(CountingStream(body.byteStream(), total, onProgress), staging)
+            extract(CountingStream(body.byteStream(), total, MAX_ARCHIVE_BYTES, onProgress), staging)
             onProgress(VoskInstallProgress.Extracting)
         }
     }
@@ -138,6 +138,7 @@ class VoskModelInstaller(
     private class CountingStream(
         private val delegate: InputStream,
         private val total: Long?,
+        private val maxBytes: Long,
         private val onProgress: (VoskInstallProgress) -> Unit,
     ) : InputStream() {
         private var read = 0L
@@ -155,6 +156,9 @@ class VoskModelInstaller(
 
         private fun advance(count: Long) {
             read += count
+            check(read <= maxBytes) {
+                "Model archive exceeds the ${maxBytes / (1024 * 1024)} MiB limit"
+            }
             // Throttled: the archive is tens of megabytes and a callback per buffer would spend
             // more time recomposing the progress bar than reading.
             if (read - lastReported < PROGRESS_STEP_BYTES) return
