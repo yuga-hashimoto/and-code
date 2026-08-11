@@ -102,7 +102,7 @@ class ScheduleExecutionService : Service() {
 
         val target = app.runtimeRegistry.target(schedule.runtimeId)
         if (target == null) {
-            recordSkipped(schedule, "runtime unavailable")
+            recordSkipped(schedule, getString(R.string.schedule_runtime_unavailable))
             return
         }
         var activeRun: ScheduleRun? = null
@@ -111,11 +111,11 @@ class ScheduleExecutionService : Service() {
             // Remote runtimes live on the user's PC and need no boot; local agents share the
             // PRoot Linux environment, which has to be running before the agent can start.
             if (target.type == RuntimeType.LOCAL && !ensureLocalRuntimeReady()) {
-                recordSkipped(schedule, "runtime did not become ready")
+                recordSkipped(schedule, getString(R.string.schedule_runtime_not_ready))
                 return
             }
             if (target.connect().isFailure) {
-                recordSkipped(schedule, "runtime connection failed")
+                recordSkipped(schedule, getString(R.string.schedule_runtime_connection_failed))
                 return
             }
             val session =
