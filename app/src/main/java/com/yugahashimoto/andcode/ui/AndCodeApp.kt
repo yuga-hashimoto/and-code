@@ -121,6 +121,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.UUID
@@ -295,6 +296,8 @@ fun AndCodeApp(
                         monitorConnectionQuality = true,
                         resolvedPermissionFlow = app.activityRepository.resolvedPermissions,
                         pullRequestStatuses = app.pullRequestStatusRepository,
+                        monitorStalls = true,
+                        streamErrorFlow = app.activityRepository.state.map { it.streamError },
                     )
                 },
         )
@@ -997,6 +1000,7 @@ fun AndCodeApp(
                         onSendMessage = chatViewModel::sendMessage,
                         onPermission = chatViewModel::respondToPermission,
                         onAbort = chatViewModel::abort,
+                        onRecheckStall = chatViewModel::checkForStall,
                         onMic = requestVoiceInput,
                         onNewChat = {
                             pendingSession = null

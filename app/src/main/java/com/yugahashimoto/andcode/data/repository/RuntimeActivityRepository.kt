@@ -3,6 +3,14 @@ package com.yugahashimoto.andcode.data.repository
 import com.yugahashimoto.andcode.core.api.OpenCodeEvent
 import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.core.api.QuestionRequest
+import com.yugahashimoto.andcode.core.api.sessionIdOrNull
+import com.yugahashimoto.andcode.core.diagnostics.RunSignals
+import com.yugahashimoto.andcode.core.diagnostics.StallDiagnosis
+import com.yugahashimoto.andcode.core.diagnostics.StallEvidence
+import com.yugahashimoto.andcode.core.diagnostics.StallReason
+import com.yugahashimoto.andcode.core.diagnostics.diagnoseStall
+import com.yugahashimoto.andcode.core.diagnostics.inspectRun
+import com.yugahashimoto.andcode.core.util.safeMessage
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
@@ -55,12 +63,29 @@ class RuntimeActivityRepository(
     private val onSessionIdle: ((String, String?, String) -> Unit)? = null,
     private val onSessionError: ((String?, String?, String) -> Unit)? = null,
     private val onQuestionAsked: ((QuestionRequest, String?, String) -> Unit)? = null,
+    /**
+     * Reports a run that has stopped producing events, with the runtime's answer for why. Also
+     * what turns the stall watchdog on: without a listener there is nobody to tell, so the poll
+     * loop (which a virtual test clock would advance through forever) never starts.
+     */
+    private val onSessionStalled: ((String, String?, StallDiagnosis, String) -> Unit)? = null,
+    /**
+     * How long an active session may produce nothing before the watchdog asks the runtime what
+     * happened. Well past the chat's own [com.yugahashimoto.andcode.feature.chat.STALL_THRESHOLD_MS]
+     * threshold: this one interrupts the user with a notification, so it waits until a slow tool
+     * call is no longer a plausible explanation.
+     */
+    private val stallThresholdMillis: Long = 300_000L,
+    private val stallCheckIntervalMillis: Long = 60_000L,
+    private val now: () -> Long = System::currentTimeMillis,
     private val unreadStore: UnreadSessionStore? = null,
     private val messages: RuntimeActivityMessages = RuntimeActivityMessages,
 ) {
     init {
         require(retryDelayMillis >= 0L)
         require(maxRetryDelayMillis >= retryDelayMillis)
+        require(stallThresholdMillis > 0L)
+        require(stallCheckIntervalMillis > 0L)
     }
 
     // Unread markers outlive the process: a chat that finished while the app was closed is still
@@ -102,6 +127,17 @@ class RuntimeActivityRepository(
      */
     private val runtimeIdleSessionIds = mutableSetOf<String>()
 
+    /**
+     * When each running session last produced something. Written from the stream collector and
+     * from the chat (via [markSessionRunning]), read by the watchdog, so it is guarded like the
+     * parent map above.
+     */
+    private val lastActivityAt = mutableMapOf<String, Long>()
+
+    /** Sessions already reported as stalled, so one dead run is announced once, not every minute. */
+    private val reportedStalls = mutableSetOf<String>()
+    private val activityLock = Any()
+
     init {
         scope.launch {
             registry.selected.collectLatest selected@{ target ->
@@ -123,6 +159,7 @@ class RuntimeActivityRepository(
                 // opening eagerly and retrying is both simpler and strictly more robust.
                 coroutineScope {
                     launch { streamEvents(target) }
+                    if (onSessionStalled != null) launch { watchForStalls(target) }
 
                     // Losing the runtime clears in-flight state, but never the unread markers:
                     // a dropped connection says nothing about what the user has read.
@@ -155,9 +192,88 @@ class RuntimeActivityRepository(
             }
             .collect { event ->
                 mutableState.update { it.copy(streamError = null) }
+                event.sessionIdOrNull()?.let(::recordActivity)
                 mutableEvents.emit(event)
                 handle(target, event)
             }
+    }
+
+    /**
+     * Watches every running session for one that has gone quiet.
+     *
+     * A run that dies while the app is in the background produces no event at all, which is exactly
+     * what a run that is thinking hard produces: the drawer keeps its spinner, no notification ever
+     * arrives, and the user finds out by giving up and looking. This asks the runtime what became
+     * of such a session, settles it when it turns out to be over, and otherwise says out loud that
+     * it is stuck.
+     */
+    private suspend fun watchForStalls(target: RuntimeTarget) {
+        while (true) {
+            delay(stallCheckIntervalMillis)
+            val active = mutableState.value.activeSessionIds
+            synchronized(activityLock) {
+                reportedStalls.retainAll(active)
+                lastActivityAt.keys.retainAll(active)
+            }
+            for (sessionId in active) {
+                val silentFor = now() - lastActivitySince(sessionId)
+                if (silentFor < stallThresholdMillis) continue
+                if (synchronized(activityLock) { sessionId in reportedStalls }) continue
+                diagnoseSilentSession(target, sessionId, silentFor)
+            }
+        }
+    }
+
+    private suspend fun diagnoseSilentSession(
+        target: RuntimeTarget,
+        sessionId: String,
+        silentFor: Long,
+    ) {
+        val health = runCatching { target.health() }
+        val transcript = runCatching { target.listMessages(sessionId) }
+        val session = runCatching { target.session(sessionId) }.getOrNull()
+        // Asked rather than remembered: the repository never learns that a question was answered,
+        // so a set of its own would keep blaming a question the user has long since dealt with.
+        val openQuestions =
+            runCatching { target.pendingQuestions(session?.directory) }.getOrDefault(emptyList())
+        // The probe takes a moment, in which the session may well have come back to life.
+        if (sessionId !in mutableState.value.activeSessionIds) return
+        if (now() - lastActivitySince(sessionId) < stallThresholdMillis) return
+        val diagnosis =
+            diagnoseStall(
+                StallEvidence(
+                    silentForMillis = silentFor,
+                    runtimeReachable = health.getOrNull()?.healthy == true,
+                    runtimeError = health.exceptionOrNull()?.safeMessage(),
+                    streamConnected = mutableState.value.streamError == null,
+                    streamError = mutableState.value.streamError,
+                    awaitingPermission = mutableState.value.permissions.any { it.sessionId == sessionId },
+                    awaitingQuestion = openQuestions.any { it.sessionId == sessionId },
+                    transcript = transcript.map(::inspectRun).getOrDefault(RunSignals()),
+                ),
+            )
+        synchronized(activityLock) { reportedStalls += sessionId }
+        when (diagnosis.reason) {
+            // The run is over and only the news went missing, so replay the event that never came:
+            // the chat is settled and the completion is announced exactly as usual.
+            StallReason.COMPLETION_MISSED -> handle(target, OpenCodeEvent.SessionIdle(sessionId))
+            StallReason.PROVIDER_ERROR -> handle(target, OpenCodeEvent.SessionError(sessionId, diagnosis.detail))
+            else -> {
+                appendLog(messages.eventStalled, diagnosis.reason.name, sessionId)
+                onSessionStalled?.invoke(sessionId, sessionTitle(target, sessionId), diagnosis, target.id)
+            }
+        }
+    }
+
+    /** When [sessionId] last produced something; sessions never seen count as silent from now. */
+    private fun lastActivitySince(sessionId: String): Long = synchronized(activityLock) { lastActivityAt.getOrPut(sessionId) { now() } }
+
+    private fun recordActivity(sessionId: String) {
+        if (sessionId.isBlank()) return
+        synchronized(activityLock) {
+            lastActivityAt[sessionId] = now()
+            reportedStalls -= sessionId
+        }
     }
 
     fun resolvePermission(permissionId: String) {
@@ -185,6 +301,7 @@ class RuntimeActivityRepository(
     fun markSessionRunning(sessionId: String) {
         if (sessionId.isBlank()) return
         synchronized(parentLock) { runtimeIdleSessionIds.remove(sessionId) }
+        recordActivity(sessionId)
         mutableState.update { current ->
             current.copy(
                 activeSessionIds = current.activeSessionIds + sessionId,
@@ -388,6 +505,11 @@ class RuntimeActivityRepository(
         while (parentId != null) {
             if (isRuntimeIdle(parentId)) break
             val ancestorId = parentId
+            // A parent blocked on the task tool emits nothing of its own for the subagent's whole
+            // run. Its child's events are the proof it is still working, so they count as the
+            // parent's activity too — otherwise the watchdog would call every long subagent run a
+            // stalled parent.
+            recordActivity(ancestorId)
             mutableState.update { current ->
                 current.copy(
                     activeSessionIds = current.activeSessionIds + ancestorId,

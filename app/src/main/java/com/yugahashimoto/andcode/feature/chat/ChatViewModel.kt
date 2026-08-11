@@ -18,6 +18,13 @@ import com.yugahashimoto.andcode.core.api.PromptRequest
 import com.yugahashimoto.andcode.core.api.PullRequestRef
 import com.yugahashimoto.andcode.core.api.QuestionPrompt
 import com.yugahashimoto.andcode.core.api.QuestionRequest
+import com.yugahashimoto.andcode.core.api.sessionIdOrNull
+import com.yugahashimoto.andcode.core.diagnostics.RunSignals
+import com.yugahashimoto.andcode.core.diagnostics.StallDiagnosis
+import com.yugahashimoto.andcode.core.diagnostics.StallEvidence
+import com.yugahashimoto.andcode.core.diagnostics.StallReason
+import com.yugahashimoto.andcode.core.diagnostics.diagnoseStall
+import com.yugahashimoto.andcode.core.diagnostics.inspectRun
 import com.yugahashimoto.andcode.core.util.safeMessage
 import com.yugahashimoto.andcode.data.repository.PullRequestStatusRepository
 import com.yugahashimoto.andcode.data.settings.Draft
@@ -32,6 +39,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -170,6 +178,17 @@ private const val HEALTH_CHECK_DELAY_MS = 2000L
 private const val PENDING_QUESTION_REFRESH_ATTEMPTS = 3
 private const val PENDING_QUESTION_REFRESH_RETRY_DELAY_MS = 3000L
 
+/**
+ * How long a run may produce nothing before the chat stops taking it on faith and asks the runtime
+ * what is going on. Long enough that a single slow tool call (a build, a test run) is not called a
+ * stall on its own, and past the bounded post-send poll, which gives up at
+ * [RESPONSE_POLL_TIMEOUT_MS] and leaves nothing else watching the turn.
+ */
+internal const val STALL_THRESHOLD_MS = 150_000L
+
+/** How often a run in flight is measured against [STALL_THRESHOLD_MS]. */
+internal const val STALL_CHECK_INTERVAL_MS = 30_000L
+
 /** Floor between transcript scans for pull request links, so streaming does not drive them. */
 private const val PULL_REQUEST_SCAN_THROTTLE_MS = 300L
 
@@ -231,13 +250,11 @@ internal fun List<ChatPart>.withMessageError(
     messageId: String,
     error: OpenCodeMessageError?,
 ): List<ChatPart> {
-    if (error == null || error.isAbort()) return this
+    if (error == null || error.isAbort) return this
     val message = error.message ?: return this
     if (any { it is ChatPart.Error }) return this
     return this + ChatPart.Error("$messageId-error", message)
 }
-
-private fun OpenCodeMessageError.isAbort(): Boolean = name == "MessageAbortedError" || name == "AbortError"
 
 private fun JsonElement.jsonPrimitiveOrNull(): String? = (this as? JsonPrimitive)?.contentOrNull ?: (this as? JsonPrimitive)?.content
 
@@ -337,6 +354,11 @@ data class ChatUiState(
     val connectionQuality: ConnectionQuality? = null,
     /** Pull requests linked in this chat, newest first, for the badges above the composer. */
     val pullRequests: List<ChatPullRequest> = emptyList(),
+    /**
+     * Set while the running turn has gone quiet for longer than [STALL_THRESHOLD_MS], carrying the
+     * best available answer to "is this still working, and if not, why not".
+     */
+    val stall: StallDiagnosis? = null,
     val error: String? = null,
 )
 
@@ -362,6 +384,15 @@ class ChatViewModel(
     private val resolvedPermissionFlow: Flow<String>? = null,
     /** Absent in tests and previews, where the pull request badges stay unresolved. */
     private val pullRequestStatuses: PullRequestStatusRepository? = null,
+    /**
+     * Starts the stall watchdog. Like [monitorConnectionQuality] it polls for as long as a turn
+     * runs, so it stays off unless the real app asks for it; tests drive [checkForStall] directly.
+     */
+    private val monitorStalls: Boolean = false,
+    /** The event stream's last failure, so a silent run can be blamed on a dead stream. */
+    private val streamErrorFlow: Flow<String?>? = null,
+    /** Wall clock, replaced in tests by the virtual one the watchdog is advanced against. */
+    private val now: () -> Long = System::currentTimeMillis,
 ) : ViewModel() {
     private val _uiState =
         MutableStateFlow(
@@ -410,8 +441,20 @@ class ChatViewModel(
     private val dismissedQuestionIds = mutableSetOf<String>()
     private val connectionMonitor = ConnectionQualityMonitor(viewModelScope)
 
+    /** When the running turn last produced something the chat could see. */
+    private var lastProgressAt: Long = now()
+
+    /** Guards against a slow probe being started again by the next watchdog tick. */
+    private var stallCheckRunning = false
+
+    /** Last failure reported by the event stream, or null while it is healthy. */
+    private var streamError: String? = null
+
     init {
         pullRequestStatuses?.let(::trackPullRequests)
+        streamErrorFlow?.let { flow ->
+            viewModelScope.launch { flow.collect { streamError = it } }
+        }
         // A permission answered from the notification (or the activity screen) never comes back
         // as an event, so without this the chat keeps showing a card for a settled request.
         resolvedPermissionFlow?.let { flow ->
@@ -486,6 +529,24 @@ class ChatViewModel(
                         _uiState.update { it.copy(connectionQuality = quality) }
                     }
                 }
+            }
+            viewModelScope.launch {
+                uiState
+                    .map { it.isRunning }
+                    .distinctUntilChanged()
+                    .collectLatest { running ->
+                        if (!running) {
+                            // Whatever the run was doing, it is not doing it any more.
+                            if (_uiState.value.stall != null) _uiState.update { it.copy(stall = null) }
+                            return@collectLatest
+                        }
+                        recordProgress()
+                        if (!monitorStalls) return@collectLatest
+                        while (true) {
+                            delay(STALL_CHECK_INTERVAL_MS)
+                            checkForStall()
+                        }
+                    }
             }
         }
     }
@@ -852,6 +913,9 @@ class ChatViewModel(
                 error = null,
             )
         }
+        // A turn that replaces or queues behind a running one leaves isRunning true, so the stall
+        // clock has to be restarted here rather than only on the idle-to-running transition.
+        recordProgress()
 
         viewModelScope.launch {
             // Captured once the target session is known so onFailure below can tell whether the
@@ -1046,6 +1110,9 @@ class ChatViewModel(
                 error = null,
             )
         }
+        // A turn that replaces or queues behind a running one leaves isRunning true, so the stall
+        // clock has to be restarted here rather than only on the idle-to-running transition.
+        recordProgress()
 
         viewModelScope.launch {
             var capturedSessionId: String? = null
@@ -1502,8 +1569,87 @@ class ChatViewModel(
         pendingInterrupts -= sessionId
     }
 
+    /**
+     * Notes that the running turn produced something, which resets the stall clock and takes down
+     * a warning the chat may already be showing.
+     */
+    private fun recordProgress() {
+        lastProgressAt = now()
+        if (_uiState.value.stall != null) _uiState.update { it.copy(stall = null) }
+    }
+
+    /**
+     * Asks the runtime what became of a turn that has produced nothing for [STALL_THRESHOLD_MS].
+     *
+     * A run that dies in the background looks exactly like one that is thinking hard — same
+     * spinner, same stop button, no message either way — and that is the whole problem this
+     * answers. The verdict either settles the turn (it finished unheard, or it failed) or is
+     * published as [ChatUiState.stall] for the chat to show, along with what the runtime blames
+     * it on.
+     */
+    fun checkForStall() {
+        val currentBackend = backend ?: return
+        val state = _uiState.value
+        val sessionId = state.sessionId ?: return
+        if (!state.isRunning || stallCheckRunning) return
+        val silentFor = now() - lastProgressAt
+        if (silentFor < STALL_THRESHOLD_MS) return
+        stallCheckRunning = true
+        viewModelScope.launch {
+            try {
+                diagnoseSilentRun(currentBackend, sessionId, silentFor)
+            } finally {
+                stallCheckRunning = false
+            }
+        }
+    }
+
+    private suspend fun diagnoseSilentRun(
+        currentBackend: OpenCodeBackend,
+        sessionId: String,
+        silentFor: Long,
+    ) {
+        val health = runCatching { currentBackend.health() }
+        val transcript = runCatching { currentBackend.listMessages(sessionId) }
+        // Probing is not instant. Anything it learned about a turn that has ended in the meantime,
+        // or about a chat the user has since left, is no longer this chat's business.
+        val state = _uiState.value
+        if (state.sessionId != sessionId || !state.isRunning) return
+        val diagnosis =
+            diagnoseStall(
+                StallEvidence(
+                    silentForMillis = silentFor,
+                    runtimeReachable = health.getOrNull()?.healthy == true,
+                    runtimeError = health.exceptionOrNull()?.safeMessage(),
+                    streamConnected = streamError == null,
+                    streamError = streamError,
+                    awaitingPermission = state.permissions.isNotEmpty(),
+                    awaitingQuestion = state.pendingQuestions.isNotEmpty(),
+                    transcript = transcript.map(::inspectRun).getOrDefault(RunSignals()),
+                ),
+            )
+        when (diagnosis.reason) {
+            // The turn is over and the app simply never heard about it; settle it the way the idle
+            // that went missing would have.
+            StallReason.COMPLETION_MISSED -> handleSessionIdle(sessionId)
+            StallReason.PROVIDER_ERROR -> {
+                _uiState.update {
+                    it.copy(isRunning = false, isThinking = false, stall = null, error = diagnosis.detail)
+                }
+                refreshMessages(sessionId)
+            }
+            else -> {
+                _uiState.update { it.copy(stall = diagnosis) }
+                // A question the app never received blocks the turn for good. Fetching the open
+                // ones puts the card back, so answering it can get the run moving again.
+                if (diagnosis.reason == StallReason.NO_OUTPUT) refreshPendingQuestions(sessionId)
+            }
+        }
+    }
+
     private fun handleEvent(event: OpenCodeEvent) {
         val activeSession = _uiState.value.sessionId
+        if (activeSession != null && event.sessionIdOrNull() == activeSession) recordProgress()
         when (event) {
             OpenCodeEvent.ServerConnected -> {
                 _uiState.update { it.copy(isConnected = true, error = null) }

@@ -13,6 +13,9 @@ internal object AnalyticsEvents {
     fun runtimeSessionCompleted(): AnalyticsEvent = AnalyticsEvent("runtime_session_completed")
 
     fun runtimeSessionError(): AnalyticsEvent = AnalyticsEvent("runtime_session_error")
+
+    /** [reason] is a [StallReason] name, so the common causes of a wedged run can be told apart. */
+    fun runtimeSessionStalled(reason: String): AnalyticsEvent = AnalyticsEvent("runtime_session_stalled", mapOf("reason" to reason))
 }
 
 /** Reports anonymous product-usage events while Firebase Analytics supplies automatic metrics. */
@@ -38,6 +41,10 @@ object AnalyticsReporter {
 
     fun recordRuntimeSessionError() {
         record(AnalyticsEvents.runtimeSessionError())
+    }
+
+    fun recordRuntimeSessionStalled(reason: String) {
+        record(AnalyticsEvents.runtimeSessionStalled(reason))
     }
 
     private fun record(event: AnalyticsEvent) {

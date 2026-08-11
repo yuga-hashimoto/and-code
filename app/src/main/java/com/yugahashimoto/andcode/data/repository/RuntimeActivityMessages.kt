@@ -13,6 +13,7 @@ interface RuntimeActivityMessages {
     val eventPermission: String
     val eventCompleted: String
     val eventError: String
+    val eventStalled: String
     val eventQuestion: String
     val eventUnknown: String
 
@@ -25,6 +26,7 @@ interface RuntimeActivityMessages {
         override val eventPermission = "Waiting for approval"
         override val eventCompleted = "Execution complete"
         override val eventError = "Execution error"
+        override val eventStalled = "Run has gone quiet"
         override val eventQuestion = "Question"
         override val eventUnknown = "Unsupported event"
     }
@@ -39,6 +41,7 @@ class AndroidRuntimeActivityMessages(private val context: Context) : RuntimeActi
     override val eventPermission get() = context.getString(R.string.activity_event_permission)
     override val eventCompleted get() = context.getString(R.string.activity_event_completed)
     override val eventError get() = context.getString(R.string.activity_event_error)
+    override val eventStalled get() = context.getString(R.string.activity_event_stalled)
     override val eventQuestion get() = context.getString(R.string.activity_event_question)
     override val eventUnknown get() = context.getString(R.string.activity_event_unknown)
 }

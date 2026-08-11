@@ -20,4 +20,12 @@ class AnalyticsReporterTest {
         assertEquals("runtime_session_error", event.name)
         assertTrue(event.parameters.isEmpty())
     }
+
+    @Test
+    fun `runtime session stalled event carries the reason constant and nothing else`() {
+        val event = AnalyticsEvents.runtimeSessionStalled(StallReason.NO_OUTPUT.name)
+
+        assertEquals("runtime_session_stalled", event.name)
+        assertEquals(mapOf("reason" to "NO_OUTPUT"), event.parameters)
+    }
 }

@@ -364,6 +364,12 @@ class AndCodeApplication : Application() {
                 onQuestionAsked = { request, title, runtimeId ->
                     notifications.notifyQuestion(request, title, runtimeId)
                 },
+                // A run that dies in the background used to be silent by design: no event, no
+                // notification, and a drawer spinner that never stopped.
+                onSessionStalled = { sessionId, title, diagnosis, runtimeId ->
+                    AnalyticsReporter.recordRuntimeSessionStalled(diagnosis.reason.name)
+                    notifications.notifySessionStalled(sessionId, title, diagnosis, runtimeId)
+                },
                 unreadStore = settings,
                 messages = AndroidRuntimeActivityMessages(this),
             )

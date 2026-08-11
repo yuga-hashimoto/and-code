@@ -66,6 +66,7 @@ import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.VerifiedUser
 import androidx.compose.material3.Button
@@ -106,6 +107,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
@@ -124,6 +126,9 @@ import com.yugahashimoto.andcode.core.api.OpenCodeCommand
 import com.yugahashimoto.andcode.core.api.OpenCodeProvider
 import com.yugahashimoto.andcode.core.api.OpenCodeSkill
 import com.yugahashimoto.andcode.core.api.PromptAttachment
+import com.yugahashimoto.andcode.core.diagnostics.StallDiagnosis
+import com.yugahashimoto.andcode.core.diagnostics.explain
+import com.yugahashimoto.andcode.core.diagnostics.supportingDetail
 import com.yugahashimoto.andcode.feature.workspace.GitHubAutoAttachChips
 import com.yugahashimoto.andcode.feature.workspace.GitHubReference
 import com.yugahashimoto.andcode.runtime.PermissionResponse
@@ -184,6 +189,8 @@ fun ChatHomeScreen(
     onSendMessage: (String) -> Unit,
     onPermission: (String, PermissionResponse, Boolean) -> Unit,
     onAbort: () -> Unit,
+    /** Probes the quiet run again now, rather than waiting for the next scheduled check. */
+    onRecheckStall: () -> Unit = {},
     onMic: () -> Unit,
     onNewChat: () -> Unit,
     onOpenLocalSetup: () -> Unit,
@@ -421,7 +428,17 @@ fun ChatHomeScreen(
                                     )
                                 }
                             }
-                            if (state.isRunning && timelineEntries.isNotEmpty()) {
+                            // A run that has gone quiet says so here, in place of the "Processing"
+                            // label that otherwise looks identical whether it is working or dead.
+                            if (state.isRunning && state.stall != null) {
+                                item(key = "stall") {
+                                    ChatStallCard(
+                                        stall = state.stall,
+                                        onRecheck = onRecheckStall,
+                                        onStop = onAbort,
+                                    )
+                                }
+                            } else if (state.isRunning && timelineEntries.isNotEmpty()) {
                                 item(key = "processing") {
                                     Text(
                                         text = stringResource(R.string.processing),
@@ -950,6 +967,70 @@ private fun ChatErrorCard(
                 }
             } else {
                 Text(text = error, color = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+/**
+ * Says out loud that a run has stopped producing anything, and why the app thinks so.
+ *
+ * Without it a turn that died in the background is indistinguishable from one that is working: the
+ * transcript just stops, under a spinner that never ends.
+ */
+@Composable
+private fun ChatStallCard(
+    stall: StallDiagnosis,
+    onRecheck: () -> Unit,
+    onStop: () -> Unit,
+) {
+    val context = LocalContext.current
+    val silentMinutes = (stall.silentForMillis / 60_000L).toInt().coerceAtLeast(1)
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.WarningAmber,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = stringResource(R.string.chat_stall_title),
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = stringResource(R.string.chat_stall_silent_for, silentMinutes),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(text = stall.explain(context))
+            stall.supportingDetail()?.let { detail ->
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onRecheck) {
+                    Text(stringResource(R.string.chat_stall_recheck))
+                }
+                OutlinedButton(onClick = onStop) {
+                    Text(stringResource(R.string.chat_stall_stop))
+                }
             }
         }
     }

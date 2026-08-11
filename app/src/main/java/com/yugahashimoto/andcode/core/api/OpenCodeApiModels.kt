@@ -86,6 +86,10 @@ data class OpenCodeMessageError(
                 ?.takeIf { it is JsonPrimitive }
                 ?.let { (it as JsonPrimitive).content }
                 ?.takeIf { it.isNotBlank() }
+
+    /** OpenCode records a stop the user asked for as an error; it is not a failure to report. */
+    val isAbort: Boolean
+        get() = name == "MessageAbortedError" || name == "AbortError"
 }
 
 @Serializable
@@ -347,6 +351,27 @@ sealed interface OpenCodeEvent {
 
     data class Unknown(val type: String, val rawJson: String) : OpenCodeEvent
 }
+
+/**
+ * The session an event concerns, or null for the events that are about the server rather than one
+ * conversation. Used to tell which run an event proves is still alive.
+ */
+fun OpenCodeEvent.sessionIdOrNull(): String? =
+    when (this) {
+        is OpenCodeEvent.MessageUpdated -> info.sessionId
+        is OpenCodeEvent.MessagePartUpdated -> part.sessionId
+        is OpenCodeEvent.MessagePartDelta -> sessionId
+        is OpenCodeEvent.PermissionAsked -> request.sessionId
+        is OpenCodeEvent.PermissionReplied -> sessionId
+        is OpenCodeEvent.QuestionAsked -> request.sessionId
+        is OpenCodeEvent.SessionIdle -> sessionId
+        is OpenCodeEvent.SessionCreated -> session.id
+        is OpenCodeEvent.SessionUpdated -> session.id
+        is OpenCodeEvent.SessionStatusChanged -> sessionId
+        is OpenCodeEvent.SessionError -> sessionId
+        OpenCodeEvent.ServerConnected -> null
+        is OpenCodeEvent.Unknown -> null
+    }
 
 @Serializable
 data class McpServer(

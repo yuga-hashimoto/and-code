@@ -17,6 +17,8 @@ import com.yugahashimoto.andcode.MainActivity
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.core.api.QuestionRequest
+import com.yugahashimoto.andcode.core.diagnostics.StallDiagnosis
+import com.yugahashimoto.andcode.core.diagnostics.explain
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 
 class RuntimeNotificationHelper(private val context: Context) {
@@ -179,6 +181,46 @@ class RuntimeNotificationHelper(private val context: Context) {
                 .setAutoCancel(true)
                 .build()
         safeNotify(statusNotificationId(sessionId ?: "error", "err"), notification)
+    }
+
+    /**
+     * Tells the user that a run they left working has stopped producing anything, and what the app
+     * managed to find out about why. Tapping it opens the chat so they can stop or resend.
+     */
+    fun notifySessionStalled(
+        sessionId: String,
+        chatTitle: String?,
+        diagnosis: StallDiagnosis,
+        runtimeId: String,
+    ) {
+        if (!canPostNotifications()) return
+        val intent =
+            pendingActivityIntent(
+                requestCode = ("stalled:$sessionId").hashCode(),
+                extras =
+                    mapOf(
+                        EXTRA_OPEN_CHAT to true,
+                        EXTRA_TARGET_SESSION_ID to sessionId,
+                        EXTRA_RUNTIME_ID to runtimeId,
+                    ),
+            )
+        val reason = diagnosis.explain(context)
+        val notification =
+            NotificationCompat.Builder(context, CHANNEL_STATUS)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(context.getString(R.string.notification_stalled_title))
+                .setContentText(
+                    context.getString(
+                        R.string.notification_stalled_body,
+                        chatTitle?.takeIf(String::isNotBlank) ?: context.getString(R.string.new_chat),
+                        reason,
+                    ),
+                )
+                .setStyle(NotificationCompat.BigTextStyle().bigText(reason))
+                .setContentIntent(intent)
+                .setAutoCancel(true)
+                .build()
+        safeNotify(statusNotificationId(sessionId, "stalled"), notification)
     }
 
     fun cancelPermission(permissionId: String) {
