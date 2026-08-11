@@ -30,6 +30,9 @@ sealed interface VoskInstallProgress {
 class VoskModelInstaller(
     private val client: OkHttpClient,
     private val root: File,
+    private val maxArchiveBytes: Long = 100L * 1024 * 1024,
+    private val maxExpandedBytes: Long = 250L * 1024 * 1024,
+    private val maxEntryCount: Int = 20_000,
 ) {
     fun directoryFor(spec: VoskModelSpec): File = File(root, spec.directoryName)
 
@@ -85,11 +88,11 @@ class VoskModelInstaller(
             check(response.isSuccessful) { "Model download failed with HTTP ${response.code}" }
             val body = checkNotNull(response.body) { "Model download returned no body" }
             val total = body.contentLength().takeIf { it > 0 }
-            check(total == null || total <= MAX_ARCHIVE_BYTES) {
-                "Model archive exceeds the ${MAX_ARCHIVE_BYTES / (1024 * 1024)} MiB limit"
+            check(total == null || total <= maxArchiveBytes) {
+                "Model archive exceeds the ${maxArchiveBytes / (1024 * 1024)} MiB limit"
             }
             onProgress(VoskInstallProgress.Downloading(0, total))
-            extract(CountingStream(body.byteStream(), total, MAX_ARCHIVE_BYTES, onProgress), staging)
+            extract(CountingStream(body.byteStream(), total, maxArchiveBytes, onProgress), staging)
             onProgress(VoskInstallProgress.Extracting)
         }
     }
@@ -104,7 +107,7 @@ class VoskModelInstaller(
             var entry = zip.nextEntry
             while (entry != null) {
                 coroutineContext.ensureActive()
-                check(++entryCount <= MAX_ENTRY_COUNT) { "Model archive contains too many entries" }
+                check(++entryCount <= maxEntryCount) { "Model archive contains too many entries" }
                 val target = File(staging, entry.name)
                 // The archive comes off the network, so its entry names are untrusted: "../" in a
                 // name is the standard way one writes outside the directory it was given.
@@ -121,8 +124,8 @@ class VoskModelInstaller(
                             val count = zip.read(buffer)
                             if (count < 0) break
                             expandedBytes += count
-                            check(expandedBytes <= MAX_EXPANDED_BYTES) {
-                                "Model archive expands beyond the ${MAX_EXPANDED_BYTES / (1024 * 1024)} MiB limit"
+                            check(expandedBytes <= maxExpandedBytes) {
+                                "Model archive expands beyond the ${maxExpandedBytes / (1024 * 1024)} MiB limit"
                             }
                             output.write(buffer, 0, count)
                         }
@@ -173,8 +176,5 @@ class VoskModelInstaller(
 
     private companion object {
         const val BUFFER_SIZE = 32 * 1024
-        const val MAX_ARCHIVE_BYTES = 100L * 1024 * 1024
-        const val MAX_EXPANDED_BYTES = 250L * 1024 * 1024
-        const val MAX_ENTRY_COUNT = 20_000
     }
 }

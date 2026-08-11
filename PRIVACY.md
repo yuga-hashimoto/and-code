@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: 2026-08-02_
+_Last updated: 2026-08-11_
 
 This document describes what AndCode stores, what it sends off-device, and to whom. It describes
 the app as implemented in this repository, not aspirational behavior — where something is handled

@@ -536,6 +536,9 @@
     <string name="settings_workspace_row">Workspace</string>
     <string name="notifications_row">Notifications</string>
     <string name="analytics_row" translatable="false">Anonymous usage analytics</string>
+    <string name="schedule_run_interrupted" translatable="false">Run interrupted before completion</string>
+    <string name="schedule_completion_timeout" translatable="false">Scheduled run timed out</string>
+    <string name="schedule_event_stream_ended" translatable="false">Runtime event stream ended unexpectedly</string>
     <string name="privacy_row">Privacy &amp; data</string>
     <string name="privacy_stub_body">This feature is coming soon.</string>
     <string name="diagnostics_row">Diagnostics &amp; logs</string>

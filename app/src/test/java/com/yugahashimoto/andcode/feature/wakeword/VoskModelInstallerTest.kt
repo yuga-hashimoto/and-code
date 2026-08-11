@@ -70,6 +70,18 @@ class VoskModelInstallerTest {
         server.enqueue(MockResponse().setBody(Buffer().write(body)))
     }
 
+    private fun limitedInstaller(
+        archiveBytes: Long = 100L * 1024 * 1024,
+        expandedBytes: Long = 250L * 1024 * 1024,
+        entries: Int = 20_000,
+    ) = VoskModelInstaller(
+        OkHttpClient(),
+        root,
+        maxArchiveBytes = archiveBytes,
+        maxExpandedBytes = expandedBytes,
+        maxEntryCount = entries,
+    )
+
     @Test
     fun `a downloaded archive lands as a usable model directory`() =
         runTest {
@@ -125,6 +137,40 @@ class VoskModelInstallerTest {
             assertTrue(result.isFailure)
             assertFalse(installer.isInstalled(spec()))
             assertEquals(emptyList<String>(), root.list()?.toList().orEmpty())
+        }
+
+    @Test
+    fun `chunked archive exceeding the download limit is refused`() =
+        runTest {
+            val body = modelZip()
+            server.enqueue(MockResponse().setChunkedBody(Buffer().write(body), 1))
+
+            val result = limitedInstaller(archiveBytes = 1).install(spec())
+
+            assertTrue(result.isFailure)
+            assertFalse(limitedInstaller().isInstalled(spec()))
+        }
+
+    @Test
+    fun `archive exceeding expanded limit is refused`() =
+        runTest {
+            respondWith(modelZip())
+
+            val result = limitedInstaller(expandedBytes = 1).install(spec())
+
+            assertTrue(result.isFailure)
+            assertFalse(limitedInstaller().isInstalled(spec()))
+        }
+
+    @Test
+    fun `archive exceeding entry limit is refused`() =
+        runTest {
+            respondWith(modelZip())
+
+            val result = limitedInstaller(entries = 1).install(spec())
+
+            assertTrue(result.isFailure)
+            assertFalse(limitedInstaller().isInstalled(spec()))
         }
 
     @Test

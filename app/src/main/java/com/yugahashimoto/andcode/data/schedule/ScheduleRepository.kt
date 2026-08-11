@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.yugahashimoto.andcode.R
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.update
  * preferences family as the other app secrets.
  */
 class ScheduleRepository(context: Context) {
+    private val interruptedRunMessage = context.getString(R.string.schedule_run_interrupted)
     private val legacyPreferences = context.getSharedPreferences(LEGACY_PREFS_NAME, Context.MODE_PRIVATE)
     private val preferences: SharedPreferences =
         EncryptedSharedPreferences.create(
@@ -135,7 +137,7 @@ class ScheduleRepository(context: Context) {
                     run.copy(
                         status = ScheduleRunStatus.FAILED,
                         finishedAt = now,
-                        error = "run interrupted before completion",
+                        error = interruptedRunMessage,
                     )
                 } else {
                     run

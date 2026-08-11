@@ -146,7 +146,7 @@ class ScheduleExecutionService : Service() {
                 when (val completion = withTimeoutOrNull(COMPLETION_TIMEOUT_MS) { watcher.await() }) {
                     ScheduleCompletion.Completed -> recordCompleted(run)
                     is ScheduleCompletion.Failed -> recordFailed(run, completion.message)
-                    null -> recordFailed(run, "completion timeout")
+                    null -> recordFailed(run, getString(R.string.schedule_completion_timeout))
                 }
             } finally {
                 watcher.cancel()
@@ -236,7 +236,7 @@ class ScheduleExecutionService : Service() {
             // The run settled; the event stream is drained.
             return signal.result
         }
-        return ScheduleCompletion.Failed("event stream ended")
+        return ScheduleCompletion.Failed(getString(R.string.schedule_event_stream_ended))
     }
 
     private fun recordCompleted(run: ScheduleRun) {
