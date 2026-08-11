@@ -461,7 +461,10 @@ fun ChatHomeScreen(
                                     onDismiss = onDismissQuestion,
                                 )
                             }
-                            if (state.isThinking) {
+                            // Not while a stall is up: a turn that has produced nothing never
+                            // cleared this flag, so the warning would sit directly above a chip
+                            // cheerfully reporting that the same turn is thinking.
+                            if (state.isThinking && state.stall == null) {
                                 item { StatusChip(text = stringResource(R.string.thinking), active = true) }
                             }
                             state.error?.let { error ->

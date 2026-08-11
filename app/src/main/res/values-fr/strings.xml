@@ -127,6 +127,7 @@
     <string name="chat_stall_title">Cette exécution ne donne plus signe de vie</string>
     <plurals name="chat_stall_silent_for">
         <item quantity="one">Aucune progression depuis %1$d min</item>
+        <item quantity="many">Aucune progression depuis %1$d min</item>
         <item quantity="other">Aucune progression depuis %1$d min</item>
     </plurals>
     <string name="chat_stall_reason_runtime_unreachable">Le runtime ne répond pas, impossible de suivre l’exécution.</string>

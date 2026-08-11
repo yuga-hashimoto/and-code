@@ -127,6 +127,7 @@
     <string name="chat_stall_title">Esta ejecución se ha quedado en silencio</string>
     <plurals name="chat_stall_silent_for">
         <item quantity="one">Sin progreso desde hace %1$d min</item>
+        <item quantity="many">Sin progreso desde hace %1$d min</item>
         <item quantity="other">Sin progreso desde hace %1$d min</item>
     </plurals>
     <string name="chat_stall_reason_runtime_unreachable">El runtime no responde, así que no se puede consultar la ejecución.</string>
