@@ -367,7 +367,7 @@ class AndCodeApplication : Application() {
                 // A run that dies in the background used to be silent by design: no event, no
                 // notification, and a drawer spinner that never stopped.
                 onSessionStalled = { sessionId, title, diagnosis, runtimeId ->
-                    AnalyticsReporter.recordRuntimeSessionStalled(diagnosis.reason.name)
+                    AnalyticsReporter.recordRuntimeSessionStalled(diagnosis.reason)
                     notifications.notifySessionStalled(sessionId, title, diagnosis, runtimeId)
                 },
                 unreadStore = settings,

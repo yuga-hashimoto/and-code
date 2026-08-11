@@ -207,18 +207,15 @@ class RuntimeNotificationHelper(private val context: Context) {
                     ),
             )
         val reason = diagnosis.explain(context)
+        val title = chatTitle?.takeIf(String::isNotBlank) ?: context.getString(R.string.new_chat)
         val notification =
             NotificationCompat.Builder(context, CHANNEL_STATUS)
                 .setSmallIcon(R.drawable.ic_notification)
                 .setContentTitle(context.getString(R.string.notification_stalled_title))
-                .setContentText(
-                    context.getString(
-                        R.string.notification_stalled_body,
-                        chatTitle?.takeIf(String::isNotBlank) ?: context.getString(R.string.new_chat),
-                        reason,
-                    ),
-                )
-                .setStyle(NotificationCompat.BigTextStyle().bigText(reason))
+                .setContentText(context.getString(R.string.notification_stalled_body, title, reason))
+                // Every stall notice carries the same title, so the chat has to be named in the
+                // expanded text too or two of them are indistinguishable once opened.
+                .setStyle(NotificationCompat.BigTextStyle().bigText("$title\n$reason"))
                 .setContentIntent(intent)
                 .setAutoCancel(true)
                 .build()
