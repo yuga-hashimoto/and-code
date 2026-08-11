@@ -229,6 +229,10 @@ class RuntimeActivityRepository(
                     // a runtime call, or the notification the verdict posts — would otherwise take
                     // the whole runtime's event handling down with it, which is a wildly
                     // disproportionate price for a session that could not be diagnosed.
+                    //
+                    // The claim on the session is given back, so "reported once" does not come to
+                    // mean "reported never" for a stall whose notification happened to fail.
+                    synchronized(activityLock) { reportedStalls -= sessionId }
                     appendLog(messages.eventStalled, error.safeMessage(), sessionId)
                 }
             }
@@ -279,12 +283,19 @@ class RuntimeActivityRepository(
             StallReason.PROVIDER_ERROR -> handle(target, OpenCodeEvent.SessionError(sessionId, diagnosis.detail))
             else -> {
                 appendLog(messages.eventStalled, diagnosis.reason.name, sessionId)
-                onSessionStalled?.invoke(
-                    sessionId,
-                    session?.title?.trim()?.takeIf(String::isNotEmpty),
-                    diagnosis,
-                    target.id,
-                )
+                // Only top-level runs are announced, as completions are: a wedged subagent takes
+                // its parent down with it, so the parent is reported anyway, and it is the one
+                // whose completion later takes the notice back down. A session that could not be
+                // read at all is still announced — being unable to name a run is no reason to go
+                // quiet about it, which is the very failure this exists to break.
+                if (session?.parentId == null) {
+                    onSessionStalled?.invoke(
+                        sessionId,
+                        session?.title?.trim()?.takeIf(String::isNotEmpty),
+                        diagnosis,
+                        target.id,
+                    )
+                }
             }
         }
     }
@@ -533,6 +544,11 @@ class RuntimeActivityRepository(
             // run. Its child's events are the proof it is still working, so they count as the
             // parent's activity too — otherwise the watchdog would call every long subagent run a
             // stalled parent.
+            //
+            // Every event that reaches here counts, including the `busy` status that
+            // provesRunProgress() refuses for the session it names. A child claiming to be busy is
+            // no proof about the child, but it is proof that the parent is waiting on something —
+            // and a child that has genuinely wedged is still caught on its own clock.
             recordActivity(ancestorId)
             mutableState.update { current ->
                 current.copy(

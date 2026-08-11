@@ -127,8 +127,8 @@
     <string name="chat_stall_title">توقّف هذا التنفيذ عن الاستجابة</string>
     <plurals name="chat_stall_silent_for">
         <item quantity="zero">لا يوجد تقدّم منذ %1$d دقيقة</item>
-        <item quantity="one">لا يوجد تقدّم منذ %1$d دقيقة</item>
-        <item quantity="two">لا يوجد تقدّم منذ %1$d دقيقتين</item>
+        <item quantity="one">لا يوجد تقدّم منذ دقيقة واحدة</item>
+        <item quantity="two">لا يوجد تقدّم منذ دقيقتين</item>
         <item quantity="few">لا يوجد تقدّم منذ %1$d دقائق</item>
         <item quantity="many">لا يوجد تقدّم منذ %1$d دقيقة</item>
         <item quantity="other">لا يوجد تقدّم منذ %1$d دقيقة</item>

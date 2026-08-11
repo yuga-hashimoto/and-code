@@ -461,6 +461,9 @@ class ChatViewModel(
     /** Guards against a slow probe being started again by the next watchdog tick. */
     private var stallCheckRunning = false
 
+    /** When the runtime was last asked about a quiet run, so the watchdog can space its probes. */
+    private var lastStallProbeAt: Long = 0L
+
     /** Last failure reported by the event stream, or null while it is healthy. */
     private var streamError: String? = null
 
@@ -557,13 +560,13 @@ class ChatViewModel(
                         recordProgress()
                         if (!monitorStalls) return@collectLatest
                         while (true) {
-                            delay(
-                                if (_uiState.value.stall == null) {
-                                    STALL_CHECK_INTERVAL_MS
-                                } else {
-                                    STALL_RECHECK_INTERVAL_MS
-                                },
-                            )
+                            delay(STALL_CHECK_INTERVAL_MS)
+                            // The wait between probes is applied here rather than to the delay
+                            // itself, so a run that recovers and goes quiet again is measured on
+                            // the short interval immediately instead of finishing out a long sleep
+                            // that started while the warning was still up.
+                            val waited = now() - lastStallProbeAt
+                            if (_uiState.value.stall != null && waited < STALL_RECHECK_INTERVAL_MS) continue
                             checkForStall()
                         }
                     }
@@ -1615,6 +1618,7 @@ class ChatViewModel(
         val silentFor = now() - lastProgressAt
         if (silentFor < STALL_THRESHOLD_MS) return
         stallCheckRunning = true
+        lastStallProbeAt = now()
         viewModelScope.launch {
             try {
                 diagnoseSilentRun(currentBackend, sessionId, silentFor)
@@ -1623,8 +1627,9 @@ class ChatViewModel(
             } catch (error: Exception) {
                 // Nothing here is worth crashing the app over: this coroutine has no handler above
                 // it, and a feature whose whole job is to report that something went wrong is the
-                // last thing that should take the chat down when it does.
-                _uiState.update { it.copy(stall = null) }
+                // last thing that should take the chat down when it does. Any verdict already on
+                // screen is left alone — it is still the best answer anyone has — and the next tick
+                // tries again.
             } finally {
                 stallCheckRunning = false
             }

@@ -880,6 +880,47 @@ class RuntimeActivityRepositoryTest {
         }
 
     @Test
+    fun `a quiet subagent is not announced on its own`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val scope = TestScope(dispatcher)
+            val target =
+                FakeTarget(requireConnected = false).apply {
+                    sessions = listOf(OpenCodeSession(id = "child_1", parentId = "ses_parent", title = "Child"))
+                }
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = target.id),
+                    localTarget = target,
+                    remoteFactory = { error("unused") },
+                )
+            val stalled = mutableListOf<String>()
+            val repository =
+                RuntimeActivityRepository(
+                    registry = registry,
+                    scope = scope,
+                    onSessionStalled = { sessionId, _, _, _ -> stalled += sessionId },
+                    stallThresholdMillis = 1_000L,
+                    stallCheckIntervalMillis = 100L,
+                    now = { testScheduler.currentTime },
+                )
+            try {
+                advanceTimeBy(200L)
+                runCurrent()
+
+                repository.markSessionRunning("child_1")
+                advanceTimeBy(2_000L)
+                runCurrent()
+
+                // Its parent is wedged on it and is reported instead; two notices for one stall
+                // would only be the same news twice.
+                assertTrue(stalled.isEmpty())
+            } finally {
+                scope.cancel()
+            }
+        }
+
+    @Test
     fun `a diagnosis that throws does not take the event stream down with it`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
