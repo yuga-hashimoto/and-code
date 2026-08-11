@@ -125,7 +125,14 @@
     <string name="notification_error_title">خطأ في التنفيذ</string>
     <string name="notification_error_body">فشلت جلسة</string>
     <string name="chat_stall_title">توقّف هذا التنفيذ عن الاستجابة</string>
-    <string name="chat_stall_silent_for">لا يوجد تقدّم منذ %1$d دقيقة</string>
+    <plurals name="chat_stall_silent_for">
+        <item quantity="zero">لا يوجد تقدّم منذ %1$d دقيقة</item>
+        <item quantity="one">لا يوجد تقدّم منذ %1$d دقيقة</item>
+        <item quantity="two">لا يوجد تقدّم منذ %1$d دقيقتين</item>
+        <item quantity="few">لا يوجد تقدّم منذ %1$d دقائق</item>
+        <item quantity="many">لا يوجد تقدّم منذ %1$d دقيقة</item>
+        <item quantity="other">لا يوجد تقدّم منذ %1$d دقيقة</item>
+    </plurals>
     <string name="chat_stall_reason_runtime_unreachable">لا تستجيب بيئة التشغيل، لذا يتعذّر معرفة حالة التنفيذ.</string>
     <string name="chat_stall_reason_provider_error">أعاد مزوّد النموذج خطأً، فتوقّف التنفيذ.</string>
     <string name="chat_stall_reason_completion_missed">كان التنفيذ قد انتهى بالفعل، لكن التطبيق لم يستلم إشعار الانتهاء.</string>
@@ -134,7 +141,7 @@
     <string name="chat_stall_reason_stream_disconnected">انقطع اتصال الأحداث، لذا لا يصل التقدّم إلى التطبيق.</string>
     <string name="chat_stall_reason_tool_running">الأداة %1$s ما زالت قيد التشغيل ولم تُرجع نتيجة.</string>
     <string name="chat_stall_reason_no_output">تُبلّغ بيئة التشغيل بأن التنفيذ جارٍ لكنها لا تُنتج شيئًا. من المرجّح أنه توقّف.</string>
-    <string name="chat_stall_tool_unnamed">أداة</string>
+    <string name="chat_stall_reason_tool_running_unnamed">ما زالت إحدى الأدوات قيد التشغيل ولم تُرجع نتيجة.</string>
     <string name="chat_stall_recheck">إعادة الفحص</string>
     <string name="chat_stall_stop">إيقاف التنفيذ</string>
     <string name="notification_stalled_title">توقّف أحد عمليات التنفيذ عن الاستجابة</string>

@@ -125,7 +125,12 @@
     <string name="notification_error_title">Ошибка выполнения</string>
     <string name="notification_error_body">Сессия завершилась с ошибкой</string>
     <string name="chat_stall_title">Выполнение перестало отвечать</string>
-    <string name="chat_stall_silent_for">Нет прогресса уже %1$d мин</string>
+    <plurals name="chat_stall_silent_for">
+        <item quantity="one">Нет прогресса уже %1$d минуту</item>
+        <item quantity="few">Нет прогресса уже %1$d минуты</item>
+        <item quantity="many">Нет прогресса уже %1$d минут</item>
+        <item quantity="other">Нет прогресса уже %1$d минуты</item>
+    </plurals>
     <string name="chat_stall_reason_runtime_unreachable">Среда выполнения не отвечает, поэтому состояние запуска неизвестно.</string>
     <string name="chat_stall_reason_provider_error">Провайдер модели вернул ошибку, выполнение остановилось.</string>
     <string name="chat_stall_reason_completion_missed">Выполнение уже завершилось, но приложение не получило уведомление об этом.</string>
@@ -134,7 +139,7 @@
     <string name="chat_stall_reason_stream_disconnected">Соединение событий разорвано, поэтому прогресс не доходит до приложения.</string>
     <string name="chat_stall_reason_tool_running">Инструмент %1$s всё ещё работает и ничего не вернул.</string>
     <string name="chat_stall_reason_no_output">Среда выполнения сообщает, что работа идёт, но ничего не выдаёт. Скорее всего, она остановилась.</string>
-    <string name="chat_stall_tool_unnamed">инструмент</string>
+    <string name="chat_stall_reason_tool_running_unnamed">Инструмент всё ещё работает и ничего не вернул.</string>
     <string name="chat_stall_recheck">Проверить снова</string>
     <string name="chat_stall_stop">Остановить выполнение</string>
     <string name="notification_stalled_title">Запуск перестал отвечать</string>

@@ -125,7 +125,10 @@
     <string name="notification_error_title">Error de ejecución</string>
     <string name="notification_error_body">Una sesión falló</string>
     <string name="chat_stall_title">Esta ejecución se ha quedado en silencio</string>
-    <string name="chat_stall_silent_for">Sin progreso desde hace %1$d min</string>
+    <plurals name="chat_stall_silent_for">
+        <item quantity="one">Sin progreso desde hace %1$d min</item>
+        <item quantity="other">Sin progreso desde hace %1$d min</item>
+    </plurals>
     <string name="chat_stall_reason_runtime_unreachable">El runtime no responde, así que no se puede consultar la ejecución.</string>
     <string name="chat_stall_reason_provider_error">El proveedor del modelo devolvió un error y la ejecución se detuvo.</string>
     <string name="chat_stall_reason_completion_missed">La ejecución ya había terminado; la app nunca recibió el aviso de finalización.</string>
@@ -134,7 +137,7 @@
     <string name="chat_stall_reason_stream_disconnected">La conexión de eventos está caída, así que el progreso no llega a la app.</string>
     <string name="chat_stall_reason_tool_running">La herramienta %1$s sigue en ejecución y no ha respondido.</string>
     <string name="chat_stall_reason_no_output">El runtime sigue informando que trabaja, pero no produce nada. Probablemente se haya detenido.</string>
-    <string name="chat_stall_tool_unnamed">una herramienta</string>
+    <string name="chat_stall_reason_tool_running_unnamed">Una herramienta sigue en ejecución y no ha respondido.</string>
     <string name="chat_stall_recheck">Comprobar de nuevo</string>
     <string name="chat_stall_stop">Detener la ejecución</string>
     <string name="notification_stalled_title">Una ejecución se ha quedado en silencio</string>

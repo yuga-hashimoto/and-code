@@ -125,7 +125,9 @@
     <string name="notification_error_title">実行エラー</string>
     <string name="notification_error_body">セッションが失敗しました</string>
     <string name="chat_stall_title">応答が止まっている可能性があります</string>
-    <string name="chat_stall_silent_for">%1$d分間、進捗がありません</string>
+    <plurals name="chat_stall_silent_for">
+        <item quantity="other">%1$d分間、進捗がありません</item>
+    </plurals>
     <string name="chat_stall_reason_runtime_unreachable">ランタイムが応答しないため、実行の状態を確認できません。</string>
     <string name="chat_stall_reason_provider_error">モデルプロバイダーがエラーを返したため、実行が止まりました。</string>
     <string name="chat_stall_reason_completion_missed">実行はすでに完了していましたが、完了の通知がアプリに届いていませんでした。</string>
@@ -134,7 +136,7 @@
     <string name="chat_stall_reason_stream_disconnected">イベント接続が切れているため、進捗がアプリに届いていません。</string>
     <string name="chat_stall_reason_tool_running">ツール %1$s の実行が終わっていません。</string>
     <string name="chat_stall_reason_no_output">ランタイムは実行中と報告していますが、出力がありません。停止している可能性が高いです。</string>
-    <string name="chat_stall_tool_unnamed">ツール</string>
+    <string name="chat_stall_reason_tool_running_unnamed">ツールの実行が終わっていません。</string>
     <string name="chat_stall_recheck">再確認</string>
     <string name="chat_stall_stop">実行を停止</string>
     <string name="notification_stalled_title">実行が止まっているようです</string>

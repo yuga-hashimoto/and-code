@@ -109,6 +109,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
@@ -127,6 +128,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeProvider
 import com.yugahashimoto.andcode.core.api.OpenCodeSkill
 import com.yugahashimoto.andcode.core.api.PromptAttachment
 import com.yugahashimoto.andcode.core.diagnostics.StallDiagnosis
+import com.yugahashimoto.andcode.core.diagnostics.StallReason
 import com.yugahashimoto.andcode.core.diagnostics.explain
 import com.yugahashimoto.andcode.core.diagnostics.supportingDetail
 import com.yugahashimoto.andcode.feature.workspace.GitHubAutoAttachChips
@@ -985,7 +987,8 @@ private fun ChatStallCard(
     onStop: () -> Unit,
 ) {
     val context = LocalContext.current
-    val silentMinutes = (stall.silentForMillis / 60_000L).toInt().coerceAtLeast(1)
+    // Rounded rather than truncated: a run 2 minutes 50 seconds quiet is nearer 3 than 2.
+    val silentMinutes = ((stall.silentForMillis + 30_000L) / 60_000L).toInt().coerceAtLeast(1)
     // A turn with something visible left to wait for (a long tool call, an unanswered approval, a
     // dropped event stream) is reported in the neutral outline; a run that is over, unreachable or
     // producing nothing at all earns the error red.
@@ -1015,7 +1018,7 @@ private fun ChatStallCard(
             }
             Spacer(Modifier.height(6.dp))
             Text(
-                text = stringResource(R.string.chat_stall_silent_for, silentMinutes),
+                text = pluralStringResource(R.plurals.chat_stall_silent_for, silentMinutes, silentMinutes),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -1039,8 +1042,13 @@ private fun ChatStallCard(
                 Button(onClick = onRecheck, modifier = Modifier.weight(1f).testTag("chat-stall-recheck")) {
                     Text(stringResource(R.string.chat_stall_recheck))
                 }
-                OutlinedButton(onClick = onStop, modifier = Modifier.weight(1f).testTag("chat-stall-stop")) {
-                    Text(stringResource(R.string.chat_stall_stop))
+                // Stopping goes through the runtime, so it is not offered when the runtime is the
+                // thing that cannot be reached: the attempt would only fail and replace this card,
+                // and its diagnosis, with a generic error.
+                if (stall.reason != StallReason.RUNTIME_UNREACHABLE) {
+                    OutlinedButton(onClick = onStop, modifier = Modifier.weight(1f).testTag("chat-stall-stop")) {
+                        Text(stringResource(R.string.chat_stall_stop))
+                    }
                 }
             }
         }

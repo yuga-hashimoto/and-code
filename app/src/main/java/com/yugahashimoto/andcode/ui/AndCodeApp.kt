@@ -281,7 +281,11 @@ fun AndCodeApp(
                         onPermissionResolved = app.activityRepository::resolvePermission,
                         onQuestionResolved = app.notifications::cancelQuestion,
                         onSessionCreated = app.catalogRepository::refreshSessionsOnly,
-                        onSessionAborted = app.activityRepository::markSessionAborted,
+                        onSessionAborted = { sessionId ->
+                            app.activityRepository.markSessionAborted(sessionId)
+                            // Stopping the run answers the "this run has gone quiet" notice.
+                            app.notifications.cancelStalled(sessionId)
+                        },
                         onRunStateChanged = { sessionId, running ->
                             if (running) {
                                 app.activityRepository.markSessionRunning(sessionId)

@@ -15,11 +15,12 @@ fun StallDiagnosis.explain(context: Context): String =
         StallReason.AWAITING_PERMISSION -> context.getString(R.string.chat_stall_reason_awaiting_permission)
         StallReason.AWAITING_QUESTION -> context.getString(R.string.chat_stall_reason_awaiting_question)
         StallReason.STREAM_DISCONNECTED -> context.getString(R.string.chat_stall_reason_stream_disconnected)
+        // A sentence of its own rather than a noun dropped into the one above: "The tool a tool is
+        // still running" is not a sentence in any of the languages this ships in.
         StallReason.TOOL_RUNNING ->
-            context.getString(
-                R.string.chat_stall_reason_tool_running,
-                detail?.takeIf(String::isNotBlank) ?: context.getString(R.string.chat_stall_tool_unnamed),
-            )
+            detail?.takeIf(String::isNotBlank)
+                ?.let { context.getString(R.string.chat_stall_reason_tool_running, it) }
+                ?: context.getString(R.string.chat_stall_reason_tool_running_unnamed)
         StallReason.NO_OUTPUT -> context.getString(R.string.chat_stall_reason_no_output)
     }
 

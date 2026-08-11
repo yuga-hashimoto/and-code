@@ -129,6 +129,7 @@ class RuntimeNotificationHelper(private val context: Context) {
         chatTitle: String?,
         runtimeId: String,
     ) {
+        cancelStalled(sessionId)
         if (!canPostNotifications()) return
         val intent =
             pendingActivityIntent(
@@ -161,6 +162,7 @@ class RuntimeNotificationHelper(private val context: Context) {
         message: String?,
         runtimeId: String,
     ) {
+        sessionId?.let(::cancelStalled)
         if (!canPostNotifications()) return
         val intent =
             pendingActivityIntent(
@@ -221,6 +223,14 @@ class RuntimeNotificationHelper(private val context: Context) {
                 .setAutoCancel(true)
                 .build()
         safeNotify(statusNotificationId(sessionId, "stalled"), notification)
+    }
+
+    /**
+     * Takes down a stall notice once the run it described has resolved. Without it, "this run has
+     * gone quiet" would sit in the shade next to the completion notice for the same chat.
+     */
+    fun cancelStalled(sessionId: String) {
+        manager.cancel(statusNotificationId(sessionId, "stalled"))
     }
 
     fun cancelPermission(permissionId: String) {

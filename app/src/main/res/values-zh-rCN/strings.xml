@@ -125,7 +125,9 @@
     <string name="notification_error_title">运行错误</string>
     <string name="notification_error_body">会话失败</string>
     <string name="chat_stall_title">本次运行已无响应</string>
-    <string name="chat_stall_silent_for">已有 %1$d 分钟没有进展</string>
+    <plurals name="chat_stall_silent_for">
+        <item quantity="other">已有 %1$d 分钟没有进展</item>
+    </plurals>
     <string name="chat_stall_reason_runtime_unreachable">运行时没有响应，无法确认运行状态。</string>
     <string name="chat_stall_reason_provider_error">模型提供方返回了错误，运行已停止。</string>
     <string name="chat_stall_reason_completion_missed">运行其实已经结束，只是应用没有收到完成通知。</string>
@@ -134,7 +136,7 @@
     <string name="chat_stall_reason_stream_disconnected">事件连接已断开，进展无法传回应用。</string>
     <string name="chat_stall_reason_tool_running">工具 %1$s 仍在运行，尚未返回结果。</string>
     <string name="chat_stall_reason_no_output">运行时仍报告正在工作，但没有任何输出，很可能已经停止。</string>
-    <string name="chat_stall_tool_unnamed">工具</string>
+    <string name="chat_stall_reason_tool_running_unnamed">有工具仍在运行，尚未返回结果。</string>
     <string name="chat_stall_recheck">重新检查</string>
     <string name="chat_stall_stop">停止运行</string>
     <string name="notification_stalled_title">有一次运行已无响应</string>
