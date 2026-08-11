@@ -993,7 +993,7 @@ private fun ChatStallCard(
     Surface(
         shape = RoundedCornerShape(16.dp),
         color = MaterialTheme.colorScheme.surface,
-        border = BorderStroke(1.dp, if (stall.isStopped) accent else MaterialTheme.colorScheme.outline),
+        border = BorderStroke(1.dp, if (stall.isStopped) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline),
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
             Row(

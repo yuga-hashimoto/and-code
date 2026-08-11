@@ -53,6 +53,10 @@ data class StallDiagnosis(
      * True when the diagnosis settles the run rather than only describing it. The caller acts on
      * these — recovering the transcript, surfacing the error — instead of showing a "still quiet"
      * warning.
+     *
+     * This and [isStopped] are groupings for presentation. What a caller *does* about a stall is
+     * decided by branching on [reason] itself, so a new [StallReason] has to be placed in those
+     * `when`s whatever these say about it.
      */
     val isTerminal: Boolean
         get() = reason == StallReason.PROVIDER_ERROR || reason == StallReason.COMPLETION_MISSED

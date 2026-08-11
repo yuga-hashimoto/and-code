@@ -9,6 +9,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeMessageInfo
 import com.yugahashimoto.andcode.core.api.OpenCodePart
 import com.yugahashimoto.andcode.core.api.OpenCodeSession
 import com.yugahashimoto.andcode.core.api.OpenCodeTime
+import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.core.api.PromptRequest
 import com.yugahashimoto.andcode.core.api.ProviderCatalog
 import com.yugahashimoto.andcode.core.diagnostics.StallReason
@@ -121,6 +122,28 @@ class ChatViewModelStallTest {
 
             assertEquals(StallReason.TOOL_RUNNING, viewModel.uiState.value.stall?.reason)
             assertEquals("./gradlew test", viewModel.uiState.value.stall?.detail)
+        }
+
+    @Test
+    fun `an unanswered approval is named, and not painted as a failure`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = viewModel(backend)
+
+            viewModel.sendMessage("Hello")
+            backend.events.emit(
+                OpenCodeEvent.PermissionAsked(
+                    PermissionRequest(id = "perm-1", sessionId = "s1", permission = "bash"),
+                ),
+            )
+            runSilentlyPastThePoll()
+            viewModel.checkForStall()
+            advanceUntilIdle()
+
+            val stall = viewModel.uiState.value.stall
+            assertEquals(StallReason.AWAITING_PERMISSION, stall?.reason)
+            // The turn is blocked, not dead, so the card stays out of the failure colour.
+            assertFalse(stall?.isStopped ?: true)
         }
 
     @Test
