@@ -10,7 +10,7 @@ class ReleaseMetadataTest {
         val releaseVersion = repositoryRoot().resolve(".release-version").readText().trim().removePrefix("v")
 
         assertEquals(releaseVersion, BuildConfig.VERSION_NAME)
-        assertEquals(43, BuildConfig.VERSION_CODE)
+        assertEquals(44, BuildConfig.VERSION_CODE)
     }
 
     private fun repositoryRoot(): File {
