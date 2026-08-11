@@ -535,6 +535,7 @@
     <string name="remote_connection_row">Remote connection</string>
     <string name="settings_workspace_row">Workspace</string>
     <string name="notifications_row">Notifications</string>
+    <string name="analytics_row" translatable="false">Anonymous usage analytics</string>
     <string name="privacy_row">Privacy &amp; data</string>
     <string name="privacy_stub_body">This feature is coming soon.</string>
     <string name="diagnostics_row">Diagnostics &amp; logs</string>

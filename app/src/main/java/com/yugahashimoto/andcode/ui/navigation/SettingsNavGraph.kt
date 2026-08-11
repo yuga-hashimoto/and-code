@@ -66,6 +66,8 @@ fun NavGraphBuilder.settingsNavGraph(
             assistantConfigured = assistantActive(),
             notificationsEnabled = notificationsEnabled(),
             onToggleNotifications = onToggleNotifications,
+            analyticsEnabled = preferences().analyticsEnabled,
+            onToggleAnalytics = appPreferences::setAnalyticsEnabled,
             appVersion = appVersion,
             onOpenDrawer = onOpenDrawer,
             onOpenAssistantSettings = onOpenAssistantSettings,

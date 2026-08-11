@@ -85,6 +85,9 @@ class VoskModelInstaller(
             check(response.isSuccessful) { "Model download failed with HTTP ${response.code}" }
             val body = checkNotNull(response.body) { "Model download returned no body" }
             val total = body.contentLength().takeIf { it > 0 }
+            check(total == null || total <= MAX_ARCHIVE_BYTES) {
+                "Model archive exceeds the ${MAX_ARCHIVE_BYTES / (1024 * 1024)} MiB limit"
+            }
             onProgress(VoskInstallProgress.Downloading(0, total))
             extract(CountingStream(body.byteStream(), total, onProgress), staging)
             onProgress(VoskInstallProgress.Extracting)
@@ -96,9 +99,12 @@ class VoskModelInstaller(
         staging: File,
     ) {
         ZipInputStream(source).use { zip ->
+            var entryCount = 0
+            var expandedBytes = 0L
             var entry = zip.nextEntry
             while (entry != null) {
                 coroutineContext.ensureActive()
+                check(++entryCount <= MAX_ENTRY_COUNT) { "Model archive contains too many entries" }
                 val target = File(staging, entry.name)
                 // The archive comes off the network, so its entry names are untrusted: "../" in a
                 // name is the standard way one writes outside the directory it was given.
@@ -109,7 +115,18 @@ class VoskModelInstaller(
                     target.mkdirs()
                 } else {
                     target.parentFile?.mkdirs()
-                    target.outputStream().use(zip::copyTo)
+                    target.outputStream().use { output ->
+                        val buffer = ByteArray(BUFFER_SIZE)
+                        while (true) {
+                            val count = zip.read(buffer)
+                            if (count < 0) break
+                            expandedBytes += count
+                            check(expandedBytes <= MAX_EXPANDED_BYTES) {
+                                "Model archive expands beyond the ${MAX_EXPANDED_BYTES / (1024 * 1024)} MiB limit"
+                            }
+                            output.write(buffer, 0, count)
+                        }
+                    }
                 }
                 zip.closeEntry()
                 entry = zip.nextEntry
@@ -148,5 +165,12 @@ class VoskModelInstaller(
         private companion object {
             const val PROGRESS_STEP_BYTES = 256L * 1024
         }
+    }
+
+    private companion object {
+        const val BUFFER_SIZE = 32 * 1024
+        const val MAX_ARCHIVE_BYTES = 100L * 1024 * 1024
+        const val MAX_EXPANDED_BYTES = 250L * 1024 * 1024
+        const val MAX_ENTRY_COUNT = 20_000
     }
 }

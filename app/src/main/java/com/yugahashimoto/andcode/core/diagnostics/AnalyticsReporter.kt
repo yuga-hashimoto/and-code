@@ -28,16 +28,23 @@ object AnalyticsReporter {
     @Volatile
     private var analytics: FirebaseAnalytics? = null
 
-    /** Enables Analytics for release builds and keeps local debug runs out of production data. */
-    fun install(context: Context) {
+    /** Installs the client, but only enables collection after explicit user opt-in. */
+    fun install(
+        context: Context,
+        enabled: Boolean = false,
+    ) {
         val client =
             runCatching { FirebaseAnalytics.getInstance(context.applicationContext) }
                 .getOrNull()
                 ?: return
         analytics = client
         runCatching {
-            client.setAnalyticsCollectionEnabled(!com.yugahashimoto.andcode.BuildConfig.DEBUG)
+            client.setAnalyticsCollectionEnabled(enabled && !com.yugahashimoto.andcode.BuildConfig.DEBUG)
         }
+    }
+
+    fun setEnabled(enabled: Boolean) {
+        runCatching { analytics?.setAnalyticsCollectionEnabled(enabled && !com.yugahashimoto.andcode.BuildConfig.DEBUG) }
     }
 
     fun recordRuntimeSessionCompleted() {

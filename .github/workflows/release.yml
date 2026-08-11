@@ -57,7 +57,7 @@ jobs:
           fi
           echo "$RELEASE_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.keystore"
 
-      - name: Build APKs
+      - name: Verify and build APKs
         env:
           AND_CODE_STORE_FILE: ${{ runner.temp }}/release.keystore
           AND_CODE_STORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
@@ -74,7 +74,7 @@ jobs:
             echo "AND_CODE_GITHUB_CLIENT_ID repo variable is not set - the published APK would have no GitHub sign-in" >&2
             exit 1
           fi
-          ./gradlew assembleDebug assembleRelease
+           ./gradlew detekt spotlessCheck :app:lintDebug :app:testDebugUnitTest assembleDebug assembleRelease
 
       - name: Resolve tag
         id: tag

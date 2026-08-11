@@ -32,7 +32,7 @@ class GitCredentialHelper(
                 read protocol
                 read host
                 token="${'$'}OPENCODE_GITHUB_TOKEN"
-                [ -n "${'$'}token" ] && printf 'protocol=%s\\nhost=%s\\nusername=x-access-token\\npassword=%s\\n\\n' "${'$'}protocol" "${'$'}host" "${'$'}token"
+                [ -n "${'$'}token" ] && printf 'protocol=%s\nhost=%s\nusername=x-access-token\npassword=%s\n\n' "${'$'}protocol" "${'$'}host" "${'$'}token"
                 ;;
             esac
             """.trimIndent(),

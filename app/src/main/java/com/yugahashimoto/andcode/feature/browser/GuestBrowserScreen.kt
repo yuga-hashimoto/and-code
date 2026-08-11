@@ -34,6 +34,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
+import com.yugahashimoto.andcode.BuildConfig
 import com.yugahashimoto.andcode.R
 
 /** In-app browser for pages served inside the guest runtime (e.g. http://127.0.0.1:PORT/). */
@@ -85,7 +86,7 @@ fun GuestBrowserScreen(
                     // Lets the in-guest agent drive this WebView over CDP (the devtools abstract
                     // socket is reachable from the guest, which shares the app's UID), so a page
                     // can be shown to the user and operated by human and agent at the same time.
-                    WebView.setWebContentsDebuggingEnabled(true)
+                    WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
                     WebView(context).apply {
                         layoutParams =
                             ViewGroup.LayoutParams(
@@ -176,11 +177,8 @@ private fun GuestBrowserUrlBar(
 
 private fun normalizeUrl(raw: String): String {
     val trimmed = raw.trim()
-    return if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-        trimmed
-    } else {
-        "http://$trimmed"
-    }
+    val candidate = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) trimmed else "http://$trimmed"
+    return candidate.takeIf { android.net.Uri.parse(it).scheme in setOf("http", "https") } ?: "http://127.0.0.1"
 }
 
 @SuppressLint("SetJavaScriptEnabled")

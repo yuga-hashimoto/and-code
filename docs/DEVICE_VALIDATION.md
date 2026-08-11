@@ -1,8 +1,8 @@
 # Local device validation checklist
 
-CI instrumentation covers API 26 / API 34 x86_64 emulators for Compose UI and
-non-runtime logic. Physical-device validation is still manual — use this
-checklist before publishing a release.
+The instrumentation sources are compiled in CI. API 26 / API 34 emulator and
+physical-device validation is still manual — use this checklist before
+publishing a release.
 
 ## API 26 physical / emulator (Android 8.0)
 

@@ -161,14 +161,15 @@ class AndCodeApplication : Application() {
         CrashLog.install(this)
         // CrashLog handles the local file; Crashlytics adds remote fatal and non-fatal reporting.
         CrashReporter.install()
-        // Analytics supplies anonymous app-open/session metrics and selected product events.
-        AnalyticsReporter.install(this)
         startKoin {
             androidContext(this@AndCodeApplication)
             modules(appModule, viewModelModule)
         }
         settings = SecureSettingsRepository(this)
+        // Analytics is explicitly opt-in; source-code tooling should not silently collect usage data.
+        AnalyticsReporter.install(this, settings.analyticsEnabled)
         preferences = AppPreferencesRepository(settings)
+        scheduleRepository = ScheduleRepository(this).also { it.reconcileStaleRuns() }
         deviceStorageAccess = DeviceStorageAccess(this)
         // Asked on every sandbox launch rather than captured once: the user can grant all-files
         // access from system settings and come straight back without the process restarting.
@@ -374,7 +375,6 @@ class AndCodeApplication : Application() {
                 messages = AndroidRuntimeActivityMessages(this),
             )
         githubStarCoordinator.refresh()
-        scheduleRepository = ScheduleRepository(this)
         scheduleManager = ScheduleManager(this, scheduleRepository)
         // Re-arm alarms for schedules that were saved in a previous process lifetime.
         scheduleManager.rescheduleAll()

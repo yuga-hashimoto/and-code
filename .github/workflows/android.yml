@@ -114,10 +114,8 @@ jobs:
         # (GitHub Actions rejects that prefix for repo variables/secrets); without it this job's
         # own debug APK artifact would have no GitHub sign-in either.
         #
-        # assembleDebugAndroidTest only compiles the instrumented test sources - there is no
-        # emulator/device in this job to actually run them on (connectedDebugAndroidTest), so this
-        # is a compile-only safety net: it catches a broken androidTest before merge without the
-        # cost of standing up an emulator job.
+        # Instrumentation is compiled here. Device execution is a separate validation concern and
+        # must not be implied by this compile-only job.
         env:
           GITHUB_CLIENT_ID: ${{ vars.AND_CODE_GITHUB_CLIENT_ID }}
         run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest

@@ -74,9 +74,9 @@ On-device agents run inside a Linux environment via PRoot. OpenCode and Claude C
 - **On-device runtime** — Alpine Linux, Git, bash, curl, ripgrep, and coding agents auto-installed on your Android device via PRoot
 - **Repository & workspace** — Open git repositories on-device, browse the file tree, and view files with syntax highlighting
 - **Device files** — Grant all-files access and the whole phone (`/sdcard`, SD cards, USB drives) becomes browsable in the folder picker and reachable by the agent, opened in place instead of copied into the app
-- **Git support** — Stage, diff, commit, and manage branches from the GUI
+- **Git support** — Browse status and review diffs from the GUI; use the embedded runtime terminal for other Git operations
 - **Diff viewer** — Review code changes inline before accepting
-- **Embedded terminal** — Full PTY terminal access into the on-device runtime for manual commands
+- **Embedded terminal** — Run bounded shell commands inside the on-device runtime
 - **Pull request badges** — Pull requests opened in a chat stay pinned above the composer with their diff size and state (draft, open, conflict, merged, closed); tap to open them on GitHub
 - **Tool approvals** — Approve or reject dangerous tool operations
 - **Session management** — Create, resume, rename, and delete sessions

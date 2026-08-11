@@ -22,7 +22,8 @@ you and the AI provider you configure.
   (e.g., the OpenCode connection password is sent only to the OpenCode server it authenticates to;
   the GitHub token is sent only to GitHub's API).
 - **Session/chat history, schedules, and workspace metadata** are stored locally in the app's own
-  storage (SQLite/local catalog) so sessions survive an app restart.
+  storage (SQLite/local catalog) so sessions survive an app restart. Schedule definitions and run
+  history are stored in Keystore-backed `EncryptedSharedPreferences`.
 - **Claude Code and Antigravity credentials are not stored by AndCode at all.** Each official CLI
   manages its own OAuth/token storage inside the on-device Linux (Alpine) or Debian rootfs it runs
   in — for example, Antigravity's guest token lives at `root/.gemini/antigravity-cli/antigravity-oauth-token`
@@ -48,6 +49,10 @@ you and the AI provider you configure.
   (see §7 — this is not a guarantee of complete removal in every code path). `toString()` on the
   in-memory connection/credential data classes used in the codebase does not print secret fields in
   plain text.
+- When GitHub integration is enabled for the local runtime, the token is also made available to the
+  child CLI through its environment and is written to the runtime's `.git-credentials` file for Git
+  compatibility. Disconnect GitHub and delete the local runtime if immediate removal from all
+  runtime files is required.
 
 ## 3. Data sent to AI services you configure
 
@@ -129,6 +134,11 @@ release builds (`CrashReporter` in `core/diagnostics`). It:
   Firebase's own documentation for the current complete list, since AndCode's code does not control
   this baseline collection.
 - Is disabled in debug builds (`setCrashlyticsCollectionEnabled(!BuildConfig.DEBUG)`).
+
+Firebase Analytics is available for anonymous app-open/session and runtime outcome metrics, but is
+**disabled by default** and is only enabled after the user opts in. It does not receive prompts,
+source files, model responses, tokens, or workspace paths. The opt-in choice is stored locally and
+can be withdrawn in Settings.
 
 Crashlytics data is governed by Google's and Firebase's own privacy terms; see
 [THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md).

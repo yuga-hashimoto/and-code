@@ -47,6 +47,7 @@ data class AppPreferences(
     val workspaceTitleSource: String = "title",
     val language: String = "system",
     val liveTranscriptEnabled: Boolean = false,
+    val analyticsEnabled: Boolean = false,
 )
 
 class AppPreferencesRepository(
@@ -91,6 +92,7 @@ class AppPreferencesRepository(
                 workspaceTitleSource = settings.workspaceTitleSource,
                 language = settings.language,
                 liveTranscriptEnabled = settings.liveTranscriptEnabled,
+                analyticsEnabled = settings.analyticsEnabled,
             ),
         )
     val state: StateFlow<AppPreferences> = mutableState.asStateFlow()
@@ -336,5 +338,11 @@ class AppPreferencesRepository(
     fun setLiveTranscriptEnabled(enabled: Boolean) {
         settings.liveTranscriptEnabled = enabled
         mutableState.update { it.copy(liveTranscriptEnabled = enabled) }
+    }
+
+    fun setAnalyticsEnabled(enabled: Boolean) {
+        settings.analyticsEnabled = enabled
+        com.yugahashimoto.andcode.core.diagnostics.AnalyticsReporter.setEnabled(enabled)
+        mutableState.update { it.copy(analyticsEnabled = enabled) }
     }
 }

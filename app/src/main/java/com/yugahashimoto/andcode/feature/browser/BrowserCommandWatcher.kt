@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.feature.browser
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import kotlinx.coroutines.Dispatchers
@@ -41,5 +42,7 @@ private fun consumeOpenCommand(commandFile: File): String? =
         }
         val text = commandFile.readText()
         commandFile.delete()
-        JSONObject(text).optString("url").takeIf { it.isNotBlank() }
+        JSONObject(text).optString("url").takeIf { url ->
+            url.isNotBlank() && Uri.parse(url).scheme in setOf("http", "https")
+        }
     }.getOrNull()
