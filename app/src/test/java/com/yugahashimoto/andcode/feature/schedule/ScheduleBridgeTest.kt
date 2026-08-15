@@ -5,7 +5,7 @@ import com.yugahashimoto.andcode.data.schedule.ScheduleRun
 import com.yugahashimoto.andcode.data.schedule.ScheduleRunStatus
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -119,7 +119,7 @@ class ScheduleBridgeTest {
 
         bridge.pollOnce()
 
-        assertNull(File(responsesDir(bridge), "$id.json.tmp"))
+        assertFalse(File(responsesDir(bridge), "$id.json.tmp").exists())
         val response = readResponse(bridge, id)
         assertTrue(response.getBoolean("ok"))
         val schedule = response.getJSONObject("data").getJSONObject("schedule")
