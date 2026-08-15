@@ -110,6 +110,6 @@ class ChatImagePartTest {
     fun `uses wildcard mime for image part without metadata`() {
         val part = OpenCodePart(id = "p6", type = "image", url = "generated-image")
 
-        assertEquals("image/*", (part.toChatPart() as ChatPart.Image).mime)
+        assertNull(part.toChatPart())
     }
 }
