@@ -80,4 +80,29 @@ class ChatImagePartTest {
 
         assertNull(part.toChatPart())
     }
+
+    @Test
+    fun `infers image mime when generated file part omits mime`() {
+        val part =
+            OpenCodePart(
+                id = "p4",
+                type = "file",
+                url = "/workspace/generated-image.png",
+                filename = "generated-image.png",
+            )
+
+        assertEquals("image/png", (part.toChatPart() as ChatPart.Image).mime)
+    }
+
+    @Test
+    fun `accepts image part type with a data uri`() {
+        val part =
+            OpenCodePart(
+                id = "p5",
+                type = "image",
+                url = "data:image/webp;base64,abc",
+            )
+
+        assertEquals("image/webp", (part.toChatPart() as ChatPart.Image).mime)
+    }
 }

@@ -214,10 +214,10 @@ internal fun OpenCodePart.toChatPart(): ChatPart? {
     return when (type) {
         "text" -> ChatPart.Text(partId, text.orEmpty())
         "reasoning" -> ChatPart.Reasoning(partId, text.orEmpty())
-        "file" -> {
-            val partMime = mime.orEmpty()
+        "file", "image" -> {
             val partUrl = url.orEmpty()
-            if (partMime.startsWith("image/") && partUrl.isNotBlank()) {
+            val partMime = imageMime(mime, partUrl)
+            if (partMime != null && partUrl.isNotBlank()) {
                 ChatPart.Image(id = partId, mime = partMime, url = partUrl, filename = filename)
             } else {
                 null
@@ -244,6 +244,25 @@ internal fun OpenCodePart.toChatPart(): ChatPart? {
             )
         }
         "patch" -> ChatPart.Patch(partId, extractPatchFiles(stateMap))
+        else -> null
+    }
+}
+
+/** Image-producing tools do not consistently include a MIME field in their file parts. */
+internal fun imageMime(
+    declaredMime: String?,
+    url: String,
+): String? {
+    declaredMime?.takeIf { it.startsWith("image/") }?.let { return it }
+    parseDataImageUri(url)?.mime?.let { return it }
+    val extension = url.substringBefore('?').substringBefore('#').substringAfterLast('.').lowercase()
+    return when (extension) {
+        "png" -> "image/png"
+        "jpg", "jpeg" -> "image/jpeg"
+        "webp" -> "image/webp"
+        "gif" -> "image/gif"
+        "bmp" -> "image/bmp"
+        "svg" -> "image/svg+xml"
         else -> null
     }
 }

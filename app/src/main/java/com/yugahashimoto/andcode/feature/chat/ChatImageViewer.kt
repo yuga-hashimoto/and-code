@@ -266,7 +266,10 @@ private fun loadRemoteImage(source: ChatImageSource): ByteArray {
     connection.instanceFollowRedirects = false
     try {
         require(connection.responseCode in 200..299)
-        require(connection.contentType.orEmpty().substringBefore(';').startsWith("image/"))
+        // Image hosts used by generation tools occasionally return octet-stream (or no
+        // Content-Type) for a valid image. BitmapFactory remains the final format check.
+        val contentType = connection.contentType.orEmpty().substringBefore(';').trim()
+        require(contentType.isEmpty() || contentType == "application/octet-stream" || contentType.startsWith("image/"))
         return connection.inputStream.use(::readLimited)
     } finally {
         connection.disconnect()
