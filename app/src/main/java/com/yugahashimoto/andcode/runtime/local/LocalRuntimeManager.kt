@@ -491,9 +491,9 @@ class LocalRuntimeManager(
                     installed.metadata.version,
                     installed.metadata.port,
                 )
-            // Runtimes installed before the guest-browser MCP provisioning existed pick it up
-            // here; the call is idempotent and a failure must never block the runtime start.
-            runCatching { installer?.provisionBrowserMcpForExistingInstall() }
+            // Runtimes installed before the guest MCP provisioning existed pick it up here; the
+            // call is idempotent and a failure must never block the runtime start.
+            runCatching { installer?.provisionGuestCapabilitiesForExistingInstall() }
             if (!portProbe(installed.metadata.port)) launcher.start(installed)
             val ready =
                 LocalRuntimeStatus.Ready(

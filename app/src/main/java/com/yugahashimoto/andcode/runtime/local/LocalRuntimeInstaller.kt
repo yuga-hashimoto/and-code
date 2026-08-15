@@ -142,6 +142,7 @@ class LocalRuntimeInstaller(
                     // or Pillow is not installed; they are never silently replaced by a fork.
                     installAndroidHelperScripts(antigravityRootfs)
                     provisionBrowserMcp(antigravityRootfs)
+                    provisionScheduleMcp(antigravityRootfs)
                 }
                 // Credentials and agent config live under /root inside the rootfs. Activation swaps
                 // the whole environment directory, so without this the user is signed out of every
@@ -438,20 +439,22 @@ class LocalRuntimeInstaller(
         }
         installAndroidHelperScripts(rootfs)
         provisionBrowserMcp(rootfs)
+        provisionScheduleMcp(rootfs)
         require(suite.proot.isFile) { "PRoot launcher is unavailable" }
     }
 
     /**
-     * Re-seeds the guest-browser MCP server and its agent registrations on runtimes that were
-     * installed before the provisioning existed. Idempotent and safe to call on every start.
+     * Re-seeds the guest MCP servers (browser + schedule) and agent registrations on runtimes that
+     * were installed before the provisioning existed. Idempotent and safe to call on every start.
      */
-    fun provisionBrowserMcpForExistingInstall() {
+    fun provisionGuestCapabilitiesForExistingInstall() {
         val active = File(runtimeDirectory, "environment")
         listOf(File(active, "rootfs"), File(active, "antigravity-rootfs"))
             .filter(File::isDirectory)
             .forEach { rootfs ->
                 installAndroidHelperScripts(rootfs)
                 provisionBrowserMcp(rootfs)
+                provisionScheduleMcp(rootfs)
                 provisionClaudePermissionHook(rootfs)
             }
     }
@@ -504,6 +507,44 @@ class LocalRuntimeInstaller(
                     .put("timeout", BROWSER_MCP_TIMEOUT_MILLIS)
         }
 
+    /**
+     * Registers the guest-schedule MCP server with every agent (OpenCode, Claude Code, Antigravity)
+     * so they all expose the same schedule_* tools. User-added servers are kept.
+     */
+    private fun provisionScheduleMcp(rootfs: File) {
+        mergeJsonConfig(File(rootfs, "root/.config/opencode/opencode.json")) { root ->
+            val mcp = root.optJSONObject("mcp") ?: JSONObject()
+            mcp.put(SCHEDULE_MCP_NAME, scheduleMcpEntry("opencode"))
+            root.put("mcp", mcp)
+        }
+        mergeJsonConfig(File(rootfs, "root/.claude.json")) { root ->
+            val servers = root.optJSONObject("mcpServers") ?: JSONObject()
+            servers.put(SCHEDULE_MCP_NAME, scheduleMcpEntry("claude"))
+            root.put("mcpServers", servers)
+        }
+        mergeJsonConfig(File(rootfs, "root/.gemini/config/mcp_config.json")) { root ->
+            val servers = root.optJSONObject("mcpServers") ?: JSONObject()
+            servers.put(SCHEDULE_MCP_NAME, scheduleMcpEntry("antigravity"))
+            root.put("mcpServers", servers)
+        }
+    }
+
+    private fun scheduleMcpEntry(agent: String): JSONObject =
+        when (agent) {
+            "claude" ->
+                JSONObject()
+                    .put("type", "stdio")
+                    .put("command", SCHEDULE_MCP_BIN)
+                    .put("args", JSONArray())
+            "antigravity" -> JSONObject().put("command", SCHEDULE_MCP_BIN)
+            else ->
+                JSONObject()
+                    .put("type", "local")
+                    .put("command", JSONArray(listOf(SCHEDULE_MCP_BIN)))
+                    .put("enabled", true)
+                    .put("timeout", SCHEDULE_MCP_TIMEOUT_MILLIS)
+        }
+
     private fun mergeJsonConfig(
         file: File,
         mutate: (JSONObject) -> Unit,
@@ -531,6 +572,7 @@ class LocalRuntimeInstaller(
             "android-instrument.sh" to "android-instrument",
             "android-app.sh" to "android-app",
             "andcode-browser-mcp.py" to "andcode-browser-mcp.py",
+            "andcode-schedule-mcp.py" to "andcode-schedule-mcp.py",
         ).forEach {
                 (assetName, scriptName) ->
             val scriptFile = File(binDir, scriptName)
@@ -557,5 +599,8 @@ class LocalRuntimeInstaller(
         private const val BROWSER_MCP_NAME = "and-code-browser"
         private const val BROWSER_MCP_BIN = "/usr/local/bin/andcode-browser-mcp.py"
         private const val BROWSER_MCP_TIMEOUT_MILLIS = 30000
+        private const val SCHEDULE_MCP_NAME = "and-code-schedule"
+        private const val SCHEDULE_MCP_BIN = "/usr/local/bin/andcode-schedule-mcp.py"
+        private const val SCHEDULE_MCP_TIMEOUT_MILLIS = 120000
     }
 }

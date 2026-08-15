@@ -48,9 +48,7 @@ class ScheduleManager(
     }
 
     /** Runs [scheduleId] immediately, outside of its cron timing. */
-    fun runNow(scheduleId: String) {
-        ScheduleExecutionService.start(context, scheduleId)
-    }
+    fun runNow(scheduleId: String): Boolean = ScheduleExecutionService.start(context, scheduleId)
 
     /** Next moment this schedule fires, or null when it has no upcoming trigger. */
     fun nextFireAt(schedule: Schedule): Instant? =

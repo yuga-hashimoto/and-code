@@ -27,6 +27,8 @@ import com.yugahashimoto.andcode.data.schedule.ScheduleRepository
 import com.yugahashimoto.andcode.data.settings.AppPreferencesRepository
 import com.yugahashimoto.andcode.di.appModule
 import com.yugahashimoto.andcode.di.viewModelModule
+import com.yugahashimoto.andcode.feature.schedule.AppScheduleStore
+import com.yugahashimoto.andcode.feature.schedule.ScheduleBridge
 import com.yugahashimoto.andcode.feature.schedule.ScheduleManager
 import com.yugahashimoto.andcode.feature.support.GitHubStarCoordinator
 import com.yugahashimoto.andcode.feature.support.GitHubStarService
@@ -378,6 +380,10 @@ class AndCodeApplication : Application() {
         scheduleManager = ScheduleManager(this, scheduleRepository)
         // Re-arm alarms for schedules that were saved in a previous process lifetime.
         scheduleManager.rescheduleAll()
+        // Let guest agents read and manage schedules through the and-code-schedule MCP server.
+        // The poll loop is a cheap no-op (one directory stat) while no guest has touched the bridge.
+        val scheduleBridge = ScheduleBridge(File(runtimeDirectory, "workspace"), AppScheduleStore(scheduleRepository, scheduleManager))
+        applicationScope.launch { scheduleBridge.run() }
         scheduleDeferredInitialization()
     }
 

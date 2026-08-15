@@ -212,6 +212,15 @@ OpenCodeがOAuthの `auto` 方式を返した場合、Androidはブラウザを�
 - `android-app` — 他アプリの install / launch / stop / clear / logcat / list
 - `android-instrument` — `am instrument` によるInstrumentation Test実行
 
+## スケジュールMCPツール
+
+ゲスト内エージェント（OpenCode・Claude Code・Antigravity）からスケジュール設定を参照・作成・編集・削除・有効/無効切り替え・即時実行できるようにする。スケジュールはアプリの暗号化設定に保存されており、ゲストからは直接読めないため、既存のブラウザMCPと同じ方式でファイルブリッジを介する。
+
+- `andcode-schedule-mcp.py` が `/usr/local/bin` に入り、全エージェントのMCP設定（OpenCodeの`opencode.json`、Claude Codeの`.claude.json`、Antigravityの`mcp_config.json`）へ `and-code-schedule` サーバーとして登録される
+- サーバーは `/workspace/.and-code/schedule-bridge/pending/<id>.json` へリクエストを書き、アプリ側の`ScheduleBridge`がポーリングして実行し、`responses/<id>.json` へ結果を書き戻す
+- 書き込み系はスケジューリングUIと同じく暗号化リポジトリとアラーム（`ScheduleManager`）を通るため、変更はアプリのスケジュール画面へ即反映される
+- 提供ツール: `schedule_list` / `schedule_get` / `schedule_runs` / `schedule_create` / `schedule_update` / `schedule_delete` / `schedule_set_enabled` / `schedule_run_now`
+
 ## Android上の制約
 
 Androidローカル実行はPCの完全な代替ではない。
