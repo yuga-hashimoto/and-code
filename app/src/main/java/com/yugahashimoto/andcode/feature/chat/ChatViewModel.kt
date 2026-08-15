@@ -216,7 +216,7 @@ internal fun OpenCodePart.toChatPart(): ChatPart? {
         "reasoning" -> ChatPart.Reasoning(partId, text.orEmpty())
         "file", "image" -> {
             val partUrl = url.orEmpty()
-            val partMime = imageMime(mime, partUrl)
+            val partMime = imageMime(mime, partUrl) ?: if (type == "image") "image/*" else null
             if (partMime != null && partUrl.isNotBlank()) {
                 ChatPart.Image(id = partId, mime = partMime, url = partUrl, filename = filename)
             } else {
