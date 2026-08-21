@@ -537,6 +537,8 @@ fun ScheduleEditorScreen(
             },
             favoriteModelKeys = favoriteModelKeys,
             recentModelKeys = recentModelKeys,
+            // Unlike the chat picker, applied unconditionally: visibility keys come from the
+            // OpenCode-managed catalog and never collide with agent pseudo-catalog provider ids.
             hiddenModelKeys = hiddenModelKeys,
             onToggleFavorite = onToggleFavorite,
             onDismiss = { showModelPicker = false },
