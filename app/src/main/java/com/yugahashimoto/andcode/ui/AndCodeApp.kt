@@ -1190,6 +1190,10 @@ fun AndCodeApp(
                         runtimeTargets = runtimeTargets,
                         providers = settingsState.providers,
                         workspaces = workspaceState.workspaces,
+                        favoriteModelKeys = settingsState.favoriteModelKeys,
+                        recentModelKeys = settingsState.recentModelKeys,
+                        hiddenModelKeys = settingsState.hiddenModelKeys,
+                        onToggleFavorite = settingsViewModel::toggleFavoriteModel,
                         onSave = { built ->
                             if (scheduleId != null) {
                                 scheduleViewModel.update(built)

@@ -89,6 +89,10 @@ fun ScheduleEditorScreen(
     runtimeTargets: List<RuntimeTarget>,
     providers: List<OpenCodeProvider>,
     workspaces: List<WorkspaceRef>,
+    favoriteModelKeys: Set<String> = emptySet(),
+    recentModelKeys: List<String> = emptyList(),
+    hiddenModelKeys: Set<String> = emptySet(),
+    onToggleFavorite: (String, String) -> Unit = { _, _ -> },
     onSave: (Schedule) -> Unit,
     onBack: () -> Unit,
 ) {
@@ -531,6 +535,10 @@ fun ScheduleEditorScreen(
                 modelId = newModelId
                 showModelPicker = false
             },
+            favoriteModelKeys = favoriteModelKeys,
+            recentModelKeys = recentModelKeys,
+            hiddenModelKeys = hiddenModelKeys,
+            onToggleFavorite = onToggleFavorite,
             onDismiss = { showModelPicker = false },
         )
     }
