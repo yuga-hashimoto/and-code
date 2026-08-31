@@ -58,6 +58,15 @@ class ScheduleExecutionService : Service() {
     private var inForeground = false
     private var executionJob: Job? = null
 
+    /**
+     * Which schedule [executionJob] belongs to.
+     *
+     * The service is one instance shared by every schedule, so the job alone cannot say whose run
+     * is in flight - and reporting another schedule's run as this one's "previous run" would be a
+     * plain lie in the history and in the notification.
+     */
+    private var runningScheduleId: String? = null
+
     /** Why the event stream stopped, when it stopped before the run settled. */
     @Volatile
     private var streamFailure: String? = null
@@ -112,20 +121,28 @@ class ScheduleExecutionService : Service() {
             return START_NOT_STICKY
         }
         if (executionJob?.isActive == true) {
-            // A run of this schedule is still going in this very service - a long one, or an
-            // earlier attempt still inside its connect window. Starting a second would stack two
-            // sessions on the same schedule, but dropping it in silence is what made a schedule
-            // whose previous run never ended look like it had simply stopped firing.
+            // One service instance runs one schedule at a time, and per-run state (the idle stamp,
+            // the stream failure) lives on it, so a second run cannot simply be started alongside.
+            // Which schedule is holding the slot decides what to say and whether to try again.
+            val ownRun = runningScheduleId == scheduleId
             app.scheduleRepository.schedule(scheduleId)?.let { schedule ->
                 app.reportScheduleStartFailure(
                     schedule = schedule,
-                    reason = getString(R.string.schedule_run_overlapping),
+                    reason =
+                        getString(
+                            if (ownRun) R.string.schedule_run_overlapping else R.string.schedule_service_busy,
+                        ),
                     failedAttempts = failedAttempts,
-                    retryable = automatic,
+                    // This schedule's own run is still going: a retry would only ask the same
+                    // question and stack a second session on it if the answer ever changed. Another
+                    // schedule's run is the opposite - it ends on its own, and the retry is exactly
+                    // what lets this slot still happen instead of being lost to a neighbour.
+                    retryable = !ownRun && automatic,
                 )
             }
             return START_NOT_STICKY
         }
+        runningScheduleId = scheduleId
         executionJob =
             scope.launch {
                 try {
@@ -179,13 +196,19 @@ class ScheduleExecutionService : Service() {
         // recurring alarm is pending). Do not stack sessions on top of each other - but do say so,
         // because from the outside a slot that produced nothing looks like a broken schedule.
         if (app.scheduleRepository.hasActiveRun(scheduleId)) {
-            cannotStart(getString(R.string.schedule_run_overlapping))
+            // Not retryable, for the same reason as the in-service check above: while this
+            // schedule's own run is in flight every retry reaches the same answer.
+            cannotStart(getString(R.string.schedule_run_overlapping), retryable = false)
             return
         }
 
         val target = app.runtimeRegistry.target(schedule.runtimeId)
         if (target == null) {
-            cannotStart(getString(R.string.schedule_runtime_unavailable))
+            // Not retryable: the registry builds its targets synchronously when it is constructed,
+            // so this is never a runtime that has yet to appear - it is one the schedule points at
+            // that no longer exists, a connection deleted or a profile that stopped building. An
+            // hour of retries would only wake the device to reach the same answer.
+            cannotStart(getString(R.string.schedule_runtime_unavailable), retryable = false)
             return
         }
         var activeRun: ScheduleRun? = null
@@ -212,6 +235,13 @@ class ScheduleExecutionService : Service() {
             app.scheduleManager.cancelRetry(schedule.id)
             updateForegroundNotification(app.getString(R.string.schedule_notification_running))
             runPrompt(target, schedule, run)
+        } catch (cancellation: CancellationException) {
+            // The system stopped the service under us. Settle the run so hasActiveRun does not go
+            // on blocking the schedule until the next process start, but never report it as a
+            // start failure: the cancellation's own message is internal wording that would go
+            // straight into a user-facing notification.
+            activeRun?.let { recordFailed(it, getString(R.string.schedule_run_interrupted)) }
+            throw cancellation
         } catch (error: Exception) {
             val message = error.message?.takeIf(String::isNotBlank) ?: error.javaClass.simpleName
             val run = activeRun
@@ -222,6 +252,9 @@ class ScheduleExecutionService : Service() {
                 cannotStart(getString(R.string.schedule_session_not_created) + ": " + message)
             } else {
                 recordFailed(run, message)
+                // Announced whatever runtime is on screen, unlike settle(): a run that threw on the
+                // way to its outcome leaves nothing in the chat for a watching user to read, so the
+                // suppression that keeps a settled failure from being said twice would just lose it.
                 app.notifications.notifySessionError(run.sessionId, message, target.id)
             }
         } finally {

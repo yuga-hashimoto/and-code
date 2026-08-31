@@ -2,6 +2,7 @@ package com.yugahashimoto.andcode.feature.schedule
 
 import com.yugahashimoto.andcode.core.api.OpenCodeEvent
 import com.yugahashimoto.andcode.core.api.OpenCodeMessage
+import com.yugahashimoto.andcode.core.api.sessionIdOrNull
 
 /** Why a run that never settled was given up on. */
 enum class ScheduleRunTimeout {
@@ -21,20 +22,11 @@ enum class ScheduleRunTimeout {
  */
 fun progressSessionIdOf(event: OpenCodeEvent): String? =
     when (event) {
-        is OpenCodeEvent.MessageUpdated -> event.info.sessionId
-        is OpenCodeEvent.MessagePartUpdated -> event.part.sessionId
-        is OpenCodeEvent.MessagePartDelta -> event.sessionId
-        is OpenCodeEvent.PermissionAsked -> event.request.sessionId
-        is OpenCodeEvent.PermissionReplied -> event.sessionId
-        is OpenCodeEvent.QuestionAsked -> event.request.sessionId
-        is OpenCodeEvent.SessionIdle -> event.sessionId
-        is OpenCodeEvent.SessionStatusChanged -> event.sessionId
-        is OpenCodeEvent.SessionUpdated -> event.session.id
-        is OpenCodeEvent.SessionError -> event.sessionId
-        // A subagent the run spawned is the run working, so its birth counts for the parent.
+        // The one case that differs from the general mapping: a session being born is progress for
+        // the session that spawned it, not for itself. A subagent the run started is the run
+        // working; an unrelated new chat is nobody's progress.
         is OpenCodeEvent.SessionCreated -> event.session.parentId
-        OpenCodeEvent.ServerConnected -> null
-        is OpenCodeEvent.Unknown -> null
+        else -> event.sessionIdOrNull()
     }
 
 /**

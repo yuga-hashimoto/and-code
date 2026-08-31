@@ -126,22 +126,18 @@ class ScheduleRepository(context: Context) {
      * Marks interrupted runs as failed so they cannot block all future executions.
      *
      * Called once as the process comes up, where every run still marked active belongs to a
-     * process that is already gone - the executing service dies with it - so by default none of
-     * them is spared. The age cutoff used to keep runs younger than half an hour, and each one it
-     * kept went on blocking every later run of its schedule through [hasActiveRun] until it aged
-     * out; now that a healthy run may legitimately last hours, waiting that out is no longer an
-     * option. [staleAfterMs] stays for tests that want the old age-based behaviour.
+     * process that is already gone - the executing service dies with it - so none of them is
+     * spared. The age cutoff this used to apply kept runs younger than half an hour, and each one
+     * it kept went on blocking every later run of its schedule through [hasActiveRun] until it
+     * aged out; now that a healthy run may legitimately last hours, waiting that out is no longer
+     * an option.
      */
     @Synchronized
-    fun reconcileStaleRuns(
-        now: Long = System.currentTimeMillis(),
-        staleAfterMs: Long = 0L,
-    ): Int {
-        val cutoff = now - staleAfterMs
+    fun reconcileStaleRuns(now: Long = System.currentTimeMillis()): Int {
         var reconciled = 0
         mutableRuns.update { current ->
             current.map { run ->
-                if (run.isActive && run.startedAt <= cutoff) {
+                if (run.isActive) {
                     reconciled++
                     run.copy(
                         status = ScheduleRunStatus.FAILED,

@@ -61,12 +61,15 @@ class ScheduleManager(
         attempt: Int,
         delayMs: Long,
     ) {
-        armAlarm(System.currentTimeMillis() + delayMs, retryPendingIntent(scheduleId, attempt))
+        val pending = retryPendingIntent(scheduleId, attempt) ?: return
+        armAlarm(System.currentTimeMillis() + delayMs, pending)
     }
 
     /** Drops a pending retry, once the run it was covering for started or stopped mattering. */
     fun cancelRetry(scheduleId: String) {
-        alarmManager.cancel(retryPendingIntent(scheduleId, attempt = 0))
+        // NO_CREATE: with nothing armed there is nothing to cancel, and conjuring a PendingIntent
+        // to hand straight to cancel() only says the opposite of what this means.
+        retryPendingIntent(scheduleId, attempt = 0, create = false)?.let(alarmManager::cancel)
     }
 
     /** Runs [scheduleId] immediately, outside of its cron timing. */
@@ -106,7 +109,8 @@ class ScheduleManager(
         }
     }
 
-    private fun pendingIntent(scheduleId: String): PendingIntent = runIntent(scheduleId.hashCode(), scheduleId, attempt = 0)
+    private fun pendingIntent(scheduleId: String): PendingIntent =
+        requireNotNull(runIntent(scheduleId.hashCode(), scheduleId, attempt = 0, create = true))
 
     /**
      * The retry alarm's own intent. Extras take no part in PendingIntent matching, so cancelling
@@ -115,13 +119,15 @@ class ScheduleManager(
     private fun retryPendingIntent(
         scheduleId: String,
         attempt: Int,
-    ): PendingIntent = runIntent(RETRY_REQUEST_CODE_PREFIX.plus(scheduleId).hashCode(), scheduleId, attempt)
+        create: Boolean = true,
+    ): PendingIntent? = runIntent(RETRY_REQUEST_CODE_PREFIX.plus(scheduleId).hashCode(), scheduleId, attempt, create)
 
     private fun runIntent(
         requestCode: Int,
         scheduleId: String,
         attempt: Int,
-    ): PendingIntent =
+        create: Boolean,
+    ): PendingIntent? =
         PendingIntent.getBroadcast(
             context,
             requestCode,
@@ -130,7 +136,8 @@ class ScheduleManager(
                 putExtra(ScheduleAlarmReceiver.EXTRA_SCHEDULE_ID, scheduleId)
                 putExtra(ScheduleAlarmReceiver.EXTRA_ATTEMPT, attempt)
             },
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+            (if (create) PendingIntent.FLAG_UPDATE_CURRENT else PendingIntent.FLAG_NO_CREATE) or
+                PendingIntent.FLAG_IMMUTABLE,
         )
 
     private companion object {

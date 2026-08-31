@@ -538,17 +538,6 @@
     <string name="analytics_row" translatable="false">Anonymous usage analytics</string>
     <string name="local_runtime_idle_stop_row">Stop idle runtime</string>
     <string name="local_runtime_idle_stop_row_description">Restarts automatically when a schedule runs or you open the app, but not automatically after a device restart</string>
-    <string name="schedule_run_interrupted" translatable="false">Run interrupted before completion</string>
-    <string name="schedule_completion_timeout" translatable="false">Scheduled run went quiet and never finished</string>
-    <string name="schedule_max_duration" translatable="false">Scheduled run ran past its maximum duration</string>
-    <string name="schedule_run_overlapping" translatable="false">Previous run is still in progress</string>
-    <string name="schedule_foreground_start_blocked" translatable="false">Android blocked the background start</string>
-    <string name="schedule_session_not_created" translatable="false">Could not open a session on the runtime</string>
-    <string name="schedule_run_not_started_attempts" translatable="false">%1$s (%2$d attempts)</string>
-    <string name="schedule_event_stream_ended" translatable="false">Runtime event stream ended unexpectedly</string>
-    <string name="schedule_runtime_unavailable" translatable="false">Runtime unavailable</string>
-    <string name="schedule_runtime_not_ready" translatable="false">Runtime did not become ready</string>
-    <string name="schedule_runtime_connection_failed" translatable="false">Runtime connection failed</string>
     <string name="privacy_row">Privacy &amp; data</string>
     <string name="privacy_stub_body">This feature is coming soon.</string>
     <string name="diagnostics_row">Diagnostics &amp; logs</string>
@@ -1071,6 +1060,18 @@
     <string name="schedule_status_pending">Pending</string>
     <string name="notification_schedule_not_started_title">Scheduled run did not start</string>
     <string name="notification_schedule_not_started_body">%1$s · %2$s</string>
+    <string name="schedule_run_interrupted">Run interrupted before completion</string>
+    <string name="schedule_completion_timeout">Scheduled run went quiet and never finished</string>
+    <string name="schedule_max_duration">Scheduled run ran past its maximum duration</string>
+    <string name="schedule_run_overlapping">Previous run is still in progress</string>
+    <string name="schedule_service_busy">Another schedule was running at this time</string>
+    <string name="schedule_foreground_start_blocked">Android blocked the background start</string>
+    <string name="schedule_session_not_created">Could not open a session on the runtime</string>
+    <string name="schedule_run_not_started_attempts">%1$s (%2$d attempts)</string>
+    <string name="schedule_event_stream_ended">Runtime event stream ended unexpectedly</string>
+    <string name="schedule_runtime_unavailable">Runtime unavailable</string>
+    <string name="schedule_runtime_not_ready">Runtime did not become ready</string>
+    <string name="schedule_runtime_connection_failed">Runtime connection failed</string>
     <string name="schedule_notification_title">Schedule</string>
     <string name="schedule_notification_starting">Starting scheduled run…</string>
     <string name="schedule_notification_running">Running</string>
