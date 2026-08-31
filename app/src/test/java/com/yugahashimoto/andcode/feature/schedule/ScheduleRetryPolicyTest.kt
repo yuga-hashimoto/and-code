@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.feature.schedule
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -7,11 +8,26 @@ import org.junit.Test
 
 class ScheduleRetryPolicyTest {
     @Test
-    fun `the first refusal is retried soon`() {
+    fun `the first retry waits out a whole failed attempt`() {
         val delay = ScheduleRetryPolicy.delayAfter(1)
 
         assertNotNull(delay)
-        assertTrue("a retry has to outlast the connect deadline", delay!! >= 60_000L)
+        // A retry landing while the attempt it covers for is still going is turned away as an
+        // overlap and the gap is wasted, so this has to clear the runtime boot wait plus the
+        // connect window - held against those constants rather than a copy of their sum, so that
+        // lengthening either one fails here instead of silently breaking the retry chain.
+        assertTrue(
+            "a retry has to outlast a whole attempt",
+            delay!! > ScheduleRetryPolicy.WORST_CASE_ATTEMPT_MS,
+        )
+    }
+
+    @Test
+    fun `the worst case attempt is the runtime boot wait plus the connect window`() {
+        assertEquals(
+            ScheduleRetryPolicy.LOCAL_RUNTIME_START_TIMEOUT_MS + ScheduleRetryPolicy.CONNECT_DEADLINE_MS,
+            ScheduleRetryPolicy.WORST_CASE_ATTEMPT_MS,
+        )
     }
 
     @Test

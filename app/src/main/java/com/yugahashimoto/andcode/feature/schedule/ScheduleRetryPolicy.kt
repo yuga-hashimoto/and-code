@@ -10,12 +10,25 @@ package com.yugahashimoto.andcode.feature.schedule
  * waiting for its next cron slot.
  */
 object ScheduleRetryPolicy {
+    /** How long a run waits for the shared Linux runtime to come up before giving up on it. */
+    const val LOCAL_RUNTIME_START_TIMEOUT_MS = 5 * 60_000L
+
+    /** How long a run keeps trying to reach its runtime before giving up on it. */
+    const val CONNECT_DEADLINE_MS = 3 * 60_000L
+
+    /**
+     * The longest a single failed attempt can take: the runtime boot wait, then the connect window.
+     *
+     * The gaps below are chosen against this, so it lives here rather than with the code that
+     * spends it - a test can then hold the two to each other instead of to a copied number.
+     */
+    const val WORST_CASE_ATTEMPT_MS = LOCAL_RUNTIME_START_TIMEOUT_MS + CONNECT_DEADLINE_MS
+
     /**
      * Gap before the next attempt, in the order the retries are used.
      *
-     * The first gap has to outlast a whole attempt - waiting out the local runtime's boot and then
-     * the connect deadline takes minutes - or the retry lands while the attempt it is covering for
-     * is still going, and is dropped as an overlap.
+     * The first gap has to outlast [WORST_CASE_ATTEMPT_MS], or the retry lands while the attempt it
+     * is covering for is still going, and is dropped as an overlap.
      */
     private val delaysMs = longArrayOf(10 * 60_000L, 20 * 60_000L, 30 * 60_000L)
 

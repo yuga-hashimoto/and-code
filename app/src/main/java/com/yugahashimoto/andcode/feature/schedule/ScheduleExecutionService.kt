@@ -264,7 +264,8 @@ class ScheduleExecutionService : Service() {
     }
 
     /**
-     * Connects the runtime, giving a refused first attempt the whole [CONNECT_DEADLINE_MS] window.
+     * Connects the runtime, spending the whole [ScheduleRetryPolicy.CONNECT_DEADLINE_MS] window
+     * on a refused first attempt.
      *
      * An alarm fires the moment the device wakes, which is when the agent is least likely to
      * answer: the local runtime reports Ready as soon as its process is up - it reports it for a
@@ -273,12 +274,16 @@ class ScheduleExecutionService : Service() {
      * inside nine seconds used to skip the whole run over a thaw that takes minutes.
      */
     private suspend fun connectWithRetry(target: RuntimeTarget): Boolean {
-        val deadline = SystemClock.elapsedRealtime() + CONNECT_DEADLINE_MS
+        val deadline = SystemClock.elapsedRealtime() + ScheduleRetryPolicy.CONNECT_DEADLINE_MS
         var backoffMs = CONNECT_RETRY_INITIAL_DELAY_MS
         while (true) {
             if (target.connect().isSuccess) return true
-            if (SystemClock.elapsedRealtime() + backoffMs >= deadline) return false
-            delay(backoffMs)
+            val remainingMs = deadline - SystemClock.elapsedRealtime()
+            if (remainingMs <= 0) return false
+            // The last wait is cut short rather than skipped. Sleeping a full backoff past the
+            // deadline and calling that the end left the tail of the window unspent - a runtime
+            // that came back with ten seconds to go was never asked again.
+            delay(backoffMs.coerceAtMost(remainingMs))
             backoffMs = (backoffMs * 2).coerceAtMost(CONNECT_RETRY_MAX_DELAY_MS)
         }
     }
@@ -413,7 +418,7 @@ class ScheduleExecutionService : Service() {
 
         app.localRuntimeController.start()
         val ready =
-            withTimeoutOrNull(LOCAL_RUNTIME_START_TIMEOUT_MS) {
+            withTimeoutOrNull(ScheduleRetryPolicy.LOCAL_RUNTIME_START_TIMEOUT_MS) {
                 app.localRuntimeManager.state.first { it is LocalRuntimeStatus.Ready }
             }
         return ready != null
@@ -612,7 +617,6 @@ class ScheduleExecutionService : Service() {
         private const val TAG = "ScheduleExecution"
         private const val CHANNEL_ID = "andcode_schedule_runs"
         private const val NOTIFICATION_ID = 4201
-        private const val LOCAL_RUNTIME_START_TIMEOUT_MS = 5 * 60_000L
 
         /** How long the run may go without a sign of life before it counts as dead. */
         private const val IDLE_TIMEOUT_MS = 60 * 60_000L
@@ -620,7 +624,6 @@ class ScheduleExecutionService : Service() {
         /** Backstop for a run that never ends; a schedule is not a daemon. */
         private const val MAX_RUN_DURATION_MS = 12 * 60 * 60_000L
         private const val WATCHDOG_TICK_MS = 60_000L
-        private const val CONNECT_DEADLINE_MS = 3 * 60_000L
         private const val CONNECT_RETRY_INITIAL_DELAY_MS = 2_000L
         private const val CONNECT_RETRY_MAX_DELAY_MS = 15_000L
         private const val TRANSCRIPT_POLL_INTERVAL_MS = 30_000L
