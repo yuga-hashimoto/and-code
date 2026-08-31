@@ -141,6 +141,8 @@
     <string name="chat_stall_reason_tool_running_unnamed">Un outil est toujours en cours et n’a rien renvoyé.</string>
     <string name="chat_stall_recheck">Vérifier à nouveau</string>
     <string name="chat_stall_stop">Arrêter l’exécution</string>
+    <string name="notification_schedule_not_started_title">L\'exécution planifiée n\'a pas démarré</string>
+    <string name="notification_schedule_not_started_body">%1$s · %2$s</string>
     <string name="notification_stalled_title">Une exécution ne donne plus signe de vie</string>
     <string name="notification_stalled_body">%1$s · %2$s</string>
     <string name="notification_permission_failed">Impossible d\'envoyer l\'approbation. Ouvrez l\'application et réessayez.</string>

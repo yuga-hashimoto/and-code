@@ -141,6 +141,8 @@
     <string name="chat_stall_reason_tool_running_unnamed">Uma ferramenta continua em execução e não retornou nada.</string>
     <string name="chat_stall_recheck">Verificar de novo</string>
     <string name="chat_stall_stop">Parar a execução</string>
+    <string name="notification_schedule_not_started_title">A execução agendada não foi iniciada</string>
+    <string name="notification_schedule_not_started_body">%1$s · %2$s</string>
     <string name="notification_stalled_title">Uma execução ficou em silêncio</string>
     <string name="notification_stalled_body">%1$s · %2$s</string>
     <string name="notification_permission_failed">Não foi possível enviar a aprovação. Abra o app e tente novamente.</string>

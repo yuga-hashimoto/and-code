@@ -144,6 +144,8 @@
     <string name="chat_stall_reason_tool_running_unnamed">ما زالت إحدى الأدوات قيد التشغيل ولم تُرجع نتيجة.</string>
     <string name="chat_stall_recheck">إعادة الفحص</string>
     <string name="chat_stall_stop">إيقاف التنفيذ</string>
+    <string name="notification_schedule_not_started_title">لم يبدأ التشغيل المجدول</string>
+    <string name="notification_schedule_not_started_body">%1$s · %2$s</string>
     <string name="notification_stalled_title">توقّف أحد عمليات التنفيذ عن الاستجابة</string>
     <string name="notification_stalled_body">%1$s · %2$s</string>
     <string name="notification_permission_failed">تعذّر إرسال الموافقة. افتح التطبيق وحاول مرة أخرى.</string>

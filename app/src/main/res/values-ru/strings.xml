@@ -142,6 +142,8 @@
     <string name="chat_stall_reason_tool_running_unnamed">Инструмент всё ещё работает и ничего не вернул.</string>
     <string name="chat_stall_recheck">Проверить снова</string>
     <string name="chat_stall_stop">Остановить выполнение</string>
+    <string name="notification_schedule_not_started_title">Запланированный запуск не состоялся</string>
+    <string name="notification_schedule_not_started_body">%1$s · %2$s</string>
     <string name="notification_stalled_title">Запуск перестал отвечать</string>
     <string name="notification_stalled_body">%1$s · %2$s</string>
     <string name="notification_permission_failed">Не удалось отправить подтверждение. Откройте приложение и попробуйте снова.</string>

@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.yugahashimoto.andcode.AndCodeApplication
+import com.yugahashimoto.andcode.R
 
 /**
  * Wakes the app when a schedule's alarm fires, and re-arms all alarms after boot
@@ -18,11 +19,20 @@ class ScheduleAlarmReceiver : BroadcastReceiver() {
         when (intent.action) {
             ACTION_RUN_SCHEDULE -> {
                 val scheduleId = intent.getStringExtra(EXTRA_SCHEDULE_ID) ?: return
-                if (!ScheduleExecutionService.start(context, scheduleId)) {
-                    // The system refused the background foreground-service start; leave a trace in
-                    // the run history so the schedule does not look silently stuck.
+                // Counted from the alarm that armed this one, so the original alarm is attempt 0
+                // and the run being started now is attempt + 1.
+                val attempt = intent.getIntExtra(EXTRA_ATTEMPT, 0)
+                if (!ScheduleExecutionService.start(context, scheduleId, attempt = attempt)) {
+                    // The system refused the background foreground-service start. Retry it rather
+                    // than lose the slot, and leave a trace once the retries run out so the
+                    // schedule never looks silently stuck.
                     app.scheduleRepository.schedule(scheduleId)?.let { schedule ->
-                        app.scheduleRepository.recordRunSkipped(schedule, SKIP_REASON_BLOCKED)
+                        app.reportScheduleStartFailure(
+                            schedule = schedule,
+                            reason = app.getString(R.string.schedule_foreground_start_blocked),
+                            failedAttempts = attempt + 1,
+                            retryable = true,
+                        )
                     }
                 }
                 // A cron alarm is one-shot: the next one is normally armed once the run settles,
@@ -39,6 +49,6 @@ class ScheduleAlarmReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_RUN_SCHEDULE = "com.yugahashimoto.andcode.RUN_SCHEDULE"
         const val EXTRA_SCHEDULE_ID = "schedule_id"
-        private const val SKIP_REASON_BLOCKED = "background start blocked by the system"
+        const val EXTRA_ATTEMPT = "schedule_attempt"
     }
 }

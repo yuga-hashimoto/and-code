@@ -139,6 +139,8 @@
     <string name="chat_stall_reason_tool_running_unnamed">有工具仍在运行，尚未返回结果。</string>
     <string name="chat_stall_recheck">重新检查</string>
     <string name="chat_stall_stop">停止运行</string>
+    <string name="notification_schedule_not_started_title">定时运行未启动</string>
+    <string name="notification_schedule_not_started_body">%1$s · %2$s</string>
     <string name="notification_stalled_title">有一次运行已无响应</string>
     <string name="notification_stalled_body">%1$s · %2$s</string>
     <string name="notification_permission_failed">无法发送授权。请打开应用后重试。</string>

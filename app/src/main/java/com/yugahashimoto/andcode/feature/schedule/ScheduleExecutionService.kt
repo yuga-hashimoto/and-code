@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -46,6 +47,10 @@ import kotlinx.coroutines.withTimeoutOrNull
  * Woken by an exact alarm (or by "Run now"), it boots the local runtime if needed, creates a
  * session, sends the prompt and watches both the event stream and the transcript until the run
  * finishes - then records the outcome, re-arms the next alarm and stops itself.
+ *
+ * Every way this can end without a run is reported through [reportScheduleStartFailure], which
+ * retries the slot and, once the retries are gone, notifies the user. A schedule that quietly does
+ * nothing is the one outcome they cannot act on.
  */
 class ScheduleExecutionService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -56,6 +61,13 @@ class ScheduleExecutionService : Service() {
     /** Why the event stream stopped, when it stopped before the run settled. */
     @Volatile
     private var streamFailure: String? = null
+
+    /**
+     * Elapsed-realtime stamp of the last sign of life from the run, on which the idle timeout is
+     * measured. Written by the event stream and the transcript poll, read by [awaitSettlement].
+     */
+    @Volatile
+    private var lastProgressAt: Long = 0L
 
     override fun onCreate() {
         super.onCreate()
@@ -77,15 +89,47 @@ class ScheduleExecutionService : Service() {
         startId: Int,
     ): Int {
         val scheduleId = intent?.getStringExtra(EXTRA_SCHEDULE_ID)
-        if (scheduleId == null || !inForeground) {
+        if (scheduleId == null) {
             stopSelf()
             return START_NOT_STICKY
         }
-        if (executionJob?.isActive == true) return START_NOT_STICKY
+        // Counted from the alarm that woke us: the original alarm is attempt 0, so the run about to
+        // be started is attempt + 1 and that is what a failure has to report.
+        val failedAttempts = intent.getIntExtra(EXTRA_ATTEMPT, 0) + 1
+        val automatic = intent.getBooleanExtra(EXTRA_AUTOMATIC, true)
+        if (!inForeground) {
+            // The start was accepted but the promotion was not, which used to end here in silence
+            // - no run, no history, no notice. Report it like any other refused start.
+            app.scheduleRepository.schedule(scheduleId)?.let { schedule ->
+                app.reportScheduleStartFailure(
+                    schedule = schedule,
+                    reason = getString(R.string.schedule_foreground_start_blocked),
+                    failedAttempts = failedAttempts,
+                    retryable = automatic,
+                )
+            }
+            stopSelf()
+            return START_NOT_STICKY
+        }
+        if (executionJob?.isActive == true) {
+            // A run of this schedule is still going in this very service - a long one, or an
+            // earlier attempt still inside its connect window. Starting a second would stack two
+            // sessions on the same schedule, but dropping it in silence is what made a schedule
+            // whose previous run never ended look like it had simply stopped firing.
+            app.scheduleRepository.schedule(scheduleId)?.let { schedule ->
+                app.reportScheduleStartFailure(
+                    schedule = schedule,
+                    reason = getString(R.string.schedule_run_overlapping),
+                    failedAttempts = failedAttempts,
+                    retryable = automatic,
+                )
+            }
+            return START_NOT_STICKY
+        }
         executionJob =
             scope.launch {
                 try {
-                    execute(scheduleId)
+                    execute(scheduleId, failedAttempts, automatic)
                 } finally {
                     stopForeground(STOP_FOREGROUND_REMOVE)
                     stopSelf()
@@ -108,20 +152,40 @@ class ScheduleExecutionService : Service() {
      * - it drives the runtime directly - so without a lease of its own the wake lock would see no
      * work in flight and let the device suspend mid-run, freezing the proot agent process.
      */
-    private suspend fun execute(scheduleId: String) {
-        app.runtimeWork.withLease("schedule:$scheduleId") { executeWithRuntimeAwake(scheduleId) }
+    private suspend fun execute(
+        scheduleId: String,
+        failedAttempts: Int,
+        automatic: Boolean,
+    ) {
+        app.runtimeWork.withLease("schedule:$scheduleId") {
+            executeWithRuntimeAwake(scheduleId, failedAttempts, automatic)
+        }
     }
 
-    private suspend fun executeWithRuntimeAwake(scheduleId: String) {
+    private suspend fun executeWithRuntimeAwake(
+        scheduleId: String,
+        failedAttempts: Int,
+        automatic: Boolean,
+    ) {
         val schedule = app.scheduleRepository.schedule(scheduleId) ?: return
         if (!schedule.enabled) return
+
+        fun cannotStart(
+            reason: String,
+            retryable: Boolean = true,
+        ) = app.reportScheduleStartFailure(schedule, reason, failedAttempts, retryable && automatic)
+
         // A previous run of the same schedule may still be in flight (e.g. a run-now while a
-        // recurring alarm is pending). Do not stack sessions on top of each other.
-        if (app.scheduleRepository.hasActiveRun(scheduleId)) return
+        // recurring alarm is pending). Do not stack sessions on top of each other - but do say so,
+        // because from the outside a slot that produced nothing looks like a broken schedule.
+        if (app.scheduleRepository.hasActiveRun(scheduleId)) {
+            cannotStart(getString(R.string.schedule_run_overlapping))
+            return
+        }
 
         val target = app.runtimeRegistry.target(schedule.runtimeId)
         if (target == null) {
-            recordSkipped(schedule, getString(R.string.schedule_runtime_unavailable))
+            cannotStart(getString(R.string.schedule_runtime_unavailable))
             return
         }
         var activeRun: ScheduleRun? = null
@@ -130,11 +194,11 @@ class ScheduleExecutionService : Service() {
             // Remote runtimes live on the user's PC and need no boot; local agents share the
             // PRoot Linux environment, which has to be running before the agent can start.
             if (target.type == RuntimeType.LOCAL && !ensureLocalRuntimeReady()) {
-                recordSkipped(schedule, getString(R.string.schedule_runtime_not_ready))
+                cannotStart(getString(R.string.schedule_runtime_not_ready))
                 return
             }
             if (!connectWithRetry(target)) {
-                recordSkipped(schedule, getString(R.string.schedule_runtime_connection_failed))
+                cannotStart(getString(R.string.schedule_runtime_connection_failed))
                 return
             }
             val session =
@@ -144,10 +208,22 @@ class ScheduleExecutionService : Service() {
                 )
             val run = app.scheduleRepository.recordRunStarted(schedule, session.id, target.id)
             activeRun = run
+            // The slot is covered; a retry armed by an earlier attempt would now start a second run.
+            app.scheduleManager.cancelRetry(schedule.id)
             updateForegroundNotification(app.getString(R.string.schedule_notification_running))
             runPrompt(target, schedule, run)
         } catch (error: Exception) {
-            activeRun?.let { recordFailed(it, error.message ?: error.javaClass.simpleName) }
+            val message = error.message?.takeIf(String::isNotBlank) ?: error.javaClass.simpleName
+            val run = activeRun
+            if (run == null) {
+                // Nothing was recorded yet - createSession threw, say - so there is no run to fail.
+                // Reporting it as a failed start is what keeps this from vanishing entirely.
+                Log.w(TAG, "Schedule $scheduleId could not open a session", error)
+                cannotStart(getString(R.string.schedule_session_not_created) + ": " + message)
+            } else {
+                recordFailed(run, message)
+                app.notifications.notifySessionError(run.sessionId, message, target.id)
+            }
         } finally {
             // A cron schedule arms its next alarm when this run settles, whatever the outcome.
             app.scheduleManager.rescheduleAll()
@@ -155,19 +231,23 @@ class ScheduleExecutionService : Service() {
     }
 
     /**
-     * Connects the runtime, giving a refused first attempt a few more tries.
+     * Connects the runtime, giving a refused first attempt the whole [CONNECT_DEADLINE_MS] window.
      *
      * An alarm fires the moment the device wakes, which is when the agent is least likely to
-     * answer: the local runtime reports Ready as soon as its process is up, before the HTTP server
-     * accepts connections, and a remote one is reached over a network the device has only just
-     * re-joined. A single refused health check used to skip the whole run.
+     * answer: the local runtime reports Ready as soon as its process is up - it reports it for a
+     * process that merely missed its port probe, which is exactly what a doze window leaves behind
+     * - and a remote one is reached over a network the device has only just re-joined. Three tries
+     * inside nine seconds used to skip the whole run over a thaw that takes minutes.
      */
     private suspend fun connectWithRetry(target: RuntimeTarget): Boolean {
-        repeat(CONNECT_ATTEMPTS) { attempt ->
+        val deadline = SystemClock.elapsedRealtime() + CONNECT_DEADLINE_MS
+        var backoffMs = CONNECT_RETRY_INITIAL_DELAY_MS
+        while (true) {
             if (target.connect().isSuccess) return true
-            if (attempt < CONNECT_ATTEMPTS - 1) delay(CONNECT_RETRY_DELAY_MS * (attempt + 1))
+            if (SystemClock.elapsedRealtime() + backoffMs >= deadline) return false
+            delay(backoffMs)
+            backoffMs = (backoffMs * 2).coerceAtMost(CONNECT_RETRY_MAX_DELAY_MS)
         }
-        return false
     }
 
     /**
@@ -183,6 +263,7 @@ class ScheduleExecutionService : Service() {
     ) {
         val autoAccept = schedule.autoAcceptPermissions ?: app.settings.autoAcceptPermissions
         streamFailure = null
+        markProgress()
         // Subscribe before sending: fast runtimes can emit idle during sendMessage itself.
         val watcher: Deferred<ScheduleCompletion> =
             scope.async(start = CoroutineStart.UNDISPATCHED) {
@@ -190,6 +271,13 @@ class ScheduleExecutionService : Service() {
             }
         // The poll sleeps before its first read, so it only ever sees this prompt's own turn.
         val transcriptPoll: Deferred<ScheduleCompletion> = scope.async { pollForCompletion(target, run) }
+        val settled: Deferred<ScheduleCompletion> =
+            scope.async {
+                select<ScheduleCompletion> {
+                    watcher.onAwait { it }
+                    transcriptPoll.onAwait { it }
+                }
+            }
         try {
             target.sendMessage(
                 run.sessionId,
@@ -200,22 +288,48 @@ class ScheduleExecutionService : Service() {
                     agent = schedule.agentId,
                 ),
             )
-            val completion =
-                withTimeoutOrNull(COMPLETION_TIMEOUT_MS) {
-                    select<ScheduleCompletion> {
-                        watcher.onAwait { it }
-                        transcriptPoll.onAwait { it }
-                    }
+            when (val settlement = awaitSettlement(settled)) {
+                is ScheduleSettlement.Settled -> settle(target, schedule, run, settlement.completion)
+                is ScheduleSettlement.GaveUp -> {
+                    val message =
+                        when (settlement.timeout) {
+                            // A stream that stopped early explains the silence better than the
+                            // timeout does.
+                            ScheduleRunTimeout.IDLE -> streamFailure ?: getString(R.string.schedule_completion_timeout)
+                            ScheduleRunTimeout.MAX_DURATION -> getString(R.string.schedule_max_duration)
+                        }
+                    recordFailed(run, message)
+                    // Unlike a settled failure this is never something the user is watching happen,
+                    // so it is announced whatever runtime is on screen.
+                    app.notifications.notifySessionError(run.sessionId, message, target.id)
                 }
-            if (completion == null) {
-                // A stream that stopped early explains the silence better than the timeout does.
-                recordFailed(run, streamFailure ?: getString(R.string.schedule_completion_timeout))
-            } else {
-                settle(target, schedule, run, completion)
             }
         } finally {
+            settled.cancel()
             watcher.cancel()
             transcriptPoll.cancel()
+        }
+    }
+
+    /**
+     * Waits for the run to settle, giving up only once it has gone quiet for [IDLE_TIMEOUT_MS] or
+     * outlived [MAX_RUN_DURATION_MS] altogether.
+     *
+     * The old flat cap on the whole run failed every schedule whose work honestly takes longer than
+     * the cap, however healthy it was - a prompt that writes twenty articles never stood a chance.
+     */
+    private suspend fun awaitSettlement(settled: Deferred<ScheduleCompletion>): ScheduleSettlement {
+        val startedAt = SystemClock.elapsedRealtime()
+        while (true) {
+            withTimeoutOrNull(WATCHDOG_TICK_MS) { settled.await() }
+                ?.let { return ScheduleSettlement.Settled(it) }
+            val now = SystemClock.elapsedRealtime()
+            scheduleRunTimeout(
+                elapsedMs = now - startedAt,
+                sinceProgressMs = now - lastProgressAt,
+                idleTimeoutMs = IDLE_TIMEOUT_MS,
+                maxDurationMs = MAX_RUN_DURATION_MS,
+            )?.let { return ScheduleSettlement.GaveUp(it) }
         }
     }
 
@@ -255,7 +369,14 @@ class ScheduleExecutionService : Service() {
     private suspend fun ensureLocalRuntimeReady(): Boolean {
         val status = app.localRuntimeManager.status()
         if (status is LocalRuntimeStatus.Ready) return true
-        if (status is LocalRuntimeStatus.NotInstalled || status is LocalRuntimeStatus.Broken) return false
+        // Nothing the schedule can do revives these, so waiting out the start timeout only delays
+        // the retry that might find the runtime repaired.
+        if (status is LocalRuntimeStatus.NotInstalled ||
+            status is LocalRuntimeStatus.Broken ||
+            status is LocalRuntimeStatus.UnsupportedAbi
+        ) {
+            return false
+        }
 
         app.localRuntimeController.start()
         val ready =
@@ -302,6 +423,7 @@ class ScheduleExecutionService : Service() {
         run: ScheduleRun,
     ): ScheduleCompletion {
         var settling: String? = null
+        var progressMark: String? = null
         while (true) {
             delay(TRANSCRIPT_POLL_INTERVAL_MS)
             val messages =
@@ -309,6 +431,14 @@ class ScheduleExecutionService : Service() {
                     .onFailure { error -> Log.w(TAG, "Could not read the run transcript", error) }
                     .getOrNull()
                     ?: continue
+            // Once the event stream is gone this is the only sign of life left, so a transcript
+            // that grew at all - a new message, a new part, more text in the part being streamed -
+            // holds the idle timeout off.
+            val mark = transcriptProgressMarkOf(messages)
+            if (mark != progressMark) {
+                if (progressMark != null) markProgress()
+                progressMark = mark
+            }
             val newest = messages.lastOrNull()?.info
             val outcome = scheduleCompletionOf(messages)
             if (newest == null || outcome == null) {
@@ -339,6 +469,7 @@ class ScheduleExecutionService : Service() {
 
         try {
             target.events().collect { event ->
+                if (progressSessionIdOf(event) == targetSessionId) markProgress()
                 when (event) {
                     is OpenCodeEvent.SessionIdle -> {
                         if (event.sessionId == targetSessionId) {
@@ -380,6 +511,10 @@ class ScheduleExecutionService : Service() {
         return null
     }
 
+    private fun markProgress() {
+        lastProgressAt = SystemClock.elapsedRealtime()
+    }
+
     private fun recordCompleted(run: ScheduleRun) {
         app.scheduleRepository.finishRun(run.id, ScheduleRunStatus.COMPLETED)
     }
@@ -389,13 +524,6 @@ class ScheduleExecutionService : Service() {
         error: String?,
     ) {
         app.scheduleRepository.finishRun(run.id, ScheduleRunStatus.FAILED, error = error)
-    }
-
-    private fun recordSkipped(
-        schedule: Schedule,
-        reason: String,
-    ) {
-        app.scheduleRepository.recordRunSkipped(schedule, reason)
     }
 
     private fun updateForegroundNotification(text: String) {
@@ -437,15 +565,31 @@ class ScheduleExecutionService : Service() {
     /** Thrown to unwind the event collector once the run has settled. */
     private class CompletionSignal(val result: ScheduleCompletion) : Exception()
 
+    /** How the wait for a run to settle ended. */
+    private sealed interface ScheduleSettlement {
+        data class Settled(val completion: ScheduleCompletion) : ScheduleSettlement
+
+        data class GaveUp(val timeout: ScheduleRunTimeout) : ScheduleSettlement
+    }
+
     companion object {
         const val EXTRA_SCHEDULE_ID = "schedule_id"
+        const val EXTRA_ATTEMPT = "schedule_attempt"
+        const val EXTRA_AUTOMATIC = "schedule_automatic"
         private const val TAG = "ScheduleExecution"
         private const val CHANNEL_ID = "andcode_schedule_runs"
         private const val NOTIFICATION_ID = 4201
         private const val LOCAL_RUNTIME_START_TIMEOUT_MS = 5 * 60_000L
-        private const val COMPLETION_TIMEOUT_MS = 30 * 60_000L
-        private const val CONNECT_ATTEMPTS = 3
-        private const val CONNECT_RETRY_DELAY_MS = 3_000L
+
+        /** How long the run may go without a sign of life before it counts as dead. */
+        private const val IDLE_TIMEOUT_MS = 60 * 60_000L
+
+        /** Backstop for a run that never ends; a schedule is not a daemon. */
+        private const val MAX_RUN_DURATION_MS = 12 * 60 * 60_000L
+        private const val WATCHDOG_TICK_MS = 60_000L
+        private const val CONNECT_DEADLINE_MS = 3 * 60_000L
+        private const val CONNECT_RETRY_INITIAL_DELAY_MS = 2_000L
+        private const val CONNECT_RETRY_MAX_DELAY_MS = 15_000L
         private const val TRANSCRIPT_POLL_INTERVAL_MS = 30_000L
 
         /**
@@ -456,14 +600,22 @@ class ScheduleExecutionService : Service() {
          * withhold the exact-alarm permission therefore wake us through an inexact alarm with no
          * exemption, and the start throws ForegroundServiceStartNotAllowedException - callers
          * have to handle the refusal instead of letting it crash the app.
+         *
+         * @param attempt how many attempts have already failed for this slot; 0 for the first.
+         * @param automatic false when the user asked for the run and is watching it, which is when
+         * a silent retry minutes later would be a surprise rather than a rescue.
          */
         fun start(
             context: Context,
             scheduleId: String,
+            attempt: Int = 0,
+            automatic: Boolean = true,
         ): Boolean {
             val intent =
                 Intent(context, ScheduleExecutionService::class.java).apply {
                     putExtra(EXTRA_SCHEDULE_ID, scheduleId)
+                    putExtra(EXTRA_ATTEMPT, attempt)
+                    putExtra(EXTRA_AUTOMATIC, automatic)
                 }
             return try {
                 ContextCompat.startForegroundService(context, intent)

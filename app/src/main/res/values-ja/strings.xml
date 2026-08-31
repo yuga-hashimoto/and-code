@@ -139,6 +139,8 @@
     <string name="chat_stall_reason_tool_running_unnamed">ツールの実行が終わっていません。</string>
     <string name="chat_stall_recheck">再確認</string>
     <string name="chat_stall_stop">実行を停止</string>
+    <string name="notification_schedule_not_started_title">スケジュール実行を開始できませんでした</string>
+    <string name="notification_schedule_not_started_body">%1$s · %2$s</string>
     <string name="notification_stalled_title">実行が止まっているようです</string>
     <string name="notification_stalled_body">%1$s · %2$s</string>
     <string name="notification_permission_failed">承認を送信できませんでした。アプリを開いてもう一度お試しください。</string>
