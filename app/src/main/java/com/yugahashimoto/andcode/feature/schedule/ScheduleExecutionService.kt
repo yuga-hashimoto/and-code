@@ -216,9 +216,14 @@ class ScheduleExecutionService : Service() {
         try {
             // Remote runtimes live on the user's PC and need no boot; local agents share the
             // PRoot Linux environment, which has to be running before the agent can start.
-            if (target.type == RuntimeType.LOCAL && !ensureLocalRuntimeReady()) {
-                cannotStart(getString(R.string.schedule_runtime_not_ready))
-                return
+            if (target.type == RuntimeType.LOCAL) {
+                // Which way the local runtime is unusable decides whether trying again can help,
+                // so the answer carries its own reason rather than collapsing four causes into one.
+                val readiness = localRuntimeReadiness()
+                if (readiness is LocalRuntimeReadiness.Blocked) {
+                    cannotStart(readiness.reason, retryable = readiness.retryable)
+                    return
+                }
             }
             if (!connectWithRetry(target)) {
                 cannotStart(getString(R.string.schedule_runtime_connection_failed))
@@ -401,19 +406,33 @@ class ScheduleExecutionService : Service() {
     }
 
     /**
-     * Waits for the shared Linux runtime when the schedule targets a local agent. Returns false
-     * when the runtime is missing, broken or fails to come up in time.
+     * Waits for the shared Linux runtime when the schedule targets a local agent, and says why if
+     * it never gets there.
+     *
+     * The reason matters as much as the failure: no amount of waiting installs a runtime, repairs a
+     * broken one or changes the device's ABI. Those need the user, so they are reported at once
+     * rather than after an hour of waking the device to ask the same question again. Only a boot
+     * that ran out of time is worth another attempt - it is slow, not impossible.
      */
-    private suspend fun ensureLocalRuntimeReady(): Boolean {
-        val status = app.localRuntimeManager.status()
-        if (status is LocalRuntimeStatus.Ready) return true
-        // Nothing the schedule can do revives these, so waiting out the start timeout only delays
-        // the retry that might find the runtime repaired.
-        if (status is LocalRuntimeStatus.NotInstalled ||
-            status is LocalRuntimeStatus.Broken ||
-            status is LocalRuntimeStatus.UnsupportedAbi
-        ) {
-            return false
+    private suspend fun localRuntimeReadiness(): LocalRuntimeReadiness {
+        when (val status = app.localRuntimeManager.status()) {
+            is LocalRuntimeStatus.Ready -> return LocalRuntimeReadiness.Ready
+            is LocalRuntimeStatus.NotInstalled ->
+                return LocalRuntimeReadiness.Blocked(
+                    getString(R.string.notification_runtime_not_installed),
+                    retryable = false,
+                )
+            is LocalRuntimeStatus.Broken ->
+                return LocalRuntimeReadiness.Blocked(
+                    getString(R.string.notification_runtime_broken) + ": " + status.reason,
+                    retryable = false,
+                )
+            is LocalRuntimeStatus.UnsupportedAbi ->
+                return LocalRuntimeReadiness.Blocked(
+                    getString(R.string.unsupported_abi, status.abi),
+                    retryable = false,
+                )
+            else -> Unit
         }
 
         app.localRuntimeController.start()
@@ -421,7 +440,11 @@ class ScheduleExecutionService : Service() {
             withTimeoutOrNull(ScheduleRetryPolicy.LOCAL_RUNTIME_START_TIMEOUT_MS) {
                 app.localRuntimeManager.state.first { it is LocalRuntimeStatus.Ready }
             }
-        return ready != null
+        return if (ready != null) {
+            LocalRuntimeReadiness.Ready
+        } else {
+            LocalRuntimeReadiness.Blocked(getString(R.string.schedule_runtime_not_ready), retryable = true)
+        }
     }
 
     /**
@@ -602,6 +625,14 @@ class ScheduleExecutionService : Service() {
 
     /** Thrown to unwind the event collector once the run has settled. */
     private class CompletionSignal(val result: ScheduleCompletion) : Exception()
+
+    /** Whether the shared Linux runtime can carry a run, and if not, why. */
+    private sealed interface LocalRuntimeReadiness {
+        data object Ready : LocalRuntimeReadiness
+
+        /** @param retryable false when nothing a later attempt does can change this answer. */
+        data class Blocked(val reason: String, val retryable: Boolean) : LocalRuntimeReadiness
+    }
 
     /** How the wait for a run to settle ended. */
     private sealed interface ScheduleSettlement {
