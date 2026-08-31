@@ -186,6 +186,40 @@ class RuntimeNotificationHelper(private val context: Context) {
     }
 
     /**
+     * Tells the user a scheduled run never started, and why.
+     *
+     * A schedule the user is not watching is exactly the case where a failure has to come to them:
+     * without this the only trace is a row in the run history nobody thinks to open, and the
+     * schedule looks like it simply stopped working. Unlike the session notices this one is posted
+     * whatever runtime is on screen, because there is no session to have been watching.
+     */
+    fun notifyScheduleNotStarted(
+        scheduleId: String,
+        scheduleName: String,
+        reason: String,
+    ) {
+        if (!canPostNotifications()) return
+        val intent =
+            pendingActivityIntent(
+                requestCode = ("schedule:$scheduleId").hashCode(),
+                extras = mapOf(EXTRA_OPEN_ACTIVITY to true),
+            )
+        val notification =
+            NotificationCompat.Builder(context, CHANNEL_STATUS)
+                .setSmallIcon(R.drawable.ic_notification)
+                .setContentTitle(context.getString(R.string.notification_schedule_not_started_title))
+                .setContentText(context.getString(R.string.notification_schedule_not_started_body, scheduleName, reason))
+                // Every miss carries the same title, so the schedule has to be named in the
+                // expanded text too or two of them are indistinguishable in the shade.
+                .setStyle(NotificationCompat.BigTextStyle().bigText("$scheduleName\n$reason"))
+                .setContentIntent(intent)
+                .setAutoCancel(true)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .build()
+        safeNotify(statusNotificationId(scheduleId, "schedule-miss"), notification)
+    }
+
+    /**
      * Tells the user that a run they left working has stopped producing anything, and what the app
      * managed to find out about why. Tapping it opens the chat so they can stop or resend.
      */

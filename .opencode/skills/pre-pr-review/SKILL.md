@@ -1,15 +1,16 @@
 ---
 name: pre-pr-review
-description: Mandatory review gate before opening a pull request in this repository. Runs local CI gates and the repo-reviewer subagent on the full branch diff, iterates until the reviewer approves, and records the verdict in the PR description. Use whenever you are about to create a PR.
+description: Review pass before opening a pull request in this repository. Runs local CI gates and the repo-reviewer subagent on the full branch diff, iterates until the reviewer approves, and records the verdict in the PR description. Use whenever you are about to create a PR.
 license: MIT
 ---
 
-# Pre-PR review (mandatory)
+# Pre-PR review
 
-This repository requires an approved review BEFORE any pull request is created. The reviewer is
-the `repo-reviewer` subagent, which carries the repository's architecture map and hard rules. The
-gate is also enforced in CI (`.github/workflows/pr-review-gate.yml`): a PR whose description does
-not contain an approved review report fails the check.
+This repository expects an approved review BEFORE any pull request is created. The reviewer is
+the `repo-reviewer` subagent, which carries the repository's architecture map and hard rules.
+Nothing in CI enforces this: the check that used to fail a PR whose description carried no
+approved report is gone, so the review is a convention the author keeps, not a gate that keeps
+them.
 
 ## Workflow
 
@@ -49,8 +50,8 @@ not contain an approved review report fails the check.
      Never open the PR while a ブロッカー is outstanding.
    - `APPROVE`: proceed. Consider 提案（非ブロッキング） items; apply the cheap, safe ones.
 
-5. **Record the verdict in the PR description.** The PR body must contain the reviewer's report
-   verbatim inside the marker block below — the CI gate looks for the first line:
+5. **Record the verdict in the PR description.** The PR body should carry the reviewer's report
+   verbatim inside the marker block below, so a reader can see the review actually happened:
 
    ```markdown
    <!-- pre-pr-review: approved -->
@@ -65,6 +66,6 @@ not contain an approved review report fails the check.
 ## Rules
 
 - Do not skip, summarize away, or forge the reviewer report; the block must be the subagent's
-  actual output for the current HEAD.
-- If the `repo-reviewer` subagent is unavailable, say so and stop — do not open the PR silently.
-- Trivial bot PRs (e.g. Weblate translation sync) are exempt and are skipped by the CI gate.
+  actual output for the current HEAD. Nothing checks this now, which is exactly why it matters.
+- If the `repo-reviewer` subagent is unavailable, say so in the PR — do not open it silently.
+- Trivial bot PRs (e.g. Weblate translation sync) are exempt.
