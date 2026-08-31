@@ -34,11 +34,10 @@ When working on a multi-step task, use the todo feature to track progress.
 
 When work is complete:
 
-1. **Run the mandatory pre-PR review.** Load the `pre-pr-review` skill and follow it exactly:
-   the `repo-reviewer` subagent must review the full branch diff against `origin/main`, and every
-   blocking finding must be fixed and re-reviewed until the verdict is `APPROVE`. NEVER open a PR
-   without this. The CI `PR Review Gate` check fails any PR whose description does not contain the
-   approved review report (`<!-- pre-pr-review: approved -->`).
+1. **Run the pre-PR review.** Load the `pre-pr-review` skill and follow it exactly: the
+   `repo-reviewer` subagent must review the full branch diff against `origin/main`, and every
+   blocking finding must be fixed and re-reviewed until the verdict is `APPROVE`. Nothing in CI
+   checks this any more - it is a convention the author is trusted to keep.
 2. Create a pull request against `main`, including the reviewer's report as the skill describes.
 3. Wait for CI to pass.
 4. Merge the PR once CI passes.
