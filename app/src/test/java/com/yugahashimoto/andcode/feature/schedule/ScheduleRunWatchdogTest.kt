@@ -6,6 +6,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeMessageInfo
 import com.yugahashimoto.andcode.core.api.OpenCodePart
 import com.yugahashimoto.andcode.core.api.OpenCodeSession
 import com.yugahashimoto.andcode.core.api.OpenCodeTime
+import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
@@ -102,6 +103,24 @@ class ScheduleRunWatchdogTest {
     }
 
     @Test
+    fun `a tool grinding away under unchanged state keys is progress`() {
+        // The case the transcript poll exists for: the event stream is gone and one long tool call
+        // is all that is happening. Its state keys never change - only what is under them - so a
+        // mark built on the shape of the state would call this run idle and time it out.
+        val before = listOf(message(parts = listOf(toolPart(status = "running", output = ""))))
+        val after = listOf(message(parts = listOf(toolPart(status = "running", output = "42 files"))))
+
+        assertNotEquals(transcriptProgressMarkOf(before), transcriptProgressMarkOf(after))
+    }
+
+    @Test
+    fun `a tool that has not moved at all is not progress`() {
+        val messages = listOf(message(parts = listOf(toolPart(status = "running", output = "42 files"))))
+
+        assertEquals(transcriptProgressMarkOf(messages), transcriptProgressMarkOf(messages.map { it.copy() }))
+    }
+
+    @Test
     fun `a new message is progress`() {
         val before = listOf(message(id = "msg-1"))
         val after = listOf(message(id = "msg-1"), message(id = "msg-2"))
@@ -125,6 +144,22 @@ class ScheduleRunWatchdogTest {
         type: String = "text",
         text: String? = null,
     ) = OpenCodePart(id = id, sessionId = sessionId, messageId = "msg-1", type = type, text = text)
+
+    private fun toolPart(
+        status: String,
+        output: String,
+    ) = OpenCodePart(
+        id = "prt-1",
+        sessionId = "ses-1",
+        messageId = "msg-1",
+        type = "tool",
+        tool = "bash",
+        state =
+            mapOf(
+                "status" to JsonPrimitive(status),
+                "output" to JsonPrimitive(output),
+            ),
+    )
 
     private fun session(
         id: String = "ses-1",

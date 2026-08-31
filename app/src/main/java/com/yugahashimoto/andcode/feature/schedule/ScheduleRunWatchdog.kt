@@ -61,20 +61,22 @@ fun scheduleRunTimeout(
  * A value that changes whenever the transcript has moved on, and stays put while it has not.
  *
  * This is the only sign of life left once the event stream drops, so it has to notice more than a
- * new message: a single long turn grows by parts and by the text inside the part it is streaming,
- * and a run doing exactly that is working, not stalled.
+ * new message: a single long turn grows by parts, by the text streaming into one of them, and by a
+ * tool part's state as the tool works. A run doing any of that is working, not stalled.
+ *
+ * The parts go in by hash rather than spelled out, because a tool part carries its whole output in
+ * `state` and the mark is only ever compared against the previous one. It has to be the values and
+ * not the shape: a tool that runs for an hour keeps the same state keys the whole time and moves
+ * only what is under them, so counting keys would call the busiest kind of run idle.
  */
 fun transcriptProgressMarkOf(messages: List<OpenCodeMessage>): String {
     val newest = messages.lastOrNull()
     val newestInfo = newest?.info
-    val streamingPart = newest?.parts?.lastOrNull()
     return listOf(
         messages.size,
         newestInfo?.id,
         newestInfo?.time?.completed,
         newest?.parts?.size,
-        streamingPart?.id,
-        streamingPart?.text?.length,
-        streamingPart?.state?.size,
+        newest?.parts?.hashCode(),
     ).joinToString(":")
 }
