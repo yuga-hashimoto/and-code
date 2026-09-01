@@ -941,8 +941,8 @@ class ChatViewModel(
      * OpenCode itself refuses to delete out of a busy session, and a chat mid-turn has nothing
      * settled yet to edit. The removed messages are dropped from [ChatUiState.messages]
      * optimistically so the edit feels instant; a delete call that fails is surfaced through
-     * [ChatUiState.error] without restoring them locally, since the backend is the source of truth
-     * and the next reload reconciles against whatever it actually kept.
+     * [ChatUiState.error], and the transcript is immediately reloaded from the backend so any
+     * message it refused to delete reappears instead of staying gone on screen.
      *
      * The original text comes back through [ChatUiState.editDraft] rather than a return value, so it
      * reaches the composer the same one-shot way [ChatUiState.partialText] carries dictation in —
@@ -966,12 +966,38 @@ class ChatViewModel(
             )
         }
         viewModelScope.launch {
+            var anyDeleteFailed = false
             // Newest first: if a later delete fails, the ones already gone still leave a clean,
             // shorter transcript instead of a surviving message stranded ahead of a gap.
             toRemove.asReversed().forEach { message ->
                 runCatching { currentBackend.deleteMessage(sessionId, message.id) }
-                    .onFailure { error -> reportError(error) }
+                    .onFailure { error ->
+                        anyDeleteFailed = true
+                        reportError(error)
+                    }
             }
+            // A refused delete leaves the backend holding messages this screen already dropped
+            // optimistically. Reload so the transcript reflects what the backend actually kept
+            // instead of silently lying to the user.
+            if (anyDeleteFailed) {
+                runCatching { reloadMessages(currentBackend, sessionId) }
+            }
+        }
+    }
+
+    /**
+     * Re-fetches [sessionId]'s transcript from the backend and reconciles it into
+     * [ChatUiState.messages], the same merge [openSession] does on its initial load. Used to bring
+     * the on-screen transcript back in line with the backend after an optimistic change it turns out
+     * the backend did not actually apply.
+     */
+    private suspend fun reloadMessages(
+        currentBackend: OpenCodeBackend,
+        sessionId: String,
+    ) {
+        val messages = currentBackend.listMessages(sessionId)
+        _uiState.update {
+            it.copy(messages = mergeReloadedMessages(messages.mapNotNull(::toUiMessage), it.messages))
         }
     }
 

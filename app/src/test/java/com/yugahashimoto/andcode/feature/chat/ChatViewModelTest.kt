@@ -1,6 +1,7 @@
 package com.yugahashimoto.andcode.feature.chat
 
 import com.yugahashimoto.andcode.core.api.OpenCodeAgent
+import com.yugahashimoto.andcode.core.api.OpenCodeApiException
 import com.yugahashimoto.andcode.core.api.OpenCodeCommand
 import com.yugahashimoto.andcode.core.api.OpenCodeEvent
 import com.yugahashimoto.andcode.core.api.OpenCodeHealth
@@ -41,6 +42,7 @@ import kotlinx.serialization.json.buildJsonObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -1111,6 +1113,59 @@ class ChatViewModelTest {
             assertNull(viewModel.uiState.value.editDraft)
         }
 
+    /**
+     * A refused delete (e.g. OpenCode's `SessionBusyError`) leaves the backend still holding
+     * whatever it declined to remove. The messages were already dropped from the screen
+     * optimistically, so a failure must reload the transcript from the backend instead of leaving
+     * the screen showing an empty chat the server never actually agreed to.
+     */
+    @Test
+    fun `editing the last message restores the transcript when the delete fails`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(editMessages = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("please fix the bug")
+            advanceUntilIdle()
+            backend.events.emit(
+                OpenCodeEvent.MessagePartUpdated(
+                    OpenCodePart(
+                        id = "p1",
+                        sessionId = "s1",
+                        messageId = "m-assistant",
+                        type = "text",
+                        text = "Fixed it",
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+
+            val beforeEdit = viewModel.uiState.value.messages
+            assertEquals(2, beforeEdit.size)
+            val userMessageId = beforeEdit.first { it.isUser }.id
+
+            // The server still has both messages - the delete below never actually applies to them.
+            backend.transcript =
+                listOf(
+                    sessionUserMessage("s1", userMessageId, "please fix the bug", created = 1),
+                    sessionAssistantMessage("s1", "m-assistant", "Fixed it"),
+                )
+            backend.deleteFailure = OpenCodeApiException(409, "session is busy")
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("please fix the bug", "Fixed it"),
+                viewModel.uiState.value.messages.map { it.text },
+            )
+            assertEquals("please fix the bug", viewModel.uiState.value.editDraft)
+            assertNotNull(viewModel.uiState.value.error)
+        }
+
     @Test
     fun `switching sessions mid-poll does not corrupt the newly opened session`() =
         runTest(dispatcher) {
@@ -1418,10 +1473,14 @@ class ChatViewModelTest {
         /** Message ids passed to [deleteMessage], in call order. */
         val deletedMessageIds = mutableListOf<String>()
 
+        /** When set, [deleteMessage] throws this instead of succeeding - simulates the server refusing the delete. */
+        var deleteFailure: Throwable? = null
+
         override suspend fun deleteMessage(
             sessionId: String,
             messageId: String,
         ): Boolean {
+            deleteFailure?.let { throw it }
             deletedMessageIds += messageId
             calls += "delete:$messageId"
             return true
