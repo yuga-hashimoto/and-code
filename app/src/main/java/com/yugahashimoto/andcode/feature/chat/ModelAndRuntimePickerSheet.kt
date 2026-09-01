@@ -382,10 +382,13 @@ private fun ModelRow(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                // A model that carries reasoning-effort variants (Claude Code's `--effort`, or any
-                // OpenCode model configured with variants) controls that depth from the composer's
-                // thinking chip, not from this sheet - flagging it here is the only hint a user
-                // browsing models gets that the level exists at all before they pick this model.
+                // Flags a model whose `variants` map is non-empty - today that's every Claude Code
+                // alias (ClaudeModels.kt hardcodes low/medium/high/xhigh/max) and, in principle, any
+                // OpenCode model whose server has reasoning variants configured. The actual control
+                // lives in the composer's thinking chip, which appears under the exact same
+                // condition, so this icon is a secondary hint for models the chip already surfaces -
+                // it does nothing for models with no variants (e.g. Antigravity, or OpenCode's
+                // models.dev catalog, which as of this writing declares variants for no model).
                 if (model.variants.isNotEmpty()) {
                     Icon(
                         imageVector = Icons.Default.Psychology,
