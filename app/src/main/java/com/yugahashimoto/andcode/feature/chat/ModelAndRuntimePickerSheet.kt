@@ -382,13 +382,10 @@ private fun ModelRow(
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false),
                 )
-                // Flags a model whose `variants` map is non-empty - today that's every Claude Code
-                // alias (ClaudeModels.kt hardcodes low/medium/high/xhigh/max) and, in principle, any
-                // OpenCode model whose server has reasoning variants configured. The actual control
-                // lives in the composer's thinking chip, which appears under the exact same
-                // condition, so this icon is a secondary hint for models the chip already surfaces -
-                // it does nothing for models with no variants (e.g. Antigravity, or OpenCode's
-                // models.dev catalog, which as of this writing declares variants for no model).
+                // Flags a model whose `variants` map is non-empty, i.e. one that exposes
+                // reasoning-effort variants. The actual control lives in the composer's thinking
+                // chip, which appears under the exact same condition, so this icon is just a
+                // secondary hint for models the chip already surfaces.
                 if (model.variants.isNotEmpty()) {
                     Icon(
                         imageVector = Icons.Default.Psychology,
