@@ -58,6 +58,41 @@ class LocalRuntimeProcessLauncherTest {
         }
     }
 
+    @Test
+    fun `user edits to an instructions file survive a later context refresh`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-user-edit")
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        val claudeMd = File(rootfs, "root/.claude/CLAUDE.md")
+        val customInstructions = "Always use 4-space indentation and write tests first."
+        claudeMd.writeText(customInstructions)
+
+        // A later runtime start (e.g. bundled context text changes, or the same context is
+        // simply re-ensured) must not stomp the user's edit.
+        installAndCodeAgentContext(rootfs, (AGENT_CONTEXT_FIXTURE + "\nExtra default line.").toByteArray())
+
+        assertEquals(customInstructions, claudeMd.readText())
+    }
+
+    @Test
+    fun `untouched instructions files still pick up bundled context updates`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-untouched")
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        val updatedFixture = "$AGENT_CONTEXT_FIXTURE\nExtra default line."
+        installAndCodeAgentContext(rootfs, updatedFixture.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(updatedFixture, File(rootfs, relativePath).readText())
+        }
+    }
+
     private companion object {
         const val AGENT_CONTEXT_FIXTURE =
             "You are running inside and-code (AndCode), a native Android application.\n" +
