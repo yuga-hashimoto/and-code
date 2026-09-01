@@ -56,8 +56,17 @@ internal fun installAndCodeAgentContext(
     val agentContextHash = RuntimeArchive.sha256(source)
     var hashesChanged = false
 
+    val rootfsCanonical = rootfs.canonicalFile
     AGENT_CONTEXT_PATHS.forEach { relativePath ->
         val target = File(rootfs, relativePath)
+        // The rootfs is a PRoot guest filesystem an agent can write arbitrary files into. If
+        // `target` (or a parent directory) was replaced with a symlink pointing outside rootfs,
+        // following it here would let this write clobber a file elsewhere on the device. Refuse
+        // to manage anything whose canonical path has escaped rootfs instead of writing through
+        // the link.
+        if (!target.canonicalFile.toPath().startsWith(rootfsCanonical.toPath())) {
+            return@forEach
+        }
         val currentHash = if (target.isFile) RuntimeArchive.sha256(target) else null
         // Safe to (re)write when there is nothing there yet, when it already holds exactly the
         // current blurb (a no-op either way), or when it still matches the last content we wrote.

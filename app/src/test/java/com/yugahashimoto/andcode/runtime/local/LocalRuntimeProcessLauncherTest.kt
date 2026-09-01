@@ -93,6 +93,24 @@ class LocalRuntimeProcessLauncherTest {
         }
     }
 
+    @Test
+    fun `symlinked instructions path outside rootfs is left alone`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-symlink")
+        val outsideTarget = temporaryFolder.newFile("outside-secret.txt")
+        val originalContent = "do not touch"
+        outsideTarget.writeText(originalContent)
+
+        // Simulate an agent (or malicious content it wrote) replacing the CLAUDE.md path with a
+        // symlink pointing outside the rootfs, before AndCode's own copy logic runs.
+        val claudeMd = File(rootfs, "root/.claude/CLAUDE.md")
+        claudeMd.parentFile.mkdirs()
+        java.nio.file.Files.createSymbolicLink(claudeMd.toPath(), outsideTarget.toPath())
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        assertEquals(originalContent, outsideTarget.readText())
+    }
+
     private companion object {
         const val AGENT_CONTEXT_FIXTURE =
             "You are running inside and-code (AndCode), a native Android application.\n" +
