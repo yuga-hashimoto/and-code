@@ -91,6 +91,10 @@ fun groupConversationTimeline(messages: List<ChatMessage>): List<TimelineEntry> 
     // that first part id so LazyColumn keys stay unique — the first group keeps the bare id so a
     // growing run's identity stays stable while its steps stream in.
     val firstIdOccurrences = mutableMapOf<String, Int>()
+    // Same id-reuse risk applies to todowrite calls: without disambiguating repeats, a dismissed
+    // sticky todo bar could stay suppressed for what is actually a new todowrite update that
+    // happened to reuse a prior call's id.
+    val todoIdOccurrences = mutableMapOf<String, Int>()
 
     fun flush() {
         if (pending.isEmpty()) return
@@ -134,7 +138,10 @@ fun groupConversationTimeline(messages: List<ChatMessage>): List<TimelineEntry> 
             when {
                 part is ChatPart.Tool && part.name == "todowrite" && part.todos.isNotEmpty() -> {
                     flush()
-                    entries += TimelineEntry.Todo("todo:${part.id}", part.todos)
+                    val occurrence = todoIdOccurrences[part.id] ?: 0
+                    todoIdOccurrences[part.id] = occurrence + 1
+                    val todoId = if (occurrence == 0) "todo:${part.id}" else "todo:${part.id}:$occurrence"
+                    entries += TimelineEntry.Todo(todoId, part.todos)
                 }
                 part is ChatPart.Image -> {
                     flush()
