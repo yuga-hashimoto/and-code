@@ -1023,6 +1023,7 @@ fun AndCodeApp(
                         autoAcceptPermissions = settingsState.autoAcceptPermissions,
                         onToggleAutoAccept = settingsViewModel::setAutoAcceptPermissions,
                         enterToSend = preferences.enterToSend,
+                        autoExpandReasoning = preferences.autoExpandReasoning,
                         onSendMessage = chatViewModel::sendMessage,
                         onPermission = chatViewModel::respondToPermission,
                         onAbort = chatViewModel::abort,

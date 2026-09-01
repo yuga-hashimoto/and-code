@@ -150,6 +150,8 @@ fun AssistantActivityRow(
 fun AssistantActivitySheet(
     parts: List<ChatPart>,
     onDismiss: () -> Unit,
+    /** Whether reasoning cards should start expanded, per the auto-expand reasoning setting. */
+    autoExpandReasoning: Boolean = false,
 ) {
     val summary = summarizeActivity(parts)
     val title = if (summary.isEmpty) stringResource(R.string.activity_details_title) else activitySummaryText(summary)
@@ -175,7 +177,7 @@ fun AssistantActivitySheet(
         ) {
             itemsIndexed(parts, key = ::activityPartKey) { _, part ->
                 when (part) {
-                    is ChatPart.Reasoning -> ReasoningCard(part)
+                    is ChatPart.Reasoning -> ReasoningCard(part, autoExpand = autoExpandReasoning)
                     is ChatPart.Tool -> ToolCard(part)
                     is ChatPart.Patch -> PatchCard(part)
                     is ChatPart.Text -> Unit
