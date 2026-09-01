@@ -1168,6 +1168,60 @@ class ChatViewModelTest {
         }
 
     /**
+     * OpenCode signals a refused delete as a thrown HTTP error, so a `false` return from
+     * [com.yugahashimoto.andcode.runtime.RuntimeTarget.deleteMessage] is unlikely in practice - but
+     * that return value is treated as meaningful elsewhere (e.g. provider auth), so
+     * [ChatViewModel.editLastUserMessage] must not treat it as success either. It should still
+     * trigger the same reconciliation reload a thrown failure does.
+     */
+    @Test
+    fun `editing the last message restores the transcript when a delete reports false`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(editMessages = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("please fix the bug")
+            advanceUntilIdle()
+            backend.events.emit(
+                OpenCodeEvent.MessagePartUpdated(
+                    OpenCodePart(
+                        id = "p1",
+                        sessionId = "s1",
+                        messageId = "m-assistant",
+                        type = "text",
+                        text = "Fixed it",
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+
+            val beforeEdit = viewModel.uiState.value.messages
+            assertEquals(2, beforeEdit.size)
+            val userMessageId = beforeEdit.first { it.isUser }.id
+
+            // The server still has both messages - the delete below reports `false` without ever
+            // actually applying to them.
+            backend.transcript =
+                listOf(
+                    sessionUserMessage("s1", userMessageId, "please fix the bug", created = 1),
+                    sessionAssistantMessage("s1", "m-assistant", "Fixed it"),
+                )
+            backend.deleteResult = false
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("please fix the bug", "Fixed it"),
+                viewModel.uiState.value.messages.map { it.text },
+            )
+            assertEquals("please fix the bug", viewModel.uiState.value.editDraft)
+        }
+
+    /**
      * When a delete fails, [ChatViewModel.editLastUserMessage] reloads the transcript to reconcile
      * the optimistic deletion with what the backend actually kept. If that reload itself fails there
      * is nothing left to reconcile against, so the failure must still reach [ChatUiState.error]
@@ -1560,6 +1614,9 @@ class ChatViewModelTest {
         /** Incremented on every [deleteMessage] invocation, whether it succeeds or throws. */
         var deleteAttempts = 0
 
+        /** What [deleteMessage] returns when it doesn't throw - simulates the server reporting `false`. */
+        var deleteResult = true
+
         override suspend fun deleteMessage(
             sessionId: String,
             messageId: String,
@@ -1568,7 +1625,7 @@ class ChatViewModelTest {
             deleteFailure?.let { throw it }
             deletedMessageIds += messageId
             calls += "delete:$messageId"
-            return true
+            return deleteResult
         }
 
         override suspend fun listProviders(): ProviderCatalog = ProviderCatalog()

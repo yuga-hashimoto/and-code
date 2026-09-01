@@ -978,6 +978,14 @@ class ChatViewModel(
                         anyDeleteFailed = true
                         reportError(error)
                     }
+                    .onSuccess { deleted ->
+                        // The server signals real failures as thrown HTTP errors, so a `false`
+                        // body is unlikely in practice - but deleteMessage's return value is
+                        // treated as meaningful elsewhere, so a `false` here should not silently
+                        // look like success either. There is no thrown error to report, so just
+                        // fall into the same reconciliation reload a thrown failure triggers.
+                        if (!deleted) anyDeleteFailed = true
+                    }
             }
             // A refused delete leaves the backend holding messages this screen already dropped
             // optimistically. Reload so the transcript reflects what the backend actually kept

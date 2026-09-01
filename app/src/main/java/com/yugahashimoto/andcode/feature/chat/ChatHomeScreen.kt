@@ -313,9 +313,10 @@ fun ChatHomeScreen(
         }
     }
 
-    // One-shot handoff from ChatViewModel.editLastUserMessage: it has already deleted the message
-    // (and its reply) server-side, and hands its text back here so the composer opens on it ready
-    // to correct and resend rather than the user having to retype it.
+    // One-shot handoff from ChatViewModel.editLastUserMessage: it drops the message (and its
+    // reply) from the transcript optimistically and deletes them server-side in the background,
+    // handing its text back here so the composer opens on it ready to correct and resend rather
+    // than the user having to retype it.
     LaunchedEffect(state.editDraft) {
         state.editDraft?.let { draft ->
             input = draft
