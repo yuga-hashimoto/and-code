@@ -17,6 +17,14 @@ private const val RUNTIME_CONTEXT_PATH = "root/.config/and-code/agent-context.md
  */
 private const val WRITTEN_HASHES_PATH = "root/.config/and-code/agent-context-written.tsv"
 
+/**
+ * Size past which the sidecar is ignored rather than read. A legitimate one holds a line per
+ * [AGENT_CONTEXT_PATHS] entry -- a short path plus a 64-character hash, a few hundred bytes in
+ * total -- so this is already far more room than it can honestly need; it exists only so a
+ * guest-planted file cannot make runtime startup read an arbitrary amount into memory.
+ */
+private const val MAX_WRITTEN_HASHES_BYTES = 64L * 1024
+
 private val AGENT_CONTEXT_PATHS =
     listOf(
         "root/.config/opencode/and-code-context.md",
@@ -59,8 +67,8 @@ internal fun ensureAndCodeAgentContext(
  *   aborting before any guard below even runs (see the fallback comment at the call site).
  * - The staging copy at [RUNTIME_CONTEXT_PATH] is only a convenience artifact nothing else reads,
  *   so an unmanageable or unwritable path there is simply skipped.
- * - The written-hashes sidecar being unmanageable, unreadable, or unwritable does not stop the
- *   three instruction files below from being (re)installed. An unreadable sidecar is treated as
+ * - The written-hashes sidecar being unmanageable, unreadable, oversized, or unwritable does not
+ *   stop the three instruction files below from being (re)installed. Any of those is treated as
  *   an empty history: a target that already exists and differs from the current blurb is then
  *   treated as user-edited and left alone, which is the safe direction. A sidecar that can't be
  *   persisted afterwards simply means the write is retried on the next run; the install itself
@@ -96,12 +104,17 @@ internal fun installAndCodeAgentContext(
         }
     val agentContextHash = sha256Hex(agentContext)
 
-    // Best-effort: this is only the app's own staging copy of the blurb; nothing below depends
-    // on it existing, so an unmanageable path here must not stop the real install.
+    // Best-effort: this is only the app's own staging copy of the blurb; nothing below depends on
+    // it existing, so neither an unmanageable path nor a failing write here may stop the real
+    // install. The bytes go down unconditionally rather than being compared against what is on
+    // disk first: reading that file back would mean loading whatever the guest left in its place
+    // into memory, and rewriting a kilobyte on each runtime start is cheaper than that risk.
     manageablePathOrNull(rootfsCanonical, File(rootfs, RUNTIME_CONTEXT_PATH))?.let { source ->
-        source.parentFile?.mkdirs()
-        if (!source.isFile || !source.readBytes().contentEquals(agentContext)) {
+        try {
+            source.parentFile?.mkdirs()
             source.writeBytes(agentContext)
+        } catch (e: IOException) {
+            // Skip the staging copy -- see the comment above.
         }
     }
 
@@ -197,20 +210,34 @@ private fun manageablePathOrNull(
 }
 
 /**
- * Best-effort: an [IOException] reading the sidecar (a transient I/O error, permissions, etc.)
- * must not abort [installAndCodeAgentContext] or the runtime startup that calls it, so it is
- * treated the same as "no sidecar yet" -- an empty map.
+ * Reads the sidecar [writeWrittenHashes] left behind, bounded in both size and content.
+ *
+ * The file lives in the guest filesystem, where an agent can replace it with something enormous,
+ * so anything larger than [MAX_WRITTEN_HASHES_BYTES] is ignored outright and the lines are
+ * streamed rather than slurped. That size cap is what actually protects startup here: an
+ * `OutOfMemoryError` from reading a huge file whole is an `Error`, not an [IOException], so the
+ * catch below would not stop it. Only keys naming a real [AGENT_CONTEXT_PATHS] entry are kept,
+ * which bounds the returned map no matter what the file holds.
+ *
+ * Best-effort otherwise: an [IOException] (a transient I/O error, permissions, etc.) must not
+ * abort [installAndCodeAgentContext] or the runtime startup that calls it, so it is treated the
+ * same as "no sidecar yet" -- an empty map.
  */
 private fun readWrittenHashes(file: File): Map<String, String> {
     if (!file.isFile) return emptyMap()
+    if (file.length() > MAX_WRITTEN_HASHES_BYTES) return emptyMap()
     return try {
-        file.readLines()
-            .mapNotNull { line ->
-                val separator = line.indexOf('\t')
-                if (separator < 0) return@mapNotNull null
-                line.substring(0, separator) to line.substring(separator + 1)
-            }
-            .toMap()
+        file.useLines { lines ->
+            lines
+                .mapNotNull { line ->
+                    val separator = line.indexOf('\t')
+                    if (separator < 0) return@mapNotNull null
+                    val path = line.substring(0, separator)
+                    if (path !in AGENT_CONTEXT_PATHS) return@mapNotNull null
+                    path to line.substring(separator + 1)
+                }
+                .toMap()
+        }
     } catch (e: IOException) {
         emptyMap()
     }

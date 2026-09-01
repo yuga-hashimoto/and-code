@@ -281,6 +281,59 @@ class LocalRuntimeProcessLauncherTest {
         )
     }
 
+    @Test
+    fun `an oversized written-hashes sidecar is ignored rather than read into memory`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-huge-sidecar")
+
+        // The sidecar lives in the guest filesystem, so an agent can grow it without bound.
+        // Reading one of those whole would risk an OutOfMemoryError during runtime startup, which
+        // no IOException handler would catch - so anything past the cap is ignored outright and
+        // the install proceeds as if there were no recorded history at all.
+        val sidecar = File(rootfs, "root/.config/and-code/agent-context-written.tsv")
+        sidecar.parentFile.mkdirs()
+        sidecar.writeText("root/.claude/CLAUDE.md\t${"0".repeat(200_000)}\n")
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+    }
+
+    @Test
+    fun `unknown keys in the written-hashes sidecar are not carried over`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-junk-sidecar")
+
+        // Only paths AndCode actually manages are read back, so junk a guest wrote into the
+        // sidecar can neither grow the map nor survive into the next persisted copy.
+        val sidecar = File(rootfs, "root/.config/and-code/agent-context-written.tsv")
+        sidecar.parentFile.mkdirs()
+        sidecar.writeText("root/somewhere/else.md\tdeadbeef\nnot-a-tsv-line\n")
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+        val recordedPaths = sidecar.readLines().map { it.substringBefore('\t') }.toSet()
+        assertEquals(
+            setOf(
+                "root/.config/opencode/and-code-context.md",
+                "root/.claude/CLAUDE.md",
+                "root/.gemini/GEMINI.md",
+            ),
+            recordedPaths,
+        )
+    }
+
     private companion object {
         const val AGENT_CONTEXT_FIXTURE =
             "You are running inside and-code (AndCode), a native Android application.\n" +
