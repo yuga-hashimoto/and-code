@@ -416,9 +416,11 @@ data class ChatUiState(
     /** Pull requests linked in this chat, newest first, for the badges above the composer. */
     val pullRequests: List<ChatPullRequest> = emptyList(),
     /**
-     * Id of the [TimelineEntry.Todo] the user closed with the sticky bar's dismiss button. The
-     * agent's next `todowrite` call carries a new part id, so a fresh task list reopens the bar
-     * instead of staying suppressed for the rest of the session.
+     * Id of the [TimelineEntry.Todo] the user closed with the sticky bar's dismiss button.
+     * [groupConversationTimeline] gives each `todowrite` update a distinct entry id -- even ones
+     * that reuse a tool part id across a retry -- so the next task list always gets an id
+     * different from this one and reopens the bar instead of staying suppressed for the rest of
+     * the session.
      */
     val dismissedTodoBarId: String? = null,
     /**
