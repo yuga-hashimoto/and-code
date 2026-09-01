@@ -79,6 +79,17 @@ class OpenCodeApiClient(
 
     suspend fun messages(sessionId: String): List<OpenCodeMessage> = getList("session/${encodePath(sessionId)}/message")
 
+    /**
+     * Permanently removes one message (and all of its parts) from a session, without reverting any
+     * file changes it may have caused — the same trade-off OpenCode's own
+     * `DELETE /session/:id/message/:messageId` route documents. The server refuses this while the
+     * session is busy, so callers must only delete out of an idle session.
+     */
+    suspend fun deleteMessage(
+        sessionId: String,
+        messageId: String,
+    ): Boolean = delete("session/${encodePath(sessionId)}/message/${encodePath(messageId)}")
+
     suspend fun providers(): ProviderCatalog = get("provider")
 
     suspend fun agents(): List<OpenCodeAgent> = getList("agent")

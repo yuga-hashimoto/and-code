@@ -55,6 +55,11 @@ class RemoteOpenCodeBackend(
 
     override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> = client.messages(sessionId)
 
+    override suspend fun deleteMessage(
+        sessionId: String,
+        messageId: String,
+    ): Boolean = client.deleteMessage(sessionId, messageId)
+
     override suspend fun listProviders(): ProviderCatalog = client.providers()
 
     override suspend fun listAgents(): List<OpenCodeAgent> = client.agents()

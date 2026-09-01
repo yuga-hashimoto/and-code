@@ -142,6 +142,13 @@ import com.yugahashimoto.andcode.ui.components.VolumeMeter
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
 import kotlinx.coroutines.launch
 
+/** What the long-press action sheet offers for one message: its id, its text to copy, and whether "Edit & resend" applies. */
+private data class MessageActionTarget(
+    val id: String,
+    val text: String,
+    val canEdit: Boolean,
+)
+
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ChatHomeScreen(
@@ -189,6 +196,11 @@ fun ChatHomeScreen(
     sendBehavior: String = "interrupt",
     enterToSend: Boolean = false,
     onSendMessage: (String) -> Unit,
+    /** False for a runtime that cannot delete a message server-side, so "Edit & resend" is hidden. */
+    canEditMessages: Boolean = false,
+    /** Removes the last user message (and its reply) and hands its text back via [state]'s edit draft. */
+    onEditLastMessage: () -> Unit = {},
+    onEditDraftConsumed: () -> Unit = {},
     onPermission: (String, PermissionResponse, Boolean) -> Unit,
     onAbort: () -> Unit,
     /** Probes the quiet run again now, rather than waiting for the next scheduled check. */
@@ -212,7 +224,7 @@ fun ChatHomeScreen(
     val errorKind = classifyChatError(state.error)
     val runtimeNotReady = errorKind == ChatErrorKind.RUNTIME_NOT_READY && state.messages.isEmpty()
     val isAtBottom = remember { mutableStateOf(true) }
-    var showActionSheet by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var showActionSheet by remember { mutableStateOf<MessageActionTarget?>(null) }
     var activityGroupId by remember { mutableStateOf<String?>(null) }
     var selectedImage by remember { mutableStateOf<ChatImageSource?>(null) }
     var legacyDownload by remember { mutableStateOf<ChatImageSource?>(null) }
@@ -298,6 +310,16 @@ fun ChatHomeScreen(
     LaunchedEffect(state.partialText) {
         if ((state.isListening || state.isSpeechProcessing) && state.partialText.isNotBlank()) {
             input = state.partialText
+        }
+    }
+
+    // One-shot handoff from ChatViewModel.editLastUserMessage: it has already deleted the message
+    // (and its reply) server-side, and hands its text back here so the composer opens on it ready
+    // to correct and resend rather than the user having to retype it.
+    LaunchedEffect(state.editDraft) {
+        state.editDraft?.let { draft ->
+            input = draft
+            onEditDraftConsumed()
         }
     }
 
@@ -401,11 +423,24 @@ fun ChatHomeScreen(
                             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
+                            // "Edit & resend" is offered only on the conversation's very last user
+                            // message: editing an earlier one would also discard every turn after
+                            // it, which is a bigger, riskier action than this affordance is meant
+                            // for (see issue #269).
+                            val lastUserMessageId = state.messages.lastOrNull { it.isUser }?.id
                             items(timelineEntries, key = { it.id }) { entry ->
                                 val copyable =
                                     when (entry) {
-                                        is TimelineEntry.UserMessage -> entry.message.id to entry.message.text
-                                        is TimelineEntry.Body -> entry.messageId to entry.part.text
+                                        is TimelineEntry.UserMessage ->
+                                            MessageActionTarget(
+                                                id = entry.message.id,
+                                                text = entry.message.text,
+                                                canEdit =
+                                                    canEditMessages && !state.isRunning &&
+                                                        entry.message.id == lastUserMessageId,
+                                            )
+                                        is TimelineEntry.Body ->
+                                            MessageActionTarget(entry.messageId, entry.part.text, canEdit = false)
                                         is TimelineEntry.Image -> null
                                         is TimelineEntry.Activity -> null
                                         is TimelineEntry.Todo -> null
@@ -665,23 +700,32 @@ fun ChatHomeScreen(
         }
     }
 
-    showActionSheet?.let { (_, content) ->
+    showActionSheet?.let { target ->
         ModalBottomSheet(onDismissRequest = { showActionSheet = null }) {
             Column(modifier = Modifier.padding(bottom = 32.dp)) {
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.action_copy)) },
                     onClick = {
-                        clipboardManager.setText(AnnotatedString(content))
+                        clipboardManager.setText(AnnotatedString(target.text))
                         showActionSheet = null
                     },
                 )
                 DropdownMenuItem(
                     text = { Text(stringResource(R.string.action_copy_markdown)) },
                     onClick = {
-                        clipboardManager.setText(AnnotatedString(content))
+                        clipboardManager.setText(AnnotatedString(target.text))
                         showActionSheet = null
                     },
                 )
+                if (target.canEdit) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.action_edit_message)) },
+                        onClick = {
+                            onEditLastMessage()
+                            showActionSheet = null
+                        },
+                    )
+                }
             }
         }
     }

@@ -60,6 +60,16 @@ interface OpenCodeBackend {
 
     suspend fun listMessages(sessionId: String): List<OpenCodeMessage>
 
+    /**
+     * Deletes a message (and its parts) out of a session's transcript. See
+     * [RuntimeCapabilities.editMessages] for which backends actually support this; the others fall
+     * through to [unsupported].
+     */
+    suspend fun deleteMessage(
+        sessionId: String,
+        messageId: String,
+    ): Boolean = unsupported("message delete")
+
     suspend fun listProviders(): ProviderCatalog
 
     suspend fun listAgents(): List<OpenCodeAgent>

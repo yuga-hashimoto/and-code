@@ -1020,6 +1020,97 @@ class ChatViewModelTest {
             assertEquals(listOf("s1"), aborted)
         }
 
+    /**
+     * The "edit & resend" affordance (issue #269) only exists for backends that can actually delete
+     * a message server-side. Without [RuntimeCapabilities.editMessages] it must be a complete no-op:
+     * nothing removed locally, nothing sent to the backend, and no draft handed to the composer.
+     */
+    @Test
+    fun `editing the last message does nothing when the runtime cannot delete messages`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities())
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("first")
+            advanceUntilIdle()
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            assertEquals(1, viewModel.uiState.value.messages.size)
+            assertNull(viewModel.uiState.value.editDraft)
+            assertTrue(backend.deletedMessageIds.isEmpty())
+        }
+
+    /** A turn still in flight has nothing settled to edit, and OpenCode itself refuses to delete out of a busy session. */
+    @Test
+    fun `editing the last message does nothing while a turn is running`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(editMessages = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("first")
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isRunning)
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            assertEquals(1, viewModel.uiState.value.messages.size)
+            assertNull(viewModel.uiState.value.editDraft)
+            assertTrue(backend.deletedMessageIds.isEmpty())
+        }
+
+    /**
+     * The common case: a finished turn's user message and its assistant reply are both deleted
+     * server-side and dropped from the transcript, and the original text comes back through
+     * [ChatUiState.editDraft] for the composer to pick up - see
+     * [com.yugahashimoto.andcode.feature.chat.ChatViewModel.consumeEditDraft].
+     */
+    @Test
+    fun `editing the last message removes it and its reply, then hands back the text to edit`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(editMessages = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("please fix the bug")
+            advanceUntilIdle()
+            backend.events.emit(
+                OpenCodeEvent.MessagePartUpdated(
+                    OpenCodePart(
+                        id = "p1",
+                        sessionId = "s1",
+                        messageId = "m-assistant",
+                        type = "text",
+                        text = "Fixed it",
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+
+            val beforeEdit = viewModel.uiState.value.messages
+            assertEquals(2, beforeEdit.size)
+            val userMessageId = beforeEdit.first { it.isUser }.id
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.messages.isEmpty())
+            assertEquals("please fix the bug", viewModel.uiState.value.editDraft)
+            // Newest first, so the assistant reply is deleted before the user message it replied to.
+            assertEquals(listOf("m-assistant", userMessageId), backend.deletedMessageIds)
+
+            viewModel.consumeEditDraft()
+            assertNull(viewModel.uiState.value.editDraft)
+        }
+
     @Test
     fun `switching sessions mid-poll does not corrupt the newly opened session`() =
         runTest(dispatcher) {
@@ -1323,6 +1414,18 @@ class ChatViewModelTest {
         ): OpenCodeSession = OpenCodeSession(id = "s1", title = title ?: "", directory = directory, time = OpenCodeTime(created = 1))
 
         override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> = transcript
+
+        /** Message ids passed to [deleteMessage], in call order. */
+        val deletedMessageIds = mutableListOf<String>()
+
+        override suspend fun deleteMessage(
+            sessionId: String,
+            messageId: String,
+        ): Boolean {
+            deletedMessageIds += messageId
+            calls += "delete:$messageId"
+            return true
+        }
 
         override suspend fun listProviders(): ProviderCatalog = ProviderCatalog()
 

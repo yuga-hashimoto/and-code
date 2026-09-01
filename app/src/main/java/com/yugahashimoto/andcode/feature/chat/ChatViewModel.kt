@@ -421,6 +421,13 @@ data class ChatUiState(
      */
     val stall: StallDiagnosis? = null,
     val error: String? = null,
+    /**
+     * Set by [ChatViewModel.editLastUserMessage] to the text of the message it just removed, so the
+     * composer can drop it back into the input for editing. One-shot: the screen clears it with
+     * [ChatViewModel.consumeEditDraft] once it has copied the text into its own input state, the
+     * same handoff [partialText] uses for dictation.
+     */
+    val editDraft: String? = null,
 )
 
 class ChatViewModel(
@@ -922,6 +929,55 @@ class ChatViewModel(
                 error = null,
             )
         }
+    }
+
+    /**
+     * Removes the last user message from the open session — and anything the runtime already
+     * replied with since — so its text can be corrected and resent: the "edit & resend" affordance
+     * other chat UIs offer for undoing what you just sent (see issue #269).
+     *
+     * Only available while the backend can actually delete a message server-side
+     * ([com.yugahashimoto.andcode.runtime.RuntimeCapabilities.editMessages]) and the turn is idle —
+     * OpenCode itself refuses to delete out of a busy session, and a chat mid-turn has nothing
+     * settled yet to edit. The removed messages are dropped from [ChatUiState.messages]
+     * optimistically so the edit feels instant; a delete call that fails is surfaced through
+     * [ChatUiState.error] without restoring them locally, since the backend is the source of truth
+     * and the next reload reconciles against whatever it actually kept.
+     *
+     * The original text comes back through [ChatUiState.editDraft] rather than a return value, so it
+     * reaches the composer the same one-shot way [ChatUiState.partialText] carries dictation in —
+     * see [consumeEditDraft].
+     */
+    fun editLastUserMessage() {
+        val currentBackend = backend ?: return
+        val sessionId = _uiState.value.sessionId ?: return
+        if (_uiState.value.isRunning) return
+        if ((currentBackend as? RuntimeTarget)?.capabilities?.editMessages != true) return
+        val messages = _uiState.value.messages
+        val lastUserIndex = messages.indexOfLast { it.isUser }
+        if (lastUserIndex < 0) return
+        val toRemove = messages.subList(lastUserIndex, messages.size).toList()
+        val originalText = messages[lastUserIndex].text
+        val idsToRemove = toRemove.map { it.id }.toSet()
+        _uiState.update {
+            it.copy(
+                messages = it.messages.filterNot { message -> message.id in idsToRemove },
+                editDraft = originalText,
+            )
+        }
+        viewModelScope.launch {
+            // Newest first: if a later delete fails, the ones already gone still leave a clean,
+            // shorter transcript instead of a surviving message stranded ahead of a gap.
+            toRemove.asReversed().forEach { message ->
+                runCatching { currentBackend.deleteMessage(sessionId, message.id) }
+                    .onFailure { error -> reportError(error) }
+            }
+        }
+    }
+
+    /** Clears [ChatUiState.editDraft] once the composer has copied it into its own input state. */
+    fun consumeEditDraft() {
+        _uiState.update { it.copy(editDraft = null) }
     }
 
     fun sendMessage(text: String) {
