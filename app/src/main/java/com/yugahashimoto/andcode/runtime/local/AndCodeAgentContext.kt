@@ -3,6 +3,7 @@ package com.yugahashimoto.andcode.runtime.local
 import android.content.Context
 import java.io.File
 import java.io.IOException
+import java.nio.file.Files
 
 internal const val AND_CODE_AGENT_CONTEXT_ASSET = "and-code-agent-context.md"
 
@@ -95,12 +96,22 @@ internal fun installAndCodeAgentContext(
 
 /**
  * Resolves [target]'s canonical path and returns it only when that path is still inside
- * [rootfsCanonical] and [target] is either absent or a regular file.
+ * [rootfsCanonical], [target] is not itself a symlink, and [target] is either absent or a regular
+ * file.
  *
  * Rejects anything that has escaped rootfs via a symlink, any non-regular-file target (a
  * directory, fifo, etc. left in its place would make `copyTo`/`writeBytes` throw), and any path
  * whose canonicalization itself fails -- `File.canonicalFile` can throw [IOException] on a
  * filesystem loop or I/O error, which must not crash runtime startup.
+ *
+ * A symlink *at* [target] is rejected outright, even a dangling one whose target does not exist
+ * yet. This is not redundant with the canonical-in-rootfs check above: when a symlink's target
+ * does not exist, `File.canonicalPath` can't resolve it via realpath, so the JDK falls back to
+ * resolving the existing parent and appending the link's own name -- which makes a dangling link
+ * canonicalize to its own (in-rootfs) path, sailing past the rootfs check with `exists()` false,
+ * as if nothing were there yet. `Files.isSymbolicLink` checks the link itself rather than
+ * following it, so it catches this case too. (A symlinked *parent* directory is still caught by
+ * the canonical-in-rootfs check, since the parent does exist and canonicalizes normally.)
  */
 private fun manageablePathOrNull(
     rootfsCanonical: File,
@@ -113,6 +124,7 @@ private fun manageablePathOrNull(
             return null
         }
     if (!canonical.toPath().startsWith(rootfsCanonical.toPath())) return null
+    if (Files.isSymbolicLink(target.toPath())) return null
     if (target.exists() && !target.isFile) return null
     return target
 }

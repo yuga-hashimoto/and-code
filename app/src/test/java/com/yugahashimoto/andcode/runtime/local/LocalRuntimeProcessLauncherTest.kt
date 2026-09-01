@@ -1,6 +1,7 @@
 package com.yugahashimoto.andcode.runtime.local
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -109,6 +110,25 @@ class LocalRuntimeProcessLauncherTest {
         installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
 
         assertEquals(originalContent, outsideTarget.readText())
+    }
+
+    @Test
+    fun `dangling symlinked instructions path outside rootfs is left alone`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-dangling-symlink")
+        val outsideDir = temporaryFolder.newFolder("outside-dangling")
+        val outsideTarget = File(outsideDir, "missing.txt")
+
+        // Simulate an agent replacing the GEMINI.md path with a symlink pointing outside the
+        // rootfs at a target that does not exist yet. File.canonicalFile can't realpath a
+        // nonexistent final component, so it falls back to the link's own (in-rootfs) path,
+        // which must not be mistaken for "nothing there yet".
+        val geminiMd = File(rootfs, "root/.gemini/GEMINI.md")
+        geminiMd.parentFile.mkdirs()
+        java.nio.file.Files.createSymbolicLink(geminiMd.toPath(), outsideTarget.toPath())
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        assertFalse(outsideTarget.exists())
     }
 
     @Test
