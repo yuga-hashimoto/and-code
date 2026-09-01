@@ -150,6 +150,96 @@ class LocalRuntimeProcessLauncherTest {
         )
     }
 
+    @Test
+    fun `written-hashes sidecar replaced with a directory does not stop instructions from installing`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-sidecar-directory")
+
+        // Simulate an agent replacing the written-hashes sidecar path with a directory before
+        // AndCode's install logic runs. The sidecar being unmanageable must degrade to "no
+        // recorded hashes" rather than aborting the whole install.
+        val sidecar = File(rootfs, "root/.config/and-code/agent-context-written.tsv")
+        sidecar.mkdirs()
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+        assertTrue(sidecar.isDirectory)
+    }
+
+    @Test
+    fun `written-hashes sidecar replaced with a symlink does not stop instructions from installing`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-sidecar-symlink")
+        val outsideTarget = temporaryFolder.newFile("outside-sidecar.tsv")
+        val originalContent = "do not touch"
+        outsideTarget.writeText(originalContent)
+
+        val sidecar = File(rootfs, "root/.config/and-code/agent-context-written.tsv")
+        sidecar.parentFile.mkdirs()
+        java.nio.file.Files.createSymbolicLink(sidecar.toPath(), outsideTarget.toPath())
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+        assertEquals(originalContent, outsideTarget.readText())
+    }
+
+    @Test
+    fun `staged source path replaced with a directory does not stop instructions from installing`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-source-directory")
+
+        // Simulate an agent replacing the staged source path with a directory. The blurb hash is
+        // computed from the in-memory bytes, and targets are written from those bytes directly,
+        // so installing the instruction files must not depend on the staging copy at all.
+        val source = File(rootfs, "root/.config/and-code/agent-context.md")
+        source.mkdirs()
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+        assertTrue(source.isDirectory)
+    }
+
+    @Test
+    fun `staged source path replaced with a symlink does not stop instructions from installing`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-source-symlink")
+        val outsideTarget = temporaryFolder.newFile("outside-source.md")
+        val originalContent = "do not touch"
+        outsideTarget.writeText(originalContent)
+
+        val source = File(rootfs, "root/.config/and-code/agent-context.md")
+        source.parentFile.mkdirs()
+        java.nio.file.Files.createSymbolicLink(source.toPath(), outsideTarget.toPath())
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+        assertEquals(originalContent, outsideTarget.readText())
+    }
+
     private companion object {
         const val AGENT_CONTEXT_FIXTURE =
             "You are running inside and-code (AndCode), a native Android application.\n" +
