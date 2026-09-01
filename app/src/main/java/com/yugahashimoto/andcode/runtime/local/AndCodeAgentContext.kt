@@ -2,6 +2,7 @@ package com.yugahashimoto.andcode.runtime.local
 
 import android.content.Context
 import java.io.File
+import java.io.IOException
 
 internal const val AND_CODE_AGENT_CONTEXT_ASSET = "and-code-agent-context.md"
 
@@ -41,32 +42,31 @@ internal fun ensureAndCodeAgentContext(
  * (re)written when its current content still matches the hash of what *we* wrote there last time
  * -- once the file diverges from that (the user edited it, or created it themselves), it is left
  * alone from then on, even as the bundled blurb changes in later app updates.
+ *
+ * Every path this function touches lives inside the PRoot guest filesystem, which an agent can
+ * write arbitrary content into -- including replacing one of these paths (or a parent directory)
+ * with a symlink that resolves outside `rootfs`. [manageablePathOrNull] guards every read and
+ * write below so none of them ever follow such a link off the guest filesystem.
  */
 internal fun installAndCodeAgentContext(
     rootfs: File,
     agentContext: ByteArray,
 ) {
-    val source = File(rootfs, RUNTIME_CONTEXT_PATH)
+    val rootfsCanonical = rootfs.canonicalFile
+
+    val source = manageablePathOrNull(rootfsCanonical, File(rootfs, RUNTIME_CONTEXT_PATH)) ?: return
     source.parentFile?.mkdirs()
     if (!source.isFile || !source.readBytes().contentEquals(agentContext)) {
         source.writeBytes(agentContext)
     }
 
-    val writtenHashes = readWrittenHashes(rootfs).toMutableMap()
+    val writtenHashesFile = manageablePathOrNull(rootfsCanonical, File(rootfs, WRITTEN_HASHES_PATH)) ?: return
+    val writtenHashes = readWrittenHashes(writtenHashesFile).toMutableMap()
     val agentContextHash = RuntimeArchive.sha256(source)
     var hashesChanged = false
 
-    val rootfsCanonical = rootfs.canonicalFile
     AGENT_CONTEXT_PATHS.forEach { relativePath ->
-        val target = File(rootfs, relativePath)
-        // The rootfs is a PRoot guest filesystem an agent can write arbitrary files into. If
-        // `target` (or a parent directory) was replaced with a symlink pointing outside rootfs,
-        // following it here would let this write clobber a file elsewhere on the device. Refuse
-        // to manage anything whose canonical path has escaped rootfs instead of writing through
-        // the link.
-        if (!target.canonicalFile.toPath().startsWith(rootfsCanonical.toPath())) {
-            return@forEach
-        }
+        val target = manageablePathOrNull(rootfsCanonical, File(rootfs, relativePath)) ?: return@forEach
         val currentHash = if (target.isFile) RuntimeArchive.sha256(target) else null
         // Safe to (re)write when there is nothing there yet, when it already holds exactly the
         // current blurb (a no-op either way), or when it still matches the last content we wrote.
@@ -89,12 +89,35 @@ internal fun installAndCodeAgentContext(
     }
 
     if (hashesChanged) {
-        writeWrittenHashes(rootfs, writtenHashes)
+        writeWrittenHashes(writtenHashesFile, writtenHashes)
     }
 }
 
-private fun readWrittenHashes(rootfs: File): Map<String, String> {
-    val file = File(rootfs, WRITTEN_HASHES_PATH)
+/**
+ * Resolves [target]'s canonical path and returns it only when that path is still inside
+ * [rootfsCanonical] and [target] is either absent or a regular file.
+ *
+ * Rejects anything that has escaped rootfs via a symlink, any non-regular-file target (a
+ * directory, fifo, etc. left in its place would make `copyTo`/`writeBytes` throw), and any path
+ * whose canonicalization itself fails -- `File.canonicalFile` can throw [IOException] on a
+ * filesystem loop or I/O error, which must not crash runtime startup.
+ */
+private fun manageablePathOrNull(
+    rootfsCanonical: File,
+    target: File,
+): File? {
+    val canonical =
+        try {
+            target.canonicalFile
+        } catch (e: IOException) {
+            return null
+        }
+    if (!canonical.toPath().startsWith(rootfsCanonical.toPath())) return null
+    if (target.exists() && !target.isFile) return null
+    return target
+}
+
+private fun readWrittenHashes(file: File): Map<String, String> {
     if (!file.isFile) return emptyMap()
     return file.readLines()
         .mapNotNull { line ->
@@ -106,10 +129,9 @@ private fun readWrittenHashes(rootfs: File): Map<String, String> {
 }
 
 private fun writeWrittenHashes(
-    rootfs: File,
+    file: File,
     hashes: Map<String, String>,
 ) {
-    val file = File(rootfs, WRITTEN_HASHES_PATH)
     file.parentFile?.mkdirs()
     file.writeText(hashes.entries.joinToString("\n") { (path, hash) -> "$path\t$hash" })
 }

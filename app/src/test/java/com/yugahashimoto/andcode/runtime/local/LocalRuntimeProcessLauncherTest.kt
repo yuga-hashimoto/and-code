@@ -111,6 +111,25 @@ class LocalRuntimeProcessLauncherTest {
         assertEquals(originalContent, outsideTarget.readText())
     }
 
+    @Test
+    fun `instructions path replaced with a directory does not crash and is left alone`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-directory")
+
+        // Simulate an agent replacing CLAUDE.md with a directory before AndCode's copy logic
+        // runs. isFile is false for a directory, so the old code treated it as "nothing there
+        // yet" and crashed trying to copyTo() over it.
+        val claudeMd = File(rootfs, "root/.claude/CLAUDE.md")
+        claudeMd.mkdirs()
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        assertTrue(claudeMd.isDirectory)
+        assertEquals(
+            AGENT_CONTEXT_FIXTURE,
+            File(rootfs, "root/.gemini/GEMINI.md").readText(),
+        )
+    }
+
     private companion object {
         const val AGENT_CONTEXT_FIXTURE =
             "You are running inside and-code (AndCode), a native Android application.\n" +
