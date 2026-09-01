@@ -218,6 +218,7 @@
     <string name="unsupported_abi">ABI غير مدعوم: %1$s</string>
 
     <string name="todo_timeline_progress">اكتمل %1$d من %2$d Todo</string>
+    <string name="todo_bar_dismiss">إغلاق قائمة Todo</string>
 
     <string name="tab_files">الملفات</string>
     <string name="tab_search">بحث</string>

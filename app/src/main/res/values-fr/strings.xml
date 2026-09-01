@@ -215,6 +215,7 @@
     <string name="unsupported_abi">ABI non pris en charge : %1$s</string>
 
     <string name="todo_timeline_progress">%1$d sur %2$d Todo terminé</string>
+    <string name="todo_bar_dismiss">Fermer la liste Todo</string>
 
     <string name="tab_files">Fichiers</string>
     <string name="tab_search">Rechercher</string>

@@ -213,6 +213,7 @@
     <string name="unsupported_abi">未対応ABI: %1$s</string>
 
     <string name="todo_timeline_progress">%2$d 個中 %1$d 個の Todo が完了</string>
+    <string name="todo_bar_dismiss">Todo リストを閉じる</string>
 
     <string name="tab_files">ファイル</string>
     <string name="tab_search">検索</string>

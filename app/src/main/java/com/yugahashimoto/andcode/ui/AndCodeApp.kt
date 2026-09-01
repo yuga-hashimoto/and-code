@@ -1020,6 +1020,7 @@ fun AndCodeApp(
                         onSubmitQuestion = chatViewModel::submitQuestion,
                         onCancelQuestion = chatViewModel::cancelQuestion,
                         onDismissQuestion = chatViewModel::dismissQuestion,
+                        onDismissTodoBar = chatViewModel::dismissTodoBar,
                         autoAcceptPermissions = settingsState.autoAcceptPermissions,
                         onToggleAutoAccept = settingsViewModel::setAutoAcceptPermissions,
                         enterToSend = preferences.enterToSend,

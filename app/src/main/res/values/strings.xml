@@ -200,6 +200,7 @@
     <string name="unsupported_abi">Unsupported ABI: %1$s</string>
 
     <string name="todo_timeline_progress">%1$d of %2$d Todo completed</string>
+    <string name="todo_bar_dismiss">Dismiss todo list</string>
 
     <string name="tab_files">Files</string>
     <string name="tab_search">Search</string>

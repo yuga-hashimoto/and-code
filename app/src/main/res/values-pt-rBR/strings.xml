@@ -215,6 +215,7 @@
     <string name="unsupported_abi">ABI não suportada: %1$s</string>
 
     <string name="todo_timeline_progress">%1$d de %2$d Todo concluído</string>
+    <string name="todo_bar_dismiss">Fechar lista de Todo</string>
 
     <string name="tab_files">Arquivos</string>
     <string name="tab_search">Pesquisar</string>

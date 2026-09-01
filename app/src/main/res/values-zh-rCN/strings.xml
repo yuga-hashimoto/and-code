@@ -213,6 +213,7 @@
     <string name="unsupported_abi">不支持的 ABI：%1$s</string>
 
     <string name="todo_timeline_progress">%2$d 个中 %1$d 个 Todo 已完成</string>
+    <string name="todo_bar_dismiss">关闭 Todo 列表</string>
 
     <string name="tab_files">文件</string>
     <string name="tab_search">搜索</string>
