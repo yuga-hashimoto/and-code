@@ -23,6 +23,7 @@ import com.yugahashimoto.andcode.runtime.RuntimeCapabilities
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.RuntimeType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -1166,6 +1167,80 @@ class ChatViewModelTest {
             assertNotNull(viewModel.uiState.value.error)
         }
 
+    /**
+     * When a delete fails, [ChatViewModel.editLastUserMessage] reloads the transcript to reconcile
+     * the optimistic deletion with what the backend actually kept. If that reload itself fails there
+     * is nothing left to reconcile against, so the failure must still reach [ChatUiState.error]
+     * instead of being swallowed and leaving the screen showing an empty chat with no signal that
+     * anything went wrong.
+     */
+    @Test
+    fun `editing the last message surfaces an error when the reload after a failed delete also fails`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(editMessages = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("please fix the bug")
+            advanceUntilIdle()
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+
+            backend.deleteFailure = OpenCodeApiException(409, "session is busy")
+            backend.listMessagesFailure = OpenCodeApiException(500, "server unavailable")
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            // The optimistic deletion stayed in place - there was nothing to reconcile it against -
+            // but the reload failure must still be visible rather than silently swallowed.
+            assertTrue(viewModel.uiState.value.messages.isEmpty())
+            assertNotNull(viewModel.uiState.value.error)
+        }
+
+    /**
+     * `runCatching` around each [com.yugahashimoto.andcode.runtime.RuntimeTarget.deleteMessage] call
+     * must not swallow [CancellationException] - doing so would report a leaving-the-screen
+     * cancellation as an ordinary error and let the loop plow on to the next message instead of
+     * stopping. Deleting two messages ("newest first"), so a second attempt after the first throws
+     * would be observable.
+     */
+    @Test
+    fun `editing the last message lets a cancelled delete stop the loop instead of reporting it as an error`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(editMessages = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("please fix the bug")
+            advanceUntilIdle()
+            backend.events.emit(
+                OpenCodeEvent.MessagePartUpdated(
+                    OpenCodePart(
+                        id = "p1",
+                        sessionId = "s1",
+                        messageId = "m-assistant",
+                        type = "text",
+                        text = "Fixed it",
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+            assertEquals(2, viewModel.uiState.value.messages.size)
+
+            backend.deleteFailure = CancellationException("leaving the screen")
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            // Only the first (newest) delete was attempted; the cancellation stopped the loop
+            // before it reached the second message.
+            assertEquals(1, backend.deleteAttempts)
+            assertNull(viewModel.uiState.value.error)
+        }
+
     @Test
     fun `switching sessions mid-poll does not corrupt the newly opened session`() =
         runTest(dispatcher) {
@@ -1468,7 +1543,13 @@ class ChatViewModelTest {
             directory: String?,
         ): OpenCodeSession = OpenCodeSession(id = "s1", title = title ?: "", directory = directory, time = OpenCodeTime(created = 1))
 
-        override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> = transcript
+        /** When set, [listMessages] throws this instead of returning [transcript] - simulates the reload itself failing. */
+        var listMessagesFailure: Throwable? = null
+
+        override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> {
+            listMessagesFailure?.let { throw it }
+            return transcript
+        }
 
         /** Message ids passed to [deleteMessage], in call order. */
         val deletedMessageIds = mutableListOf<String>()
@@ -1476,10 +1557,14 @@ class ChatViewModelTest {
         /** When set, [deleteMessage] throws this instead of succeeding - simulates the server refusing the delete. */
         var deleteFailure: Throwable? = null
 
+        /** Incremented on every [deleteMessage] invocation, whether it succeeds or throws. */
+        var deleteAttempts = 0
+
         override suspend fun deleteMessage(
             sessionId: String,
             messageId: String,
         ): Boolean {
+            deleteAttempts++
             deleteFailure?.let { throw it }
             deletedMessageIds += messageId
             calls += "delete:$messageId"

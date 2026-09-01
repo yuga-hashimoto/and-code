@@ -942,7 +942,9 @@ class ChatViewModel(
      * settled yet to edit. The removed messages are dropped from [ChatUiState.messages]
      * optimistically so the edit feels instant; a delete call that fails is surfaced through
      * [ChatUiState.error], and the transcript is immediately reloaded from the backend so any
-     * message it refused to delete reappears instead of staying gone on screen.
+     * message it refused to delete reappears instead of staying gone on screen. If that reload
+     * itself fails, the failure is also surfaced through [ChatUiState.error] rather than left
+     * silent — there is nothing left to reconcile the optimistic deletion against.
      *
      * The original text comes back through [ChatUiState.editDraft] rather than a return value, so it
      * reaches the composer the same one-shot way [ChatUiState.partialText] carries dictation in —
@@ -972,15 +974,22 @@ class ChatViewModel(
             toRemove.asReversed().forEach { message ->
                 runCatching { currentBackend.deleteMessage(sessionId, message.id) }
                     .onFailure { error ->
+                        if (error is CancellationException) throw error
                         anyDeleteFailed = true
                         reportError(error)
                     }
             }
             // A refused delete leaves the backend holding messages this screen already dropped
             // optimistically. Reload so the transcript reflects what the backend actually kept
-            // instead of silently lying to the user.
+            // instead of silently lying to the user. If the reload itself fails there is nothing
+            // left to reconcile with, so at least surface that the on-screen transcript may now be
+            // wrong instead of swallowing the failure.
             if (anyDeleteFailed) {
                 runCatching { reloadMessages(currentBackend, sessionId) }
+                    .onFailure { error ->
+                        if (error is CancellationException) throw error
+                        reportError(error)
+                    }
             }
         }
     }
@@ -990,6 +999,8 @@ class ChatViewModel(
      * [ChatUiState.messages], the same merge [openSession] does on its initial load. Used to bring
      * the on-screen transcript back in line with the backend after an optimistic change it turns out
      * the backend did not actually apply.
+     *
+     * Throws if the fetch itself fails; callers decide how to surface that.
      */
     private suspend fun reloadMessages(
         currentBackend: OpenCodeBackend,
