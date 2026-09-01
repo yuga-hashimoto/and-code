@@ -240,6 +240,47 @@ class LocalRuntimeProcessLauncherTest {
         assertEquals(originalContent, outsideTarget.readText())
     }
 
+    @Test
+    fun `one target that cannot be written does not stop the other two from installing`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-target-unwritable")
+
+        // Simulate an agent replacing CLAUDE.md's parent directory with a regular file before
+        // AndCode's install logic runs. manageablePathOrNull still admits the target (it doesn't
+        // exist yet, and canonicalization of a missing leaf under an existing non-directory
+        // succeeds lexically), but mkdirs() on the parent then fails and writeBytes() throws
+        // FileSystemException (an IOException) because ".claude" is not a directory. That must
+        // skip only this target, not the opencode or gemini instruction files.
+        val claudeDir = File(rootfs, "root/.claude")
+        claudeDir.parentFile.mkdirs()
+        claudeDir.writeText("not a directory")
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+        assertTrue("the parent-as-file must be left untouched", claudeDir.isFile)
+        assertEquals("not a directory", claudeDir.readText())
+
+        val sidecar = File(rootfs, "root/.config/and-code/agent-context-written.tsv")
+        val recordedPaths = sidecar.readLines().map { it.substringBefore('\t') }
+        assertTrue(
+            "opencode's hash must be recorded as written",
+            "root/.config/opencode/and-code-context.md" in recordedPaths,
+        )
+        assertTrue(
+            "gemini's hash must be recorded as written",
+            "root/.gemini/GEMINI.md" in recordedPaths,
+        )
+        assertFalse(
+            "the failed CLAUDE.md write must not be recorded as successfully written",
+            "root/.claude/CLAUDE.md" in recordedPaths,
+        )
+    }
+
     private companion object {
         const val AGENT_CONTEXT_FIXTURE =
             "You are running inside and-code (AndCode), a native Android application.\n" +

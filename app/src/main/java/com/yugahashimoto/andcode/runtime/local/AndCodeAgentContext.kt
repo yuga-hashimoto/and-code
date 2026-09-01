@@ -50,17 +50,28 @@ internal fun ensureAndCodeAgentContext(
  * with a symlink that resolves outside `rootfs`. [manageablePathOrNull] guards every read and
  * write below so none of them ever follow such a link off the guest filesystem.
  *
- * Every one of those guarded paths degrades independently rather than aborting the whole install:
+ * This function is best-effort from top to bottom: it must never abort or throw out of runtime
+ * startup, which calls it on every launch (four call sites in `LocalRuntimeInstaller`). Every
+ * filesystem-touching step -- canonicalizing `rootfs` itself, the staging copy, the written-hashes
+ * sidecar, and each of the three instruction files -- is handled independently, and a filesystem
+ * problem on any single one of them is skipped rather than propagated:
+ * - Canonicalizing `rootfs` can itself throw; that falls back to its absolute path rather than
+ *   aborting before any guard below even runs (see the fallback comment at the call site).
  * - The staging copy at [RUNTIME_CONTEXT_PATH] is only a convenience artifact nothing else reads,
- *   so an unmanageable path there is simply skipped.
+ *   so an unmanageable or unwritable path there is simply skipped.
  * - The written-hashes sidecar being unmanageable, unreadable, or unwritable does not stop the
  *   three instruction files below from being (re)installed. An unreadable sidecar is treated as
  *   an empty history: a target that already exists and differs from the current blurb is then
  *   treated as user-edited and left alone, which is the safe direction. A sidecar that can't be
  *   persisted afterwards simply means the write is retried on the next run; the install itself
  *   still succeeds.
- * - Each of the three instruction files is handled independently: an unmanageable path for one
- *   target does not affect the others.
+ * - Each of the three instruction files is handled independently: hashing or writing one target
+ *   can throw (an unreadable file, a parent path replaced with a file, permission errors) without
+ *   affecting the other two, and without recording that target's hash as successfully written.
+ *
+ * The trade-off is that a failed install is silent: there is no signal back to the caller when a
+ * path was skipped, by design, since surfacing or retrying failures is not worth risking runtime
+ * startup over a best-effort convenience file.
  *
  * The blurb's hash is computed directly from [agentContext] (see [sha256Hex]) rather than from
  * the staging file, so installing the instruction files never depends on that staging copy
@@ -70,7 +81,19 @@ internal fun installAndCodeAgentContext(
     rootfs: File,
     agentContext: ByteArray,
 ) {
-    val rootfsCanonical = rootfs.canonicalFile
+    // Best-effort: File.canonicalFile can throw IOException on a filesystem loop or I/O error
+    // around rootfs itself, which must not crash runtime startup before any guard below even
+    // runs. Falling back to absoluteFile only ever makes manageablePathOrNull's rootfs-prefix
+    // check *stricter*, never more permissive: every target path is still canonicalized and
+    // compared against this same value, so if rootfs sits behind a symlink the comparison simply
+    // stops matching and every path is refused as unmanageable, rather than silently widening
+    // what counts as "inside rootfs".
+    val rootfsCanonical =
+        try {
+            rootfs.canonicalFile
+        } catch (e: IOException) {
+            rootfs.absoluteFile
+        }
     val agentContextHash = sha256Hex(agentContext)
 
     // Best-effort: this is only the app's own staging copy of the blurb; nothing below depends
@@ -90,26 +113,37 @@ internal fun installAndCodeAgentContext(
 
     AGENT_CONTEXT_PATHS.forEach { relativePath ->
         val target = manageablePathOrNull(rootfsCanonical, File(rootfs, relativePath)) ?: return@forEach
-        val currentHash = if (target.isFile) RuntimeArchive.sha256(target) else null
-        // Safe to (re)write when there is nothing there yet, when it already holds exactly the
-        // current blurb (a no-op either way), or when it still matches the last content we wrote.
-        // Anything else means the user has put their own content in the file since. When the
-        // sidecar could not be read, writtenHashes is empty, so this only stays safe for the
-        // first two cases -- an existing, differing file is (correctly) left alone.
-        val safeToManage =
-            currentHash == null || currentHash == agentContextHash || currentHash == writtenHashes[relativePath]
-        if (!safeToManage) {
-            // The file no longer matches what we last wrote: the user (or the agent, on their
-            // behalf) has customized it since. Leave their content alone.
-            return@forEach
-        }
-        if (currentHash != agentContextHash) {
-            target.parentFile?.mkdirs()
-            target.writeBytes(agentContext)
-        }
-        if (writtenHashes[relativePath] != agentContextHash) {
-            writtenHashes[relativePath] = agentContextHash
-            hashesChanged = true
+        // Best-effort per target: hashing or writing this one path can still throw (unreadable
+        // file, a parent replaced with a file, permission errors) even though manageablePathOrNull
+        // passed moments ago. That must skip only this target, not abort the other two or runtime
+        // startup, which is what the KDoc promises. If the write below fails partway, currentHash
+        // is left null/stale and writtenHashes is never touched, so this target's hash is not
+        // recorded as successfully written -- a later run will not mistake a failed write for
+        // "still what we wrote".
+        try {
+            val currentHash = if (target.isFile) RuntimeArchive.sha256(target) else null
+            // Safe to (re)write when there is nothing there yet, when it already holds exactly the
+            // current blurb (a no-op either way), or when it still matches the last content we wrote.
+            // Anything else means the user has put their own content in the file since. When the
+            // sidecar could not be read, writtenHashes is empty, so this only stays safe for the
+            // first two cases -- an existing, differing file is (correctly) left alone.
+            val safeToManage =
+                currentHash == null || currentHash == agentContextHash || currentHash == writtenHashes[relativePath]
+            if (!safeToManage) {
+                // The file no longer matches what we last wrote: the user (or the agent, on their
+                // behalf) has customized it since. Leave their content alone.
+                return@forEach
+            }
+            if (currentHash != agentContextHash) {
+                target.parentFile?.mkdirs()
+                target.writeBytes(agentContext)
+            }
+            if (writtenHashes[relativePath] != agentContextHash) {
+                writtenHashes[relativePath] = agentContextHash
+                hashesChanged = true
+            }
+        } catch (e: IOException) {
+            // Skip just this target -- see the comment above.
         }
     }
 
