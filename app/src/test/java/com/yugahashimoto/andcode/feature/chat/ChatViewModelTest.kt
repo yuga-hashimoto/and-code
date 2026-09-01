@@ -1144,6 +1144,37 @@ class ChatViewModelTest {
             assertNull(viewModel.uiState.value.parentSession)
         }
 
+    @Test
+    fun `switching model clears a reasoning-effort variant the new model may not offer`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.selectConfiguration("claude-code", "sonnet", agentId = null)
+            viewModel.selectVariant("high")
+            assertEquals("high", viewModel.uiState.value.selectedVariant)
+
+            viewModel.selectConfiguration("antigravity", "gemini-3.6-flash", agentId = null)
+
+            assertNull(viewModel.uiState.value.selectedVariant)
+        }
+
+    @Test
+    fun `reselecting the same model keeps its chosen reasoning-effort variant`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.selectConfiguration("claude-code", "sonnet", agentId = null)
+            viewModel.selectVariant("high")
+
+            viewModel.selectConfiguration("claude-code", "sonnet", agentId = "build")
+
+            assertEquals("high", viewModel.uiState.value.selectedVariant)
+        }
+
     private fun sessionAssistantMessage(
         sessionId: String,
         messageId: String,

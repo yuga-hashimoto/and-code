@@ -706,10 +706,17 @@ class ChatViewModel(
     ) {
         this.contextLimit = contextLimit
         _uiState.update {
+            val modelChanged = providerId != it.selectedProviderId || modelId != it.selectedModelId
             it.copy(
                 selectedProviderId = providerId,
                 selectedModelId = modelId,
                 selectedAgentId = agentId,
+                // A reasoning-effort variant belongs to the model that offered it, not to the chat
+                // session, so carrying it across a model switch can silently apply an effort the new
+                // model never listed - AntigravityModels.cliArgs in particular reads a leftover
+                // variant straight off whatever provider set it last, for any model whose id has no
+                // effort baked in.
+                selectedVariant = if (modelChanged) null else it.selectedVariant,
             )
         }
     }
