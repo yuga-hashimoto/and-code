@@ -23,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -52,9 +53,15 @@ import com.yugahashimoto.andcode.ui.theme.SyntaxTheme
 import com.yugahashimoto.andcode.ui.theme.syntaxThemeFor
 import kotlinx.coroutines.launch
 
+// The code surface stays dark in every app theme: the syntax palettes are all dark-oriented and
+// an editor that flips to white would need a full light palette set. Everything drawn on it must
+// therefore carry an explicit dark-surface color - unstyled text falls back to onSurface, which
+// is near-black in the light theme and vanished against this background.
 private val CodeBackground = Color(0xFF282C34)
+private val CodeForeground = Color(0xFFDCDFE4)
 private val LineNumberColor = Color(0xFF6B7280)
 private val MatchHighlight = Color(0x99FFD54F)
+private val MatchHighlightForeground = Color(0xFF1A1A1A)
 
 private val TOKEN_REGEX =
     Regex(
@@ -162,6 +169,16 @@ fun CodeViewerScreen(
                             modifier = Modifier.weight(1f),
                             singleLine = true,
                             label = { Text(stringResource(R.string.search_label)) },
+                            colors =
+                                OutlinedTextFieldDefaults.colors(
+                                    focusedTextColor = CodeForeground,
+                                    unfocusedTextColor = CodeForeground,
+                                    cursorColor = CodeForeground,
+                                    focusedLabelColor = LineNumberColor,
+                                    unfocusedLabelColor = LineNumberColor,
+                                    focusedBorderColor = LineNumberColor,
+                                    unfocusedBorderColor = LineNumberColor,
+                                ),
                         )
                         IconButton(
                             onClick = {
@@ -219,6 +236,7 @@ fun CodeViewerScreen(
                         items(lines.size) { index ->
                             Text(
                                 text = highlightLine(lines[index], theme, searchQuery),
+                                color = CodeForeground,
                                 fontSize = 12.sp,
                                 lineHeight = 18.sp,
                                 fontFamily = FontFamily.Monospace,
@@ -256,7 +274,11 @@ private fun highlightLine(
         if (searchQuery.isNotEmpty()) {
             var idx = line.indexOf(searchQuery)
             while (idx >= 0) {
-                addStyle(SpanStyle(background = MatchHighlight), idx, idx + searchQuery.length)
+                addStyle(
+                    SpanStyle(background = MatchHighlight, color = MatchHighlightForeground),
+                    idx,
+                    idx + searchQuery.length,
+                )
                 idx = line.indexOf(searchQuery, idx + searchQuery.length)
             }
         }
