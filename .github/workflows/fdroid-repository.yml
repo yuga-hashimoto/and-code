@@ -1,6 +1,11 @@
 name: Publish F-Droid repository
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'pages/**'
+      - '.github/workflows/fdroid-repository.yml'
   release:
     types: [published]
   workflow_dispatch:
@@ -39,6 +44,20 @@ jobs:
           set -euo pipefail
           mkdir -p fdroid/repo fdroid/metadata
           while IFS= read -r tag; do
+            ready=false
+            for attempt in $(seq 1 30); do
+              has_apk="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+                --json assets --jq '[.assets[].name] | any(endswith("-release.apk"))')"
+              if [ "$has_apk" = true ]; then
+                ready=true
+                break
+              fi
+              sleep 10
+            done
+            if [ "$ready" != true ]; then
+              echo "Timed out waiting for release APK assets: $tag" >&2
+              exit 1
+            fi
             gh release download "$tag" \
               --repo "$GITHUB_REPOSITORY" \
               --pattern '*-release.apk' \
@@ -96,6 +115,8 @@ jobs:
       - name: Prepare Pages site
         run: |
           set -euo pipefail
+          mkdir -p site
+          cp -a pages/. site/
           mkdir -p site/fdroid
           cp -a fdroid/repo site/fdroid/repo
 
