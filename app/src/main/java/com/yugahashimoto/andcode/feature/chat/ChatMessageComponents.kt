@@ -67,7 +67,7 @@ import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.runtime.PermissionResponse
-import com.yugahashimoto.andcode.ui.theme.AndCodeWarning
+import com.yugahashimoto.andcode.ui.theme.LocalThemeColors
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -220,8 +220,9 @@ fun PermissionCard(
     permission: PermissionRequest,
     onPermission: (String, PermissionResponse, Boolean) -> Unit,
 ) {
+    val warningColor = LocalThemeColors.current.warning
     Card(
-        colors = CardDefaults.cardColors(containerColor = AndCodeWarning.copy(alpha = 0.10f)),
+        colors = CardDefaults.cardColors(containerColor = warningColor.copy(alpha = 0.10f)),
         shape = RoundedCornerShape(18.dp),
     ) {
         Column(
@@ -229,7 +230,7 @@ fun PermissionCard(
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Security, contentDescription = stringResource(R.string.cd_permission), tint = AndCodeWarning)
+                Icon(Icons.Default.Security, contentDescription = stringResource(R.string.cd_permission), tint = warningColor)
                 Spacer(Modifier.padding(horizontal = 5.dp))
                 Text(stringResource(R.string.permission_required), fontWeight = FontWeight.SemiBold)
             }

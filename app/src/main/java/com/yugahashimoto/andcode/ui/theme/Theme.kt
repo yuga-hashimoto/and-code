@@ -69,10 +69,25 @@ private fun buildColorScheme(
         onPrimaryContainer = tc.accent,
         secondaryContainer = tc.secondary.copy(alpha = 0.14f),
         onSecondaryContainer = tc.secondary,
+        // The palettes have no dedicated third hue; leaving these undefined let the Material
+        // baseline purple leak through components like the queued chip in every theme.
+        tertiary = tc.secondary,
+        onTertiary = tc.surface0,
+        tertiaryContainer = tc.secondary.copy(alpha = 0.14f),
+        onTertiaryContainer = tc.secondary,
         errorContainer = tc.destructive.copy(alpha = 0.14f),
         onErrorContainer = tc.destructive,
+        surfaceContainerLowest = tc.surface0,
+        surfaceContainerLow = tc.surface1,
+        surfaceContainer = tc.surface1,
+        surfaceContainerHigh = tc.surface2,
+        surfaceContainerHighest = tc.surface3,
+        surfaceBright = tc.surface2,
+        surfaceDim = tc.surface0,
+        outlineVariant = tc.border,
         inverseSurface = tc.surface4,
         inverseOnSurface = tc.foreground,
+        inversePrimary = tc.accentBright,
         scrim = tc.surface0.copy(alpha = 0.6f),
     )
 } else {
@@ -94,10 +109,25 @@ private fun buildColorScheme(
         onPrimaryContainer = tc.accent,
         secondaryContainer = tc.secondary.copy(alpha = 0.14f),
         onSecondaryContainer = tc.secondary,
+        tertiary = tc.secondary,
+        onTertiary = tc.surface0,
+        tertiaryContainer = tc.secondary.copy(alpha = 0.14f),
+        onTertiaryContainer = tc.secondary,
         errorContainer = tc.destructive.copy(alpha = 0.14f),
         onErrorContainer = tc.destructive,
-        inverseSurface = tc.surface4,
-        inverseOnSurface = tc.foreground,
+        surfaceContainerLowest = tc.surface1,
+        surfaceContainerLow = tc.surface1,
+        surfaceContainer = tc.surface1,
+        surfaceContainerHigh = tc.surface2,
+        surfaceContainerHighest = tc.surface3,
+        surfaceBright = tc.surface1,
+        surfaceDim = tc.surface4,
+        outlineVariant = tc.border,
+        // A light theme inverts against its dark foreground, not against another light surface;
+        // tooltips and overlays otherwise rendered as washed-out light gray on light gray.
+        inverseSurface = tc.foreground,
+        inverseOnSurface = tc.surface0,
+        inversePrimary = tc.accent,
         scrim = tc.surface0.copy(alpha = 0.6f),
     )
 }

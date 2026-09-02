@@ -18,6 +18,14 @@ import java.io.File
 object AntigravityGuestSettings {
     private const val RELATIVE_PATH = "root/.gemini/antigravity-cli/settings.json"
 
+    /**
+     * The one-shot `--print` bridge has no channel to answer per-tool review prompts, so
+     * `request-review` makes agy treat every tool call - `read_file`, `list_dir`, shell - as
+     * denied by the user. The session's `--mode` flag is what scopes what the agent may do;
+     * this setting only has to stop the unanswerable prompts.
+     */
+    const val TOOL_PERMISSION = "always-proceed"
+
     private val json = Json { prettyPrint = true }
 
     val content: String =
@@ -28,7 +36,7 @@ object AntigravityGuestSettings {
                     "altScreenMode" to JsonPrimitive("never"),
                     "notifications" to JsonPrimitive(false),
                     "enableTelemetry" to JsonPrimitive(false),
-                    "toolPermission" to JsonPrimitive("request-review"),
+                    "toolPermission" to JsonPrimitive(TOOL_PERMISSION),
                     "trustedWorkspaces" to JsonArray(listOf(JsonPrimitive("/workspace"))),
                 ),
             ),
@@ -48,5 +56,14 @@ object AntigravityGuestSettings {
         }
     }
 
-    private fun isValid(raw: String): Boolean = runCatching { Json.parseToJsonElement(raw) is JsonObject }.getOrDefault(false)
+    /**
+     * Valid means usable by the current build, not merely parseable: installs provisioned before
+     * the tool-permission fix still carry a parseable `request-review` file that denies every tool
+     * call, so the value itself has to be checked for [repair] to ever heal them.
+     */
+    private fun isValid(raw: String): Boolean =
+        runCatching {
+            val parsed = Json.parseToJsonElement(raw)
+            parsed is JsonObject && parsed["toolPermission"]?.let { it is JsonPrimitive && it.content == TOOL_PERMISSION } == true
+        }.getOrDefault(false)
 }

@@ -58,7 +58,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
-import com.yugahashimoto.andcode.ui.theme.AndCodeSuccess
+import com.yugahashimoto.andcode.ui.theme.LocalThemeColors
 
 /**
  * One collapsed line standing in for a whole run of reasoning/tool calls.
@@ -379,7 +379,7 @@ fun ToolStatusChip(status: ToolStatus) {
         when (status) {
             ToolStatus.PENDING -> stringResource(R.string.tool_status_pending) to MaterialTheme.colorScheme.onSurfaceVariant
             ToolStatus.RUNNING -> stringResource(R.string.tool_status_running) to MaterialTheme.colorScheme.primary
-            ToolStatus.COMPLETED -> stringResource(R.string.tool_status_completed) to AndCodeSuccess
+            ToolStatus.COMPLETED -> stringResource(R.string.tool_status_completed) to LocalThemeColors.current.success
             ToolStatus.ERROR -> stringResource(R.string.tool_status_error) to MaterialTheme.colorScheme.error
             ToolStatus.UNKNOWN -> stringResource(R.string.tool_status_pending) to MaterialTheme.colorScheme.onSurfaceVariant
         }

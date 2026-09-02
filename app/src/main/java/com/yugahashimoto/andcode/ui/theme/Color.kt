@@ -211,15 +211,3 @@ val GhosttyTheme =
         statusIdle = Color(0xFF6B7385),
         statusUnread = Color(0xFF4C8DF6),
     )
-
-val AndCodeBackground get() = DarkTheme.surface0
-val AndCodeSurface get() = DarkTheme.surface1
-val AndCodeSurfaceVariant get() = DarkTheme.surface2
-val AndCodePrimary get() = DarkTheme.accent
-val AndCodeSecondary get() = DarkTheme.secondary
-val AndCodeSuccess get() = DarkTheme.success
-val AndCodeWarning get() = DarkTheme.warning
-val AndCodeError get() = DarkTheme.destructive
-val AndCodeTextPrimary get() = DarkTheme.foreground
-val AndCodeTextSecondary get() = DarkTheme.foregroundMuted
-val AndCodeOutline get() = DarkTheme.border

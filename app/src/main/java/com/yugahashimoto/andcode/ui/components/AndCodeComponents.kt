@@ -23,7 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
-import com.yugahashimoto.andcode.ui.theme.AndCodeSuccess
+import com.yugahashimoto.andcode.ui.theme.LocalThemeColors
 
 @Composable
 fun OpenCodeBrand(modifier: Modifier = Modifier) {
@@ -83,7 +83,7 @@ fun StatusChip(
     active: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val color = if (active) AndCodeSuccess else MaterialTheme.colorScheme.onSurfaceVariant
+    val color = if (active) LocalThemeColors.current.success else MaterialTheme.colorScheme.onSurfaceVariant
     Surface(
         modifier = modifier,
         color = color.copy(alpha = 0.14f),
