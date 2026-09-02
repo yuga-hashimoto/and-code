@@ -216,6 +216,7 @@
     <string name="unsupported_abi">Неподдерживаемый ABI: %1$s</string>
 
     <string name="todo_timeline_progress">Выполнено %1$d из %2$d Todo</string>
+    <string name="todo_bar_dismiss">Закрыть список Todo</string>
 
     <string name="tab_files">Файлы</string>
     <string name="tab_search">Поиск</string>

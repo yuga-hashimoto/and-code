@@ -272,6 +272,30 @@ class AssistantActivityGroupTest {
     }
 
     @Test
+    fun `todowrite entries with a reused id get distinct entry ids`() {
+        // Claude Code can reuse a tool_use call id (toolu_…) across retries, so two unrelated
+        // todowrite updates can arrive with the same part id. Each occurrence must still get a
+        // distinct TimelineEntry.Todo id or a bar the user dismissed for the first update would
+        // stay suppressed for the second, unrelated one.
+        val firstTodos = listOf(TodoItem("task 1", "completed", "high"))
+        val secondTodos = listOf(TodoItem("task 2", "in_progress", "medium"))
+        val entries =
+            groupConversationTimeline(
+                listOf(
+                    assistant("m1", tool("t1", "todowrite", todos = firstTodos)),
+                    assistant("m2", tool("t1", "todowrite", todos = secondTodos)),
+                ),
+            )
+
+        assertEquals(2, entries.size)
+        val firstEntry = entries[0] as TimelineEntry.Todo
+        val secondEntry = entries[1] as TimelineEntry.Todo
+        assertEquals("todo:t1", firstEntry.id)
+        assertEquals("todo:t1:1", secondEntry.id)
+        assertTrue(firstEntry.id != secondEntry.id)
+    }
+
+    @Test
     fun `todowrite without todos stays in activity group`() {
         val entries =
             groupConversationTimeline(

@@ -189,6 +189,7 @@ fun ChatHomeScreen(
     onSubmitQuestion: (String) -> Unit,
     onCancelQuestion: (String) -> Unit = {},
     onDismissQuestion: (String) -> Unit = {},
+    onDismissTodoBar: (String) -> Unit = {},
     autoAcceptPermissions: Boolean = false,
     /** False for a runtime that never raises permission prompts, so the auto-accept chip is hidden. */
     supportsPermissions: Boolean = true,
@@ -537,14 +538,20 @@ fun ChatHomeScreen(
 
             SubagentsTrack(subagents = subagents, onSubagentClick = onSubagentClick)
 
+            val latestTodoEntry = timelineEntries.filterIsInstance<TimelineEntry.Todo>().lastOrNull()
             val activeTodos =
-                timelineEntries
-                    .filterIsInstance<TimelineEntry.Todo>()
-                    .lastOrNull()
+                latestTodoEntry
+                    // A file the agent deletes off its own disk, or a task list it never marks
+                    // complete, never sends this app an update - so a manual dismissal, kept keyed
+                    // to this specific update, is the only reliable way to close the bar.
+                    ?.takeIf { it.id != state.dismissedTodoBarId }
                     ?.todos
                     ?.takeIf { list -> list.any { it.status != "completed" } }
-            if (activeTodos != null) {
-                StickyTodoBar(todos = activeTodos)
+            if (activeTodos != null && latestTodoEntry != null) {
+                StickyTodoBar(
+                    todos = activeTodos,
+                    onDismiss = { onDismissTodoBar(latestTodoEntry.id) },
+                )
             }
 
             if (!runtimeNotReady) {
@@ -812,7 +819,10 @@ private fun SubagentSessionBanner(
 }
 
 @Composable
-private fun StickyTodoBar(todos: List<TodoItem>) {
+private fun StickyTodoBar(
+    todos: List<TodoItem>,
+    onDismiss: () -> Unit,
+) {
     var expanded by remember { mutableStateOf(false) }
     val completedCount = todos.count { it.status == "completed" }
     val totalCount = todos.size
@@ -844,6 +854,16 @@ private fun StickyTodoBar(todos: List<TodoItem>) {
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
                 )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(28.dp).testTag("todo-bar-dismiss"),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = stringResource(R.string.todo_bar_dismiss),
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
             }
             Spacer(Modifier.height(4.dp))
             LinearProgressIndicator(

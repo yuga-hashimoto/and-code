@@ -1450,6 +1450,31 @@ class ChatViewModelTest {
             assertEquals("high", viewModel.uiState.value.selectedVariant)
         }
 
+    @Test
+    fun `dismissing the todo bar records the entry so it stays closed`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.dismissTodoBar("todo:t1")
+
+            assertEquals("todo:t1", viewModel.uiState.value.dismissedTodoBarId)
+        }
+
+    @Test
+    fun `starting a new chat clears a dismissed todo bar`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+            viewModel.dismissTodoBar("todo:t1")
+
+            viewModel.newSession()
+
+            assertNull(viewModel.uiState.value.dismissedTodoBarId)
+        }
+
     private fun sessionAssistantMessage(
         sessionId: String,
         messageId: String,

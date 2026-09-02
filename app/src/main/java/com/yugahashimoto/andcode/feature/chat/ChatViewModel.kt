@@ -416,6 +416,14 @@ data class ChatUiState(
     /** Pull requests linked in this chat, newest first, for the badges above the composer. */
     val pullRequests: List<ChatPullRequest> = emptyList(),
     /**
+     * Id of the [TimelineEntry.Todo] the user closed with the sticky bar's dismiss button.
+     * [groupConversationTimeline] gives each `todowrite` update a distinct entry id -- even ones
+     * that reuse a tool part id across a retry -- so the next task list always gets an id
+     * different from this one and reopens the bar instead of staying suppressed for the rest of
+     * the session.
+     */
+    val dismissedTodoBarId: String? = null,
+    /**
      * Set while the running turn has gone quiet for longer than [STALL_THRESHOLD_MS], carrying the
      * best available answer to "is this still working, and if not, why not".
      */
@@ -839,6 +847,7 @@ class ChatViewModel(
                 sessionDirectory = null,
                 isRunning = if (switchingSession) false else it.isRunning,
                 isThinking = if (switchingSession) false else it.isThinking,
+                dismissedTodoBarId = null,
                 error = null,
             )
         }
@@ -926,6 +935,7 @@ class ChatViewModel(
                 isSpeechProcessing = false,
                 partialText = "",
                 imagePreviews = emptyList(),
+                dismissedTodoBarId = null,
                 error = null,
             )
         }
@@ -1689,6 +1699,16 @@ class ChatViewModel(
                 pendingQuestions = state.pendingQuestions.filterNot { it.request.id == questionId },
             )
         }
+    }
+
+    /**
+     * Closes the sticky todo bar for one `todowrite` update. Nothing server-side tracks this — the
+     * agent has no "todo list closed" event, and deleting its scratch file on disk never reaches the
+     * app either — so this is purely a local "stop showing me this" the user can always reach, even
+     * when the agent never reports the list as finished.
+     */
+    fun dismissTodoBar(entryId: String) {
+        _uiState.update { it.copy(dismissedTodoBarId = entryId) }
     }
 
     /**
