@@ -40,6 +40,18 @@ class AntigravitySessionArchiveTest {
         }
     }
 
+    @Test
+    fun `archiving is idempotent`() =
+        runBlocking {
+            val target = target()
+            val session = target.createSession("Archive me twice", "/workspace")
+
+            target.archiveSession(session.id)
+            target.archiveSession(session.id)
+
+            assertEquals(emptyList<String>(), target.listSessions(null).map { it.id })
+        }
+
     /** The flag lives on the persisted record, so the chat stays hidden after an app restart. */
     @Test
     fun `an archive survives a new runtime instance`() {
