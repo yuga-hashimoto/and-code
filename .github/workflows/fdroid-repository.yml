@@ -53,7 +53,7 @@ jobs:
             fi
             for attempt in $(seq 1 "$attempts"); do
               has_apk="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
-                --json assets --jq '[.assets[].name] | any(endswith("-release.apk"))')"
+                --json assets --jq '[.assets[].name] | any(startswith("and-code-") and endswith("-release.apk"))')"
               if [ "$has_apk" = true ]; then
                 ready=true
                 break
@@ -68,7 +68,7 @@ jobs:
             fi
             gh release download "$tag" \
               --repo "$GITHUB_REPOSITORY" \
-              --pattern '*-release.apk' \
+              --pattern 'and-code-*-release.apk' \
               --dir fdroid/repo \
               --clobber
           done < <(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 \
