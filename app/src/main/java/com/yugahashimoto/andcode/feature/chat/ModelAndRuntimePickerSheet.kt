@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.OpenCodeModel
@@ -369,7 +371,30 @@ private fun ModelRow(
             )
         }
         Column(modifier = Modifier.weight(1f)) {
-            Text(model.name, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    model.name,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                // Flags a model whose `variants` map is non-empty, i.e. one that exposes
+                // reasoning-effort variants. The actual control lives in the composer's thinking
+                // chip, which appears under the exact same condition, so this icon is just a
+                // secondary hint for models the chip already surfaces.
+                if (model.variants.isNotEmpty()) {
+                    Icon(
+                        imageVector = Icons.Default.Psychology,
+                        contentDescription = stringResource(R.string.cd_thinking),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+            }
             Text(
                 model.id,
                 style = MaterialTheme.typography.labelSmall,
