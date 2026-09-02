@@ -1,0 +1,141 @@
+name: Publish F-Droid repository
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'pages/**'
+      - '.github/workflows/fdroid-repository.yml'
+      - 'fdroid-repository-metadata.yml'
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install F-Droid server tools
+        run: python -m pip install --disable-pip-version-check fdroidserver
+
+      - name: Download release APKs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WAIT_FOR_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          mkdir -p fdroid/repo fdroid/metadata
+          while IFS= read -r tag; do
+            ready=false
+            attempts=1
+            if [ "$tag" = "$WAIT_FOR_TAG" ]; then
+              attempts=30
+            fi
+            for attempt in $(seq 1 "$attempts"); do
+              has_apk="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+                --json assets --jq '[.assets[].name] | any(endswith("-release.apk"))')"
+              if [ "$has_apk" = true ]; then
+                ready=true
+                break
+              fi
+              if [ "$tag" = "$WAIT_FOR_TAG" ]; then
+                sleep 10
+              fi
+            done
+            if [ "$ready" != true ]; then
+              echo "Skipping release without a signed release APK: $tag"
+              continue
+            fi
+            gh release download "$tag" \
+              --repo "$GITHUB_REPOSITORY" \
+              --pattern '*-release.apk' \
+              --dir fdroid/repo \
+              --clobber
+          done < <(gh release list --repo "$GITHUB_REPOSITORY" --limit 100 \
+            --json tagName,isDraft,isPrerelease \
+            --jq '.[] | select(.isDraft == false and .isPrerelease == false) | .tagName')
+
+      - name: Configure repository signing
+        env:
+          F_DROID_REPO_KEYSTORE_BASE64: ${{ secrets.F_DROID_REPO_KEYSTORE_BASE64 }}
+          F_DROID_REPO_KEYSTORE_PASSWORD: ${{ secrets.F_DROID_REPO_KEYSTORE_PASSWORD }}
+          F_DROID_REPO_KEY_ALIAS: ${{ secrets.F_DROID_REPO_KEY_ALIAS }}
+          F_DROID_REPO_KEY_PASSWORD: ${{ secrets.F_DROID_REPO_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$F_DROID_REPO_KEYSTORE_BASE64"
+          test -n "$F_DROID_REPO_KEYSTORE_PASSWORD"
+          test -n "$F_DROID_REPO_KEY_ALIAS"
+          test -n "$F_DROID_REPO_KEY_PASSWORD"
+          printf '%s' "$F_DROID_REPO_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/fdroid-repo.keystore"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          config = Path("fdroid/config.yml")
+          quote = lambda value: json.dumps(value)
+          config.write_text(
+              "\n".join(
+                  [
+                      "repo_url: https://yuga-hashimoto.github.io/and-code/fdroid/repo",
+                      "repo_name: AndCode F-Droid Repository",
+                      "repo_description: Official AndCode APK repository for F-Droid clients.",
+                      f"keystore: {quote(os.environ['RUNNER_TEMP'] + '/fdroid-repo.keystore')}",
+                      f"keystorepass: {quote(os.environ['F_DROID_REPO_KEYSTORE_PASSWORD'])}",
+                      f"keypass: {quote(os.environ['F_DROID_REPO_KEY_PASSWORD'])}",
+                      f"repo_keyalias: {quote(os.environ['F_DROID_REPO_KEY_ALIAS'])}",
+                      "keydname: CN=AndCode F-Droid Repository",
+                  ]
+              )
+              + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Add repository metadata
+        run: cp fdroid-repository-metadata.yml fdroid/metadata/com.yugahashimoto.andcode.yml
+
+      - name: Generate F-Droid repository index
+        working-directory: fdroid
+        run: fdroid update --create-metadata
+
+      - name: Prepare Pages site
+        run: |
+          set -euo pipefail
+          mkdir -p site
+          cp -a pages/. site/
+          mkdir -p site/fdroid
+          cp -a fdroid/repo site/fdroid/repo
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -1,0 +1,21 @@
+Categories:
+  - Connectivity
+License: MIT
+WebSite: https://github.com/yuga-hashimoto/and-code
+SourceCode: https://github.com/yuga-hashimoto/and-code
+IssueTracker: https://github.com/yuga-hashimoto/and-code/issues
+Changelog: https://github.com/yuga-hashimoto/and-code/releases
+Summary: Run coding agents on Android
+Description: |
+  AndCode is an open-source Android client for coding agents.
+  .
+  It can connect to a remote OpenCode server or run a local Linux
+  environment on the device.
+  .
+  This repository distributes the signed APKs from the official GitHub
+  Releases. It is an independently operated binary repository and is not
+  the official F-Droid repository.
+  .
+  Some optional agent integrations and network services are provided by
+  third parties and have their own terms.
+  .
