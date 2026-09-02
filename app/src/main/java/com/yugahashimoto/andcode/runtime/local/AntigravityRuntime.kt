@@ -37,6 +37,8 @@ data class AntigravitySessionRecord(
      * [AntigravityTarget] a session is still unnamed and its first prompt should name it.
      */
     val title: String? = null,
+    /** Hidden from the drawer without deleting the transcript, like the OpenCode server's archive. */
+    val archived: Boolean = false,
 )
 
 class AntigravityRuntime(
@@ -350,10 +352,27 @@ class AntigravityRuntime(
         }
     }
 
+    /** The drawer's list: every chat that is not archived, optionally narrowed to one workspace. */
     fun listSessions(directory: String?): List<AntigravitySessionRecord> =
         records.values.filter {
-            directory == null || it.workspace == directory
+            !it.archived && (directory == null || it.workspace == directory)
         }
+
+    /** A record by id whether archived or not, so reopening an archived chat still resolves. */
+    fun findSession(sessionId: String): AntigravitySessionRecord? = records[sessionId]
+
+    /** Every chat's workspace, archived ones included: the picker must keep offering folders whose chats were all archived. */
+    fun workspacePaths(): List<String> = records.values.map { it.workspace }.distinct()
+
+    /** Marks a session archived; see [AntigravitySessionRecord.archived]. */
+    fun archive(sessionId: String): AntigravitySessionRecord? {
+        val record = records[sessionId] ?: return null
+        if (record.archived) return record
+        val archived = record.copy(archived = true)
+        records[sessionId] = archived
+        persist()
+        return archived
+    }
 
     fun listMessages(sessionId: String): List<OpenCodeMessage> = messages[sessionId].orEmpty().toList()
 

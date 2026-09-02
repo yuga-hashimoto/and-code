@@ -106,7 +106,7 @@ class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarge
         title: String,
     ): OpenCodeSession {
         runtime.setSessionTitle(sessionId, title)
-        val record = runtime.listSessions(null).firstOrNull { it.appSessionId == sessionId } ?: error("Antigravity session not found")
+        val record = runtime.findSession(sessionId) ?: error("Antigravity session not found")
         return OpenCodeSession(
             record.appSessionId,
             directory = record.workspace,
@@ -118,7 +118,7 @@ class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarge
     /** Same as [ClaudeCodeTarget.listMessages]: names the model for chats held before it was stored. */
     override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> {
         val messages = runtime.listMessages(sessionId)
-        val model = runtime.listSessions(null).firstOrNull { it.appSessionId == sessionId }?.model ?: return messages
+        val model = runtime.findSession(sessionId)?.model ?: return messages
         val reference = OpenCodeModelReference(AntigravityModels.PROVIDER_ID, model)
         return messages.map { message ->
             if (message.info.role == "assistant" && message.info.model == null) {
@@ -147,7 +147,7 @@ class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarge
         sessionId: String,
         request: PromptRequest,
     ) {
-        val record = runtime.listSessions(null).firstOrNull { it.appSessionId == sessionId } ?: error("Antigravity session not found")
+        val record = runtime.findSession(sessionId) ?: error("Antigravity session not found")
         // The CLI does not name its conversations, so every chat would sit in the drawer as
         // "Antigravity" - the same gap ClaudeCodeTarget fills, filled the same way. The prompt stands
         // in at once so the drawer is never left showing the tool's name.
@@ -213,6 +213,23 @@ class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarge
         return runtime.remove(sessionId)
     }
 
+    /**
+     * Hides the chat from the drawer while keeping its transcript - the same semantics the
+     * OpenCode server's archive endpoint gives. The CLI has no archive of its own, so the flag
+     * lives on the session record; without this override the auto-archive settings (and the
+     * drawer's archive action) hit the backend's "unsupported" for every Antigravity chat and
+     * silently did nothing, so stale and over-cap chats piled up forever.
+     */
+    override suspend fun archiveSession(sessionId: String): OpenCodeSession {
+        val record = runtime.archive(sessionId) ?: error("Antigravity session not found")
+        return OpenCodeSession(
+            record.appSessionId,
+            directory = record.workspace,
+            title = record.title ?: DEFAULT_TITLE,
+            time = OpenCodeTime(record.createdAt, record.updatedAt),
+        )
+    }
+
     override suspend fun respondToPermission(
         sessionId: String,
         permissionId: String,
@@ -255,8 +272,8 @@ class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarge
     ): List<OpenCodeSearchMatch> = withContext(kotlinx.coroutines.Dispatchers.IO) { files.search(directory, pattern) }
 
     override suspend fun listWorkspaces(): List<WorkspaceRef> =
-        runtime.listSessions(null).map {
-            WorkspaceRef(it.workspace, it.workspace.substringAfterLast('/').ifBlank { it.workspace }, it.workspace)
+        runtime.workspacePaths().map {
+            WorkspaceRef(it, it.substringAfterLast('/').ifBlank { it }, it)
         }.distinctBy { it.id }
 
     private companion object {
