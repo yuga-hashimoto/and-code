@@ -50,7 +50,12 @@ class LocalRuntimeTarget(
     override val type: RuntimeType = RuntimeType.LOCAL
     override val kind: BackendKind = BackendKind.LOCAL
     override val capabilities =
-        RuntimeCapabilities(permissions = true, providerModelList = true, abortsBeforeInterrupt = true)
+        RuntimeCapabilities(
+            permissions = true,
+            providerModelList = true,
+            abortsBeforeInterrupt = true,
+            editMessages = true,
+        )
 
     private val mutableState = MutableStateFlow(mapStatus(runtimeManager.status()))
     override val state: StateFlow<RuntimeState> = mutableState.asStateFlow()
@@ -140,6 +145,11 @@ class LocalRuntimeTarget(
     override suspend fun session(sessionId: String): OpenCodeSession = backend.session(sessionId)
 
     override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> = backend.listMessages(sessionId)
+
+    override suspend fun deleteMessage(
+        sessionId: String,
+        messageId: String,
+    ): Boolean = backend.deleteMessage(sessionId, messageId)
 
     override suspend fun listProviders(): ProviderCatalog = backend.listProviders()
 

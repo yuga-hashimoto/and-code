@@ -27,4 +27,16 @@ data class RuntimeCapabilities(
      * Aborting first puts the runner back to idle so the prompt starts a run of its own.
      */
     val abortsBeforeInterrupt: Boolean = false,
+    /**
+     * True when the backend can delete a message (and its parts) out of a session's transcript via
+     * [com.yugahashimoto.andcode.runtime.OpenCodeBackend.deleteMessage].
+     *
+     * Only the OpenCode-backed targets (local and remote) support this today: it maps directly to
+     * OpenCode's `DELETE /session/:id/message/:messageId` route, which removes the message without
+     * touching file state. Claude Code and Antigravity are driven as CLI processes with no
+     * equivalent server-side operation, so they leave this false and the chat UI hides the "edit
+     * last message" action rather than fake a local-only edit that would desync from what the
+     * runtime actually ran.
+     */
+    val editMessages: Boolean = false,
 )

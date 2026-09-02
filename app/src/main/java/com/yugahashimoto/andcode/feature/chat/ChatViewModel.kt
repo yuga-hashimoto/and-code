@@ -421,6 +421,13 @@ data class ChatUiState(
      */
     val stall: StallDiagnosis? = null,
     val error: String? = null,
+    /**
+     * Set by [ChatViewModel.editLastUserMessage] to the text of the message it just removed, so the
+     * composer can drop it back into the input for editing. One-shot: the screen clears it with
+     * [ChatViewModel.consumeEditDraft] once it has copied the text into its own input state, the
+     * same handoff [partialText] uses for dictation.
+     */
+    val editDraft: String? = null,
 )
 
 class ChatViewModel(
@@ -922,6 +929,100 @@ class ChatViewModel(
                 error = null,
             )
         }
+    }
+
+    /**
+     * Removes the last user message from the open session — and anything the runtime already
+     * replied with since — so its text can be corrected and resent: the "edit & resend" affordance
+     * other chat UIs offer for undoing what you just sent (see issue #269).
+     *
+     * Only available while the backend can actually delete a message server-side
+     * ([com.yugahashimoto.andcode.runtime.RuntimeCapabilities.editMessages]) and the turn is idle —
+     * OpenCode itself refuses to delete out of a busy session, and a chat mid-turn has nothing
+     * settled yet to edit. The removed messages are dropped from [ChatUiState.messages]
+     * optimistically so the edit feels instant; a delete call that fails is surfaced through
+     * [ChatUiState.error], and the transcript is immediately reloaded from the backend so any
+     * message it refused to delete reappears instead of staying gone on screen. If that reload
+     * itself fails, the failure is also surfaced through [ChatUiState.error] rather than left
+     * silent — there is nothing left to reconcile the optimistic deletion against.
+     *
+     * The original text comes back through [ChatUiState.editDraft] rather than a return value, so it
+     * reaches the composer the same one-shot way [ChatUiState.partialText] carries dictation in —
+     * see [consumeEditDraft].
+     */
+    fun editLastUserMessage() {
+        val currentBackend = backend ?: return
+        val sessionId = _uiState.value.sessionId ?: return
+        if (_uiState.value.isRunning) return
+        if ((currentBackend as? RuntimeTarget)?.capabilities?.editMessages != true) return
+        val messages = _uiState.value.messages
+        val lastUserIndex = messages.indexOfLast { it.isUser }
+        if (lastUserIndex < 0) return
+        val toRemove = messages.subList(lastUserIndex, messages.size).toList()
+        val originalText = messages[lastUserIndex].text
+        val idsToRemove = toRemove.map { it.id }.toSet()
+        _uiState.update {
+            it.copy(
+                messages = it.messages.filterNot { message -> message.id in idsToRemove },
+                editDraft = originalText,
+            )
+        }
+        viewModelScope.launch {
+            var anyDeleteFailed = false
+            // Newest first: if a later delete fails, the ones already gone still leave a clean,
+            // shorter transcript instead of a surviving message stranded ahead of a gap.
+            toRemove.asReversed().forEach { message ->
+                runCatching { currentBackend.deleteMessage(sessionId, message.id) }
+                    .onFailure { error ->
+                        if (error is CancellationException) throw error
+                        anyDeleteFailed = true
+                        reportError(error)
+                    }
+                    .onSuccess { deleted ->
+                        // The server signals real failures as thrown HTTP errors, so a `false`
+                        // body is unlikely in practice - but deleteMessage's return value is
+                        // treated as meaningful elsewhere, so a `false` here should not silently
+                        // look like success either. There is no thrown error to report, so just
+                        // fall into the same reconciliation reload a thrown failure triggers.
+                        if (!deleted) anyDeleteFailed = true
+                    }
+            }
+            // A refused delete leaves the backend holding messages this screen already dropped
+            // optimistically. Reload so the transcript reflects what the backend actually kept
+            // instead of silently lying to the user. If the reload itself fails there is nothing
+            // left to reconcile with, so at least surface that the on-screen transcript may now be
+            // wrong instead of swallowing the failure.
+            if (anyDeleteFailed) {
+                runCatching { reloadMessages(currentBackend, sessionId) }
+                    .onFailure { error ->
+                        if (error is CancellationException) throw error
+                        reportError(error)
+                    }
+            }
+        }
+    }
+
+    /**
+     * Re-fetches [sessionId]'s transcript from the backend and reconciles it into
+     * [ChatUiState.messages], the same merge [openSession] does on its initial load. Used to bring
+     * the on-screen transcript back in line with the backend after an optimistic change it turns out
+     * the backend did not actually apply.
+     *
+     * Throws if the fetch itself fails; callers decide how to surface that.
+     */
+    private suspend fun reloadMessages(
+        currentBackend: OpenCodeBackend,
+        sessionId: String,
+    ) {
+        val messages = currentBackend.listMessages(sessionId)
+        _uiState.update {
+            it.copy(messages = mergeReloadedMessages(messages.mapNotNull(::toUiMessage), it.messages))
+        }
+    }
+
+    /** Clears [ChatUiState.editDraft] once the composer has copied it into its own input state. */
+    fun consumeEditDraft() {
+        _uiState.update { it.copy(editDraft = null) }
     }
 
     fun sendMessage(text: String) {
