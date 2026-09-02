@@ -1,6 +1,7 @@
 package com.yugahashimoto.andcode.runtime.local
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -56,6 +57,281 @@ class LocalRuntimeProcessLauncherTest {
             val context = File(rootfs, relativePath).readText()
             assertEquals(AGENT_CONTEXT_FIXTURE, context)
         }
+    }
+
+    @Test
+    fun `user edits to an instructions file survive a later context refresh`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-user-edit")
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        val claudeMd = File(rootfs, "root/.claude/CLAUDE.md")
+        val customInstructions = "Always use 4-space indentation and write tests first."
+        claudeMd.writeText(customInstructions)
+
+        // A later runtime start (e.g. bundled context text changes, or the same context is
+        // simply re-ensured) must not stomp the user's edit.
+        installAndCodeAgentContext(rootfs, (AGENT_CONTEXT_FIXTURE + "\nExtra default line.").toByteArray())
+
+        assertEquals(customInstructions, claudeMd.readText())
+    }
+
+    @Test
+    fun `untouched instructions files still pick up bundled context updates`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-untouched")
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        val updatedFixture = "$AGENT_CONTEXT_FIXTURE\nExtra default line."
+        installAndCodeAgentContext(rootfs, updatedFixture.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(updatedFixture, File(rootfs, relativePath).readText())
+        }
+    }
+
+    @Test
+    fun `symlinked instructions path outside rootfs is left alone`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-symlink")
+        val outsideTarget = temporaryFolder.newFile("outside-secret.txt")
+        val originalContent = "do not touch"
+        outsideTarget.writeText(originalContent)
+
+        // Simulate an agent (or malicious content it wrote) replacing the CLAUDE.md path with a
+        // symlink pointing outside the rootfs, before AndCode's own copy logic runs.
+        val claudeMd = File(rootfs, "root/.claude/CLAUDE.md")
+        claudeMd.parentFile.mkdirs()
+        java.nio.file.Files.createSymbolicLink(claudeMd.toPath(), outsideTarget.toPath())
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        assertEquals(originalContent, outsideTarget.readText())
+    }
+
+    @Test
+    fun `dangling symlinked instructions path outside rootfs is left alone`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-dangling-symlink")
+        val outsideDir = temporaryFolder.newFolder("outside-dangling")
+        val outsideTarget = File(outsideDir, "missing.txt")
+
+        // Simulate an agent replacing the GEMINI.md path with a symlink pointing outside the
+        // rootfs at a target that does not exist yet. File.canonicalFile can't realpath a
+        // nonexistent final component, so it falls back to the link's own (in-rootfs) path,
+        // which must not be mistaken for "nothing there yet".
+        val geminiMd = File(rootfs, "root/.gemini/GEMINI.md")
+        geminiMd.parentFile.mkdirs()
+        java.nio.file.Files.createSymbolicLink(geminiMd.toPath(), outsideTarget.toPath())
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        assertFalse(outsideTarget.exists())
+    }
+
+    @Test
+    fun `instructions path replaced with a directory does not crash and is left alone`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-directory")
+
+        // Simulate an agent replacing CLAUDE.md with a directory before AndCode's copy logic
+        // runs. isFile is false for a directory, so the old code treated it as "nothing there
+        // yet" and crashed trying to copyTo() over it.
+        val claudeMd = File(rootfs, "root/.claude/CLAUDE.md")
+        claudeMd.mkdirs()
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        assertTrue(claudeMd.isDirectory)
+        assertEquals(
+            AGENT_CONTEXT_FIXTURE,
+            File(rootfs, "root/.gemini/GEMINI.md").readText(),
+        )
+    }
+
+    @Test
+    fun `written-hashes sidecar replaced with a directory does not stop instructions from installing`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-sidecar-directory")
+
+        // Simulate an agent replacing the written-hashes sidecar path with a directory before
+        // AndCode's install logic runs. The sidecar being unmanageable must degrade to "no
+        // recorded hashes" rather than aborting the whole install.
+        val sidecar = File(rootfs, "root/.config/and-code/agent-context-written.tsv")
+        sidecar.mkdirs()
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+        assertTrue(sidecar.isDirectory)
+    }
+
+    @Test
+    fun `written-hashes sidecar replaced with a symlink does not stop instructions from installing`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-sidecar-symlink")
+        val outsideTarget = temporaryFolder.newFile("outside-sidecar.tsv")
+        val originalContent = "do not touch"
+        outsideTarget.writeText(originalContent)
+
+        val sidecar = File(rootfs, "root/.config/and-code/agent-context-written.tsv")
+        sidecar.parentFile.mkdirs()
+        java.nio.file.Files.createSymbolicLink(sidecar.toPath(), outsideTarget.toPath())
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+        assertEquals(originalContent, outsideTarget.readText())
+    }
+
+    @Test
+    fun `staged source path replaced with a directory does not stop instructions from installing`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-source-directory")
+
+        // Simulate an agent replacing the staged source path with a directory. The blurb hash is
+        // computed from the in-memory bytes, and targets are written from those bytes directly,
+        // so installing the instruction files must not depend on the staging copy at all.
+        val source = File(rootfs, "root/.config/and-code/agent-context.md")
+        source.mkdirs()
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+        assertTrue(source.isDirectory)
+    }
+
+    @Test
+    fun `staged source path replaced with a symlink does not stop instructions from installing`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-source-symlink")
+        val outsideTarget = temporaryFolder.newFile("outside-source.md")
+        val originalContent = "do not touch"
+        outsideTarget.writeText(originalContent)
+
+        val source = File(rootfs, "root/.config/and-code/agent-context.md")
+        source.parentFile.mkdirs()
+        java.nio.file.Files.createSymbolicLink(source.toPath(), outsideTarget.toPath())
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+        assertEquals(originalContent, outsideTarget.readText())
+    }
+
+    @Test
+    fun `one target that cannot be written does not stop the other two from installing`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-target-unwritable")
+
+        // Simulate an agent replacing CLAUDE.md's parent directory with a regular file before
+        // AndCode's install logic runs. manageablePathOrNull still admits the target (it doesn't
+        // exist yet, and canonicalization of a missing leaf under an existing non-directory
+        // succeeds lexically), but mkdirs() on the parent then fails and writeBytes() throws
+        // FileSystemException (an IOException) because ".claude" is not a directory. That must
+        // skip only this target, not the opencode or gemini instruction files.
+        val claudeDir = File(rootfs, "root/.claude")
+        claudeDir.parentFile.mkdirs()
+        claudeDir.writeText("not a directory")
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+        assertTrue("the parent-as-file must be left untouched", claudeDir.isFile)
+        assertEquals("not a directory", claudeDir.readText())
+
+        val sidecar = File(rootfs, "root/.config/and-code/agent-context-written.tsv")
+        val recordedPaths = sidecar.readLines().map { it.substringBefore('\t') }
+        assertTrue(
+            "opencode's hash must be recorded as written",
+            "root/.config/opencode/and-code-context.md" in recordedPaths,
+        )
+        assertTrue(
+            "gemini's hash must be recorded as written",
+            "root/.gemini/GEMINI.md" in recordedPaths,
+        )
+        assertFalse(
+            "the failed CLAUDE.md write must not be recorded as successfully written",
+            "root/.claude/CLAUDE.md" in recordedPaths,
+        )
+    }
+
+    @Test
+    fun `an oversized written-hashes sidecar is ignored rather than read into memory`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-huge-sidecar")
+
+        // The sidecar lives in the guest filesystem, so an agent can grow it without bound.
+        // Reading one of those whole would risk an OutOfMemoryError during runtime startup, which
+        // no IOException handler would catch - so anything past the cap is ignored outright and
+        // the install proceeds as if there were no recorded history at all.
+        val sidecar = File(rootfs, "root/.config/and-code/agent-context-written.tsv")
+        sidecar.parentFile.mkdirs()
+        sidecar.writeText("root/.claude/CLAUDE.md\t${"0".repeat(200_000)}\n")
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+    }
+
+    @Test
+    fun `unknown keys in the written-hashes sidecar are not carried over`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-junk-sidecar")
+
+        // Only paths AndCode actually manages are read back, so junk a guest wrote into the
+        // sidecar can neither grow the map nor survive into the next persisted copy.
+        val sidecar = File(rootfs, "root/.config/and-code/agent-context-written.tsv")
+        sidecar.parentFile.mkdirs()
+        sidecar.writeText("root/somewhere/else.md\tdeadbeef\nnot-a-tsv-line\n")
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray())
+
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+        ).forEach { relativePath ->
+            assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
+        }
+        val recordedPaths = sidecar.readLines().map { it.substringBefore('\t') }.toSet()
+        assertEquals(
+            setOf(
+                "root/.config/opencode/and-code-context.md",
+                "root/.claude/CLAUDE.md",
+                "root/.gemini/GEMINI.md",
+            ),
+            recordedPaths,
+        )
     }
 
     private companion object {
