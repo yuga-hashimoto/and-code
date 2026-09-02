@@ -125,6 +125,8 @@ Submitting to the official catalog means opening a merge request against
 Categories:
   - AI Chat
 License: MIT
+RepoType: git
+Repo: https://github.com/yuga-hashimoto/and-code
 SourceCode: https://github.com/yuga-hashimoto/and-code
 IssueTracker: https://github.com/yuga-hashimoto/and-code/issues
 Changelog: https://github.com/yuga-hashimoto/and-code/releases
@@ -138,10 +140,11 @@ Builds:
       - fdroid
     gradleprops:
       - andcode.fdroidBuild=true
-    # google-services/firebase-crashlytics still appear (apply false) in
-    # app/build.gradle.kts for the github flavor; allowlist those known-safe
-    # lines rather than have the scanner flag them.
+    # google-services/firebase-crashlytics still appear (apply false) in both
+    # build.gradle.kts files; allowlist those known-safe lines rather than
+    # have the scanner flag them.
     scanignore:
+      - build.gradle.kts
       - app/build.gradle.kts
 
 AutoUpdateMode: Version
@@ -150,8 +153,23 @@ CurrentVersion: "1.2.16"
 CurrentVersionCode: 55
 ```
 
-This has not been submitted yet — it needs a real F-Droid build server dry run
-(`fdroid build --test`) to confirm the recipe actually compiles before opening
-the merge request, and a decision on whether any remaining dependency (e.g.
-the Vosk speech model, downloaded on first use rather than bundled) needs an
-`AntiFeature` tag.
+This recipe was dry-run locally with `fdroid build --test` (pip-installed
+`fdroidserver`, no Docker/buildserver VM available) against this repo's actual
+`fdroid` flavor and confirmed to work end-to-end: clone at a pinned commit,
+`clean`, source scan, and `assembleFdroidRelease` all succeeded, producing an
+APK whose embedded versionName/versionCode matched the metadata. Both
+`Repo`/`RepoType` and the two-line `scanignore` above were only discovered as
+necessary through that dry run (without them, the build never even reaches the
+Gradle step). It has not been submitted as a merge request yet — remaining
+before that:
+
+- decide whether any remaining dependency (e.g. the Vosk speech model,
+  downloaded on first use from alphacephei.com rather than bundled — the
+  models themselves are Apache-2.0, so this is likely not an `AntiFeature`,
+  but F-Droid reviewers may still ask about it) needs an `AntiFeature` tag
+- decide how to describe the GitHub OAuth sign-in dependency, since GitHub
+  itself is a non-free network service (used for optional sign-in, not core
+  functionality, so likely not `NonFreeNet`, but again a reviewer question)
+- a real dry run against F-Droid's actual buildserver (`fdroid build --test
+  --server`), which needs the Debian/Docker buildserver image this sandbox
+  does not have
