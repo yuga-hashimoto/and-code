@@ -10,6 +10,7 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.long
 import okhttp3.Credentials
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
@@ -68,6 +69,40 @@ class OpenCodeApiClientTest {
             val createRequest = server.takeRequest()
             assertEquals("/session?directory=%2Frepo%20with%20space", createRequest.path)
             assertEquals("New", Json.parseToJsonElement(createRequest.body.readUtf8()).jsonObject["title"]!!.jsonPrimitive.content)
+        }
+
+    @Test
+    fun `session list hides archived sessions`() =
+        runBlocking {
+            server.enqueue(
+                MockResponse().setBody(
+                    """[{"id":"s1","title":"Active","time":{"created":1,"updated":2}},""" +
+                        """{"id":"s2","title":"Archived","time":{"created":3,"updated":4,"archived":5}}]""",
+                ),
+            )
+            val client = client()
+
+            val sessions = client.sessions()
+
+            assertEquals(listOf("s1"), sessions.map { it.id })
+        }
+
+    @Test
+    fun `archiving marks time archived instead of the ignored archive flag`() =
+        runBlocking {
+            server.enqueue(MockResponse().setBody("""{"id":"s1","title":"Old","time":{"created":1,"updated":2,"archived":9}}"""))
+            val client = client()
+
+            val archived = client.archiveSession("s1")
+
+            assertEquals(9L, archived.time.archived)
+            val request = server.takeRequest()
+            assertEquals("/session/s1", request.path)
+            assertEquals("PATCH", request.method)
+            val body = Json.parseToJsonElement(request.body.readUtf8()).jsonObject
+            val archivedAt = body["time"]!!.jsonObject["archived"]!!.jsonPrimitive.long
+            assertTrue("archived timestamp should be now-ish", archivedAt > 0)
+            assertTrue("the bare archive flag the server ignores must be gone", body["archive"] == null)
         }
 
     @Test

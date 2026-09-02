@@ -58,7 +58,13 @@ class OpenCodeApiClient(
 
     suspend fun health(): OpenCodeHealth = get("global/health")
 
-    suspend fun sessions(directory: String? = null): List<OpenCodeSession> = getList("session", query("directory" to directory))
+    /**
+     * Active (non-archived) sessions. The server keeps archived sessions in `GET /session`
+     * forever — its only archive marker is `time.archived` on each entry — so the filter lives
+     * here; every chat list the app shows is fed from this one method.
+     */
+    suspend fun sessions(directory: String? = null): List<OpenCodeSession> =
+        getList<OpenCodeSession>("session", query("directory" to directory)).filter { it.time.archived == null }
 
     suspend fun session(sessionId: String): OpenCodeSession = get("session/${encodePath(sessionId)}")
 
@@ -324,11 +330,20 @@ class OpenCodeApiClient(
             query("directory" to directory),
         )
 
+    /**
+     * Archives a session: `PATCH /session/{id}` takes `{"time": {"archived": <epoch ms>}}` per
+     * the server's own schema. A bare `{"archive": true}` used to be sent here — the server
+     * silently ignores that unknown key, so the call returned 200, archived nothing, and the
+     * auto-archive settings never moved a single OpenCode chat out of the drawer.
+     */
     suspend fun archiveSession(
         sessionId: String,
         directory: String? = null,
     ): OpenCodeSession {
-        val body = buildJsonObject { put("archive", true) }
+        val body =
+            buildJsonObject {
+                put("time", buildJsonObject { put("archived", System.currentTimeMillis()) })
+            }
         return patch(
             "session/${encodePath(sessionId)}",
             body,
