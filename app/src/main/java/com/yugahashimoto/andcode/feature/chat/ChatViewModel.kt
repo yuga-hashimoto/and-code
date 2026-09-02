@@ -479,9 +479,6 @@ class ChatViewModel(
     private val _sendBehavior = MutableStateFlow("interrupt")
     val sendBehavior: StateFlow<String> = _sendBehavior.asStateFlow()
 
-    private val _autoExpandReasoning = MutableStateFlow(false)
-    val autoExpandReasoning: StateFlow<Boolean> = _autoExpandReasoning.asStateFlow()
-
     private val _workspaceTitleSource = MutableStateFlow("title")
     val workspaceTitleSource: StateFlow<String> = _workspaceTitleSource.asStateFlow()
 
@@ -734,10 +731,6 @@ class ChatViewModel(
 
     fun setSendBehavior(behavior: String) {
         _sendBehavior.value = behavior
-    }
-
-    fun setAutoExpandReasoning(enabled: Boolean) {
-        _autoExpandReasoning.value = enabled
     }
 
     fun setWorkspaceTitleSource(source: String) {

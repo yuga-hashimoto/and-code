@@ -195,6 +195,8 @@ fun ChatHomeScreen(
     onToggleAutoAccept: (Boolean) -> Unit = {},
     sendBehavior: String = "interrupt",
     enterToSend: Boolean = false,
+    /** Whether reasoning/thinking cards should start expanded when the activity sheet opens. */
+    autoExpandReasoning: Boolean = false,
     onSendMessage: (String) -> Unit,
     /** False for a runtime that cannot delete a message server-side, so "Edit & resend" is hidden. */
     canEditMessages: Boolean = false,
@@ -697,7 +699,11 @@ fun ChatHomeScreen(
     activityGroupId?.let { groupId ->
         val parts = findActivityParts(state.messages, groupId)
         if (parts.isNotEmpty()) {
-            AssistantActivitySheet(parts = parts, onDismiss = { activityGroupId = null })
+            AssistantActivitySheet(
+                parts = parts,
+                autoExpandReasoning = autoExpandReasoning,
+                onDismiss = { activityGroupId = null },
+            )
         }
     }
 
