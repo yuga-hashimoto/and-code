@@ -13,6 +13,9 @@ android {
         targetSdk = 35
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // :app now has a "distribution" flavor dimension (github/fdroid); baseline profiles are
+        // only generated against the github flavor.
+        missingDimensionStrategy("distribution", "github")
     }
 
     buildTypes {

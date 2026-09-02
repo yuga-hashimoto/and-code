@@ -214,20 +214,20 @@ Restart the desktop app, then discover it from the Android app via **LAN search*
 Requirements: JDK 17, Android SDK, Python 3, network access (first build only)
 
 ```bash
-./gradlew detekt spotlessCheck :app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease
+./gradlew detekt spotlessCheck :app:lintGithubDebug :app:testGithubDebugUnitTest :app:assembleGithubDebug :app:assembleGithubRelease
 ```
 
 Output APKs:
 
 ```text
-app/build/outputs/apk/debug/app-debug.apk
-app/build/outputs/apk/release/app-release-unsigned.apk
+app/build/outputs/apk/github/debug/app-github-debug.apk
+app/build/outputs/apk/github/release/app-github-release-unsigned.apk
 ```
 
 Install to device:
 
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/github/debug/app-github-debug.apk
 ```
 
 ## Documentation

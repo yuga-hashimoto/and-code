@@ -61,7 +61,7 @@ jobs:
           key: and-code-runtime-${{ runner.os }}-${{ hashFiles('runtime_tools/termux_assets.lock.json', 'runtime_tools/termux_assets.py', 'scripts/prepare_android_runtime_*.py') }}
 
       - name: Lint
-        run: ./gradlew :app:lintDebug
+        run: ./gradlew :app:lintGithubDebug
 
   test-and-build:
     runs-on: ubuntu-latest
@@ -118,7 +118,7 @@ jobs:
         # must not be implied by this compile-only job.
         env:
           GITHUB_CLIENT_ID: ${{ vars.AND_CODE_GITHUB_CLIENT_ID }}
-        run: ./gradlew :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest
+        run: ./gradlew :app:testGithubDebugUnitTest :app:assembleGithubDebug :app:assembleGithubDebugAndroidTest
 
       # assembleRelease runs R8 with minification and resource shrinking, which is the single
       # most expensive task in this workflow. The published artifact is built by release.yml,
@@ -128,13 +128,13 @@ jobs:
         if: github.event_name == 'push'
         env:
           GITHUB_CLIENT_ID: ${{ vars.AND_CODE_GITHUB_CLIENT_ID }}
-        run: ./gradlew :app:assembleRelease
+        run: ./gradlew :app:assembleGithubRelease
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: and-code-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: app/build/outputs/apk/github/debug/app-github-debug.apk
           if-no-files-found: error
 
       - name: Upload unsigned release APK
@@ -142,5 +142,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: and-code-release-unsigned
-          path: app/build/outputs/apk/release/app-release-unsigned.apk
+          path: app/build/outputs/apk/github/release/app-github-release-unsigned.apk
           if-no-files-found: error
