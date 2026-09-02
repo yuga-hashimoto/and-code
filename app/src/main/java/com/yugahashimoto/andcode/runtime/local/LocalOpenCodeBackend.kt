@@ -92,6 +92,11 @@ class LocalOpenCodeBackend(
 
     override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> = delegate().listMessages(sessionId)
 
+    override suspend fun deleteMessage(
+        sessionId: String,
+        messageId: String,
+    ): Boolean = delegate().deleteMessage(sessionId, messageId)
+
     override suspend fun listProviders(): ProviderCatalog = delegate().listProviders()
 
     override suspend fun listAgents(): List<OpenCodeAgent> = delegate().listAgents()

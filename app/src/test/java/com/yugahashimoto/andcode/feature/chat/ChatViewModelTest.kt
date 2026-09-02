@@ -1,6 +1,7 @@
 package com.yugahashimoto.andcode.feature.chat
 
 import com.yugahashimoto.andcode.core.api.OpenCodeAgent
+import com.yugahashimoto.andcode.core.api.OpenCodeApiException
 import com.yugahashimoto.andcode.core.api.OpenCodeCommand
 import com.yugahashimoto.andcode.core.api.OpenCodeEvent
 import com.yugahashimoto.andcode.core.api.OpenCodeHealth
@@ -22,6 +23,7 @@ import com.yugahashimoto.andcode.runtime.RuntimeCapabilities
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.RuntimeType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -41,6 +43,7 @@ import kotlinx.serialization.json.buildJsonObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -1020,6 +1023,278 @@ class ChatViewModelTest {
             assertEquals(listOf("s1"), aborted)
         }
 
+    /**
+     * The "edit & resend" affordance (issue #269) only exists for backends that can actually delete
+     * a message server-side. Without [RuntimeCapabilities.editMessages] it must be a complete no-op:
+     * nothing removed locally, nothing sent to the backend, and no draft handed to the composer.
+     */
+    @Test
+    fun `editing the last message does nothing when the runtime cannot delete messages`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities())
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("first")
+            advanceUntilIdle()
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            assertEquals(1, viewModel.uiState.value.messages.size)
+            assertNull(viewModel.uiState.value.editDraft)
+            assertTrue(backend.deletedMessageIds.isEmpty())
+        }
+
+    /** A turn still in flight has nothing settled to edit, and OpenCode itself refuses to delete out of a busy session. */
+    @Test
+    fun `editing the last message does nothing while a turn is running`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(editMessages = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("first")
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isRunning)
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            assertEquals(1, viewModel.uiState.value.messages.size)
+            assertNull(viewModel.uiState.value.editDraft)
+            assertTrue(backend.deletedMessageIds.isEmpty())
+        }
+
+    /**
+     * The common case: a finished turn's user message and its assistant reply are both deleted
+     * server-side and dropped from the transcript, and the original text comes back through
+     * [ChatUiState.editDraft] for the composer to pick up - see
+     * [com.yugahashimoto.andcode.feature.chat.ChatViewModel.consumeEditDraft].
+     */
+    @Test
+    fun `editing the last message removes it and its reply, then hands back the text to edit`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(editMessages = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("please fix the bug")
+            advanceUntilIdle()
+            backend.events.emit(
+                OpenCodeEvent.MessagePartUpdated(
+                    OpenCodePart(
+                        id = "p1",
+                        sessionId = "s1",
+                        messageId = "m-assistant",
+                        type = "text",
+                        text = "Fixed it",
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+
+            val beforeEdit = viewModel.uiState.value.messages
+            assertEquals(2, beforeEdit.size)
+            val userMessageId = beforeEdit.first { it.isUser }.id
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.messages.isEmpty())
+            assertEquals("please fix the bug", viewModel.uiState.value.editDraft)
+            // Newest first, so the assistant reply is deleted before the user message it replied to.
+            assertEquals(listOf("m-assistant", userMessageId), backend.deletedMessageIds)
+
+            viewModel.consumeEditDraft()
+            assertNull(viewModel.uiState.value.editDraft)
+        }
+
+    /**
+     * A refused delete (e.g. OpenCode's `SessionBusyError`) leaves the backend still holding
+     * whatever it declined to remove. The messages were already dropped from the screen
+     * optimistically, so a failure must reload the transcript from the backend instead of leaving
+     * the screen showing an empty chat the server never actually agreed to.
+     */
+    @Test
+    fun `editing the last message restores the transcript when the delete fails`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(editMessages = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("please fix the bug")
+            advanceUntilIdle()
+            backend.events.emit(
+                OpenCodeEvent.MessagePartUpdated(
+                    OpenCodePart(
+                        id = "p1",
+                        sessionId = "s1",
+                        messageId = "m-assistant",
+                        type = "text",
+                        text = "Fixed it",
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+
+            val beforeEdit = viewModel.uiState.value.messages
+            assertEquals(2, beforeEdit.size)
+            val userMessageId = beforeEdit.first { it.isUser }.id
+
+            // The server still has both messages - the delete below never actually applies to them.
+            backend.transcript =
+                listOf(
+                    sessionUserMessage("s1", userMessageId, "please fix the bug", created = 1),
+                    sessionAssistantMessage("s1", "m-assistant", "Fixed it"),
+                )
+            backend.deleteFailure = OpenCodeApiException(409, "session is busy")
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("please fix the bug", "Fixed it"),
+                viewModel.uiState.value.messages.map { it.text },
+            )
+            assertEquals("please fix the bug", viewModel.uiState.value.editDraft)
+            assertNotNull(viewModel.uiState.value.error)
+        }
+
+    /**
+     * OpenCode signals a refused delete as a thrown HTTP error, so a `false` return from
+     * [com.yugahashimoto.andcode.runtime.RuntimeTarget.deleteMessage] is unlikely in practice - but
+     * that return value is treated as meaningful elsewhere (e.g. provider auth), so
+     * [ChatViewModel.editLastUserMessage] must not treat it as success either. It should still
+     * trigger the same reconciliation reload a thrown failure does.
+     */
+    @Test
+    fun `editing the last message restores the transcript when a delete reports false`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(editMessages = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("please fix the bug")
+            advanceUntilIdle()
+            backend.events.emit(
+                OpenCodeEvent.MessagePartUpdated(
+                    OpenCodePart(
+                        id = "p1",
+                        sessionId = "s1",
+                        messageId = "m-assistant",
+                        type = "text",
+                        text = "Fixed it",
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+
+            val beforeEdit = viewModel.uiState.value.messages
+            assertEquals(2, beforeEdit.size)
+            val userMessageId = beforeEdit.first { it.isUser }.id
+
+            // The server still has both messages - the delete below reports `false` without ever
+            // actually applying to them.
+            backend.transcript =
+                listOf(
+                    sessionUserMessage("s1", userMessageId, "please fix the bug", created = 1),
+                    sessionAssistantMessage("s1", "m-assistant", "Fixed it"),
+                )
+            backend.deleteResult = false
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            assertEquals(
+                listOf("please fix the bug", "Fixed it"),
+                viewModel.uiState.value.messages.map { it.text },
+            )
+            assertEquals("please fix the bug", viewModel.uiState.value.editDraft)
+        }
+
+    /**
+     * When a delete fails, [ChatViewModel.editLastUserMessage] reloads the transcript to reconcile
+     * the optimistic deletion with what the backend actually kept. If that reload itself fails there
+     * is nothing left to reconcile against, so the failure must still reach [ChatUiState.error]
+     * instead of being swallowed and leaving the screen showing an empty chat with no signal that
+     * anything went wrong.
+     */
+    @Test
+    fun `editing the last message surfaces an error when the reload after a failed delete also fails`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(editMessages = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("please fix the bug")
+            advanceUntilIdle()
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+
+            backend.deleteFailure = OpenCodeApiException(409, "session is busy")
+            backend.listMessagesFailure = OpenCodeApiException(500, "server unavailable")
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            // The optimistic deletion stayed in place - there was nothing to reconcile it against -
+            // but the reload failure must still be visible rather than silently swallowed.
+            assertTrue(viewModel.uiState.value.messages.isEmpty())
+            assertNotNull(viewModel.uiState.value.error)
+        }
+
+    /**
+     * `runCatching` around each [com.yugahashimoto.andcode.runtime.RuntimeTarget.deleteMessage] call
+     * must not swallow [CancellationException] - doing so would report a leaving-the-screen
+     * cancellation as an ordinary error and let the loop plow on to the next message instead of
+     * stopping. Deleting two messages ("newest first"), so a second attempt after the first throws
+     * would be observable.
+     */
+    @Test
+    fun `editing the last message lets a cancelled delete stop the loop instead of reporting it as an error`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(editMessages = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("please fix the bug")
+            advanceUntilIdle()
+            backend.events.emit(
+                OpenCodeEvent.MessagePartUpdated(
+                    OpenCodePart(
+                        id = "p1",
+                        sessionId = "s1",
+                        messageId = "m-assistant",
+                        type = "text",
+                        text = "Fixed it",
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+            assertEquals(2, viewModel.uiState.value.messages.size)
+
+            backend.deleteFailure = CancellationException("leaving the screen")
+
+            viewModel.editLastUserMessage()
+            advanceUntilIdle()
+
+            // Only the first (newest) delete was attempted; the cancellation stopped the loop
+            // before it reached the second message.
+            assertEquals(1, backend.deleteAttempts)
+            assertNull(viewModel.uiState.value.error)
+        }
+
     @Test
     fun `switching sessions mid-poll does not corrupt the newly opened session`() =
         runTest(dispatcher) {
@@ -1142,6 +1417,37 @@ class ChatViewModelTest {
 
             assertNull(viewModel.uiState.value.sessionId)
             assertNull(viewModel.uiState.value.parentSession)
+        }
+
+    @Test
+    fun `switching model clears a reasoning-effort variant the new model may not offer`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.selectConfiguration("claude-code", "sonnet", agentId = null)
+            viewModel.selectVariant("high")
+            assertEquals("high", viewModel.uiState.value.selectedVariant)
+
+            viewModel.selectConfiguration("antigravity", "gemini-3.6-flash", agentId = null)
+
+            assertNull(viewModel.uiState.value.selectedVariant)
+        }
+
+    @Test
+    fun `reselecting the same model keeps its chosen reasoning-effort variant`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.selectConfiguration("claude-code", "sonnet", agentId = null)
+            viewModel.selectVariant("high")
+
+            viewModel.selectConfiguration("claude-code", "sonnet", agentId = "build")
+
+            assertEquals("high", viewModel.uiState.value.selectedVariant)
         }
 
     @Test
@@ -1347,7 +1653,36 @@ class ChatViewModelTest {
             directory: String?,
         ): OpenCodeSession = OpenCodeSession(id = "s1", title = title ?: "", directory = directory, time = OpenCodeTime(created = 1))
 
-        override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> = transcript
+        /** When set, [listMessages] throws this instead of returning [transcript] - simulates the reload itself failing. */
+        var listMessagesFailure: Throwable? = null
+
+        override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> {
+            listMessagesFailure?.let { throw it }
+            return transcript
+        }
+
+        /** Message ids passed to [deleteMessage], in call order. */
+        val deletedMessageIds = mutableListOf<String>()
+
+        /** When set, [deleteMessage] throws this instead of succeeding - simulates the server refusing the delete. */
+        var deleteFailure: Throwable? = null
+
+        /** Incremented on every [deleteMessage] invocation, whether it succeeds or throws. */
+        var deleteAttempts = 0
+
+        /** What [deleteMessage] returns when it doesn't throw - simulates the server reporting `false`. */
+        var deleteResult = true
+
+        override suspend fun deleteMessage(
+            sessionId: String,
+            messageId: String,
+        ): Boolean {
+            deleteAttempts++
+            deleteFailure?.let { throw it }
+            deletedMessageIds += messageId
+            calls += "delete:$messageId"
+            return deleteResult
+        }
 
         override suspend fun listProviders(): ProviderCatalog = ProviderCatalog()
 

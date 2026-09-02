@@ -805,6 +805,7 @@
     <string name="side_panel_files_desc">File explorer</string>
     <string name="action_copy">Copy</string>
     <string name="action_copy_markdown">Copy as Markdown</string>
+    <string name="action_edit_message">Edit &amp; resend</string>
     <string name="attach_file">File</string>
     <string name="attach_camera">Camera</string>
     <string name="attach_gallery">Gallery</string>

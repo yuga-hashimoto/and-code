@@ -43,7 +43,12 @@ class RemoteRuntimeTarget(
     override val type: RuntimeType = RuntimeType.REMOTE
     override val kind: BackendKind = BackendKind.REMOTE
     override val capabilities =
-        RuntimeCapabilities(permissions = true, providerModelList = true, abortsBeforeInterrupt = true)
+        RuntimeCapabilities(
+            permissions = true,
+            providerModelList = true,
+            abortsBeforeInterrupt = true,
+            editMessages = true,
+        )
 
     private val mutableState = MutableStateFlow<RuntimeState>(RuntimeState.Disconnected)
     override val state: StateFlow<RuntimeState> = mutableState.asStateFlow()
@@ -109,6 +114,11 @@ class RemoteRuntimeTarget(
     override suspend fun session(sessionId: String): OpenCodeSession = backend.session(sessionId)
 
     override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> = backend.listMessages(sessionId)
+
+    override suspend fun deleteMessage(
+        sessionId: String,
+        messageId: String,
+    ): Boolean = backend.deleteMessage(sessionId, messageId)
 
     override suspend fun listProviders(): ProviderCatalog = backend.listProviders()
 
