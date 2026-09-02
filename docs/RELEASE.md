@@ -54,7 +54,7 @@ apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk
 ## F-Droid-compatible binary repository
 
 The repository also has a `Publish F-Droid repository` workflow. It publishes
-the signed APKs from GitHub Releases as a private F-Droid binary repository on
+the signed APKs from GitHub Releases as a self-hosted F-Droid binary repository on
 GitHub Pages. This is not an application submission to the official F-Droid
 repository and does not require an F-Droiddata review.
 
@@ -73,7 +73,7 @@ keytool -genkeypair -v \
   -keystore fdroid-repo.keystore \
   -alias and-code-fdroid \
   -keyalg RSA -keysize 4096 -validity 10000
-base64 -w 0 fdroid-repo.keystore
+base64 fdroid-repo.keystore | tr -d '\n'
 ```
 
 Put the final command's output in `F_DROID_REPO_KEYSTORE_BASE64`. The other
