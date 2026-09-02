@@ -83,6 +83,21 @@ class ClaudeCodeInstallerTest {
     }
 
     @Test
+    fun `failureMessage carries the network retry hint before the log dump`() {
+        // Issue #290: the raw apk summary reads like a broken build when it is usually just a
+        // timed-out download, and a hint buried under the log tail is never read.
+        val log =
+            File.createTempFile("claude-install-hint", ".log").apply {
+                deleteOnExit()
+                writeText("1 error; 1435.7 MiB in 257 packages\n")
+            }
+        val message = ClaudeCodeInstaller.failureMessage("installation", 1, log)
+        val lines = message.lineSequence().toList()
+        assertTrue(lines[1].contains(PACKAGE_INSTALL_RETRY_HINT))
+        assertTrue(lines.indexOfFirst { it.contains("--- log tail ---") } > 1)
+    }
+
+    @Test
     fun `assembled scripts abort on the first failure and end with the package work`() {
         listOf(ClaudeCodeInstaller.INSTALL_SCRIPT, ClaudeCodeInstaller.UPDATE_SCRIPT).forEach { script ->
             assertEquals("set -e", script.lineSequence().first())

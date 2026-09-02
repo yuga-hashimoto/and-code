@@ -329,7 +329,7 @@ object ClaudeCodeInstaller {
         if (!process.waitFor(timeoutMinutes, TimeUnit.MINUTES)) {
             process.destroyForcibly()
             process.waitFor(5, TimeUnit.SECONDS)
-            error("Claude Code package operation timed out after $timeoutMinutes minutes")
+            error("Claude Code package operation timed out after $timeoutMinutes minutes. $PACKAGE_INSTALL_RETRY_HINT")
         }
         return process.exitValue()
     }
@@ -378,6 +378,11 @@ object ClaudeCodeInstaller {
             append(exitCode)
             append("): ")
             append(primary)
+            // On its own line right after the primary error: the errors block and the log head and
+            // tail that follow run to thousands of characters, and a hint buried under them is
+            // never read (issue #290).
+            append('\n')
+            append(PACKAGE_INSTALL_RETRY_HINT)
             if (errors.isNotBlank()) {
                 append('\n')
                 append(errors)
