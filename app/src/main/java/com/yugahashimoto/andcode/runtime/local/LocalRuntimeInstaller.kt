@@ -406,10 +406,13 @@ class LocalRuntimeInstaller(
         val completed = process.waitFor(15, java.util.concurrent.TimeUnit.MINUTES)
         if (!completed) {
             process.destroyForcibly()
-            error("Development tool installation timed out")
+            error("Development tool installation timed out. $PACKAGE_INSTALL_RETRY_HINT")
         }
         require(process.exitValue() == 0) {
-            "Unable to install Git and development tools: ${installLog.readText().takeLast(4000)}"
+            // The hint sits between the headline and the raw log, or a 4000-character tail scrolls
+            // it off the screen the error is read on.
+            "Unable to install Git and development tools. $PACKAGE_INSTALL_RETRY_HINT\n\n" +
+                "Last log lines:\n${installLog.readText().takeLast(4000)}"
         }
     }
 

@@ -166,10 +166,13 @@ class DebianRootfsInstaller(
         val completed = process.waitFor(10, java.util.concurrent.TimeUnit.MINUTES)
         if (!completed) {
             process.destroyForcibly()
-            error("Debian development tool installation timed out")
+            error("Debian development tool installation timed out. $PACKAGE_INSTALL_RETRY_HINT")
         }
         require(process.exitValue() == 0) {
-            "Unable to install Debian development tools: ${installLog.readText().takeLast(4000)}"
+            // Same shape as LocalRuntimeInstaller: hint before the log tail, which is the only part
+            // long enough to push it out of view.
+            "Unable to install Debian development tools. $PACKAGE_INSTALL_RETRY_HINT\n\n" +
+                "Last log lines:\n${installLog.readText().takeLast(4000)}"
         }
         installGitHubCli(rootfs, suite, prootTmp)
     }
