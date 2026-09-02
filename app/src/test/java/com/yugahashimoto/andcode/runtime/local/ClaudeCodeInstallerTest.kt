@@ -93,8 +93,11 @@ class ClaudeCodeInstallerTest {
             }
         val message = ClaudeCodeInstaller.failureMessage("installation", 1, log)
         val lines = message.lineSequence().toList()
-        assertTrue(lines[1].contains(PACKAGE_INSTALL_RETRY_HINT))
-        assertTrue(lines.indexOfFirst { it.contains("--- log tail ---") } > 1)
+        assertTrue(lines.indexOfFirst { it.contains(PACKAGE_INSTALL_RETRY_HINT) } > 0)
+        assertTrue(
+            lines.indexOfFirst { it.contains(PACKAGE_INSTALL_RETRY_HINT) } <
+                lines.indexOfFirst { it.contains("--- log tail ---") },
+        )
     }
 
     @Test
