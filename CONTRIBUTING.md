@@ -8,7 +8,7 @@ Thank you for your interest in contributing!
 2. Create a feature branch: `git checkout -b feat/your-feature`
 3. Install the commit-msg hook: `ln -sf ../../scripts/commit-msg-hook.sh .git/hooks/commit-msg`
 4. Make your changes
-5. Run checks: `./gradlew testDebugUnitTest lintDebug assembleDebug`
+5. Run checks: `./gradlew testGithubDebugUnitTest lintGithubDebug assembleGithubDebug`
 6. Commit with a clear message following [Conventional Commits](https://www.conventionalcommits.org/)
 7. Push and open a Pull Request against `main`
 

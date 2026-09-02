@@ -74,7 +74,7 @@ jobs:
             echo "AND_CODE_GITHUB_CLIENT_ID repo variable is not set - the published APK would have no GitHub sign-in" >&2
             exit 1
           fi
-           ./gradlew detekt spotlessCheck :app:lintDebug :app:testDebugUnitTest assembleDebug assembleRelease
+           ./gradlew detekt spotlessCheck :app:lintGithubDebug :app:testGithubDebugUnitTest assembleGithubDebug assembleGithubRelease
 
       - name: Resolve tag
         id: tag
@@ -97,14 +97,14 @@ jobs:
               --title "$TAG" \
               --generate-notes
           fi
-           cp app/build/outputs/apk/debug/app-debug.apk "and-code-$TAG-debug.apk"
+           cp app/build/outputs/apk/github/debug/app-github-debug.apk "and-code-$TAG-debug.apk"
            ASSETS=("and-code-$TAG-debug.apk")
-           if [ -f app/build/outputs/apk/release/app-release.apk ]; then
-             cp app/build/outputs/apk/release/app-release.apk "and-code-$TAG-release.apk"
+           if [ -f app/build/outputs/apk/github/release/app-github-release.apk ]; then
+             cp app/build/outputs/apk/github/release/app-github-release.apk "and-code-$TAG-release.apk"
              ASSETS+=("and-code-$TAG-release.apk")
              gh release delete-asset "$TAG" "and-code-$TAG-release-unsigned.apk" -y || true
            else
-             cp app/build/outputs/apk/release/app-release-unsigned.apk "and-code-$TAG-release-unsigned.apk"
+             cp app/build/outputs/apk/github/release/app-github-release-unsigned.apk "and-code-$TAG-release-unsigned.apk"
              ASSETS+=("and-code-$TAG-release-unsigned.apk")
           fi
           gh release upload "$TAG" --clobber "${ASSETS[@]}"

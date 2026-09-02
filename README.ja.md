@@ -214,20 +214,20 @@ npx qrcode "opencode://connect?name=Mac%20mini&url=http%3A%2F%2F192.168.1.10%3A4
 必要環境: JDK 17、Android SDK、Python 3、ネットワーク接続（初回のみ）
 
 ```bash
-./gradlew detekt spotlessCheck :app:lintDebug :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease
+./gradlew detekt spotlessCheck :app:lintGithubDebug :app:testGithubDebugUnitTest :app:assembleGithubDebug :app:assembleGithubRelease
 ```
 
 出力されるAPK:
 
 ```text
-app/build/outputs/apk/debug/app-debug.apk
-app/build/outputs/apk/release/app-release-unsigned.apk
+app/build/outputs/apk/github/debug/app-github-debug.apk
+app/build/outputs/apk/github/release/app-github-release-unsigned.apk
 ```
 
 端末へのインストール:
 
 ```bash
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+adb install -r app/build/outputs/apk/github/debug/app-github-debug.apk
 ```
 
 ## ドキュメント
