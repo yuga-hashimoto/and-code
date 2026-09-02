@@ -115,7 +115,7 @@ private fun buildColorScheme(
         onTertiaryContainer = tc.secondary,
         errorContainer = tc.destructive.copy(alpha = 0.14f),
         onErrorContainer = tc.destructive,
-        surfaceContainerLowest = tc.surface0,
+        surfaceContainerLowest = tc.surface1,
         surfaceContainerLow = tc.surface1,
         surfaceContainer = tc.surface1,
         surfaceContainerHigh = tc.surface2,

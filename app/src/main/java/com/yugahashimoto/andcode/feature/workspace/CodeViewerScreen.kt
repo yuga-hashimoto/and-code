@@ -189,7 +189,11 @@ fun CodeViewerScreen(
                                 }
                             },
                         ) {
-                            Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.cd_next_match))
+                            Icon(
+                                Icons.Default.KeyboardArrowDown,
+                                contentDescription = stringResource(R.string.cd_next_match),
+                                tint = CodeForeground,
+                            )
                         }
                     }
                     if (searchQuery.isNotEmpty()) {
