@@ -1,12 +1,10 @@
 package com.yugahashimoto.andcode.feature.chat
 
-import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,23 +36,20 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
@@ -62,6 +57,7 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
@@ -285,32 +281,12 @@ private fun InlineText(
     linkColor: Color,
     codeBackground: Color,
 ) {
-    val context = LocalContext.current
     val annotated =
         remember(inlines, linkColor, codeBackground) {
             renderInline(inlines, codeBackground, linkColor)
         }
-    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
     SelectionContainer {
-        Text(
-            text = annotated,
-            style = style,
-            modifier =
-                Modifier.pointerInput(annotated) {
-                    detectTapGestures { offset ->
-                        layoutResult?.let { layout ->
-                            val position = layout.getOffsetForPosition(offset)
-                            annotated.getStringAnnotations("link", position, position)
-                                .firstOrNull()?.let { ann ->
-                                    runCatching {
-                                        context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(ann.item)))
-                                    }
-                                }
-                        }
-                    }
-                },
-            onTextLayout = { layoutResult = it },
-        )
+        Text(text = annotated, style = style)
     }
 }
 
@@ -342,7 +318,6 @@ private fun LinkedText(
     text: String,
     linkColor: Color,
 ) {
-    val context = LocalContext.current
     val style = LocalTextStyle.current
     val inlines = remember(text) { MarkdownLite.parseInline(text) }
     val annotated =
@@ -350,37 +325,14 @@ private fun LinkedText(
             buildAnnotatedString {
                 inlines.forEach { inline ->
                     if (inline is MarkdownInline.Link) {
-                        val start = length
-                        withStyle(SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline)) {
-                            append(inline.text)
-                        }
-                        addStringAnnotation("link", inline.url, start, length)
+                        withLink(linkAnnotation(inline.url, linkColor)) { append(inline.text) }
                     } else {
                         append(inline.text)
                     }
                 }
             }
         }
-    var layoutResult by remember { mutableStateOf<TextLayoutResult?>(null) }
-    Text(
-        text = annotated,
-        style = style,
-        modifier =
-            Modifier.pointerInput(annotated) {
-                detectTapGestures { offset ->
-                    layoutResult?.let { layout ->
-                        val position = layout.getOffsetForPosition(offset)
-                        annotated.getStringAnnotations("link", position, position)
-                            .firstOrNull()?.let { ann ->
-                                runCatching {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(ann.item)))
-                                }
-                            }
-                    }
-                }
-            },
-        onTextLayout = { layoutResult = it },
-    )
+    Text(text = annotated, style = style)
 }
 
 @Composable
@@ -689,6 +641,20 @@ private fun ChatImageThumbnail(
     }
 }
 
+/**
+ * A [LinkAnnotation.Url] Compose's own text-link handling can dispatch without a competing
+ * `pointerInput`, so it does not swallow gestures a long-press ancestor (e.g. the message bubble's
+ * copy/edit action sheet) needs to see - see [LinkedText] for the bug this avoids.
+ */
+private fun linkAnnotation(
+    url: String,
+    color: Color,
+): LinkAnnotation.Url =
+    LinkAnnotation.Url(
+        url,
+        TextLinkStyles(style = SpanStyle(color = color, textDecoration = TextDecoration.Underline)),
+    )
+
 private fun renderInline(
     inlines: List<MarkdownInline>,
     codeBackground: Color,
@@ -712,18 +678,12 @@ private fun renderInline(
                     addStringAnnotation("code", inline.text, start, length)
                 }
                 is MarkdownInline.Link -> {
-                    val start = length
-                    withStyle(
-                        SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
-                    ) { append(inline.text) }
-                    addStringAnnotation("link", inline.url, start, length)
+                    withLink(linkAnnotation(inline.url, linkColor)) { append(inline.text) }
                 }
                 is MarkdownInline.Image -> {
-                    val start = length
-                    withStyle(
-                        SpanStyle(color = linkColor, textDecoration = TextDecoration.Underline),
-                    ) { append(inline.text.ifBlank { "[Image]" }) }
-                    addStringAnnotation("link", inline.url, start, length)
+                    withLink(linkAnnotation(inline.url, linkColor)) {
+                        append(inline.text.ifBlank { "[Image]" })
+                    }
                 }
             }
         }
