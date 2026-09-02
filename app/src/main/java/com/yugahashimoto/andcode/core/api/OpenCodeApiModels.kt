@@ -16,6 +16,12 @@ data class OpenCodeTime(
     val created: Long = 0L,
     val updated: Long? = null,
     val completed: Long? = null,
+    /**
+     * Epoch ms when the session was archived, or null while it is active. The server's
+     * `GET /session` keeps returning archived sessions, so this field is what tells them apart —
+     * the app hides them everywhere a chat list is shown.
+     */
+    val archived: Long? = null,
 )
 
 @Serializable
