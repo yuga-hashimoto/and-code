@@ -6,6 +6,7 @@ on:
     paths:
       - 'pages/**'
       - '.github/workflows/fdroid-repository.yml'
+      - 'fdroid-repository-metadata.yml'
   release:
     types: [published]
   workflow_dispatch:
@@ -40,23 +41,30 @@ jobs:
       - name: Download release APKs
         env:
           GH_TOKEN: ${{ github.token }}
+          WAIT_FOR_TAG: ${{ github.event.release.tag_name }}
         run: |
           set -euo pipefail
           mkdir -p fdroid/repo fdroid/metadata
           while IFS= read -r tag; do
             ready=false
-            for attempt in $(seq 1 30); do
+            attempts=1
+            if [ "$tag" = "$WAIT_FOR_TAG" ]; then
+              attempts=30
+            fi
+            for attempt in $(seq 1 "$attempts"); do
               has_apk="$(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
                 --json assets --jq '[.assets[].name] | any(endswith("-release.apk"))')"
               if [ "$has_apk" = true ]; then
                 ready=true
                 break
               fi
-              sleep 10
+              if [ "$tag" = "$WAIT_FOR_TAG" ]; then
+                sleep 10
+              fi
             done
             if [ "$ready" != true ]; then
-              echo "Timed out waiting for release APK assets: $tag" >&2
-              exit 1
+              echo "Skipping release without a signed release APK: $tag"
+              continue
             fi
             gh release download "$tag" \
               --repo "$GITHUB_REPOSITORY" \
