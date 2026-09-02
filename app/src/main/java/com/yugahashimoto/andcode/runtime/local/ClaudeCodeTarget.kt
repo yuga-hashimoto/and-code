@@ -52,6 +52,8 @@ private data class ClaudeSessionRecord(
     @SerialName("permissionMode") val permissionMode: String = ClaudePermissionMode.DEFAULT.cliValue,
     @SerialName("model") val model: String = ClaudeModels.DEFAULT_MODEL,
     @SerialName("effort") val effort: String? = null,
+    /** Hidden from the drawer without deleting the transcript, like the OpenCode server's archive. */
+    @SerialName("archived") val archived: Boolean = false,
 )
 
 /** Exposes the Android-local Claude Code agent as a selectable runtime. */
@@ -203,6 +205,7 @@ class ClaudeCodeTarget(
 
     override suspend fun listSessions(directory: String?): List<OpenCodeSession> =
         records.values
+            .filterNot(ClaudeSessionRecord::archived)
             .map(ClaudeSessionRecord::session)
             .filter { directory == null || it.directory == directory }
 
@@ -313,6 +316,22 @@ class ClaudeCodeTarget(
         }
         withContext(Dispatchers.IO) { runtime.deleteSessionData(sessionId) }
         return removed
+    }
+
+    /**
+     * Hides the chat from the drawer while keeping its transcript on disk - the same semantics the
+     * OpenCode server's archive endpoint gives. Claude Code has no archive concept of its own, so
+     * the flag lives on the session record; without this override the auto-archive settings (and
+     * the drawer's archive action) hit the backend's "unsupported" for every Claude chat and
+     * silently did nothing, so stale and over-cap chats piled up forever.
+     */
+    override suspend fun archiveSession(sessionId: String): OpenCodeSession {
+        val record = records[sessionId] ?: error("Claude Code session not found")
+        if (!record.archived) {
+            records[sessionId] = record.copy(archived = true)
+            persist()
+        }
+        return record.session
     }
 
     /**
