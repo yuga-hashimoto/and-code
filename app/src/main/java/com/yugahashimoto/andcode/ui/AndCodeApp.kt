@@ -1113,6 +1113,13 @@ fun AndCodeApp(
                                 onSubmitCode = workspaceViewModel::submitClaudeSignInCode,
                                 onCancelSignIn = workspaceViewModel::cancelClaudeSignIn,
                                 onSignOut = workspaceViewModel::signOutClaude,
+                                onSelectSystemPrompt = { presetId ->
+                                    workspaceViewModel.selectClaudeSystemPrompt(presetId, chatState.sessionId)
+                                },
+                                onSaveSystemPromptPreset = { name, prompt, id ->
+                                    workspaceViewModel.saveClaudeSystemPromptPreset(name, prompt, id)
+                                },
+                                onDeleteSystemPromptPreset = workspaceViewModel::deleteClaudeSystemPromptPreset,
                             ),
                         antigravity = { antigravityState },
                         antigravityActions =

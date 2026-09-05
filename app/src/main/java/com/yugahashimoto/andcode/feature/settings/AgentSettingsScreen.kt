@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -148,6 +149,7 @@ fun ClaudeCodeAgentSettingsScreen(
     onSubmitCode: (String) -> Unit,
     onCancelSignIn: () -> Unit,
     onSignOut: () -> Unit,
+    onOpenSystemPrompt: () -> Unit,
     onOpenMcp: () -> Unit,
     onOpenUrl: (String) -> Unit,
     onBack: () -> Unit,
@@ -177,6 +179,15 @@ fun ClaudeCodeAgentSettingsScreen(
             }
         }
         SettingsSection(title = stringResource(R.string.settings_agents_section)) {
+            SettingsRow(
+                icon = Icons.Default.Psychology,
+                title = stringResource(R.string.system_prompt_settings_row),
+                value =
+                    claude.systemPromptPresets.firstOrNull { it.id == claude.systemPromptId }?.name
+                        ?: stringResource(R.string.system_prompt_none),
+                onClick = onOpenSystemPrompt,
+            )
+            SettingsDivider()
             SettingsRow(
                 icon = Icons.Default.Extension,
                 title = stringResource(R.string.mcp_settings_row),

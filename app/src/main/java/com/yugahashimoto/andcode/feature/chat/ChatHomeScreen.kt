@@ -1577,7 +1577,7 @@ private fun ThinkingChip(
             ) {
                 Icon(Icons.Default.Psychology, contentDescription = stringResource(R.string.cd_thinking), modifier = Modifier.size(14.dp))
                 Text(
-                    selected ?: stringResource(R.string.chat_thinking_default),
+                    selected?.let { thinkingLevelLabel(it) } ?: stringResource(R.string.chat_thinking_default),
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                 )
@@ -1593,7 +1593,7 @@ private fun ThinkingChip(
             )
             options.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option.replaceFirstChar { it.uppercase() }) },
+                    text = { Text(thinkingLevelLabel(option)) },
                     onClick = {
                         onSelect(option)
                         expanded = false
@@ -1603,6 +1603,26 @@ private fun ThinkingChip(
         }
     }
 }
+
+/**
+ * A model variant's display label for the thinking chip.
+ *
+ * Claude Code and Antigravity both offer reasoning-effort slugs ("low", "medium", "high", plus
+ * Claude Code's own "xhigh" and "max"); those get their proper names ("Extra High", "Max") instead
+ * of the raw slug, which used to make the CLI's highest level ("max") look like just another word
+ * next to "xhigh" rather than the new top tier it is. Any other provider's variant id - OpenCode's
+ * own models offer different ones - falls back to capitalizing the raw value, as before.
+ */
+@Composable
+private fun thinkingLevelLabel(level: String): String =
+    when (level.lowercase()) {
+        "low" -> stringResource(R.string.chat_thinking_level_low)
+        "medium" -> stringResource(R.string.chat_thinking_level_medium)
+        "high" -> stringResource(R.string.chat_thinking_level_high)
+        "xhigh" -> stringResource(R.string.chat_thinking_level_xhigh)
+        "max" -> stringResource(R.string.chat_thinking_level_max)
+        else -> level.replaceFirstChar { it.uppercase() }
+    }
 
 @Composable
 private fun AttachmentTray(

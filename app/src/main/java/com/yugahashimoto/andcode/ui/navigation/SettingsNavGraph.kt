@@ -27,6 +27,7 @@ import com.yugahashimoto.andcode.feature.settings.OpenCodeAgentSettingsViewModel
 import com.yugahashimoto.andcode.feature.settings.ProviderSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.SettingsScreenV2
 import com.yugahashimoto.andcode.feature.settings.SettingsViewModel
+import com.yugahashimoto.andcode.feature.settings.SystemPromptScreen
 import com.yugahashimoto.andcode.feature.settings.VoiceSettingsScreen
 import com.yugahashimoto.andcode.feature.support.GitHubSupportSheetHost
 import com.yugahashimoto.andcode.feature.wakeword.VoskModelState
@@ -343,10 +344,23 @@ fun NavGraphBuilder.settingsNavGraph(
             onSubmitCode = claudeActions.onSubmitCode,
             onCancelSignIn = claudeActions.onCancelSignIn,
             onSignOut = claudeActions.onSignOut,
+            onOpenSystemPrompt = { navController.navigate(ROUTE_SETTINGS_CLAUDE_SYSTEM_PROMPT) },
             onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP_CLAUDE) },
             onOpenUrl = { url ->
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
             },
+            onBack = { navController.popBackStack() },
+        )
+    }
+
+    composable(ROUTE_SETTINGS_CLAUDE_SYSTEM_PROMPT) {
+        val claudeState = claude()
+        SystemPromptScreen(
+            presets = claudeState.systemPromptPresets,
+            selectedPresetId = claudeState.systemPromptId,
+            onSelect = claudeActions.onSelectSystemPrompt,
+            onSave = claudeActions.onSaveSystemPromptPreset,
+            onDelete = claudeActions.onDeleteSystemPromptPreset,
             onBack = { navController.popBackStack() },
         )
     }
@@ -474,6 +488,9 @@ data class ClaudeSettingsActions(
     val onSubmitCode: (String) -> Unit,
     val onCancelSignIn: () -> Unit,
     val onSignOut: () -> Unit,
+    val onSelectSystemPrompt: (String?) -> Unit,
+    val onSaveSystemPromptPreset: (name: String, prompt: String, id: String?) -> Unit,
+    val onDeleteSystemPromptPreset: (String) -> Unit,
 )
 
 /** Antigravity actions the settings graph forwards to its agent screen. */

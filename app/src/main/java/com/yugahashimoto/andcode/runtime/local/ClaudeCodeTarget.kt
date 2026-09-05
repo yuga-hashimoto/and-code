@@ -54,6 +54,15 @@ private data class ClaudeSessionRecord(
     @SerialName("effort") val effort: String? = null,
     /** Hidden from the drawer without deleting the transcript, like the OpenCode server's archive. */
     @SerialName("archived") val archived: Boolean = false,
+    /** Which [SystemPromptPreset] this session's turns are sent with, or null for none. */
+    @SerialName("promptId") val promptId: String? = null,
+)
+
+/** What is persisted for system prompt presets: the user's own, plus which one is active. */
+@Serializable
+private data class SystemPromptState(
+    @SerialName("customPresets") val customPresets: List<SystemPromptPreset> = emptyList(),
+    @SerialName("selectedPresetId") val selectedPresetId: String? = null,
 )
 
 /** Exposes the Android-local Claude Code agent as a selectable runtime. */
@@ -135,6 +144,79 @@ class ClaudeCodeTarget(
         val record = sessionId?.let(records::get) ?: return
         records[sessionId] = record.copy(permissionMode = mode.cliValue)
         persist()
+    }
+
+    private val systemPromptsFile = File(runtime.runtimeDirectory, "claude-system-prompts.json")
+    private val systemPromptState =
+        runCatching { json.decodeFromString<SystemPromptState>(systemPromptsFile.readText()) }
+            .getOrDefault(SystemPromptState())
+
+    /** Built-in presets first, then whatever the user has saved, in the order they were added. */
+    private val mutableSystemPromptPresets =
+        MutableStateFlow(ClaudeSystemPrompts.BUILT_IN + systemPromptState.customPresets)
+    val systemPromptPresets: StateFlow<List<SystemPromptPreset>> = mutableSystemPromptPresets.asStateFlow()
+
+    /** Preset id applied to sessions created from now on, or null for no preset. */
+    private val mutableDefaultSystemPromptId = MutableStateFlow(systemPromptState.selectedPresetId)
+    val defaultSystemPromptId: StateFlow<String?> = mutableDefaultSystemPromptId.asStateFlow()
+
+    private fun presetById(id: String?): SystemPromptPreset? =
+        id?.let { target -> mutableSystemPromptPresets.value.firstOrNull { it.id == target } }
+
+    /**
+     * Applies [presetId] to new sessions, and to [sessionId] when one is given - the same
+     * immediate-effect rule [setPermissionMode] follows, since switching prompts mid-conversation is
+     * an explicit choice about that conversation.
+     */
+    fun selectSystemPrompt(
+        presetId: String?,
+        sessionId: String? = null,
+    ) {
+        mutableDefaultSystemPromptId.value = presetId
+        persistSystemPrompts()
+        val record = sessionId?.let(records::get) ?: return
+        records[sessionId] = record.copy(promptId = presetId)
+        persist()
+    }
+
+    /** Creates a new custom preset, or updates one already saved when [id] names an existing one. */
+    fun saveSystemPromptPreset(
+        name: String,
+        prompt: String,
+        id: String? = null,
+    ): SystemPromptPreset {
+        val presetId = id?.takeIf { presetById(it)?.builtIn == false } ?: UUID.randomUUID().toString()
+        val preset = SystemPromptPreset(id = presetId, name = name, prompt = prompt)
+        mutableSystemPromptPresets.value =
+            mutableSystemPromptPresets.value.filterNot { it.id == preset.id } + preset
+        persistSystemPrompts()
+        return preset
+    }
+
+    /**
+     * Removes a custom preset. Built-in presets are not removable, so this is a no-op for them.
+     *
+     * A session or the default selection still pointing at the removed id simply stops resolving to
+     * a preset the next time it is looked up - there is nothing to migrate those references to.
+     */
+    fun deleteSystemPromptPreset(id: String) {
+        if (presetById(id)?.builtIn != false) return
+        mutableSystemPromptPresets.value = mutableSystemPromptPresets.value.filterNot { it.id == id }
+        persistSystemPrompts()
+    }
+
+    private fun persistSystemPrompts() {
+        runCatching {
+            systemPromptsFile.parentFile?.mkdirs()
+            systemPromptsFile.writeText(
+                json.encodeToString(
+                    SystemPromptState(
+                        customPresets = mutableSystemPromptPresets.value.filterNot(SystemPromptPreset::builtIn),
+                        selectedPresetId = mutableDefaultSystemPromptId.value,
+                    ),
+                ),
+            )
+        }
     }
 
     private val titleScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -223,7 +305,12 @@ class ClaudeCodeTarget(
                 title = title ?: DEFAULT_TITLE,
                 time = OpenCodeTime(now, now),
             )
-        records[session.id] = ClaudeSessionRecord(session, mutableDefaultPermissionMode.value.cliValue)
+        records[session.id] =
+            ClaudeSessionRecord(
+                session = session,
+                permissionMode = mutableDefaultPermissionMode.value.cliValue,
+                promptId = mutableDefaultSystemPromptId.value,
+            )
         persist()
         return session
     }
@@ -285,6 +372,7 @@ class ClaudeCodeTarget(
                 model = model,
                 effort = effort,
                 attachments = request.attachments,
+                systemPrompt = presetById(record.promptId)?.prompt,
             ).getOrThrow()
         }
     }
