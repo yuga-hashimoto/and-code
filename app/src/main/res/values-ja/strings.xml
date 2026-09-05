@@ -446,6 +446,7 @@
     <string name="chat_thinking_level_high">高</string>
     <string name="chat_thinking_level_xhigh">最高</string>
     <string name="chat_thinking_level_max">Max</string>
+    <string name="chat_system_prompt_default">プロンプト</string>
     <string name="chat_mode_build">ビルド</string>
     <string name="chat_mode_plan">計画</string>
     <string name="chat_mode_auto_accept">自動承認</string>
@@ -728,6 +729,7 @@
     <string name="cd_camera">カメラ</string>
     <string name="cd_gallery">ギャラリー</string>
     <string name="cd_thinking">思考中</string>
+    <string name="cd_system_prompt">システムプロンプト</string>
     <string name="cd_agent_mode">エージェントモード</string>
     <string name="cd_updating">更新中</string>
     <string name="cd_operation_result">操作結果</string>

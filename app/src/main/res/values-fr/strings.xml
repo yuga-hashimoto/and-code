@@ -446,6 +446,7 @@
     <string name="chat_thinking_level_high">Élevé</string>
     <string name="chat_thinking_level_xhigh">Très élevé</string>
     <string name="chat_thinking_level_max">Maximum</string>
+    <string name="chat_system_prompt_default">Invite</string>
     <string name="chat_mode_build">Construire</string>
     <string name="chat_mode_plan">Planifier</string>
     <string name="chat_mode_auto_accept">Acceptation automatique</string>
@@ -719,6 +720,7 @@
     <string name="cd_camera">Camera</string>
     <string name="cd_gallery">Gallery</string>
     <string name="cd_thinking">Thinking</string>
+    <string name="cd_system_prompt">Invite système</string>
     <string name="cd_agent_mode">Agent mode</string>
     <string name="cd_updating">Updating</string>
     <string name="cd_operation_result">Operation result</string>

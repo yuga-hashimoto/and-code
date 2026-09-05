@@ -447,6 +447,7 @@
     <string name="chat_thinking_level_high">Высокий</string>
     <string name="chat_thinking_level_xhigh">Очень высокий</string>
     <string name="chat_thinking_level_max">Максимум</string>
+    <string name="chat_system_prompt_default">Промпт</string>
     <string name="chat_mode_build">Сборка</string>
     <string name="chat_mode_plan">План</string>
     <string name="chat_mode_auto_accept">Автоприём</string>
@@ -721,6 +722,7 @@
     <string name="cd_camera">Camera</string>
     <string name="cd_gallery">Gallery</string>
     <string name="cd_thinking">Thinking</string>
+    <string name="cd_system_prompt">Системный промпт</string>
     <string name="cd_agent_mode">Agent mode</string>
     <string name="cd_updating">Updating</string>
     <string name="cd_operation_result">Operation result</string>

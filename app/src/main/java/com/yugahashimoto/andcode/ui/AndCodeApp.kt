@@ -981,6 +981,21 @@ fun AndCodeApp(
                             onSelectClaudePermissionMode = { mode ->
                                 workspaceViewModel.setClaudePermissionMode(mode, chatState.sessionId)
                             },
+                            // Only Claude Code can carry one: its CLI takes --append-system-prompt,
+                            // while agy has no equivalent flag, so the chip stays off elsewhere
+                            // rather than offering a control that would do nothing.
+                            systemPromptPresets =
+                                workspaceState.claude
+                                    .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
+                                    ?.systemPromptPresets
+                                    .orEmpty(),
+                            selectedSystemPromptId =
+                                workspaceState.claude
+                                    .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
+                                    ?.systemPromptId,
+                            onSelectSystemPrompt = { presetId ->
+                                workspaceViewModel.selectClaudeSystemPrompt(presetId, chatState.sessionId)
+                            },
                             // The mode settings shows, so the chip is not left naming whatever agent id
                             // another runtime last remembered - see AntigravityTarget.listAgents.
                             antigravityPermissionMode =
