@@ -97,6 +97,7 @@ import com.yugahashimoto.andcode.feature.workspace.WorkspaceViewModel
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.runtime.local.GitCloneResult
+import com.yugahashimoto.andcode.runtime.local.LocalRuntimeOperationResult
 import com.yugahashimoto.andcode.ui.components.SessionStatus
 import com.yugahashimoto.andcode.ui.navigation.ClaudeSettingsActions
 import com.yugahashimoto.andcode.ui.navigation.DRAWER_ROOT_ROUTES
@@ -868,11 +869,16 @@ fun AndCodeApp(
 
                     composable(ROUTE_ANDROID_SETUP) {
                         val localRuntimeStatus by app.localRuntimeManager.state.collectAsState()
+                        val localRuntimeLastOperation by app.localRuntimeManager.lastOperation.collectAsState()
                         AndroidSetupScreen(
                             runtimeStatus = localRuntimeStatus,
                             claude = workspaceState.claude,
                             antigravity = antigravityState,
-                            onStartSetup = { agents ->
+                            fullDevelopmentToolsInstalled = app.localRuntimeManager.fullDevelopmentToolsInstalled(),
+                            fullDevelopmentToolsInstallFailed =
+                                (localRuntimeLastOperation as? LocalRuntimeOperationResult.Failed)?.operation ==
+                                    "development-tools-install",
+                            onStartSetup = { agents, installFullDevelopmentTools ->
                                 // Ticking Claude Code or Antigravity next to OpenCode used to install
                                 // neither of them: the two branches below were guarded on OpenCode
                                 // *not* being selected, and the OpenCode path never received the
@@ -881,11 +887,11 @@ fun AndCodeApp(
                                 // already knew how to do - and it must stay one install, because a
                                 // second one would race it for the same staging directory.
                                 if (com.yugahashimoto.andcode.runtime.LocalAgent.OPEN_CODE in agents) {
-                                    workspaceViewModel.setupLocalRuntime(agents)
+                                    workspaceViewModel.setupLocalRuntime(agents, installFullDevelopmentTools)
                                 } else if (com.yugahashimoto.andcode.runtime.LocalAgent.ANTIGRAVITY in agents) {
-                                    app.antigravityController.install(agents)
+                                    app.antigravityController.install(agents, installFullDevelopmentTools)
                                 } else if (com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE in agents) {
-                                    workspaceViewModel.installClaudeCode()
+                                    workspaceViewModel.installClaudeCode(installFullDevelopmentTools)
                                 }
                             },
                             onSelectClaudePermissionMode = { mode ->

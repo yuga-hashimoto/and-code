@@ -1101,4 +1101,16 @@
     <string name="guest_browser_back">Назад</string>
     <string name="guest_browser_forward">Вперёд</string>
     <string name="guest_browser_reload">Обновить</string>
+    <string name="setup_step_development_tools">Инструменты разработки</string>
+    <string name="setup_development_tools_description">По умолчанию устанавливаются только необходимые компоненты. При желании можно добавить полный набор инструментов.</string>
+    <string name="setup_required_tools_description">Linux, выбранные агенты, Git и вспомогательные инструменты AndCode. Они устанавливаются всегда.</string>
+    <string name="setup_install_full_development_tools">Установить полный набор инструментов</string>
+    <string name="setup_install_full_development_tools_description">Добавляет языковые среды, компиляторы, инструменты сборки, редакторы и утилиты. Будет загружено больше данных.</string>
+    <string name="setup_development_tools_settings_hint">Можно пропустить этот шаг и установить полный набор позже в Настройки → Локальная среда.</string>
+    <string name="install_step_installing_runtime_tools">Установка необходимых инструментов</string>
+    <string name="full_development_tools_title">Инструменты разработки</string>
+    <string name="full_development_tools_description">Дополнительные языковые среды, компиляторы, инструменты сборки и утилиты для проектов.</string>
+    <string name="full_development_tools_installed">Полный набор инструментов установлен</string>
+    <string name="install_full_development_tools_button">Установить полный набор</string>
+    <string name="runtime_full_development_tools_start_failed">Не удалось начать установку инструментов разработки</string>
 </resources>

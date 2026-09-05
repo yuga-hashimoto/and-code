@@ -139,13 +139,16 @@ class AntigravityController(
      * is not among it. Two installs would race each other for the same staging directory, so the
      * guide has exactly one entry point per run and this is it whenever Antigravity is selected.
      */
-    fun install(agents: Set<LocalAgent> = setOf(LocalAgent.ANTIGRAVITY)) {
+    fun install(
+        agents: Set<LocalAgent> = setOf(LocalAgent.ANTIGRAVITY),
+        installFullDevelopmentTools: Boolean = false,
+    ) {
         if (mutableState.value.install is AntigravityInstallStatus.Installing) return
         mutableState.value = mutableState.value.copy(install = AntigravityInstallStatus.Installing(0f, ""))
         scope.launch {
             runtimeWork.withLease(INSTALL_LEASE_TAG) {
                 runCatching {
-                    installer.install(agents + LocalAgent.ANTIGRAVITY) { progress, step, _ ->
+                    installer.install(agents + LocalAgent.ANTIGRAVITY, installFullDevelopmentTools) { progress, step, _ ->
                         mutableState.value = mutableState.value.copy(install = AntigravityInstallStatus.Installing(progress, step))
                     }
                 }

@@ -334,7 +334,10 @@ class WorkspaceViewModel(
     }
 
     /** [agents] is the setup guide's selection; every other caller means OpenCode alone. */
-    fun setupLocalRuntime(agents: Set<LocalAgent> = setOf(LocalAgent.OPEN_CODE)) = localRuntimeController.installAndStart(agents)
+    fun setupLocalRuntime(
+        agents: Set<LocalAgent> = setOf(LocalAgent.OPEN_CODE),
+        installFullDevelopmentTools: Boolean = false,
+    ) = localRuntimeController.installAndStart(agents, installFullDevelopmentTools)
 
     fun startLocalRuntime() = localRuntimeController.start()
 
@@ -344,7 +347,7 @@ class WorkspaceViewModel(
 
     fun reinstallLocalRuntime() = localRuntimeController.reinstall()
 
-    fun installClaudeCode() = claudeCode?.install() ?: Unit
+    fun installClaudeCode(installFullDevelopmentTools: Boolean = false) = claudeCode?.install(installFullDevelopmentTools) ?: Unit
 
     fun updateClaudeCode() = claudeCode?.update() ?: Unit
 

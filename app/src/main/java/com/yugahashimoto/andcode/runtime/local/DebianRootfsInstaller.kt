@@ -18,11 +18,11 @@ class DebianRootfsInstaller(
 ) {
     suspend fun installInto(
         destination: File,
+        installFullDevelopmentTools: Boolean = false,
         onProgress: (Float) -> Unit = {},
     ): File =
         withContext(Dispatchers.IO) {
             val asset = DebianRootfsManifest.assetFor(abi)
-            val token = accessToken()
             val archive = File(runtimeDirectory, "cache/debian-bookworm-slim-$abi.tar.gz").apply { parentFile?.mkdirs() }
             if (archive.length() != asset.sizeBytes || runCatching { RuntimeArchive.verifySha256(archive, asset.sha256) }.isFailure) {
                 downloader.download(
@@ -30,7 +30,7 @@ class DebianRootfsInstaller(
                     destination = archive,
                     expectedSha256 = asset.sha256,
                     expectedSizeBytes = asset.sizeBytes,
-                    headers = mapOf("Authorization" to "Bearer $token"),
+                    headers = mapOf("Authorization" to "Bearer ${accessToken()}"),
                     onProgress = { onProgress((it ?: 0f) * 0.75f) },
                 )
             } else {
@@ -42,11 +42,18 @@ class DebianRootfsInstaller(
                 configure(extracted)
                 ensureGlibcLoader(extracted)
                 installPtyUtility(extracted)
-                installDevelopmentTools(extracted)
+                resetAlternatives(extracted)
+                installPackages(
+                    extracted,
+                    if (installFullDevelopmentTools) {
+                        REQUIRED_RUNTIME_PACKAGES + OPTIONAL_DEVELOPMENT_PACKAGES
+                    } else {
+                        REQUIRED_RUNTIME_PACKAGES
+                    },
+                )
                 destination.deleteRecursively()
                 require(extracted.renameTo(destination)) { "Unable to activate Debian Antigravity rootfs" }
                 onProgress(1f)
-                archive.delete()
                 destination
             } finally {
                 extracted.deleteRecursively()
@@ -91,7 +98,6 @@ class DebianRootfsInstaller(
         }
         packageFile.inputStream().use { RuntimeArchive.extractDebianPackage(it, rootfs) }
         require(File(rootfs, "usr/bin/script").isFile) { "Debian PTY utility was not installed" }
-        packageFile.delete()
     }
 
     /**
@@ -109,10 +115,26 @@ class DebianRootfsInstaller(
         }
     }
 
-    private fun installDevelopmentTools(rootfs: File) {
+    /** Adds the optional toolchain to an already active Antigravity rootfs. */
+    fun installFullDevelopmentTools(rootfs: File) {
+        // Older runtimes predate the required adb/Python support packages. Installing the union
+        // makes this migration safe as well as adding the optional toolchain.
+        installPackages(rootfs, REQUIRED_RUNTIME_PACKAGES + OPTIONAL_DEVELOPMENT_PACKAGES)
+    }
+
+    private fun installPackages(
+        rootfs: File,
+        packages: List<String>,
+    ) {
         val suite = commandSuite ?: return
         val prootTmp = File(runtimeDirectory, "proot-tmp").apply { mkdirs() }
-        resetAlternatives(rootfs)
+        val aptCache = File(runtimeDirectory, "cache/apt/archives").apply { mkdirs() }
+        File(aptCache, "partial").mkdirs()
+        File(rootfs, "var/cache/apt/archives").mkdirs()
+        // Docker's slim image otherwise deletes these archives after every apt operation.
+        val dockerClean = File(rootfs, "etc/apt/apt.conf.d/docker-clean")
+        require(!dockerClean.exists() || dockerClean.delete()) { "Unable to enable the Debian package cache" }
+        File(rootfs, "etc/apt/apt.conf.d/keep-downloads").writeText("APT::Keep-Downloaded-Packages \"true\";\n")
         File(rootfs, "etc/apt/sources.list").apply {
             parentFile?.mkdirs()
             writeText(
@@ -135,6 +157,8 @@ class DebianRootfsInstaller(
                 "/proc",
                 "-b",
                 "/sys",
+                "-b",
+                "${aptCache.absolutePath}:/var/cache/apt/archives",
                 "-w",
                 "/root",
                 // Debian 12 has a merged /usr: this is the real interpreter, and `/bin/sh` only
@@ -145,9 +169,8 @@ class DebianRootfsInstaller(
                 GUEST_ENV +
                     "apt-get update -qq && " +
                     "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends " +
-                    "git curl wget jq tree file less nano openssh-client ripgrep ca-certificates " +
-                    "python3 python3-pil && " +
-                    "apt-get clean && rm -rf /var/lib/apt/lists/*",
+                    "${packages.filterNot { it == "gh" }.joinToString(" ")} && " +
+                    "rm -rf /var/lib/apt/lists/*",
             )
         val installLog =
             File(runtimeDirectory, "logs/debian-tool-install.log").apply {
@@ -171,16 +194,17 @@ class DebianRootfsInstaller(
         require(process.exitValue() == 0) {
             // Same shape as LocalRuntimeInstaller: hint before the log tail, which is the only part
             // long enough to push it out of view.
-            "Unable to install Debian development tools. $PACKAGE_INSTALL_RETRY_HINT\n\n" +
+            "Unable to install Debian runtime packages. $PACKAGE_INSTALL_RETRY_HINT\n\n" +
                 "Last log lines:\n${installLog.readText().takeLast(4000)}"
         }
-        installGitHubCli(rootfs, suite, prootTmp)
+        if ("gh" in packages) installGitHubCli(rootfs, suite, prootTmp, aptCache)
     }
 
     private fun installGitHubCli(
         rootfs: File,
         suite: EmbeddedCommandSuite.Paths,
         prootTmp: File,
+        aptCache: File,
     ) {
         val arch = if (abi == "arm64-v8a") "arm64" else "amd64"
         val command =
@@ -197,9 +221,10 @@ class DebianRootfsInstaller(
                 "/proc",
                 "-b",
                 "/sys",
+                "-b",
+                "${aptCache.absolutePath}:/var/cache/apt/archives",
                 "-w",
                 "/root",
-                // See installDevelopmentTools: the real interpreter lives under the merged /usr.
                 "/usr/bin/sh",
                 "-c",
                 GUEST_ENV +
@@ -209,7 +234,7 @@ class DebianRootfsInstaller(
                     "https://cli.github.com/packages stable main\" > /etc/apt/sources.list.d/github-cli.list && " +
                     "apt-get update -qq && " +
                     "DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends gh && " +
-                    "apt-get clean && rm -rf /var/lib/apt/lists/*",
+                    "rm -rf /var/lib/apt/lists/*",
             )
         val installLog =
             File(runtimeDirectory, "logs/debian-gh-install.log").apply {
@@ -228,10 +253,10 @@ class DebianRootfsInstaller(
         val completed = process.waitFor(5, java.util.concurrent.TimeUnit.MINUTES)
         if (!completed) {
             process.destroyForcibly()
-            return
+            error("GitHub CLI installation timed out")
         }
-        if (process.exitValue() != 0) {
-            android.util.Log.w("DebianRootfsInstaller", "gh install failed (non-fatal): ${installLog.readText().takeLast(500)}")
+        require(process.exitValue() == 0) {
+            "Unable to install GitHub CLI: ${installLog.readText().takeLast(4000)}"
         }
     }
 
@@ -251,7 +276,48 @@ class DebianRootfsInstaller(
         }
     }
 
-    private companion object {
+    internal companion object {
+        val REQUIRED_RUNTIME_PACKAGES =
+            listOf(
+                "git",
+                "curl",
+                "wget",
+                "jq",
+                "openssh-client",
+                "ripgrep",
+                "ca-certificates",
+                "adb",
+                "python3",
+                "python3-pil",
+            )
+
+        val OPTIONAL_DEVELOPMENT_PACKAGES =
+            listOf(
+                "tree",
+                "file",
+                "less",
+                "nano",
+                "vim",
+                "gh",
+                "openjdk-17-jdk-headless",
+                "gradle",
+                "python3-pip",
+                "nodejs",
+                "npm",
+                "make",
+                "cmake",
+                "gcc",
+                "g++",
+                "libc6-dev",
+                "pkg-config",
+                "patch",
+                "zip",
+                "unzip",
+                "sqlite3",
+                "golang-go",
+                "util-linux",
+            )
+
         /**
          * Guest-side environment for every `proot ... /usr/bin/sh -c` run here.
          *

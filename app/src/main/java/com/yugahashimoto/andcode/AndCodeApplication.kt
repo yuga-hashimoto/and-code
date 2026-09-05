@@ -344,6 +344,7 @@ class AndCodeApplication : Application() {
                 statusProvider = localRuntimeManager::status,
                 processMetricsProvider = launcher::metrics,
                 commandExecutor = commandRunner::run,
+                fullDevelopmentToolsInstalledProvider = localRuntimeManager::fullDevelopmentToolsInstalled,
                 messages = runtimeMessages,
             )
         localRuntimeController = LocalRuntimeServiceController(this)
