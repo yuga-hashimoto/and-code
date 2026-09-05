@@ -989,10 +989,15 @@ fun AndCodeApp(
                                     .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
                                     ?.systemPromptPresets
                                     .orEmpty(),
+                            // The open chat's own preset, not the default new chats get: a session
+                            // keeps what it was created with, so naming the default here would show
+                            // a preset the send path is not going to use. Read imperatively, but
+                            // still correct - it recomposes on both inputs it depends on, the chat's
+                            // session id and the Claude state a selection updates.
                             selectedSystemPromptId =
                                 workspaceState.claude
                                     .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
-                                    ?.systemPromptId,
+                                    ?.let { workspaceViewModel.claudeSystemPromptIdFor(chatState.sessionId) },
                             onSelectSystemPrompt = { presetId ->
                                 workspaceViewModel.selectClaudeSystemPrompt(presetId, chatState.sessionId)
                             },

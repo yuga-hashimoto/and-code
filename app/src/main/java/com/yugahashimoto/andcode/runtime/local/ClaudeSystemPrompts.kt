@@ -26,10 +26,19 @@ data class SystemPromptPreset(
  * (Coding, Debug, Research, Creative), alongside whatever custom ones the user has saved.
  */
 object ClaudeSystemPrompts {
+    /**
+     * Ids are the contract: they are what a selection persists as, and what the UI maps to a
+     * translated name. [SystemPromptPreset.name] on a built-in is only the untranslated fallback.
+     */
+    const val CODING = "coding"
+    const val DEBUG = "debug"
+    const val RESEARCH = "research"
+    const val CREATIVE = "creative"
+
     val BUILT_IN =
         listOf(
             SystemPromptPreset(
-                id = "coding",
+                id = CODING,
                 name = "Coding",
                 prompt =
                     "Focus on shipping correct, minimal changes. Follow the existing code's " +
@@ -38,7 +47,7 @@ object ClaudeSystemPrompts {
                 builtIn = true,
             ),
             SystemPromptPreset(
-                id = "debug",
+                id = DEBUG,
                 name = "Debug",
                 prompt =
                     "Focus on root-causing the reported problem before changing anything. Reproduce " +
@@ -47,7 +56,7 @@ object ClaudeSystemPrompts {
                 builtIn = true,
             ),
             SystemPromptPreset(
-                id = "research",
+                id = RESEARCH,
                 name = "Research",
                 prompt =
                     "Focus on gathering and summarizing accurate information rather than writing " +
@@ -56,7 +65,7 @@ object ClaudeSystemPrompts {
                 builtIn = true,
             ),
             SystemPromptPreset(
-                id = "creative",
+                id = CREATIVE,
                 name = "Creative",
                 prompt =
                     "Feel free to explore multiple approaches and offer original, opinionated ideas " +

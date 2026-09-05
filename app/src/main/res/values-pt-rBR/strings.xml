@@ -914,6 +914,10 @@
     <string name="system_prompt_caption">Adicionado ao próprio prompt do sistema do agente, para alternar entre prompts de programação, depuração, pesquisa ou criatividade. O Claude Code aplica por conversa; o OpenCode aplica a todas as suas conversas e exige reiniciar o runtime na primeira vez.</string>
     <string name="system_prompt_none">Nenhum (padrão do Claude)</string>
     <string name="system_prompt_builtin_label">Integrado</string>
+    <string name="system_prompt_builtin_coding">Programação</string>
+    <string name="system_prompt_builtin_debug">Depuração</string>
+    <string name="system_prompt_builtin_research">Pesquisa</string>
+    <string name="system_prompt_builtin_creative">Criatividade</string>
     <string name="system_prompt_dialog_title_new">Nova predefinição</string>
     <string name="system_prompt_dialog_title_edit">Editar predefinição</string>
     <string name="system_prompt_name_label">Nome</string>

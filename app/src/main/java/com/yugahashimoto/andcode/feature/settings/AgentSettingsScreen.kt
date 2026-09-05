@@ -60,6 +60,7 @@ import com.yugahashimoto.andcode.ui.components.RuntimeUpdateProgressCard
 import com.yugahashimoto.andcode.ui.components.SectionCard
 import com.yugahashimoto.andcode.ui.components.displayName
 import com.yugahashimoto.andcode.ui.components.formatRuntimeBytes
+import com.yugahashimoto.andcode.ui.components.systemPromptPresetLabel
 import com.yugahashimoto.andcode.ui.runtimeAgentIcon
 
 /**
@@ -183,7 +184,8 @@ fun ClaudeCodeAgentSettingsScreen(
                 icon = Icons.Default.Psychology,
                 title = stringResource(R.string.system_prompt_settings_row),
                 value =
-                    claude.systemPromptPresets.firstOrNull { it.id == claude.systemPromptId }?.name
+                    claude.systemPromptPresets.firstOrNull { it.id == claude.systemPromptId }
+                        ?.let { systemPromptPresetLabel(it) }
                         ?: stringResource(R.string.system_prompt_none),
                 onClick = onOpenSystemPrompt,
             )

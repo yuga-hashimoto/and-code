@@ -910,6 +910,10 @@
     <string name="system_prompt_caption">会附加到智能体自身的系统提示词后面，方便你在编码、调试、研究或创作等用途之间切换。Claude Code 按对话生效；OpenCode 对其所有对话生效，且首次需要重启运行时。</string>
     <string name="system_prompt_none">无（Claude 默认）</string>
     <string name="system_prompt_builtin_label">内置</string>
+    <string name="system_prompt_builtin_coding">编码</string>
+    <string name="system_prompt_builtin_debug">调试</string>
+    <string name="system_prompt_builtin_research">研究</string>
+    <string name="system_prompt_builtin_creative">创作</string>
     <string name="system_prompt_dialog_title_new">新建预设</string>
     <string name="system_prompt_dialog_title_edit">编辑预设</string>
     <string name="system_prompt_name_label">名称</string>

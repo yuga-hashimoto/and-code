@@ -922,6 +922,10 @@
     <string name="system_prompt_caption">エージェント自身のシステムプロンプトに追加されます。コーディング、デバッグ、リサーチ、創作など用途に合わせて切り替えられます。Claude Codeはチャットごとに適用、OpenCodeは全チャットに適用され、初回のみランタイムの再起動が必要です。</string>
     <string name="system_prompt_none">なし（Claudeの既定）</string>
     <string name="system_prompt_builtin_label">内蔵</string>
+    <string name="system_prompt_builtin_coding">コーディング</string>
+    <string name="system_prompt_builtin_debug">デバッグ</string>
+    <string name="system_prompt_builtin_research">リサーチ</string>
+    <string name="system_prompt_builtin_creative">創作</string>
     <string name="system_prompt_dialog_title_new">新しいプリセット</string>
     <string name="system_prompt_dialog_title_edit">プリセットを編集</string>
     <string name="system_prompt_name_label">名前</string>

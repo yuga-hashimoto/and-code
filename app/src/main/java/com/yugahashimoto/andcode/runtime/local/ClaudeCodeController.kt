@@ -190,6 +190,9 @@ class ClaudeCodeController(
         sessionId: String? = null,
     ) = target.selectSystemPrompt(presetId, sessionId)
 
+    /** The preset [sessionId] will actually send with; see [ClaudeCodeTarget.systemPromptIdFor]. */
+    fun systemPromptIdFor(sessionId: String?): String? = target.systemPromptIdFor(sessionId)
+
     fun saveSystemPromptPreset(
         name: String,
         prompt: String,

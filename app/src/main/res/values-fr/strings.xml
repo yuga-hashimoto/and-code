@@ -914,6 +914,10 @@
     <string name="system_prompt_caption">Ajoutée à l’invite système propre à l’agent, afin de basculer entre des invites adaptées au code, au débogage, à la recherche ou à la création. Claude Code l’applique par conversation ; OpenCode l’applique à toutes les siennes et nécessite un redémarrage la première fois.</string>
     <string name="system_prompt_none">Aucune (par défaut de Claude)</string>
     <string name="system_prompt_builtin_label">Intégré</string>
+    <string name="system_prompt_builtin_coding">Code</string>
+    <string name="system_prompt_builtin_debug">Débogage</string>
+    <string name="system_prompt_builtin_research">Recherche</string>
+    <string name="system_prompt_builtin_creative">Création</string>
     <string name="system_prompt_dialog_title_new">Nouveau préréglage</string>
     <string name="system_prompt_dialog_title_edit">Modifier le préréglage</string>
     <string name="system_prompt_name_label">Nom</string>

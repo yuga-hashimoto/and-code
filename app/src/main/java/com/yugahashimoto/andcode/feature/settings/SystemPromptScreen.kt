@@ -37,6 +37,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.runtime.local.SystemPromptPreset
+import com.yugahashimoto.andcode.ui.components.systemPromptPresetLabel
 
 /**
  * Lets the user pick which system-prompt preset Claude Code's messages carry, and manage the
@@ -103,7 +104,7 @@ fun SystemPromptScreen(
             }
             items(presets, key = SystemPromptPreset::id) { preset ->
                 PresetRow(
-                    name = preset.name,
+                    name = systemPromptPresetLabel(preset),
                     selected = preset.id == selectedPresetId,
                     onSelect = { onSelect(preset.id) },
                     builtIn = preset.builtIn,

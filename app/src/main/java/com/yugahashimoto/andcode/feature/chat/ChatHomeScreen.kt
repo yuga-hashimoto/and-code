@@ -142,6 +142,7 @@ import com.yugahashimoto.andcode.runtime.local.ClaudePermissionMode
 import com.yugahashimoto.andcode.runtime.local.SystemPromptPreset
 import com.yugahashimoto.andcode.ui.components.StatusChip
 import com.yugahashimoto.andcode.ui.components.VolumeMeter
+import com.yugahashimoto.andcode.ui.components.systemPromptPresetLabel
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
 import kotlinx.coroutines.launch
 
@@ -1676,7 +1677,7 @@ private fun SystemPromptChip(
                 Text(
                     // A preset name is free text, so it is capped rather than allowed to push the
                     // context meter off the row.
-                    text = selected?.name ?: stringResource(R.string.chat_system_prompt_default),
+                    text = selected?.let { systemPromptPresetLabel(it) } ?: stringResource(R.string.chat_system_prompt_default),
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -1694,7 +1695,7 @@ private fun SystemPromptChip(
             )
             presets.forEach { preset ->
                 DropdownMenuItem(
-                    text = { Text(preset.name) },
+                    text = { Text(systemPromptPresetLabel(preset)) },
                     onClick = {
                         onSelect(preset.id)
                         expanded = false

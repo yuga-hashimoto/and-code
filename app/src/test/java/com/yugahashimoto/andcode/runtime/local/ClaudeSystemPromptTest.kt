@@ -129,6 +129,36 @@ class ClaudeSystemPromptTest {
             assertTrue(!persisted.contains(preset.id))
         }
 
+    /**
+     * What the composer names has to be what the send path will use. A session snapshots the
+     * default when it is created and keeps it, so an older chat's preset is not the current default
+     * - showing the default there would name a preset the next turn is not going to carry.
+     */
+    @Test
+    fun `an existing session keeps its own preset when the default moves on`() =
+        runBlocking {
+            val target = target()
+            val session = target.createSession("Older chat", "/workspace")
+
+            target.selectSystemPrompt(ClaudeSystemPrompts.CODING)
+
+            assertNull(target.systemPromptIdFor(session.id))
+            assertEquals(ClaudeSystemPrompts.CODING, target.systemPromptIdFor(null))
+        }
+
+    @Test
+    fun `a session switched from the composer reports its own preset`() =
+        runBlocking {
+            val target = target()
+            val switched = target.createSession("Switched", "/workspace")
+            val untouched = target.createSession("Untouched", "/workspace")
+
+            target.selectSystemPrompt(ClaudeSystemPrompts.DEBUG, switched.id)
+
+            assertEquals(ClaudeSystemPrompts.DEBUG, target.systemPromptIdFor(switched.id))
+            assertNull(target.systemPromptIdFor(untouched.id))
+        }
+
     @Test
     fun `a custom preset's selection survives a new target instance`() {
         val id: String

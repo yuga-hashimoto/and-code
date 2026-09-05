@@ -33,6 +33,7 @@ import com.yugahashimoto.andcode.feature.support.GitHubSupportSheetHost
 import com.yugahashimoto.andcode.feature.wakeword.VoskModelState
 import com.yugahashimoto.andcode.feature.wakeword.WakeWordSettingsPolicy
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
+import com.yugahashimoto.andcode.ui.components.systemPromptPresetLabel
 
 fun NavGraphBuilder.settingsNavGraph(
     navController: NavController,
@@ -323,7 +324,8 @@ fun NavGraphBuilder.settingsNavGraph(
             // agent that can carry one - the same list and selection this row is naming.
             systemPromptLabel =
                 claude().let { state ->
-                    state.systemPromptPresets.firstOrNull { it.id == state.systemPromptId }?.name
+                    state.systemPromptPresets.firstOrNull { it.id == state.systemPromptId }
+                        ?.let { preset -> systemPromptPresetLabel(preset) }
                         ?: stringResource(R.string.system_prompt_none)
                 },
             onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP) },

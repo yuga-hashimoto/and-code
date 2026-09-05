@@ -358,6 +358,8 @@ class WorkspaceViewModel(
         sessionId: String? = null,
     ) = claudeCode?.selectSystemPrompt(presetId, sessionId) ?: Unit
 
+    fun claudeSystemPromptIdFor(sessionId: String?): String? = claudeCode?.systemPromptIdFor(sessionId)
+
     fun saveClaudeSystemPromptPreset(
         name: String,
         prompt: String,

@@ -151,6 +151,22 @@ class ClaudeCodeTarget(
     val defaultSystemPromptId: StateFlow<String?> get() = systemPrompts.selectedId
 
     /**
+     * The preset [sessionId]'s next turn will actually carry.
+     *
+     * A session snapshots the default when it is created and keeps it from then on, exactly as it
+     * keeps its model and permission mode, so an existing chat's preset is not [defaultSystemPromptId]
+     * - showing that one on the composer would name a preset the send path is not going to use as
+     * soon as the user reopens an older chat. A session created before presets existed has none,
+     * which is the truthful answer rather than a reason to fall back to the default.
+     */
+    fun systemPromptIdFor(sessionId: String?): String? =
+        if (sessionId != null && records.containsKey(sessionId)) {
+            records[sessionId]?.promptId
+        } else {
+            systemPrompts.selectedId.value
+        }
+
+    /**
      * Applies [presetId] to new sessions, and to [sessionId] when one is given - the same
      * immediate-effect rule [setPermissionMode] follows, since switching prompts mid-conversation is
      * an explicit choice about that conversation.

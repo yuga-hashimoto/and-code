@@ -916,6 +916,10 @@
     <string name="system_prompt_caption">Добавляется к собственному системному промпту агента — переключайтесь между промптами для программирования, отладки, исследований или творчества. Claude Code применяет пресет к каждому чату отдельно; OpenCode — ко всем своим чатам, и в первый раз требует перезапуска среды.</string>
     <string name="system_prompt_none">Нет (по умолчанию Claude)</string>
     <string name="system_prompt_builtin_label">Встроенный</string>
+    <string name="system_prompt_builtin_coding">Программирование</string>
+    <string name="system_prompt_builtin_debug">Отладка</string>
+    <string name="system_prompt_builtin_research">Исследование</string>
+    <string name="system_prompt_builtin_creative">Творчество</string>
     <string name="system_prompt_dialog_title_new">Новый пресет</string>
     <string name="system_prompt_dialog_title_edit">Изменить пресет</string>
     <string name="system_prompt_name_label">Название</string>
