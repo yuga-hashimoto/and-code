@@ -27,11 +27,13 @@ import com.yugahashimoto.andcode.feature.settings.OpenCodeAgentSettingsViewModel
 import com.yugahashimoto.andcode.feature.settings.ProviderSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.SettingsScreenV2
 import com.yugahashimoto.andcode.feature.settings.SettingsViewModel
+import com.yugahashimoto.andcode.feature.settings.SystemPromptScreen
 import com.yugahashimoto.andcode.feature.settings.VoiceSettingsScreen
 import com.yugahashimoto.andcode.feature.support.GitHubSupportSheetHost
 import com.yugahashimoto.andcode.feature.wakeword.VoskModelState
 import com.yugahashimoto.andcode.feature.wakeword.WakeWordSettingsPolicy
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
+import com.yugahashimoto.andcode.ui.components.systemPromptPresetLabel
 
 fun NavGraphBuilder.settingsNavGraph(
     navController: NavController,
@@ -317,6 +319,15 @@ fun NavGraphBuilder.settingsNavGraph(
             onOpenSetup = { navController.navigate(ROUTE_ANDROID_SETUP) },
             onOpenProviderSettings = { navController.navigate(ROUTE_SETTINGS_PROVIDERS) },
             onOpenModelVisibility = { navController.navigate(ROUTE_SETTINGS_MODEL_VISIBILITY) },
+            onOpenSystemPrompt = { navController.navigate(ROUTE_SETTINGS_SYSTEM_PROMPT) },
+            // Read off the Claude Code state because the presets live in one store shared by every
+            // agent that can carry one - the same list and selection this row is naming.
+            systemPromptLabel =
+                claude().let { state ->
+                    state.systemPromptPresets.firstOrNull { it.id == state.systemPromptId }
+                        ?.let { preset -> systemPromptPresetLabel(preset) }
+                        ?: stringResource(R.string.system_prompt_none)
+                },
             onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP) },
             onBack = { navController.popBackStack() },
         )
@@ -343,10 +354,23 @@ fun NavGraphBuilder.settingsNavGraph(
             onSubmitCode = claudeActions.onSubmitCode,
             onCancelSignIn = claudeActions.onCancelSignIn,
             onSignOut = claudeActions.onSignOut,
+            onOpenSystemPrompt = { navController.navigate(ROUTE_SETTINGS_SYSTEM_PROMPT) },
             onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP_CLAUDE) },
             onOpenUrl = { url ->
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
             },
+            onBack = { navController.popBackStack() },
+        )
+    }
+
+    composable(ROUTE_SETTINGS_SYSTEM_PROMPT) {
+        val claudeState = claude()
+        SystemPromptScreen(
+            presets = claudeState.systemPromptPresets,
+            selectedPresetId = claudeState.systemPromptId,
+            onSelect = claudeActions.onSelectSystemPrompt,
+            onSave = claudeActions.onSaveSystemPromptPreset,
+            onDelete = claudeActions.onDeleteSystemPromptPreset,
             onBack = { navController.popBackStack() },
         )
     }
@@ -474,6 +498,9 @@ data class ClaudeSettingsActions(
     val onSubmitCode: (String) -> Unit,
     val onCancelSignIn: () -> Unit,
     val onSignOut: () -> Unit,
+    val onSelectSystemPrompt: (String?) -> Unit,
+    val onSaveSystemPromptPreset: (name: String, prompt: String, id: String?) -> Unit,
+    val onDeleteSystemPromptPreset: (String) -> Unit,
 )
 
 /** Antigravity actions the settings graph forwards to its agent screen. */

@@ -352,5 +352,15 @@ internal fun localRuntimeEnvironment(
         }
     }
 
+/**
+ * The instruction files OpenCode is launched with: the AndCode environment blurb, and the
+ * system-prompt preset the user selected (see [applyOpenCodeSystemPrompt]).
+ *
+ * Only the paths are fixed here, at launch. OpenCode re-reads each file's content per turn, so
+ * switching presets does not need a restart - but adding this second path to an already-running
+ * server does, which is why a preset selected before the first restart after an update does
+ * nothing.
+ */
 private const val AND_CODE_OPENCODE_CONFIG_CONTENT =
-    "{\"instructions\":[\"/root/.config/opencode/and-code-context.md\"]}"
+    "{\"instructions\":[\"/root/.config/opencode/and-code-context.md\"," +
+        "\"/root/.config/opencode/and-code-system-prompt.md\"]}"

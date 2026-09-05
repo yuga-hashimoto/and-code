@@ -353,6 +353,23 @@ class WorkspaceViewModel(
         sessionId: String? = null,
     ) = claudeCode?.setPermissionMode(mode, sessionId) ?: Unit
 
+    fun selectClaudeSystemPrompt(
+        presetId: String?,
+        sessionId: String? = null,
+    ) = claudeCode?.selectSystemPrompt(presetId, sessionId) ?: Unit
+
+    fun claudeSystemPromptIdFor(sessionId: String?): String? = claudeCode?.systemPromptIdFor(sessionId)
+
+    fun saveClaudeSystemPromptPreset(
+        name: String,
+        prompt: String,
+        id: String? = null,
+    ) {
+        claudeCode?.saveSystemPromptPreset(name, prompt, id)
+    }
+
+    fun deleteClaudeSystemPromptPreset(id: String) = claudeCode?.deleteSystemPromptPreset(id) ?: Unit
+
     fun beginClaudeSignIn() = claudeCode?.beginSignIn() ?: Unit
 
     fun submitClaudeSignInCode(code: String) = claudeCode?.submitSignInCode(code) ?: Unit

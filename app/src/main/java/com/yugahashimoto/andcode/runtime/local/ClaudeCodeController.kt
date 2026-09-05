@@ -62,6 +62,8 @@ data class ClaudeCodeUiState(
     val auth: ClaudeAuthCoordinator.State = ClaudeAuthCoordinator.State.Idle,
     val signedInAccount: String? = null,
     val permissionMode: ClaudePermissionMode = ClaudePermissionMode.DEFAULT,
+    val systemPromptPresets: List<SystemPromptPreset> = ClaudeSystemPrompts.BUILT_IN,
+    val systemPromptId: String? = null,
 )
 
 /**
@@ -90,8 +92,14 @@ class ClaudeCodeController(
     private val mutableState = MutableStateFlow(ClaudeCodeUiState())
 
     val state: StateFlow<ClaudeCodeUiState> =
-        combine(mutableState, target.auth.state, target.defaultPermissionMode) { base, auth, mode ->
-            base.copy(auth = auth, permissionMode = mode)
+        combine(
+            mutableState,
+            target.auth.state,
+            target.defaultPermissionMode,
+            target.systemPromptPresets,
+            target.defaultSystemPromptId,
+        ) { base, auth, mode, presets, promptId ->
+            base.copy(auth = auth, permissionMode = mode, systemPromptPresets = presets, systemPromptId = promptId)
         }.stateIn(scope, SharingStarted.Eagerly, ClaudeCodeUiState())
 
     private var installJob: Job? = null
@@ -176,6 +184,22 @@ class ClaudeCodeController(
         mode: ClaudePermissionMode,
         sessionId: String? = null,
     ) = target.setPermissionMode(mode, sessionId)
+
+    fun selectSystemPrompt(
+        presetId: String?,
+        sessionId: String? = null,
+    ) = target.selectSystemPrompt(presetId, sessionId)
+
+    /** The preset [sessionId] will actually send with; see [ClaudeCodeTarget.systemPromptIdFor]. */
+    fun systemPromptIdFor(sessionId: String?): String? = target.systemPromptIdFor(sessionId)
+
+    fun saveSystemPromptPreset(
+        name: String,
+        prompt: String,
+        id: String? = null,
+    ): SystemPromptPreset = target.saveSystemPromptPreset(name, prompt, id)
+
+    fun deleteSystemPromptPreset(id: String) = target.deleteSystemPromptPreset(id)
 
     fun beginSignIn() = target.auth.begin()
 
