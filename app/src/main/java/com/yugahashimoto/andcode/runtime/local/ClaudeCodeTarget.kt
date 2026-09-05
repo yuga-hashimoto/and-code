@@ -196,13 +196,21 @@ class ClaudeCodeTarget(
     /**
      * Removes a custom preset. Built-in presets are not removable, so this is a no-op for them.
      *
-     * A session or the default selection still pointing at the removed id simply stops resolving to
-     * a preset the next time it is looked up - there is nothing to migrate those references to.
+     * The default selection and any session still pointing at the removed id are reset to no
+     * preset - left dangling, [presetById] would still resolve them to nothing at send time, but
+     * the persisted id would keep naming a preset that no longer exists, and [SystemPromptScreen]'s
+     * picker would show no radio button selected at all instead of "None".
      */
     fun deleteSystemPromptPreset(id: String) {
         if (presetById(id)?.builtIn != false) return
         mutableSystemPromptPresets.value = mutableSystemPromptPresets.value.filterNot { it.id == id }
+        if (mutableDefaultSystemPromptId.value == id) mutableDefaultSystemPromptId.value = null
         persistSystemPrompts()
+        val affectedSessionIds = records.filterValues { it.promptId == id }.keys
+        if (affectedSessionIds.isNotEmpty()) {
+            affectedSessionIds.forEach { sessionId -> records[sessionId] = records.getValue(sessionId).copy(promptId = null) }
+            persist()
+        }
     }
 
     private fun persistSystemPrompts() {

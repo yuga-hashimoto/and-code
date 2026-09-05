@@ -103,6 +103,33 @@ class ClaudeSystemPromptTest {
         }
 
     @Test
+    fun `deleting the selected default preset clears the selection`() {
+        val target = target()
+        val preset = target.saveSystemPromptPreset("Scratch", "Anything goes.")
+        target.selectSystemPrompt(preset.id)
+
+        target.deleteSystemPromptPreset(preset.id)
+
+        assertNull(target.defaultSystemPromptId.value)
+        val persisted = File(folder.root, "claude-system-prompts.json").readText()
+        assertTrue(!persisted.contains(preset.id))
+    }
+
+    @Test
+    fun `deleting a preset selected by an open session clears that session too`() =
+        runBlocking {
+            val target = target()
+            val preset = target.saveSystemPromptPreset("Scratch", "Anything goes.")
+            val session = target.createSession("New chat", "/workspace")
+            target.selectSystemPrompt(preset.id, session.id)
+
+            target.deleteSystemPromptPreset(preset.id)
+
+            val persisted = File(folder.root, "claude-sessions.json").readText()
+            assertTrue(!persisted.contains(preset.id))
+        }
+
+    @Test
     fun `a custom preset's selection survives a new target instance`() {
         val id: String
         runBlocking {
