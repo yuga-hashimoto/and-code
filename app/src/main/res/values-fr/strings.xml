@@ -911,7 +911,7 @@
     <string name="claude_permission_mode_label">Mode d’autorisation</string>
     <string name="system_prompt_settings_row">Invite système</string>
     <string name="system_prompt_title">Préréglages d’invite système</string>
-    <string name="system_prompt_caption">Ajoutée à l’invite système propre à Claude pour chaque message de cette application, afin de basculer entre des invites adaptées au code, au débogage, à la recherche ou à la création.</string>
+    <string name="system_prompt_caption">Ajoutée à l’invite système propre à l’agent, afin de basculer entre des invites adaptées au code, au débogage, à la recherche ou à la création. Claude Code l’applique par conversation ; OpenCode l’applique à toutes les siennes et nécessite un redémarrage la première fois.</string>
     <string name="system_prompt_none">Aucune (par défaut de Claude)</string>
     <string name="system_prompt_builtin_label">Intégré</string>
     <string name="system_prompt_dialog_title_new">Nouveau préréglage</string>

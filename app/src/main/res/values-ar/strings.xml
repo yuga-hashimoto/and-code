@@ -917,7 +917,7 @@
     <string name="claude_permission_mode_label">وضع الأذونات</string>
     <string name="system_prompt_settings_row">موجّه النظام</string>
     <string name="system_prompt_title">إعدادات موجّه النظام المسبقة</string>
-    <string name="system_prompt_caption">تُضاف إلى موجّه النظام الخاص بـ Claude في كل رسالة داخل هذا التطبيق، لتتمكن من التبديل بين موجّهات مخصصة للبرمجة أو تصحيح الأخطاء أو البحث أو الإبداع.</string>
+    <string name="system_prompt_caption">تُضاف إلى موجّه النظام الخاص بالوكيل، لتتمكن من التبديل بين موجّهات مخصصة للبرمجة أو تصحيح الأخطاء أو البحث أو الإبداع. يطبّقه Claude Code لكل محادثة على حدة، بينما يطبّقه OpenCode على جميع محادثاته ويحتاج إلى إعادة تشغيل البيئة في المرة الأولى.</string>
     <string name="system_prompt_none">بلا (الإعداد الافتراضي لـ Claude)</string>
     <string name="system_prompt_builtin_label">مدمج</string>
     <string name="system_prompt_dialog_title_new">إعداد جديد</string>

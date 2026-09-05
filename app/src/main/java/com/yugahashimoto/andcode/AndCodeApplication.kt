@@ -66,7 +66,9 @@ import com.yugahashimoto.andcode.runtime.local.LocalRuntimeReleaseClient
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeServiceController
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeTarget
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeUpdater
+import com.yugahashimoto.andcode.runtime.local.SystemPromptStore
 import com.yugahashimoto.andcode.runtime.local.VerifiedRuntimeDownloader
+import com.yugahashimoto.andcode.runtime.local.applyOpenCodeSystemPrompt
 import com.yugahashimoto.andcode.startup.CatalogReconcileInitializer
 import com.yugahashimoto.andcode.startup.RuntimeAutoStartInitializer
 import com.yugahashimoto.andcode.startup.RuntimeAutoStartTrigger
@@ -78,6 +80,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -168,6 +171,10 @@ class AndCodeApplication : Application() {
         private set
 
     lateinit var claudeCodeTarget: ClaudeCodeTarget
+        private set
+
+    /** Shared by every agent that can carry a system-prompt preset. */
+    lateinit var systemPromptStore: SystemPromptStore
         private set
 
     lateinit var claudeCodeController: ClaudeCodeController
@@ -282,7 +289,11 @@ class AndCodeApplication : Application() {
                 claudeMessages,
                 githubToken = { settings.githubToken },
             )
-        claudeCodeTarget = ClaudeCodeTarget(claudeCodeRuntime, claudeMessages)
+        // One store for every agent that can carry a preset, so a prompt the user wrote for Claude
+        // Code is the same one OpenCode offers. Claude Code passes it per session on the command
+        // line; OpenCode reads it from an instructions file, which is kept in step below.
+        systemPromptStore = SystemPromptStore(File(runtimeDirectory, "claude-system-prompts.json"))
+        claudeCodeTarget = ClaudeCodeTarget(claudeCodeRuntime, claudeMessages, systemPromptStore)
         antigravityRuntime = AntigravityRuntime(runtimeDirectory, installer::installedRuntime, githubToken = { settings.githubToken })
         antigravityTarget = AntigravityTarget(antigravityRuntime)
         antigravityController = AntigravityController(installer, antigravityTarget, runtimeWork, applicationScope)
@@ -337,6 +348,18 @@ class AndCodeApplication : Application() {
                 updateEngine = updateEngine,
                 messages = runtimeMessages,
             )
+        // Keeps OpenCode's instructions file in step with the selected preset: on every switch, and
+        // on every runtime start, since a reinstall replaces the guest filesystem the file lives in.
+        // Claude Code needs none of this - it takes the prompt on the command line per session.
+        applicationScope.launch {
+            combine(localRuntimeManager.state, systemPromptStore.selectedId) { status, _ -> status }
+                .collect { status ->
+                    if (status !is LocalRuntimeStatus.Ready) return@collect
+                    val rootfs = installer.installedRuntime()?.rootfs ?: return@collect
+                    applyOpenCodeSystemPrompt(rootfs, systemPromptStore.selectedPrompt())
+                }
+        }
+
         localRuntimeDiagnosticsCollector =
             LocalRuntimeDiagnosticsCollector(
                 runtimeDirectory = runtimeDirectory,

@@ -318,6 +318,14 @@ fun NavGraphBuilder.settingsNavGraph(
             onOpenSetup = { navController.navigate(ROUTE_ANDROID_SETUP) },
             onOpenProviderSettings = { navController.navigate(ROUTE_SETTINGS_PROVIDERS) },
             onOpenModelVisibility = { navController.navigate(ROUTE_SETTINGS_MODEL_VISIBILITY) },
+            onOpenSystemPrompt = { navController.navigate(ROUTE_SETTINGS_SYSTEM_PROMPT) },
+            // Read off the Claude Code state because the presets live in one store shared by every
+            // agent that can carry one - the same list and selection this row is naming.
+            systemPromptLabel =
+                claude().let { state ->
+                    state.systemPromptPresets.firstOrNull { it.id == state.systemPromptId }?.name
+                        ?: stringResource(R.string.system_prompt_none)
+                },
             onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP) },
             onBack = { navController.popBackStack() },
         )
@@ -344,7 +352,7 @@ fun NavGraphBuilder.settingsNavGraph(
             onSubmitCode = claudeActions.onSubmitCode,
             onCancelSignIn = claudeActions.onCancelSignIn,
             onSignOut = claudeActions.onSignOut,
-            onOpenSystemPrompt = { navController.navigate(ROUTE_SETTINGS_CLAUDE_SYSTEM_PROMPT) },
+            onOpenSystemPrompt = { navController.navigate(ROUTE_SETTINGS_SYSTEM_PROMPT) },
             onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP_CLAUDE) },
             onOpenUrl = { url ->
                 runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
@@ -353,7 +361,7 @@ fun NavGraphBuilder.settingsNavGraph(
         )
     }
 
-    composable(ROUTE_SETTINGS_CLAUDE_SYSTEM_PROMPT) {
+    composable(ROUTE_SETTINGS_SYSTEM_PROMPT) {
         val claudeState = claude()
         SystemPromptScreen(
             presets = claudeState.systemPromptPresets,

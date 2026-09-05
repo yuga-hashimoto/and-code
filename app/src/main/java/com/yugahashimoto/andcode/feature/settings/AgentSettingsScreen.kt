@@ -223,6 +223,8 @@ fun OpenCodeAgentSettingsScreen(
     onOpenSetup: () -> Unit,
     onOpenProviderSettings: () -> Unit,
     onOpenModelVisibility: () -> Unit,
+    onOpenSystemPrompt: () -> Unit,
+    systemPromptLabel: String,
     onOpenMcp: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -279,6 +281,13 @@ fun OpenCodeAgentSettingsScreen(
                 icon = Icons.Default.Visibility,
                 title = stringResource(R.string.model_visibility_row),
                 onClick = onOpenModelVisibility,
+            )
+            SettingsDivider()
+            SettingsRow(
+                icon = Icons.Default.Psychology,
+                title = stringResource(R.string.system_prompt_settings_row),
+                value = systemPromptLabel,
+                onClick = onOpenSystemPrompt,
             )
             SettingsDivider()
             SettingsRow(

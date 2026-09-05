@@ -919,7 +919,7 @@
     <string name="claude_permission_mode_label">権限モード</string>
     <string name="system_prompt_settings_row">システムプロンプト</string>
     <string name="system_prompt_title">システムプロンプトのプリセット</string>
-    <string name="system_prompt_caption">このアプリで送るすべてのメッセージで、Claude自身のシステムプロンプトに追加されます。コーディング、デバッグ、リサーチ、創作など、用途に合わせて切り替えられます。</string>
+    <string name="system_prompt_caption">エージェント自身のシステムプロンプトに追加されます。コーディング、デバッグ、リサーチ、創作など用途に合わせて切り替えられます。Claude Codeはチャットごとに適用、OpenCodeは全チャットに適用され、初回のみランタイムの再起動が必要です。</string>
     <string name="system_prompt_none">なし（Claudeの既定）</string>
     <string name="system_prompt_builtin_label">内蔵</string>
     <string name="system_prompt_dialog_title_new">新しいプリセット</string>

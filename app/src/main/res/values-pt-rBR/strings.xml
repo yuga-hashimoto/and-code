@@ -911,7 +911,7 @@
     <string name="claude_permission_mode_label">Modo de permissão</string>
     <string name="system_prompt_settings_row">Prompt do sistema</string>
     <string name="system_prompt_title">Predefinições de prompt do sistema</string>
-    <string name="system_prompt_caption">Adicionado ao próprio prompt do sistema do Claude em cada mensagem deste app, para você alternar entre prompts voltados a programação, depuração, pesquisa ou criatividade.</string>
+    <string name="system_prompt_caption">Adicionado ao próprio prompt do sistema do agente, para alternar entre prompts de programação, depuração, pesquisa ou criatividade. O Claude Code aplica por conversa; o OpenCode aplica a todas as suas conversas e exige reiniciar o runtime na primeira vez.</string>
     <string name="system_prompt_none">Nenhum (padrão do Claude)</string>
     <string name="system_prompt_builtin_label">Integrado</string>
     <string name="system_prompt_dialog_title_new">Nova predefinição</string>

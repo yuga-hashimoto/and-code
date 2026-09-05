@@ -908,7 +908,7 @@
     <string name="claude_permission_mode_label">Permission mode</string>
     <string name="system_prompt_settings_row">System prompt</string>
     <string name="system_prompt_title">System prompt presets</string>
-    <string name="system_prompt_caption">Appended to Claude\'s own system prompt for every message in this app, so you can switch between prompts tailored to coding, debugging, research, or creative work.</string>
+    <string name="system_prompt_caption">Added on top of the agent\'s own system prompt, so you can switch between prompts for coding, debugging, research, or creative work. Claude Code applies the preset per chat; OpenCode applies it to all of its chats, and needs one runtime restart before it first takes effect.</string>
     <string name="system_prompt_none">None (Claude\'s default)</string>
     <string name="system_prompt_builtin_label">Built-in</string>
     <string name="system_prompt_dialog_title_new">New preset</string>

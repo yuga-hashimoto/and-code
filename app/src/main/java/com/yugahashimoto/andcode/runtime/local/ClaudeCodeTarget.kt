@@ -58,17 +58,16 @@ private data class ClaudeSessionRecord(
     @SerialName("promptId") val promptId: String? = null,
 )
 
-/** What is persisted for system prompt presets: the user's own, plus which one is active. */
-@Serializable
-private data class SystemPromptState(
-    @SerialName("customPresets") val customPresets: List<SystemPromptPreset> = emptyList(),
-    @SerialName("selectedPresetId") val selectedPresetId: String? = null,
-)
-
 /** Exposes the Android-local Claude Code agent as a selectable runtime. */
 class ClaudeCodeTarget(
     private val runtime: ClaudeCodeRuntime,
     private val messages: ClaudeMessages = ClaudeMessages,
+    /**
+     * Shared with every other agent that can carry a preset, so the user writes each one once.
+     * Defaults to the runtime directory so tests and older call sites need not build one.
+     */
+    private val systemPrompts: SystemPromptStore =
+        SystemPromptStore(File(runtime.runtimeDirectory, "claude-system-prompts.json")),
 ) : RuntimeTarget {
     override val id = LocalAgent.CLAUDE_CODE.targetId
     override val displayName = "Claude Code"
@@ -146,22 +145,10 @@ class ClaudeCodeTarget(
         persist()
     }
 
-    private val systemPromptsFile = File(runtime.runtimeDirectory, "claude-system-prompts.json")
-    private val systemPromptState =
-        runCatching { json.decodeFromString<SystemPromptState>(systemPromptsFile.readText()) }
-            .getOrDefault(SystemPromptState())
-
-    /** Built-in presets first, then whatever the user has saved, in the order they were added. */
-    private val mutableSystemPromptPresets =
-        MutableStateFlow(ClaudeSystemPrompts.BUILT_IN + systemPromptState.customPresets)
-    val systemPromptPresets: StateFlow<List<SystemPromptPreset>> = mutableSystemPromptPresets.asStateFlow()
+    val systemPromptPresets: StateFlow<List<SystemPromptPreset>> get() = systemPrompts.presets
 
     /** Preset id applied to sessions created from now on, or null for no preset. */
-    private val mutableDefaultSystemPromptId = MutableStateFlow(systemPromptState.selectedPresetId)
-    val defaultSystemPromptId: StateFlow<String?> = mutableDefaultSystemPromptId.asStateFlow()
-
-    private fun presetById(id: String?): SystemPromptPreset? =
-        id?.let { target -> mutableSystemPromptPresets.value.firstOrNull { it.id == target } }
+    val defaultSystemPromptId: StateFlow<String?> get() = systemPrompts.selectedId
 
     /**
      * Applies [presetId] to new sessions, and to [sessionId] when one is given - the same
@@ -172,8 +159,7 @@ class ClaudeCodeTarget(
         presetId: String?,
         sessionId: String? = null,
     ) {
-        mutableDefaultSystemPromptId.value = presetId
-        persistSystemPrompts()
+        systemPrompts.select(presetId)
         val record = sessionId?.let(records::get) ?: return
         records[sessionId] = record.copy(promptId = presetId)
         persist()
@@ -184,46 +170,20 @@ class ClaudeCodeTarget(
         name: String,
         prompt: String,
         id: String? = null,
-    ): SystemPromptPreset {
-        val presetId = id?.takeIf { presetById(it)?.builtIn == false } ?: UUID.randomUUID().toString()
-        val preset = SystemPromptPreset(id = presetId, name = name, prompt = prompt)
-        mutableSystemPromptPresets.value =
-            mutableSystemPromptPresets.value.filterNot { it.id == preset.id } + preset
-        persistSystemPrompts()
-        return preset
-    }
+    ): SystemPromptPreset = systemPrompts.save(name, prompt, id)
 
     /**
-     * Removes a custom preset. Built-in presets are not removable, so this is a no-op for them.
+     * Removes a custom preset, and with it any session still pointing at that preset.
      *
-     * The default selection and any session still pointing at the removed id are reset to no
-     * preset - left dangling, [presetById] would still resolve them to nothing at send time, but
-     * the persisted id would keep naming a preset that no longer exists, and [SystemPromptScreen]'s
-     * picker would show no radio button selected at all instead of "None".
+     * Left dangling, a session's promptId would keep naming a preset that no longer exists; the
+     * store clears the default selection for the same reason.
      */
     fun deleteSystemPromptPreset(id: String) {
-        if (presetById(id)?.builtIn != false) return
-        mutableSystemPromptPresets.value = mutableSystemPromptPresets.value.filterNot { it.id == id }
-        if (mutableDefaultSystemPromptId.value == id) mutableDefaultSystemPromptId.value = null
-        persistSystemPrompts()
+        if (!systemPrompts.delete(id)) return
         val affectedSessionIds = records.filterValues { it.promptId == id }.keys
         if (affectedSessionIds.isNotEmpty()) {
             affectedSessionIds.forEach { sessionId -> records[sessionId] = records.getValue(sessionId).copy(promptId = null) }
             persist()
-        }
-    }
-
-    private fun persistSystemPrompts() {
-        runCatching {
-            systemPromptsFile.parentFile?.mkdirs()
-            systemPromptsFile.writeText(
-                json.encodeToString(
-                    SystemPromptState(
-                        customPresets = mutableSystemPromptPresets.value.filterNot(SystemPromptPreset::builtIn),
-                        selectedPresetId = mutableDefaultSystemPromptId.value,
-                    ),
-                ),
-            )
         }
     }
 
@@ -317,7 +277,7 @@ class ClaudeCodeTarget(
             ClaudeSessionRecord(
                 session = session,
                 permissionMode = mutableDefaultPermissionMode.value.cliValue,
-                promptId = mutableDefaultSystemPromptId.value,
+                promptId = systemPrompts.selectedId.value,
             )
         persist()
         return session
@@ -380,7 +340,7 @@ class ClaudeCodeTarget(
                 model = model,
                 effort = effort,
                 attachments = request.attachments,
-                systemPrompt = presetById(record.promptId)?.prompt,
+                systemPrompt = systemPrompts.byId(record.promptId)?.prompt,
             ).getOrThrow()
         }
     }
