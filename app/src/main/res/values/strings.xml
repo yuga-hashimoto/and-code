@@ -1118,4 +1118,16 @@
     <string name="guest_browser_back">Back</string>
     <string name="guest_browser_forward">Forward</string>
     <string name="guest_browser_reload">Reload</string>
+    <string name="setup_step_development_tools">Development tools</string>
+    <string name="setup_development_tools_description">Install only the runtime by default, or include the complete development toolchain.</string>
+    <string name="setup_required_tools_description">Linux, the selected agents, Git, and the support tools used by AndCode. These are always installed.</string>
+    <string name="setup_install_full_development_tools">Install complete development tools</string>
+    <string name="setup_install_full_development_tools_description">Adds language runtimes, compilers, build tools, editors, and other utilities. This downloads more data.</string>
+    <string name="setup_development_tools_settings_hint">You can skip this and install the complete toolchain later from Settings → Local runtime.</string>
+    <string name="install_step_installing_runtime_tools">Installing required runtime tools</string>
+    <string name="full_development_tools_title">Development tools</string>
+    <string name="full_development_tools_description">Optional language runtimes, compilers, build tools, and utilities for projects.</string>
+    <string name="full_development_tools_installed">Complete development tools are installed</string>
+    <string name="install_full_development_tools_button">Install complete toolchain</string>
+    <string name="runtime_full_development_tools_start_failed">Could not start development tool installation</string>
 </resources>

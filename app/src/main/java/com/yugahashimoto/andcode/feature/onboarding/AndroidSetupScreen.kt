@@ -75,7 +75,13 @@ import com.yugahashimoto.andcode.runtime.local.ClaudePermissionMode
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
 import kotlinx.coroutines.delay
 
-private const val TOTAL_STEPS = 4
+private const val TOTAL_STEPS = 5
+
+internal fun shouldStartRuntimeInstall(
+    installComplete: Boolean,
+    installFullDevelopmentTools: Boolean,
+    fullDevelopmentToolsInstalled: Boolean = false,
+): Boolean = !installComplete || (installFullDevelopmentTools && !fullDevelopmentToolsInstalled)
 
 /**
  * Guided setup: choose agents, install them, sign in, then connect GitHub.
@@ -89,7 +95,9 @@ fun AndroidSetupScreen(
     runtimeStatus: LocalRuntimeStatus,
     claude: ClaudeCodeUiState,
     antigravity: AntigravityControllerState = AntigravityControllerState(),
-    onStartSetup: (Set<LocalAgent>) -> Unit,
+    fullDevelopmentToolsInstalled: Boolean = false,
+    fullDevelopmentToolsInstallFailed: Boolean = false,
+    onStartSetup: (Set<LocalAgent>, Boolean) -> Unit,
     onSelectClaudePermissionMode: (ClaudePermissionMode) -> Unit,
     onBeginClaudeSignIn: () -> Unit,
     onSubmitClaudeSignInCode: (String) -> Unit,
@@ -140,8 +148,7 @@ fun AndroidSetupScreen(
     val antigravitySelected = LocalAgent.ANTIGRAVITY in selectedAgents
     val openCodeReady = runtimeStatus is LocalRuntimeStatus.Ready || runtimeStatus is LocalRuntimeStatus.Stopped
     val antigravityReady = antigravitySelected && antigravity.installed && !antigravity.busy
-    val installComplete = (!openCodeSelected || openCodeReady) && (!claudeSelected || claude.installed) && (!antigravitySelected || antigravityReady)
-
+    val claudeReady = claude.installed && claude.install !is ClaudeInstallStatus.Installing && claude.install !is ClaudeInstallStatus.Failed
     // Only what is selected *and* actually on the device: an agent whose binary is missing has no
     // sign-in to offer, and Claude Code's card would shell out to /usr/bin/claude and fail there.
     // OpenCode, Claude Code, Antigravity - the same order the picker lists them in, so the guide
@@ -156,6 +163,36 @@ fun AndroidSetupScreen(
     val signInAgent = signInAgents.getOrNull(signInIndex.coerceAtMost(signInAgents.lastIndex.coerceAtLeast(0)))
 
     var currentStep by rememberSaveable { mutableIntStateOf(1) }
+    var installFullDevelopmentTools by rememberSaveable { mutableStateOf(false) }
+    var fullToolsInstallPending by rememberSaveable { mutableStateOf(false) }
+    var fullToolsInstallObserved by rememberSaveable { mutableStateOf(false) }
+    val packageInstallRunning =
+        runtimeStatus is LocalRuntimeStatus.Installing ||
+            claude.install is ClaudeInstallStatus.Installing ||
+            antigravity.busy
+    val fullToolsReady = !installFullDevelopmentTools || fullDevelopmentToolsInstalled
+    val agentsInstallComplete =
+        (!openCodeSelected || openCodeReady) &&
+            (!claudeSelected || claudeReady) &&
+            (!antigravitySelected || antigravityReady) &&
+            fullToolsReady
+    val installComplete = agentsInstallComplete && !fullToolsInstallPending
+
+    LaunchedEffect(packageInstallRunning, fullToolsInstallPending, agentsInstallComplete, fullDevelopmentToolsInstallFailed) {
+        if (!fullToolsInstallPending) return@LaunchedEffect
+        if (fullDevelopmentToolsInstallFailed) {
+            fullToolsInstallPending = false
+            fullToolsInstallObserved = false
+            currentStep = 3
+        } else {
+            if (packageInstallRunning) fullToolsInstallObserved = true
+            if (fullToolsInstallObserved && !packageInstallRunning && agentsInstallComplete) {
+                fullToolsInstallPending = false
+                fullToolsInstallObserved = false
+                currentStep = 3
+            }
+        }
+    }
 
     // One install provisions every selected agent, so the guide no longer chains a second and third
     // install off this screen once the first finishes. It used to, and that made the outcome depend
@@ -167,10 +204,6 @@ fun AndroidSetupScreen(
         if (!openCodeReady) return@LaunchedEffect
         if (claudeSelected) onRefreshClaudeState()
         if (antigravitySelected) onRefreshAntigravityState()
-    }
-
-    LaunchedEffect(installComplete) {
-        if (installComplete && currentStep == 2) currentStep = 3
     }
 
     LaunchedEffect(openCodeReady, openCodeSelected, settingsState.availableProviders, settingsState.providerAuthMethods) {
@@ -189,15 +222,38 @@ fun AndroidSetupScreen(
                     enabled = selectedAgents.isNotEmpty(),
                     onClick = {
                         currentStep = 2
-                        if (!installComplete) onStartSetup(selectedAgents)
                     },
                 )
             2 ->
+                SetupPrimaryAction(stringResource(R.string.setup_next_action), !fullToolsInstallPending) {
+                    if (
+                        shouldStartRuntimeInstall(
+                            agentsInstallComplete,
+                            installFullDevelopmentTools,
+                            fullDevelopmentToolsInstalled,
+                        )
+                    ) {
+                        if (installFullDevelopmentTools) fullToolsInstallPending = true
+                        onStartSetup(selectedAgents, installFullDevelopmentTools)
+                        if (!installFullDevelopmentTools) currentStep = 3
+                    } else {
+                        currentStep = 3
+                    }
+                }
+            3 ->
                 if (installComplete) {
-                    SetupPrimaryAction(stringResource(R.string.setup_next_action), true) { currentStep = 3 }
-                } else if (runtimeStatus is LocalRuntimeStatus.Broken || claude.install is ClaudeInstallStatus.Failed || antigravity.error != null) {
+                    SetupPrimaryAction(stringResource(R.string.setup_next_action), true) { currentStep = 4 }
+                } else if (
+                    runtimeStatus is LocalRuntimeStatus.Broken ||
+                    claude.install is ClaudeInstallStatus.Failed ||
+                    antigravity.error != null ||
+                    fullDevelopmentToolsInstallFailed
+                ) {
                     SetupPrimaryAction(stringResource(R.string.claude_retry_install_button), true) {
-                        onStartSetup(if (antigravity.error != null) setOf(LocalAgent.ANTIGRAVITY) else selectedAgents)
+                        onStartSetup(
+                            if (antigravity.error != null) setOf(LocalAgent.ANTIGRAVITY) else selectedAgents,
+                            installFullDevelopmentTools,
+                        )
                     }
                 } else {
                     null
@@ -205,9 +261,9 @@ fun AndroidSetupScreen(
             // "Next" walks the sign-in tabs before it leaves the step, so signing in to three
             // agents is three taps of one button rather than a hunt for the chip the user has not
             // visited yet.
-            3 ->
+            4 ->
                 SetupPrimaryAction(stringResource(R.string.setup_next_action), true) {
-                    if (signInIndex < signInAgents.lastIndex) signInIndex++ else currentStep = 4
+                    if (signInIndex < signInAgents.lastIndex) signInIndex++ else currentStep = 5
                 }
             else -> SetupPrimaryAction(stringResource(R.string.setup_complete_button), true, onFinish)
         }
@@ -246,7 +302,7 @@ fun AndroidSetupScreen(
             SetupBottomBar(
                 currentStep = currentStep,
                 primaryAction = primaryAction,
-                onSkip = if (currentStep >= 3) onFinish else null,
+                onSkip = if (currentStep >= 4) onFinish else null,
                 onBackStep = { currentStep -= 1 },
             )
         },
@@ -271,6 +327,12 @@ fun AndroidSetupScreen(
                         },
                     )
                 2 ->
+                    DevelopmentToolsStep(
+                        installFullDevelopmentTools = installFullDevelopmentTools,
+                        installPending = fullToolsInstallPending,
+                        onInstallFullDevelopmentToolsChanged = { installFullDevelopmentTools = it },
+                    )
+                3 ->
                     RuntimeDownloadStep(
                         runtimeStatus = runtimeStatus,
                         claude = claude,
@@ -279,7 +341,7 @@ fun AndroidSetupScreen(
                         claudeSelected = claudeSelected,
                         antigravitySelected = antigravitySelected,
                     )
-                3 ->
+                4 ->
                     SignInStep(
                         agents = signInAgents,
                         current = signInAgent,
@@ -542,6 +604,74 @@ private fun AgentOption(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun DevelopmentToolsStep(
+    installFullDevelopmentTools: Boolean,
+    installPending: Boolean,
+    onInstallFullDevelopmentToolsChanged: (Boolean) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        StepHeader(
+            title = stringResource(R.string.setup_step_development_tools),
+            description = stringResource(R.string.setup_development_tools_description),
+        )
+        SetupPanel {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Checkbox(checked = true, onCheckedChange = null, enabled = false)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.required_tools_title), fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        stringResource(R.string.setup_required_tools_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Checkbox(
+                    checked = installFullDevelopmentTools,
+                    onCheckedChange = onInstallFullDevelopmentToolsChanged,
+                    enabled = !installPending,
+                )
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.setup_install_full_development_tools),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        stringResource(R.string.setup_install_full_development_tools_description),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+        Text(
+            stringResource(R.string.setup_development_tools_settings_hint),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (installPending) {
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            Text(
+                stringResource(R.string.install_step_installing_dev_tools),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
@@ -1110,7 +1240,7 @@ private fun AndroidSetupScreenPreview() {
         AndroidSetupScreen(
             runtimeStatus = LocalRuntimeStatus.Installing(0.68f, "Downloading runtime"),
             claude = ClaudeCodeUiState(),
-            onStartSetup = {},
+            onStartSetup = { _, _ -> },
             onBeginClaudeSignIn = {},
             onSubmitClaudeSignInCode = {},
             onCancelClaudeSignIn = {},
@@ -1143,7 +1273,7 @@ private fun AndroidSetupProviderStepPreview() {
         AndroidSetupScreen(
             runtimeStatus = LocalRuntimeStatus.Ready("1.0.0", 4097),
             claude = ClaudeCodeUiState(installed = true, version = "2.1.212"),
-            onStartSetup = {},
+            onStartSetup = { _, _ -> },
             onBeginClaudeSignIn = {},
             onSubmitClaudeSignInCode = {},
             onCancelClaudeSignIn = {},

@@ -32,8 +32,14 @@ data class LocalRuntimeMetadata(
      * the agent they actually contain.
      */
     @SerialName("components") val components: Set<String> = setOf(LocalAgent.OPEN_CODE.id),
+    /** Legacy runtimes installed the complete Alpine toolchain, but not its Debian equivalent. */
+    @SerialName("fullDevelopmentToolsInstalled") val fullDevelopmentToolsInstalled: Boolean = true,
+    @SerialName("fullDebianDevelopmentToolsInstalled") val fullDebianDevelopmentToolsInstalled: Boolean = false,
 ) {
     fun has(agent: LocalAgent): Boolean = agent.id in components
+
+    fun hasFullDevelopmentTools(): Boolean =
+        fullDevelopmentToolsInstalled && (!has(LocalAgent.ANTIGRAVITY) || fullDebianDevelopmentToolsInstalled)
 
     fun with(agent: LocalAgent): LocalRuntimeMetadata = copy(components = components + agent.id)
 
@@ -91,14 +97,17 @@ class LocalRuntimeManager(
 
     fun restartCount(): Int = processLauncher?.restartCount() ?: 0
 
-    suspend fun installAndStart(agents: Set<LocalAgent> = setOf(LocalAgent.OPEN_CODE)): Result<LocalRuntimeStatus.Ready> =
+    suspend fun installAndStart(
+        agents: Set<LocalAgent> = setOf(LocalAgent.OPEN_CODE),
+        installFullDevelopmentTools: Boolean = false,
+    ): Result<LocalRuntimeStatus.Ready> =
         operationMutex.withLock {
             val configuredInstaller =
                 installer
                     ?: return@withLock Result.failure(IllegalStateException("Local runtime installer is not configured"))
             runCatching {
                 val installed =
-                    configuredInstaller.install(agents) { progress, step, agent ->
+                    configuredInstaller.install(agents, installFullDevelopmentTools) { progress, step, agent ->
                         mutableState.value = LocalRuntimeStatus.Installing(progress, step, agent)
                     }
                 mutableState.value = LocalRuntimeStatus.Stopped(installed.metadata.version, installed.metadata.port)
@@ -179,13 +188,22 @@ class LocalRuntimeManager(
     suspend fun reinstall(): Result<LocalRuntimeStatus.Ready> =
         operationMutex.withLock {
             withContext(Dispatchers.IO) { processLauncher?.stop() }
+            val previousMetadata = readMetadata()
             File(runtimeDirectory, METADATA_FILE).delete()
             val configuredInstaller =
                 installer
                     ?: return@withLock Result.failure(IllegalStateException("Local runtime installer is not configured"))
             runCatching {
                 val installed =
-                    configuredInstaller.install { progress, step, agent ->
+                    configuredInstaller.install(
+                        agents =
+                            previousMetadata?.components
+                                ?.mapNotNull(LocalAgent::fromId)
+                                ?.toSet()
+                                ?.takeIf(Set<LocalAgent>::isNotEmpty)
+                                ?: setOf(LocalAgent.OPEN_CODE),
+                        installFullDevelopmentTools = previousMetadata?.fullDevelopmentToolsInstalled == true,
+                    ) { progress, step, agent ->
                         mutableState.value = LocalRuntimeStatus.Installing(progress, step, agent)
                     }
                 startInstalled(installed)
@@ -194,6 +212,63 @@ class LocalRuntimeManager(
                     LocalRuntimeStatus.Broken(
                         error.message ?: messages.reinstallFailed,
                     )
+            }
+        }
+
+    // UI readers must not wait on the installer's write lock during a long package download.
+    fun fullDevelopmentToolsInstalled(): Boolean = readMetadata()?.hasFullDevelopmentTools() == true
+
+    fun runtimeEnvironmentInstalled(): Boolean = readMetadata() != null && File(runtimeDirectory, "environment/rootfs").isDirectory
+
+    suspend fun installFullDevelopmentTools(): Result<Unit> =
+        operationMutex.withLock {
+            val configuredInstaller =
+                installer
+                    ?: return@withLock Result.failure(IllegalStateException("Local runtime installer is not configured"))
+            if (configuredInstaller.installedMetadata()?.hasFullDevelopmentTools() == true) {
+                return@withLock Result.success(Unit)
+            }
+            mutableLastOperation.value = null
+            val wasRunning = status() is LocalRuntimeStatus.Ready
+            try {
+                if (wasRunning) withContext(Dispatchers.IO) { processLauncher?.stop() }
+                configuredInstaller.installFullDevelopmentTools { progress, step, agent ->
+                    mutableState.value = LocalRuntimeStatus.Installing(progress, step, agent)
+                }
+                val installed = configuredInstaller.installedRuntime() ?: error("Local runtime is not installed")
+                if (wasRunning) {
+                    startInstalled(installed)
+                } else {
+                    mutableState.value = LocalRuntimeStatus.Stopped(installed.metadata.version, installed.metadata.port)
+                }
+                mutableLastOperation.value = null
+                Result.success(Unit)
+            } catch (error: Throwable) {
+                // A failed optional-tool download must not turn an otherwise usable runtime into a
+                // broken one. Restore the state it had before the attempt; the persistent APK cache
+                // lets the next retry reuse packages that finished downloading.
+                val restoreError =
+                    withContext(NonCancellable) {
+                        runCatching {
+                            val installed = configuredInstaller.installedRuntime() ?: error("Local runtime is not installed")
+                            if (wasRunning) {
+                                startInstalled(installed)
+                            } else {
+                                mutableState.value = LocalRuntimeStatus.Stopped(installed.metadata.version, installed.metadata.port)
+                            }
+                        }.exceptionOrNull()
+                    }
+                if (restoreError != null) {
+                    error.addSuppressed(restoreError)
+                    mutableState.value = LocalRuntimeStatus.Broken(error.message ?: messages.installFailed)
+                }
+                if (error is CancellationException) throw error
+                mutableLastOperation.value =
+                    LocalRuntimeOperationResult.Failed(
+                        operation = "development-tools-install",
+                        message = error.message ?: messages.installFailed,
+                    )
+                Result.failure(error)
             }
         }
 

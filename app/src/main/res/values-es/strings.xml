@@ -1099,4 +1099,16 @@
     <string name="guest_browser_back">Atrás</string>
     <string name="guest_browser_forward">Avanzar</string>
     <string name="guest_browser_reload">Recargar</string>
+    <string name="setup_step_development_tools">Herramientas de desarrollo</string>
+    <string name="setup_development_tools_description">De forma predeterminada solo se instala lo necesario para ejecutar el entorno, o puedes incluir toda la cadena de desarrollo.</string>
+    <string name="setup_required_tools_description">Linux, los agentes seleccionados, Git y las herramientas de soporte que usa AndCode. Siempre se instalan.</string>
+    <string name="setup_install_full_development_tools">Instalar todas las herramientas de desarrollo</string>
+    <string name="setup_install_full_development_tools_description">Añade runtimes, compiladores, herramientas de compilación, editores y utilidades. Descargará más datos.</string>
+    <string name="setup_development_tools_settings_hint">Puedes omitirlo e instalar la cadena completa más tarde desde Ajustes → Entorno local.</string>
+    <string name="install_step_installing_runtime_tools">Instalando herramientas necesarias</string>
+    <string name="full_development_tools_title">Herramientas de desarrollo</string>
+    <string name="full_development_tools_description">Runtimes, compiladores, herramientas de compilación y utilidades opcionales para proyectos.</string>
+    <string name="full_development_tools_installed">Todas las herramientas de desarrollo están instaladas</string>
+    <string name="install_full_development_tools_button">Instalar cadena completa</string>
+    <string name="runtime_full_development_tools_start_failed">No se pudo iniciar la instalación de herramientas</string>
 </resources>

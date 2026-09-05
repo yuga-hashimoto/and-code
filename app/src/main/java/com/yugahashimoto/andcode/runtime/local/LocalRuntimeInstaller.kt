@@ -48,6 +48,7 @@ class LocalRuntimeInstaller(
      */
     suspend fun install(
         agents: Set<LocalAgent> = setOf(LocalAgent.OPEN_CODE),
+        installFullDevelopmentTools: Boolean = false,
         /**
          * Progress, the step to show, and which agent that step belongs to - null for the shared
          * Alpine environment every agent runs in. One install provisions the whole selection, so
@@ -63,13 +64,18 @@ class LocalRuntimeInstaller(
             val onAntigravity: (Float?, String) -> Unit = { progress, step -> onProgress(progress, step, LocalAgent.ANTIGRAVITY) }
             runtimeDirectory.mkdirs()
             onShared(0.02f, context.getString(R.string.install_step_preparing_command_env))
+            val existingMetadata = installedMetadata()
             val requestedAgents =
                 agents + (
-                    installedMetadata()?.let {
+                    existingMetadata?.let {
                             existing ->
                         LocalAgent.entries.filter(existing::has)
                     } ?: emptyList()
                 )
+            // Runtimes created before this option existed already contain the full toolchain, and
+            // adding another agent must not silently remove it by rebuilding a smaller rootfs.
+            val includeFullDevelopmentTools =
+                installFullDevelopmentTools || existingMetadata?.fullDevelopmentToolsInstalled == true
             require(requestedAgents.isNotEmpty()) { "At least one agent must be selected" }
             val commandSuite = EmbeddedCommandSuite(context, runtimeDirectory, abi).ensureInstalled()
             val manifest = manifestReader.read()
@@ -128,6 +134,7 @@ class LocalRuntimeInstaller(
                         onAntigravity(0.90f, context.getString(R.string.install_step_preparing_antigravity_rootfs))
                         DebianRootfsInstaller(runtimeDirectory, abi, downloader, httpClient, commandSuite).installInto(
                             File(staging, "antigravity-rootfs"),
+                            installFullDevelopmentTools = includeFullDevelopmentTools,
                         ) { progress ->
                             onAntigravity(0.90f + progress * 0.03f, context.getString(R.string.install_step_preparing_antigravity_rootfs))
                         }
@@ -149,8 +156,26 @@ class LocalRuntimeInstaller(
                 // agent whenever another one is added or the runtime is reinstalled.
                 carryOverHomeDirectory(File(active, "rootfs"), rootfs)
                 ensureAndCodeAgentContext(rootfs, context)
-                onShared(0.91f, context.getString(R.string.install_step_installing_dev_tools))
-                installDevelopmentTools(rootfs, commandSuite)
+                onShared(
+                    0.91f,
+                    context.getString(
+                        if (includeFullDevelopmentTools) {
+                            R.string.install_step_installing_dev_tools
+                        } else {
+                            R.string.install_step_installing_runtime_tools
+                        },
+                    ),
+                )
+                installPackages(
+                    rootfs = rootfs,
+                    suite = commandSuite,
+                    packages =
+                        if (includeFullDevelopmentTools) {
+                            REQUIRED_RUNTIME_PACKAGES + OPTIONAL_DEVELOPMENT_PACKAGES
+                        } else {
+                            REQUIRED_RUNTIME_PACKAGES
+                        },
+                )
                 if (LocalAgent.CLAUDE_CODE in requestedAgents) {
                     onClaude(0.93f, context.getString(R.string.install_step_installing_claude_code))
                     ClaudeCodeInstaller.installInto(rootfs, commandSuite, runtimeDirectory)
@@ -176,6 +201,8 @@ class LocalRuntimeInstaller(
                         runtimeVersion = manifest.runtimeVersion,
                         abi = abi,
                         components = requestedAgents.map(LocalAgent::id).toSet(),
+                        fullDevelopmentToolsInstalled = includeFullDevelopmentTools,
+                        fullDebianDevelopmentToolsInstalled = includeFullDevelopmentTools && antigravityRootfs != null,
                     )
                 File(staging, METADATA_FILE).writeText(json.encodeToString(metadata))
                 onShared(0.96f, context.getString(R.string.install_step_activating_runtime))
@@ -266,6 +293,43 @@ class LocalRuntimeInstaller(
             metadataFile.writeText(json.encodeToString(metadata.with(agent)))
         }
     }
+
+    /** Installs the optional toolchain into the active sandbox without rebuilding the runtime. */
+    suspend fun installFullDevelopmentTools(onProgress: (Float?, String, LocalAgent?) -> Unit = { _, _, _ -> }): LocalRuntimeMetadata =
+        withContext(Dispatchers.IO) {
+            accessCoordinator.write {
+                val active = File(runtimeDirectory, "environment")
+                val rootfs = File(active, "rootfs")
+                val metadataFile = File(runtimeDirectory, METADATA_FILE)
+                require(rootfs.isDirectory && metadataFile.isFile) {
+                    "The Linux environment is not installed"
+                }
+                val metadata =
+                    json.decodeFromString<LocalRuntimeMetadata>(metadataFile.readText())
+                if (metadata.hasFullDevelopmentTools()) return@write metadata
+
+                val suite = EmbeddedCommandSuite(context, runtimeDirectory, abi).ensureInstalled()
+                onProgress(null, context.getString(R.string.install_step_installing_dev_tools), null)
+                if (!metadata.fullDevelopmentToolsInstalled) installPackages(rootfs, suite, OPTIONAL_DEVELOPMENT_PACKAGES)
+                if (metadata.has(LocalAgent.ANTIGRAVITY) && !metadata.fullDebianDevelopmentToolsInstalled) {
+                    val antigravityRootfs = File(active, "antigravity-rootfs")
+                    require(antigravityRootfs.isDirectory) { "The Antigravity Linux environment is not installed" }
+                    DebianRootfsInstaller(runtimeDirectory, abi, downloader, httpClient, suite)
+                        .installFullDevelopmentTools(antigravityRootfs)
+                }
+
+                val updated =
+                    metadata.copy(
+                        fullDevelopmentToolsInstalled = true,
+                        fullDebianDevelopmentToolsInstalled = metadata.has(LocalAgent.ANTIGRAVITY),
+                    )
+                val encoded = json.encodeToString(updated)
+                File(active, METADATA_FILE).writeText(encoded)
+                replaceFileAtomically(File(active, METADATA_FILE), metadataFile)
+                onProgress(1f, context.getString(R.string.install_step_done), null)
+                updated
+            }
+        }
 
     fun bundledOpenCodeVersion(): String = manifestReader.read().openCodeVersion
 
@@ -359,11 +423,14 @@ class LocalRuntimeInstaller(
         onProgress(endProgress, label)
     }
 
-    private fun installDevelopmentTools(
+    private fun installPackages(
         rootfs: File,
         suite: EmbeddedCommandSuite.Paths,
+        packages: List<String>,
     ) {
         val prootTmp = File(runtimeDirectory, "proot-tmp").apply { mkdirs() }
+        val apkCache = File(runtimeDirectory, "cache/apk").apply { mkdirs() }
+        File(rootfs, "var/cache/apk").mkdirs()
         val command =
             listOf(
                 suite.proot.absolutePath,
@@ -380,14 +447,15 @@ class LocalRuntimeInstaller(
                 "/sys",
                 "-b",
                 "/system",
+                "-b",
+                "${apkCache.absolutePath}:/var/cache/apk",
                 "-w",
                 "/root",
                 "/bin/sh",
                 "-lc",
-                // `gcompat` and `util-linux` are this branch's additions and must survive main's
-                // wider toolchain list: the official agy binary is glibc-linked, and its sign-in TUI
-                // needs util-linux's `script` to be handed a real PTY.
-                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin /sbin/apk add --no-cache bash git curl wget jq tree file less nano vim openssh-client ripgrep ca-certificates libstdc++ github-cli android-tools openjdk17 gradle python3 py3-pillow py3-pip nodejs npm make cmake gcc g++ musl-dev pkgconf patch zip unzip sqlite go gcompat util-linux && /usr/sbin/update-ca-certificates",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin " +
+                    "/sbin/apk --cache-dir /var/cache/apk add ${packages.joinToString(" ")} && " +
+                    "/usr/sbin/update-ca-certificates",
             )
         val installLog =
             File(runtimeDirectory, "logs/tool-install.log").apply {
@@ -411,7 +479,7 @@ class LocalRuntimeInstaller(
         require(process.exitValue() == 0) {
             // The hint sits between the headline and the raw log, or a 4000-character tail scrolls
             // it off the screen the error is read on.
-            "Unable to install Git and development tools. $PACKAGE_INSTALL_RETRY_HINT\n\n" +
+            "Unable to install runtime packages. $PACKAGE_INSTALL_RETRY_HINT\n\n" +
                 "Last log lines:\n${installLog.readText().takeLast(4000)}"
         }
     }
@@ -607,7 +675,7 @@ class LocalRuntimeInstaller(
         source.copyTo(destination, overwrite = true)
     }
 
-    companion object {
+    internal companion object {
         private const val METADATA_FILE = "metadata.json"
         private const val BROWSER_MCP_NAME = "and-code-browser"
         private const val BROWSER_MCP_BIN = "/usr/local/bin/andcode-browser-mcp.py"
@@ -615,5 +683,51 @@ class LocalRuntimeInstaller(
         private const val SCHEDULE_MCP_NAME = "and-code-schedule"
         private const val SCHEDULE_MCP_BIN = "/usr/local/bin/andcode-schedule-mcp.py"
         private const val SCHEDULE_MCP_TIMEOUT_MILLIS = 120000
+
+        /** Required by OpenCode and AndCode's built-in Git, MCP, and Android-device features. */
+        val REQUIRED_RUNTIME_PACKAGES =
+            listOf(
+                "bash",
+                "git",
+                "curl",
+                "wget",
+                "jq",
+                "openssh-client",
+                "ripgrep",
+                "ca-certificates",
+                "libstdc++",
+                "android-tools",
+                "python3",
+                "py3-pillow",
+            )
+
+        /** Project-specific compilers, language SDKs, editors, and convenience utilities. */
+        val OPTIONAL_DEVELOPMENT_PACKAGES =
+            listOf(
+                "tree",
+                "file",
+                "less",
+                "nano",
+                "vim",
+                "github-cli",
+                "openjdk17",
+                "gradle",
+                "py3-pip",
+                "nodejs",
+                "npm",
+                "make",
+                "cmake",
+                "gcc",
+                "g++",
+                "musl-dev",
+                "pkgconf",
+                "patch",
+                "zip",
+                "unzip",
+                "sqlite",
+                "go",
+                "gcompat",
+                "util-linux",
+            )
     }
 }

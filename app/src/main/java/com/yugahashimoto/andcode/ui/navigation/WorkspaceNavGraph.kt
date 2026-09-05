@@ -99,6 +99,9 @@ fun NavGraphBuilder.workspaceNavGraph(
                                 }
                             },
                             repairAction = app.localRuntimeController::reinstall,
+                            installFullDevelopmentToolsAction = app.localRuntimeController::installFullDevelopmentTools,
+                            runtimeEnvironmentInstalledProvider = app.localRuntimeManager::runtimeEnvironmentInstalled,
+                            fullDevelopmentToolsInstalledProvider = app.localRuntimeManager::fullDevelopmentToolsInstalled,
                             deleteAction = app.localRuntimeController::delete,
                             getString = { app.getString(it) },
                             adbState = app.adbConnectionManager.state,
@@ -122,6 +125,7 @@ fun NavGraphBuilder.workspaceNavGraph(
             onBack = { navController.popBackStack() },
             onRefresh = managementViewModel::refresh,
             onRepair = managementViewModel::repair,
+            onInstallFullDevelopmentTools = managementViewModel::installFullDevelopmentTools,
             onRequestDelete = managementViewModel::requestDelete,
             onDismissDelete = managementViewModel::dismissDelete,
             onConfirmDelete = managementViewModel::confirmDelete,

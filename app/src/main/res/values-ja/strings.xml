@@ -1115,4 +1115,16 @@
     <string name="guest_browser_back">戻る</string>
     <string name="guest_browser_forward">進む</string>
     <string name="guest_browser_reload">再読み込み</string>
+    <string name="setup_step_development_tools">開発ツール</string>
+    <string name="setup_development_tools_description">既定では実行に必要なものだけをインストールします。完全な開発ツールチェーンも選択できます。</string>
+    <string name="setup_required_tools_description">Linux、選択したエージェント、Git、および AndCode が使用するサポートツールです。これらは常にインストールされます。</string>
+    <string name="setup_install_full_development_tools">完全な開発ツールをインストール</string>
+    <string name="setup_install_full_development_tools_description">言語ランタイム、コンパイラ、ビルドツール、エディターなどを追加します。より多くのデータをダウンロードします。</string>
+    <string name="setup_development_tools_settings_hint">この手順はスキップして、後で「設定 → ローカルランタイム」から完全なツールチェーンをインストールできます。</string>
+    <string name="install_step_installing_runtime_tools">必要なランタイムツールをインストールしています</string>
+    <string name="full_development_tools_title">開発ツール</string>
+    <string name="full_development_tools_description">プロジェクト向けの追加言語ランタイム、コンパイラ、ビルドツール、ユーティリティです。</string>
+    <string name="full_development_tools_installed">完全な開発ツールをインストール済み</string>
+    <string name="install_full_development_tools_button">完全なツールチェーンをインストール</string>
+    <string name="runtime_full_development_tools_start_failed">開発ツールのインストールを開始できません</string>
 </resources>

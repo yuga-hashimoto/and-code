@@ -1,8 +1,11 @@
 package com.yugahashimoto.andcode.runtime.local
 
+import com.yugahashimoto.andcode.runtime.LocalAgent
 import com.yugahashimoto.andcode.runtime.LocalRuntimeStatus
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -98,6 +101,30 @@ class LocalRuntimeManagerTest {
             )
 
         assertEquals(LocalRuntimeStatus.Stopped("1.17.20", 4096), manager.status())
+    }
+
+    @Test
+    fun `legacy metadata defaults to the full development toolchain`() {
+        val metadata =
+            Json.decodeFromString<LocalRuntimeMetadata>(
+                """{"version":"1.17.20","port":4096,"installedAt":123}""",
+            )
+
+        assertTrue(metadata.fullDevelopmentToolsInstalled)
+        assertTrue(metadata.hasFullDevelopmentTools())
+    }
+
+    @Test
+    fun `legacy Antigravity runtime still offers the Debian toolchain`() {
+        val metadata =
+            Json.decodeFromString<LocalRuntimeMetadata>(
+                """{"version":"1.17.20","port":4096,"installedAt":123,"components":["opencode","antigravity"]}""",
+            )
+
+        assertTrue(metadata.fullDevelopmentToolsInstalled)
+        assertFalse(metadata.hasFullDevelopmentTools())
+        assertTrue(metadata.copy(fullDebianDevelopmentToolsInstalled = true).hasFullDevelopmentTools())
+        assertTrue(metadata.without(LocalAgent.ANTIGRAVITY).hasFullDevelopmentTools())
     }
 
     @Test

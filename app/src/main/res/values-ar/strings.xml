@@ -1105,4 +1105,16 @@
     <string name="guest_browser_back">رجوع</string>
     <string name="guest_browser_forward">تقدم</string>
     <string name="guest_browser_reload">إعادة تحميل</string>
+    <string name="setup_step_development_tools">أدوات التطوير</string>
+    <string name="setup_development_tools_description">يتم تثبيت مكونات التشغيل الضرورية فقط افتراضيًا، ويمكنك إضافة مجموعة أدوات التطوير الكاملة.</string>
+    <string name="setup_required_tools_description">سيتم دائمًا تثبيت Linux والوكلاء المحددين وGit وأدوات الدعم التي يستخدمها AndCode.</string>
+    <string name="setup_install_full_development_tools">تثبيت أدوات التطوير الكاملة</string>
+    <string name="setup_install_full_development_tools_description">تضيف بيئات اللغات والمترجمات وأدوات البناء والمحررات والأدوات المساعدة، مع تنزيل بيانات إضافية.</string>
+    <string name="setup_development_tools_settings_hint">يمكنك تخطي ذلك وتثبيت مجموعة الأدوات الكاملة لاحقًا من الإعدادات → بيئة التشغيل المحلية.</string>
+    <string name="install_step_installing_runtime_tools">جارٍ تثبيت أدوات التشغيل الضرورية</string>
+    <string name="full_development_tools_title">أدوات التطوير</string>
+    <string name="full_development_tools_description">بيئات لغات ومترجمات وأدوات بناء وأدوات مساعدة اختيارية للمشاريع.</string>
+    <string name="full_development_tools_installed">تم تثبيت أدوات التطوير الكاملة</string>
+    <string name="install_full_development_tools_button">تثبيت مجموعة الأدوات الكاملة</string>
+    <string name="runtime_full_development_tools_start_failed">تعذر بدء تثبيت أدوات التطوير</string>
 </resources>
