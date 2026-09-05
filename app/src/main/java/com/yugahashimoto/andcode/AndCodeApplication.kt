@@ -352,7 +352,15 @@ class AndCodeApplication : Application() {
         // on every runtime start, since a reinstall replaces the guest filesystem the file lives in.
         // Claude Code needs none of this - it takes the prompt on the command line per session.
         applicationScope.launch {
-            combine(localRuntimeManager.state, systemPromptStore.selectedId) { status, _ -> status }
+            // Watches the presets as well as the selection: editing the text of the preset already
+            // selected leaves selectedId untouched, and OpenCode would have gone on reading the old
+            // wording until the next switch or restart. Claude Code needs no equivalent - it reads
+            // the prompt out of the store at send time.
+            combine(
+                localRuntimeManager.state,
+                systemPromptStore.selectedId,
+                systemPromptStore.presets,
+            ) { status, _, _ -> status }
                 .collect { status ->
                     if (status !is LocalRuntimeStatus.Ready) return@collect
                     val rootfs = installer.installedRuntime()?.rootfs ?: return@collect
