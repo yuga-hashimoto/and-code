@@ -101,7 +101,7 @@ class ScheduleExecutionService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        if (!executionCoordinator.tryStart(scheduleId)) {
+        if (!executionCoordinator.tryStart(scheduleId, startId)) {
             // A service instance can host multiple independent schedules. Only the same schedule
             // is rejected here; a different schedule gets its own session and execution state.
             app.scheduleRepository.schedule(scheduleId)?.let { schedule ->
@@ -114,14 +114,13 @@ class ScheduleExecutionService : Service() {
             }
             return START_NOT_STICKY
         }
-        val executionStartId = startId
         scope.launch {
             try {
                 execute(scheduleId, failedAttempts, automatic)
             } finally {
-                if (executionCoordinator.finish(scheduleId)) {
+                executionCoordinator.finish(scheduleId)?.let { latestStartId ->
                     stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelfResult(executionStartId)
+                    stopSelfResult(latestStartId)
                 }
             }
         }

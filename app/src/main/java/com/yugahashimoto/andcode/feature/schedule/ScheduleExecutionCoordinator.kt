@@ -1,16 +1,27 @@
 package com.yugahashimoto.andcode.feature.schedule
 
 import android.os.SystemClock
-import java.util.Collections
 
 /** Tracks schedule jobs independently while the shared foreground service is alive. */
 internal class ScheduleExecutionCoordinator {
-    private val activeSchedules = Collections.synchronizedSet(mutableSetOf<String>())
+    private val activeSchedules = mutableSetOf<String>()
+    private var latestStartId = 0
 
-    fun tryStart(scheduleId: String): Boolean = activeSchedules.add(scheduleId)
+    @Synchronized
+    fun tryStart(
+        scheduleId: String,
+        startId: Int,
+    ): Boolean {
+        latestStartId = maxOf(latestStartId, startId)
+        return activeSchedules.add(scheduleId)
+    }
 
-    /** Returns true when this completion leaves no schedule job running. */
-    fun finish(scheduleId: String): Boolean = activeSchedules.remove(scheduleId) && activeSchedules.isEmpty()
+    /** Returns the newest service start ID when this completion leaves no job running. */
+    @Synchronized
+    fun finish(scheduleId: String): Int? {
+        if (!activeSchedules.remove(scheduleId) || activeSchedules.isNotEmpty()) return null
+        return latestStartId
+    }
 }
 
 /** Progress and stream state owned by one scheduled session. */
