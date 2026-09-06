@@ -39,7 +39,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.selects.select
 import kotlinx.coroutines.withTimeoutOrNull
-import java.util.Collections
 
 /**
  * Executes a scheduled prompt in the foreground.
@@ -58,7 +57,7 @@ class ScheduleExecutionService : Service() {
     private var inForeground = false
 
     /** Active schedule IDs; different schedules use independent sessions concurrently. */
-    private val activeSchedules = Collections.synchronizedSet(mutableSetOf<String>())
+    private val executionCoordinator = ScheduleExecutionCoordinator()
 
     override fun onCreate() {
         super.onCreate()
@@ -102,7 +101,7 @@ class ScheduleExecutionService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        if (scheduleId in activeSchedules) {
+        if (!executionCoordinator.tryStart(scheduleId)) {
             // A service instance can host multiple independent schedules. Only the same schedule
             // is rejected here; a different schedule gets its own session and execution state.
             app.scheduleRepository.schedule(scheduleId)?.let { schedule ->
@@ -115,15 +114,14 @@ class ScheduleExecutionService : Service() {
             }
             return START_NOT_STICKY
         }
-        activeSchedules += scheduleId
+        val executionStartId = startId
         scope.launch {
             try {
                 execute(scheduleId, failedAttempts, automatic)
             } finally {
-                activeSchedules -= scheduleId
-                if (activeSchedules.isEmpty()) {
+                if (executionCoordinator.finish(scheduleId)) {
                     stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf()
+                    stopSelfResult(executionStartId)
                 }
             }
         }
@@ -214,7 +212,7 @@ class ScheduleExecutionService : Service() {
             // The slot is covered; a retry armed by an earlier attempt would now start a second run.
             app.scheduleManager.cancelRetry(schedule.id)
             updateForegroundNotification(app.getString(R.string.schedule_notification_running))
-            runPrompt(target, schedule, run, ExecutionState())
+            runPrompt(target, schedule, run, ScheduleExecutionState())
         } catch (cancellation: CancellationException) {
             // The system stopped the service under us. Settle the run so hasActiveRun does not go
             // on blocking the schedule until the next process start, but never report it as a
@@ -278,7 +276,7 @@ class ScheduleExecutionService : Service() {
         target: RuntimeTarget,
         schedule: Schedule,
         run: ScheduleRun,
-        state: ExecutionState,
+        state: ScheduleExecutionState,
     ) {
         val autoAccept = schedule.autoAcceptPermissions ?: app.settings.autoAcceptPermissions
         state.markProgress()
@@ -338,7 +336,7 @@ class ScheduleExecutionService : Service() {
      */
     private suspend fun awaitSettlement(
         settled: Deferred<ScheduleCompletion>,
-        state: ExecutionState,
+        state: ScheduleExecutionState,
     ): ScheduleSettlement {
         val startedAt = SystemClock.elapsedRealtime()
         while (true) {
@@ -437,7 +435,7 @@ class ScheduleExecutionService : Service() {
         schedule: Schedule,
         run: ScheduleRun,
         autoAccept: Boolean,
-        state: ExecutionState,
+        state: ScheduleExecutionState,
     ): ScheduleCompletion {
         val reason =
             try {
@@ -461,7 +459,7 @@ class ScheduleExecutionService : Service() {
     private suspend fun pollForCompletion(
         target: RuntimeTarget,
         run: ScheduleRun,
-        state: ExecutionState,
+        state: ScheduleExecutionState,
     ): ScheduleCompletion {
         var settling: String? = null
         var progressMark: String? = null
@@ -504,7 +502,7 @@ class ScheduleExecutionService : Service() {
         schedule: Schedule,
         run: ScheduleRun,
         autoAccept: Boolean,
-        state: ExecutionState,
+        state: ScheduleExecutionState,
     ): ScheduleCompletion? {
         val targetSessionId = run.sessionId
         val notifyUser = target.id != app.runtimeRegistry.selected.value?.id
@@ -551,16 +549,6 @@ class ScheduleExecutionService : Service() {
             return signal.result
         }
         return null
-    }
-
-    private class ExecutionState {
-        @Volatile var streamFailure: String? = null
-
-        @Volatile var lastProgressAt: Long = 0L
-
-        fun markProgress() {
-            lastProgressAt = SystemClock.elapsedRealtime()
-        }
     }
 
     private fun recordCompleted(run: ScheduleRun) {
