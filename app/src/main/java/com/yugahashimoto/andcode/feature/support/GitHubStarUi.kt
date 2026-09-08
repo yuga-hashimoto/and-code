@@ -1,8 +1,6 @@
 package com.yugahashimoto.andcode.feature.support
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.AndCodeApplication
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.ProjectLinks
+import com.yugahashimoto.andcode.core.UrlLauncher
 
 @Composable
 fun GitHubStarPromptDialog(
@@ -253,11 +252,5 @@ fun openProjectLink(
     context: Context,
     url: String,
 ) {
-    runCatching {
-        context.startActivity(
-            Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            },
-        )
-    }
+    UrlLauncher.openUrl(context, url)
 }

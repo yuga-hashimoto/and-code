@@ -1,6 +1,5 @@
 package com.yugahashimoto.andcode.feature.onboarding
 
-import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -61,6 +60,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.core.UrlLauncher
 import com.yugahashimoto.andcode.core.api.OpenCodeProvider
 import com.yugahashimoto.andcode.core.api.ProviderAuthMethod
 import com.yugahashimoto.andcode.feature.settings.ProviderAuthDialog
@@ -383,9 +383,7 @@ fun AndroidSetupScreen(
             onSubmit = onSubmitProviderAuth,
             onCompleteCode = onCompleteProviderOAuth,
             onLaunchBrowser = { url ->
-                runCatching {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
-                }
+                UrlLauncher.openUrl(context, url)
             },
             onDismiss = onDismissProviderAuth,
         )

@@ -1,7 +1,6 @@
 package com.yugahashimoto.andcode.ui
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -70,6 +69,7 @@ import androidx.navigation.navArgument
 import com.yugahashimoto.andcode.AndCodeApplication
 import com.yugahashimoto.andcode.BuildConfig
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.core.UrlLauncher
 import com.yugahashimoto.andcode.core.diagnostics.CrashLog
 import com.yugahashimoto.andcode.feature.activity.ActivityViewModel
 import com.yugahashimoto.andcode.feature.assistant.SpeechRecognizerManager
@@ -909,7 +909,7 @@ fun AndCodeApp(
                                 app.antigravityController.setPermissionMode(mode, chatState.sessionId)
                             },
                             onOpenUrl = { url ->
-                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
+                                UrlLauncher.openUrl(context, url)
                             },
                             settingsState = settingsState,
                             onOpenProviderAuth = settingsViewModel::openProviderAuth,
@@ -926,7 +926,7 @@ fun AndCodeApp(
                             onRefreshAntigravityState = app.antigravityController::refresh,
                             onConnectGitHub = { settingsViewModel.beginGitHubDeviceFlow() },
                             onOpenGitHubVerification = { url ->
-                                context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                                UrlLauncher.openUrl(context, url)
                             },
                             onDisconnectGitHub = settingsViewModel::disconnectGitHub,
                             onBack = { navController.popBackStack() },
@@ -1080,7 +1080,7 @@ fun AndCodeApp(
                                 chatViewModel.openParentSession()
                             },
                             onOpenUrl = { url ->
-                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
+                                UrlLauncher.openUrl(context, url)
                             },
                         )
                     }

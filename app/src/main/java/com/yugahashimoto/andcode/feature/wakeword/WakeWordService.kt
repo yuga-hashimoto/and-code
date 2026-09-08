@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.feature.wakeword
 
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -66,11 +67,34 @@ class WakeWordService : Service() {
     // detection stands down until it is handed back.
     @Volatile private var micHoldToken: String? = null
 
+    // Whether the foreground promotion in onCreate succeeded. Every path through
+    // onStartCommand ends in stopSelf when this is false, so the platform never waits
+    // in vain for a startForeground that is never coming (issue #301).
+    private var inForeground = false
+
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onCreate() {
         super.onCreate()
         activeInstance = this
+        // startForegroundService() obliges the service to call startForeground() within a
+        // few seconds on *every* path - validation failures and ACTION_STOP included -
+        // or the platform kills the app with ForegroundServiceDidNotStartInTimeException
+        // (issue #301). Promoting here, before any permission checks or disk I/O, meets
+        // that deadline; LocalRuntimeService promotes in onCreate for the same reason.
+        inForeground =
+            runCatching { startForegroundWithNotification() }
+                .recoverCatching { error ->
+                    // The microphone-typed promotion needs RECORD_AUDIO; without it the
+                    // typed call throws SecurityException. An untyped promotion still
+                    // satisfies the startForeground deadline before onStartCommand stops
+                    // the service on the permission failure below.
+                    Log.w(TAG, "Typed foreground failed, retrying untyped", error)
+                    startForegroundUntyped()
+                }
+                .onFailure { error ->
+                    Log.e(TAG, "Unable to start wake-word foreground service", error)
+                }.isSuccess
     }
 
     override fun onStartCommand(
@@ -78,6 +102,11 @@ class WakeWordService : Service() {
         flags: Int,
         startId: Int,
     ): Int {
+        if (!inForeground) {
+            persistEnabled(false)
+            stopSelf()
+            return START_NOT_STICKY
+        }
         when (intent?.action) {
             ACTION_STOP -> {
                 persistEnabled(false)
@@ -108,12 +137,6 @@ class WakeWordService : Service() {
             return START_NOT_STICKY
         }
         runCatching { startForegroundWithNotification() }
-            .onFailure {
-                Log.e(TAG, "Unable to start wake-word foreground service", it)
-                persistEnabled(false)
-                stopSelf()
-                return START_NOT_STICKY
-            }
         if (assistantRequestId != null) {
             currentLanguage = language
         } else {
@@ -137,6 +160,19 @@ class WakeWordService : Service() {
     }
 
     private fun startForegroundWithNotification() {
+        val notification = buildNotification()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
+        } else {
+            startForeground(NOTIFICATION_ID, notification)
+        }
+    }
+
+    private fun startForegroundUntyped() {
+        startForeground(NOTIFICATION_ID, buildNotification())
+    }
+
+    private fun buildNotification(): Notification {
         val channel =
             NotificationChannel(
                 CHANNEL_ID,
@@ -179,11 +215,7 @@ class WakeWordService : Service() {
                 .setSilent(true)
                 .build()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE)
-        } else {
-            startForeground(NOTIFICATION_ID, notification)
-        }
+        return notification
     }
 
     /**
