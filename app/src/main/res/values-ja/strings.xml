@@ -234,6 +234,7 @@
     <string name="no_git_info">Gitリポジトリ情報なし</string>
     <string name="loading_changes">変更を取得しています</string>
     <string name="no_uncommitted_changes">未コミットの変更はありません</string>
+    <string name="open_file">開く</string>
 
     <string name="local_runtime_screen_title">ローカルランタイム</string>
     <string name="refresh_diagnostics_description">診断と更新情報を再取得</string>

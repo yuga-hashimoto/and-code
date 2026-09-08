@@ -237,6 +237,7 @@
     <string name="no_git_info">Нет информации о репозитории Git</string>
     <string name="loading_changes">Загрузка изменений</string>
     <string name="no_uncommitted_changes">Нет незафиксированных изменений</string>
+    <string name="open_file">Открыть</string>
 
     <string name="local_runtime_screen_title">Локальный OpenCode</string>
     <string name="refresh_diagnostics_description">Обновить диагностику и информацию об обновлении</string>

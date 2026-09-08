@@ -103,6 +103,7 @@ fun WorkspaceExplorerScreen(
     tabManager: WorkspaceTabManager? = null,
     workspaceDeck: List<String> = emptyList(),
     onOpenTerminal: () -> Unit = {},
+    onOpenChange: (OpenCodeFileChange) -> Unit = {},
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val tabs =
@@ -172,7 +173,7 @@ fun WorkspaceExplorerScreen(
                 when (selectedTab) {
                     0 -> FilesTab(state, onOpenNode, onNavigateUp)
                     1 -> SearchTab(state, onSearch)
-                    2 -> ChangesTab(state, branches, onSwitchBranch, onCreateBranch, commits)
+                    2 -> ChangesTab(state, branches, onSwitchBranch, onCreateBranch, commits, onOpenChange)
                     else -> PrTab(prTitle, prStatus, prDescription)
                 }
             }
@@ -180,7 +181,7 @@ fun WorkspaceExplorerScreen(
             when (selectedTab) {
                 0 -> FilesTab(state, onOpenNode, onNavigateUp)
                 1 -> SearchTab(state, onSearch)
-                2 -> ChangesTab(state, branches, onSwitchBranch, onCreateBranch, commits)
+                2 -> ChangesTab(state, branches, onSwitchBranch, onCreateBranch, commits, onOpenChange)
                 else -> PrTab(prTitle, prStatus, prDescription)
             }
         }
@@ -538,6 +539,7 @@ private fun ChangesTab(
     onSwitchBranch: (String) -> Unit,
     onCreateBranch: (String) -> Unit,
     commits: List<CommitInfo>,
+    onOpenChange: (OpenCodeFileChange) -> Unit = {},
 ) {
     var showBranchSheet by remember { mutableStateOf(false) }
     var diffViewMode by remember { mutableStateOf(DiffViewMode.UNIFIED) }
@@ -603,7 +605,7 @@ private fun ChangesTab(
         } else {
             items(state.changes, key = { it.displayPath }) { change ->
                 val detailed = state.diff.firstOrNull { it.displayPath == change.displayPath } ?: change
-                ChangeCard(detailed, diffViewMode)
+                ChangeCard(detailed, diffViewMode, onOpenChange)
             }
         }
 
@@ -752,9 +754,14 @@ private fun BranchSwitcherSheet(
 private fun ChangeCard(
     change: OpenCodeFileChange,
     diffViewMode: DiffViewMode,
+    onOpen: (OpenCodeFileChange) -> Unit = {},
 ) {
     var expanded by remember(change.displayPath, change.patch) { mutableStateOf(false) }
-    SectionCard {
+    // Deleted files no longer exist on disk, so there is nothing for the viewer to open.
+    val canOpen = change.displayPath.isNotBlank() && !change.status.equals("deleted", ignoreCase = true)
+    SectionCard(
+        modifier = if (canOpen) Modifier.clickable { onOpen(change) } else Modifier,
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -774,6 +781,11 @@ private fun ChangeCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+            if (canOpen) {
+                OutlinedButton(onClick = { onOpen(change) }) {
+                    Text(stringResource(R.string.open_file))
                 }
             }
             if (!change.patch.isNullOrBlank()) {

@@ -167,6 +167,12 @@ fun NavGraphBuilder.workspaceNavGraph(
                 onSearch = explorerViewModel::search,
                 onRefreshChanges = explorerViewModel::refreshChanges,
                 onOpenTerminal = { navController.navigate(ROUTE_TERMINAL) },
+                onOpenChange = { change ->
+                    val path = change.displayPath
+                    if (path.isNotBlank() && !change.status.equals("deleted", ignoreCase = true)) {
+                        navController.navigate(codeViewerRoute(runtime.id, workspace.path, path))
+                    }
+                },
             )
         }
     }

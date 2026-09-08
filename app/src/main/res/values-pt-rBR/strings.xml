@@ -236,6 +236,7 @@
     <string name="no_git_info">Nenhuma informação de repositório Git</string>
     <string name="loading_changes">Carregando alterações</string>
     <string name="no_uncommitted_changes">Nenhuma alteração não confirmada</string>
+    <string name="open_file">Abrir</string>
 
     <string name="local_runtime_screen_title">OpenCode local</string>
     <string name="refresh_diagnostics_description">Atualizar diagnósticos e informações de atualização</string>
