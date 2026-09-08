@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.core
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -10,6 +11,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.platform.UriHandler
+import java.util.Locale
 
 /**
  * Single choke point for opening URLs in an external app.
@@ -35,7 +37,7 @@ object UrlLauncher {
         if (colon <= 0) return false
         val scheme = trimmed.substring(0, colon)
         if (!scheme.matches(SCHEME_REGEX)) return false
-        val normalized = scheme.lowercase()
+        val normalized = scheme.lowercase(Locale.ROOT)
         if (normalized != "http" && normalized != "https") return false
         // Require the authority form ("http://..."), not "http:foo".
         return trimmed.regionMatches(colon + 1, "//", 0, 2, ignoreCase = false)
@@ -58,7 +60,7 @@ object UrlLauncher {
             val intent =
                 Intent(Intent.ACTION_VIEW, Uri.parse(url.trim())).apply {
                     // Callers pass activity and application contexts alike.
-                    if (context !is android.app.Activity) {
+                    if (context !is Activity) {
                         addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     }
                 }
