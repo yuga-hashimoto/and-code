@@ -390,4 +390,38 @@ class AssistantActivityGroupTest {
         val grownIds = groupConversationTimeline(grown).filterIsInstance<TimelineEntry.Activity>().map { it.id }
         assertEquals(listOf("activity:toolu_stream", "activity:toolu_stream:1"), grownIds)
     }
+
+    @Test
+    fun `blank reasoning parts are excluded from activity`() {
+        // Blank reasoning carries nothing to expand; it must not produce a "Thinking" card.
+        val entries =
+            groupConversationTimeline(
+                listOf(
+                    assistant(
+                        "m1",
+                        ChatPart.Reasoning("r1", ""),
+                        tool("t1", "read"),
+                        ChatPart.Reasoning("r2", "   "),
+                    ),
+                ),
+            )
+
+        assertEquals(1, entries.size)
+        assertEquals(listOf("t1"), (entries.single() as TimelineEntry.Activity).parts.map { it.id })
+    }
+
+    @Test
+    fun `blank reasoning is not counted in the summary`() {
+        val summary = summarizeActivity(listOf(ChatPart.Reasoning("r1", ""), tool("t1", "read")))
+
+        assertEquals(0, summary.reasoningCount)
+        assertEquals(1, summary.counts[ToolCategory.READ])
+    }
+
+    @Test
+    fun `reasoning-only run of blank parts is empty`() {
+        val summary = summarizeActivity(listOf(ChatPart.Reasoning("r1", "")))
+
+        assertTrue(summary.isEmpty)
+    }
 }
