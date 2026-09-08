@@ -812,6 +812,7 @@
     <string name="attach_file">File</string>
     <string name="attach_camera">Camera</string>
     <string name="attach_gallery">Gallery</string>
+    <string name="attachment_load_failed">Could not attach file</string>
     <string name="status_queued">Queued</string>
 
     <!-- Resume command -->
