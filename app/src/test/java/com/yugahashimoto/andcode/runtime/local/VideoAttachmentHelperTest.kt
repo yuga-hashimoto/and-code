@@ -17,6 +17,14 @@ class VideoAttachmentHelperTest {
     }
 
     @Test
+    fun `detects image mime types`() {
+        assertTrue(VideoAttachmentHelper.isImageMime("image/jpeg"))
+        assertTrue(VideoAttachmentHelper.isImageMime("IMAGE/PNG"))
+        assertFalse(VideoAttachmentHelper.isImageMime("video/mp4"))
+        assertFalse(VideoAttachmentHelper.isImageMime("application/pdf"))
+    }
+
+    @Test
     fun `frame timestamps cover beginning middle and end`() {
         val timestamps = VideoAttachmentHelper.frameTimestampsUs(9_000_000L)
         assertEquals(listOf(0L, 4_500_000L, 8_100_000L), timestamps)

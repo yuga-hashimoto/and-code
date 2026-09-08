@@ -14,10 +14,14 @@ object VideoAttachmentHelper {
 
     fun isVideoMime(mime: String): Boolean = mime.startsWith("video/", ignoreCase = true)
 
+    fun isImageMime(mime: String): Boolean = mime.startsWith("image/", ignoreCase = true)
+
     /**
      * Representative timestamps (microseconds) for [durationUs].
      * Returns 0-us, middle and near-end so a short screen recording still yields
      * beginning/middle/end context. Unknown or zero durations yield a single 0-us frame.
+     * Only up to three representative points are produced; larger [maxFrames] values
+     * are clamped to the same three points.
      */
     fun frameTimestampsUs(
         durationUs: Long,

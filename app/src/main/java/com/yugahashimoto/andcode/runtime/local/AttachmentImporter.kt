@@ -13,6 +13,10 @@ import java.io.ByteArrayOutputStream
 class AttachmentImporter(
     private val context: Context,
 ) {
+    /**
+     * Imports [uri] as a single attachment. For video this keeps only the first
+     * extracted frame; use [importAll] to receive every frame.
+     */
     fun import(uri: Uri): PromptAttachment = importAll(uri).first()
 
     /**

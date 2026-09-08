@@ -185,6 +185,21 @@ class ChatViewModelTest {
         }
 
     @Test
+    fun `video block uses the injected message`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend, videoNotSupportedMessage = "custom-video-message")
+            advanceUntilIdle()
+            viewModel.addAttachment(PromptAttachment("clip.mp4", "video/mp4", "data:video/mp4;base64,AAAA"))
+
+            viewModel.sendMessage("fix this")
+            advanceUntilIdle()
+
+            assertEquals(0, backend.sentPrompts.size)
+            assertEquals("custom-video-message", viewModel.uiState.value.error)
+        }
+
+    @Test
     fun `creating a session refreshes the shell catalog`() =
         runTest(dispatcher) {
             val backend = FakeBackend()

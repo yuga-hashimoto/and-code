@@ -809,6 +809,7 @@
     <string name="attach_camera">Camera</string>
     <string name="attach_gallery">Gallery</string>
     <string name="attachment_load_failed">Could not attach file</string>
+    <string name="error_video_not_supported">Video files cannot be sent directly. Remove the video and attach images instead.</string>
     <string name="status_queued">Queued</string>
 
     <!-- Resume command -->

@@ -821,6 +821,7 @@
     <string name="attach_camera">カメラ</string>
     <string name="attach_gallery">ギャラリー</string>
     <string name="attachment_load_failed">ファイルを添付できませんでした</string>
+    <string name="error_video_not_supported">動画ファイルはそのまま送信できません。動画を外して画像を添付してください。</string>
     <string name="status_queued">キュー済み</string>
 
     <!-- Resume command -->
