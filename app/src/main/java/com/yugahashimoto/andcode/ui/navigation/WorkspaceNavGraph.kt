@@ -20,6 +20,7 @@ import com.yugahashimoto.andcode.feature.workspace.WorkspaceExplorerScreen
 import com.yugahashimoto.andcode.feature.workspace.WorkspaceExplorerViewModel
 import com.yugahashimoto.andcode.feature.workspace.WorkspaceViewModel
 import com.yugahashimoto.andcode.feature.workspace.WorkspacesScreen
+import com.yugahashimoto.andcode.feature.workspace.isOpenable
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.ui.ViewModelFactory
@@ -168,9 +169,8 @@ fun NavGraphBuilder.workspaceNavGraph(
                 onRefreshChanges = explorerViewModel::refreshChanges,
                 onOpenTerminal = { navController.navigate(ROUTE_TERMINAL) },
                 onOpenChange = { change ->
-                    val path = change.displayPath
-                    if (path.isNotBlank() && !change.status.equals("deleted", ignoreCase = true)) {
-                        navController.navigate(codeViewerRoute(runtime.id, workspace.path, path))
+                    if (change.isOpenable()) {
+                        navController.navigate(codeViewerRoute(runtime.id, workspace.path, change.displayPath))
                     }
                 },
             )

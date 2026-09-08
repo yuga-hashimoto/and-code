@@ -62,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -82,6 +83,9 @@ data class CommitInfo(
 )
 
 enum class DiffViewMode { UNIFIED, SPLIT }
+
+/** Whether the changed file can be opened in the viewer. Deleted files no longer exist on disk. */
+internal fun OpenCodeFileChange.isOpenable(): Boolean = displayPath.isNotBlank() && !status.equals("deleted", ignoreCase = true)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -757,10 +761,17 @@ private fun ChangeCard(
     onOpen: (OpenCodeFileChange) -> Unit = {},
 ) {
     var expanded by remember(change.displayPath, change.patch) { mutableStateOf(false) }
-    // Deleted files no longer exist on disk, so there is nothing for the viewer to open.
-    val canOpen = change.displayPath.isNotBlank() && !change.status.equals("deleted", ignoreCase = true)
+    val canOpen = change.isOpenable()
     SectionCard(
-        modifier = if (canOpen) Modifier.clickable { onOpen(change) } else Modifier,
+        modifier =
+            if (canOpen) {
+                Modifier.clickable(
+                    role = Role.Button,
+                    onClickLabel = stringResource(R.string.open_file),
+                ) { onOpen(change) }
+            } else {
+                Modifier
+            },
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
