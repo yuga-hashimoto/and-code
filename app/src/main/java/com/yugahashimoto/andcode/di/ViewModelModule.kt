@@ -24,6 +24,7 @@ val viewModelModule =
                 // backgrounded, or whichever one the screen happens to use decides whether those
                 // 30-second loops keep polling out of sight.
                 awaitForeground = { app.appForeground.foreground.first { visible -> visible } },
+                videoNotSupportedMessage = androidContext().getString(com.yugahashimoto.andcode.R.string.error_video_not_supported),
             )
         }
 

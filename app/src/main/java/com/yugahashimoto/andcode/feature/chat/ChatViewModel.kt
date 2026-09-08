@@ -33,6 +33,7 @@ import com.yugahashimoto.andcode.data.settings.DraftRepository
 import com.yugahashimoto.andcode.runtime.OpenCodeBackend
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
+import com.yugahashimoto.andcode.runtime.local.VideoAttachmentHelper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -533,6 +534,14 @@ class ChatViewModel(
      * would otherwise never return from a real wait - running unattended.
      */
     private val awaitForeground: suspend () -> Unit = {},
+    /**
+     * Shown when a video attachment reaches the send path. Videos are converted to image
+     * frames at attach time, so this only fires for stale or queued attachments that slipped
+     * through. Injected the same way as WorkspaceViewModel.incompleteConnectionMessage so
+     * the real app shows a localized string while tests keep the English default.
+     */
+    private val videoNotSupportedMessage: String =
+        "Video files cannot be sent directly. Remove the video and attach images instead.",
 ) : ViewModel() {
     private val _uiState =
         MutableStateFlow(
@@ -1114,6 +1123,15 @@ class ChatViewModel(
                     pendingPreviews.getOrNull(index)?.let { attachment.filename to it }
                 }.toMap()
         if (normalized.isEmpty() && pendingAttachments.isEmpty()) return
+        // Video file parts are rejected by most providers
+        // ("'file part media type video/mp4' functionality not supported"), failing the
+        // whole turn. Videos are converted to image frames at attach time, so reaching
+        // here means a stale/queued attachment slipped through: block the send with a
+        // clear error instead of breaking the session.
+        if (pendingAttachments.any { VideoAttachmentHelper.isVideoMime(it.mime) }) {
+            _uiState.update { it.copy(error = videoNotSupportedMessage) }
+            return
+        }
         val currentBackend = backend
         if (currentBackend == null) {
             _uiState.update { it.copy(error = "OpenCode connection is not configured") }
