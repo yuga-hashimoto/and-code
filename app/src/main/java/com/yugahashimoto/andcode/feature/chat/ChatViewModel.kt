@@ -300,6 +300,30 @@ internal fun imageMime(
 }
 
 /**
+ * Maps an index into [ChatUiState.attachments] onto its index in [ChatUiState.imagePreviews],
+ * or null when the attachment carries no preview.
+ *
+ * The two lists are not parallel: a file picked with the paperclip appends an attachment without a
+ * preview bitmap, so the previews line up with the *image* attachments in attachment order rather
+ * than with every attachment. Removing attachment 2 must not drop preview 2 when the images sit at
+ * different offsets.
+ */
+internal fun previewIndexForAttachment(
+    attachments: List<PromptAttachment>,
+    attachmentIndex: Int,
+): Int? {
+    val attachment = attachments.getOrNull(attachmentIndex) ?: return null
+    if (!attachment.mime.startsWith("image/")) return null
+    return attachments.take(attachmentIndex).count { it.mime.startsWith("image/") }
+}
+
+/** Inverse of [previewIndexForAttachment]: the attachment behind the preview thumbnail at [previewIndex]. */
+internal fun attachmentIndexForPreview(
+    attachments: List<PromptAttachment>,
+    previewIndex: Int,
+): Int? = attachments.indices.filter { attachments[it].mime.startsWith("image/") }.getOrNull(previewIndex)
+
+/**
  * Appends the message-level error reported by the runtime when the turn itself carries no error
  * part. A failed provider request is persisted with the error on the message (`info.error`) and
  * often nothing else, so without this the transcript would silently drop the failed turn.
@@ -780,12 +804,23 @@ class ChatViewModel(
         }
     }
 
+    /**
+     * Drops the attachment at [index], along with its preview thumbnail when it has one.
+     *
+     * The preview bitmap is dropped, never recycled: the same instance is still referenced by the
+     * composer row Compose is drawing this frame (and, once sent, by the optimistic message in the
+     * transcript and by any queued prompt), so recycling it here crashed the next draw pass with
+     * "Canvas: trying to use a recycled bitmap". Since API 26 the pixels live on the native heap
+     * and are freed with the bitmap by the GC, so letting the last reference go is enough.
+     */
     fun removeAttachment(index: Int) {
-        _uiState.value.imagePreviews.getOrNull(index)?.let { if (!it.isRecycled) it.recycle() }
         _uiState.update { state ->
+            val previewIndex = previewIndexForAttachment(state.attachments, index)
             state.copy(
                 attachments = state.attachments.filterIndexed { i, _ -> i != index },
-                imagePreviews = state.imagePreviews.filterIndexed { i, _ -> i != index },
+                imagePreviews =
+                    previewIndex?.let { removed -> state.imagePreviews.filterIndexed { i, _ -> i != removed } }
+                        ?: state.imagePreviews,
             )
         }
     }
@@ -1039,10 +1074,13 @@ class ChatViewModel(
         val normalized = text.trim()
         val pendingAttachments = _uiState.value.attachments
         val messageIdsBeforeSend = _uiState.value.messages.map { it.id }.toSet()
+        val pendingPreviews = _uiState.value.imagePreviews
         val pendingPreviewsByFilename =
-            pendingAttachments.mapIndexedNotNull { index, attachment ->
-                _uiState.value.imagePreviews.getOrNull(index)?.let { attachment.filename to it }
-            }.toMap()
+            pendingAttachments
+                .filter { it.mime.startsWith("image/") }
+                .mapIndexedNotNull { index, attachment ->
+                    pendingPreviews.getOrNull(index)?.let { attachment.filename to it }
+                }.toMap()
         if (normalized.isEmpty() && pendingAttachments.isEmpty()) return
         val currentBackend = backend
         if (currentBackend == null) {
@@ -2259,10 +2297,8 @@ class ChatViewModel(
     }
 
     override fun onCleared() {
-        _uiState.value.imagePreviews.forEach { if (!it.isRecycled) it.recycle() }
-        _uiState.value.messages.forEach { msg ->
-            msg.imagePreviews.forEach { if (!it.isRecycled) it.recycle() }
-        }
+        // Preview bitmaps are deliberately not recycled here either: the composition that draws
+        // them can outlive the ViewModel during teardown, and the GC reclaims them anyway.
         eventJob?.cancel()
         tts?.stop()
         tts = null
