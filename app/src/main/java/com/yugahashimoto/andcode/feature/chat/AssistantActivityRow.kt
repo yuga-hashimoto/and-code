@@ -155,6 +155,9 @@ fun AssistantActivitySheet(
 ) {
     val summary = summarizeActivity(parts)
     val title = if (summary.isEmpty) stringResource(R.string.activity_details_title) else activitySummaryText(summary)
+    // Blank reasoning has no content to expand; the timeline already filters it, but the sheet
+    // re-resolves its parts from the live messages, so filter again as defense in depth.
+    val visibleParts = remember(parts) { parts.filterNot { it is ChatPart.Reasoning && it.text.isBlank() } }
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 16.dp, bottom = 4.dp),
@@ -175,7 +178,7 @@ fun AssistantActivitySheet(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            itemsIndexed(parts, key = ::activityPartKey) { _, part ->
+            itemsIndexed(visibleParts, key = ::activityPartKey) { _, part ->
                 when (part) {
                     is ChatPart.Reasoning -> ReasoningCard(part, autoExpand = autoExpandReasoning)
                     is ChatPart.Tool -> ToolCard(part)
@@ -258,10 +261,10 @@ fun ReasoningCard(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            if (expanded && part.text.isNotBlank()) {
+            if (expanded) {
                 Spacer(Modifier.height(6.dp))
                 Text(
-                    text = part.text,
+                    text = part.text.ifBlank { stringResource(R.string.reasoning_empty) },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
                 )

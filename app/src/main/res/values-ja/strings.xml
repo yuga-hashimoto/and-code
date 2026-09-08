@@ -43,6 +43,7 @@
     <string name="always_allow">常に許可</string>
     <string name="reject">拒否</string>
     <string name="reasoning_card_title">思考</string>
+    <string name="reasoning_empty">思考内容がありません</string>
     <string name="tool_status_pending">保留中</string>
     <string name="tool_status_running">実行中</string>
     <string name="tool_status_completed">完了</string>

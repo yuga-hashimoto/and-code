@@ -43,6 +43,7 @@
     <string name="always_allow">Always allow</string>
     <string name="reject">Reject</string>
     <string name="reasoning_card_title">Reasoning</string>
+    <string name="reasoning_empty">No reasoning content</string>
     <string name="tool_status_pending">Pending</string>
     <string name="tool_status_running">Running</string>
     <string name="tool_status_completed">Completed</string>

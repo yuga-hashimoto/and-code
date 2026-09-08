@@ -43,6 +43,7 @@
     <string name="always_allow">始终允许</string>
     <string name="reject">拒绝</string>
     <string name="reasoning_card_title">推理</string>
+    <string name="reasoning_empty">暂无推理内容</string>
     <string name="tool_status_pending">等待中</string>
     <string name="tool_status_running">运行中</string>
     <string name="tool_status_completed">已完成</string>

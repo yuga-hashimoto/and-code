@@ -245,7 +245,7 @@ internal fun OpenCodePart.toChatPart(): ChatPart? {
     val stateMap = state.orEmpty()
     return when (type) {
         "text" -> ChatPart.Text(partId, text.orEmpty())
-        "reasoning" -> ChatPart.Reasoning(partId, text.orEmpty())
+        "reasoning" -> ChatPart.Reasoning(partId, extractReasoningText(text, stateMap))
         "file", "image" -> {
             val partUrl = url.orEmpty()
             val partMime = imageMime(mime, partUrl)
@@ -278,6 +278,38 @@ internal fun OpenCodePart.toChatPart(): ChatPart? {
         "patch" -> ChatPart.Patch(partId, extractPatchFiles(stateMap))
         else -> null
     }
+}
+
+/**
+ * Reasoning text is normally the part's top-level `text`, but some servers and OpenAI-compatible
+ * providers persist it under `state` instead (e.g. `state.reasoningDetails[*].text`) while leaving
+ * the top level empty. Without this fallback every such part rendered as a "Thinking" card that
+ * showed nothing when expanded.
+ */
+internal fun extractReasoningText(
+    topLevelText: String?,
+    state: Map<String, JsonElement>,
+): String {
+    if (!topLevelText.isNullOrBlank()) return topLevelText
+    state["text"]?.jsonPrimitiveOrNull()?.takeIf { it.isNotBlank() }?.let { return it }
+    state["content"]?.jsonPrimitiveOrNull()?.takeIf { it.isNotBlank() }?.let { return it }
+    state["reasoning"]?.jsonPrimitiveOrNull()?.takeIf { it.isNotBlank() }?.let { return it }
+    for (key in listOf("reasoningDetails", "reasoning_details", "details")) {
+        extractReasoningDetailsText(state[key])?.takeIf { it.isNotBlank() }?.let { return it }
+    }
+    return ""
+}
+
+private fun extractReasoningDetailsText(element: JsonElement?): String? {
+    val array = element as? JsonArray ?: return null
+    val texts =
+        array.mapNotNull { entry ->
+            val obj = entry as? JsonObject ?: return@mapNotNull null
+            obj["text"]?.jsonPrimitiveOrNull()?.takeIf { it.isNotBlank() }
+                ?: obj["content"]?.jsonPrimitiveOrNull()?.takeIf { it.isNotBlank() }
+                ?: obj["summary"]?.jsonPrimitiveOrNull()?.takeIf { it.isNotBlank() }
+        }
+    return texts.joinToString("").takeIf { it.isNotBlank() }
 }
 
 /** Image-producing tools do not consistently include a MIME field in their file parts. */
@@ -1979,11 +2011,38 @@ class ChatViewModel(
                 val partId = part.id ?: messageId
                 val chatPart = part.toChatPart() ?: return
                 val messageParts = streamedParts.getOrPut(messageId) { linkedMapOf() }
-                messageParts[partId] = chatPart
+                // Deltas can arrive before the part event that introduces them (see issue #26924):
+                // they are accumulated under the same part id, and the late snapshot must not wipe
+                // them out with its own (often empty) initial text.
+                val mergedPart =
+                    when (val existing = messageParts[partId]) {
+                        is ChatPart.Text ->
+                            when {
+                                chatPart is ChatPart.Text && chatPart.text.isBlank() && existing.text.isNotBlank() -> existing
+                                // An early delta was stored as Text (deltas carry no part type) but
+                                // the snapshot reveals it was reasoning: keep the accumulated text.
+                                chatPart is ChatPart.Reasoning && chatPart.text.isBlank() && existing.text.isNotBlank() ->
+                                    chatPart.copy(text = existing.text)
+                                else -> chatPart
+                            }
+                        is ChatPart.Reasoning ->
+                            if ((chatPart is ChatPart.Reasoning && chatPart.text.isBlank()) ||
+                                (chatPart is ChatPart.Text && chatPart.text.isBlank())
+                            ) {
+                                if (existing.text.isNotBlank()) existing else chatPart
+                            } else {
+                                chatPart
+                            }
+                        else -> chatPart
+                    }
+                messageParts[partId] = mergedPart
                 updateStreamingMessage(messageId, messageParts.values.toList())
             }
             is OpenCodeEvent.MessagePartDelta -> {
-                if (event.sessionId != activeSession || event.field != "text") return
+                // OpenCode streams both text and reasoning deltas with field="text"; the Claude
+                // bridge uses field="reasoning" for thinking deltas. Anything else carries no
+                // displayable text.
+                if (event.sessionId != activeSession || (event.field != "text" && event.field != "reasoning")) return
                 connectionMonitor.recordStreamToken()
                 val messageParts = streamedParts.getOrPut(event.messageId) { linkedMapOf() }
                 val updatedPart =
@@ -1992,7 +2051,12 @@ class ChatViewModel(
                         is ChatPart.Reasoning -> existing.copy(text = existing.text + event.delta)
                         // A delta can outrun the part event that introduces it; start the part here
                         // rather than dropping the text on the floor.
-                        null -> ChatPart.Text(event.partId, event.delta)
+                        null ->
+                            if (event.field == "reasoning") {
+                                ChatPart.Reasoning(event.partId, event.delta)
+                            } else {
+                                ChatPart.Text(event.partId, event.delta)
+                            }
                         else -> return
                     }
                 messageParts[event.partId] = updatedPart

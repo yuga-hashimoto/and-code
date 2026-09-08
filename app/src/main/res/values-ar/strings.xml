@@ -43,6 +43,7 @@
     <string name="always_allow">السماح دائمًا</string>
     <string name="reject">رفض</string>
     <string name="reasoning_card_title">الاستدلال</string>
+    <string name="reasoning_empty">لا يوجد محتوى للاستدلال</string>
     <string name="tool_status_pending">قيد الانتظار</string>
     <string name="tool_status_running">قيد التشغيل</string>
     <string name="tool_status_completed">مكتمل</string>
