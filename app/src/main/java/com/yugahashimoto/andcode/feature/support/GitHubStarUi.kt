@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.AndCodeApplication
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.ProjectLinks
+import com.yugahashimoto.andcode.core.UrlLauncher
 
 @Composable
 fun GitHubStarPromptDialog(
@@ -251,5 +252,5 @@ fun openProjectLink(
     context: Context,
     url: String,
 ) {
-    com.yugahashimoto.andcode.core.UrlLauncher.openUrl(context, url)
+    UrlLauncher.openUrl(context, url)
 }

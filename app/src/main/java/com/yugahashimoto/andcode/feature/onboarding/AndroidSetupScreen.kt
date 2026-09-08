@@ -60,6 +60,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.core.UrlLauncher
 import com.yugahashimoto.andcode.core.api.OpenCodeProvider
 import com.yugahashimoto.andcode.core.api.ProviderAuthMethod
 import com.yugahashimoto.andcode.feature.settings.ProviderAuthDialog
@@ -382,7 +383,7 @@ fun AndroidSetupScreen(
             onSubmit = onSubmitProviderAuth,
             onCompleteCode = onCompleteProviderOAuth,
             onLaunchBrowser = { url ->
-                com.yugahashimoto.andcode.core.UrlLauncher.openUrl(context, url)
+                UrlLauncher.openUrl(context, url)
             },
             onDismiss = onDismissProviderAuth,
         )

@@ -383,12 +383,8 @@ fun NavGraphBuilder.settingsNavGraph(
             onCompleteProviderOAuth = settingsViewModel::completeProviderOAuth,
             onDisconnectProvider = settingsViewModel::disconnectProvider,
             onLaunchOAuthBrowser = { url ->
-                runCatching {
-                    if (!UrlLauncher.openUrl(context, url)) {
-                        error("Unsupported URL")
-                    }
-                }.onFailure { error ->
-                    settingsViewModel.reportOAuthError(error.message.orEmpty())
+                if (!UrlLauncher.openUrl(context, url)) {
+                    settingsViewModel.reportOAuthError(context.getString(R.string.provider_auth_failed))
                 }
             },
             onDismissProviderAuth = settingsViewModel::dismissProviderAuth,
@@ -403,11 +399,9 @@ fun NavGraphBuilder.settingsNavGraph(
             onConnect = settingsViewModel::beginGitHubDeviceFlow,
             onDisconnect = settingsViewModel::disconnectGitHub,
             onOpenVerification = { url ->
-                runCatching {
-                    if (!UrlLauncher.openUrl(context, url)) {
-                        error("Unsupported URL")
-                    }
-                }.onFailure { error -> settingsViewModel.reportOAuthError(error.message.orEmpty()) }
+                if (!UrlLauncher.openUrl(context, url)) {
+                    settingsViewModel.reportOAuthError(context.getString(R.string.provider_auth_failed))
+                }
             },
             onBack = { navController.popBackStack() },
         )
