@@ -483,10 +483,34 @@ fun AndCodeApp(
             voiceScope.launch {
                 runCatching {
                     withContext(Dispatchers.IO) {
-                        com.yugahashimoto.andcode.runtime.local.AttachmentImporter(context).import(uri)
+                        com.yugahashimoto.andcode.runtime.local.AttachmentImporter(context).importAll(uri)
                     }
-                }.onSuccess { attachment ->
-                    chatViewModel.addAttachment(attachment)
+                }.onSuccess { attachments ->
+                    attachments.forEach { attachment ->
+                        if (attachment.mime.startsWith("image/")) {
+                            val preview =
+                                runCatching {
+                                    val base64 = attachment.url.substringAfter("base64,", missingDelimiterValue = "")
+                                    if (base64.isEmpty()) return@runCatching null
+                                    val bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
+                                    android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                }.getOrNull()
+                            if (preview != null) {
+                                chatViewModel.addImageAttachment(attachment, preview)
+                            } else {
+                                chatViewModel.addAttachment(attachment)
+                            }
+                        } else {
+                            chatViewModel.addAttachment(attachment)
+                        }
+                    }
+                }.onFailure { error ->
+                    android.util.Log.w("AndCodeApp", "Failed to attach file", error)
+                    android.widget.Toast.makeText(
+                        context,
+                        error.message ?: context.getString(R.string.attachment_load_failed),
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
                 }
             }
         }

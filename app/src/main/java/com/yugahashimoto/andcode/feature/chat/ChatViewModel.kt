@@ -1114,6 +1114,19 @@ class ChatViewModel(
                     pendingPreviews.getOrNull(index)?.let { attachment.filename to it }
                 }.toMap()
         if (normalized.isEmpty() && pendingAttachments.isEmpty()) return
+        // Video file parts are rejected by most providers
+        // ("'file part media type video/mp4' functionality not supported"), failing the
+        // whole turn. Videos are converted to image frames at attach time, so reaching
+        // here means a stale/queued attachment slipped through: block the send with a
+        // clear error instead of breaking the session.
+        if (pendingAttachments.any { it.mime.startsWith("video/", ignoreCase = true) }) {
+            _uiState.update {
+                it.copy(
+                    error = "Video files cannot be sent directly. Remove the video and attach images instead.",
+                )
+            }
+            return
+        }
         val currentBackend = backend
         if (currentBackend == null) {
             _uiState.update { it.copy(error = "OpenCode connection is not configured") }

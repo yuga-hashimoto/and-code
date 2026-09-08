@@ -168,6 +168,23 @@ class ChatViewModelTest {
         }
 
     @Test
+    fun `video attachment is blocked instead of failing the session`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+            viewModel.addAttachment(PromptAttachment("clip.mp4", "video/mp4", "data:video/mp4;base64,AAAA"))
+
+            viewModel.sendMessage("fix this")
+            advanceUntilIdle()
+
+            assertEquals(0, backend.sentPrompts.size)
+            assertEquals(0, backend.createSessionCalls)
+            assertNotNull(viewModel.uiState.value.error)
+            assertTrue(viewModel.uiState.value.error!!.contains("Video", ignoreCase = true))
+        }
+
+    @Test
     fun `creating a session refreshes the shell catalog`() =
         runTest(dispatcher) {
             val backend = FakeBackend()

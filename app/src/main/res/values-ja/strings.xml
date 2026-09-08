@@ -820,6 +820,7 @@
     <string name="attach_file">ファイル</string>
     <string name="attach_camera">カメラ</string>
     <string name="attach_gallery">ギャラリー</string>
+    <string name="attachment_load_failed">ファイルを添付できませんでした</string>
     <string name="status_queued">キュー済み</string>
 
     <!-- Resume command -->
