@@ -135,6 +135,11 @@ fun groupConversationTimeline(messages: List<ChatMessage>): List<TimelineEntry> 
             turnCompletedAt = maxOf(turnCompletedAt ?: 0L, completed)
         }
         message.parts.forEach { part ->
+            // Blank reasoning carries nothing to expand: the server emits empty reasoning parts
+            // (e.g. an initial streaming snapshot, or a reasoning_details-only part whose text
+            // lives in state), and showing them produced "Thinking" cards that expanded to
+            // nothing. Skip them so they never form an activity group or a detail row.
+            if (part is ChatPart.Reasoning && part.text.isBlank()) return@forEach
             when {
                 part is ChatPart.Tool && part.name == "todowrite" && part.todos.isNotEmpty() -> {
                     flush()
@@ -192,7 +197,7 @@ fun summarizeActivity(parts: List<ChatPart>): ActivitySummary {
 
     parts.forEach { part ->
         when (part) {
-            is ChatPart.Reasoning -> reasoning++
+            is ChatPart.Reasoning -> if (part.text.isNotBlank()) reasoning++
             is ChatPart.Patch -> counts.increment(ToolCategory.EDIT)
             is ChatPart.Tool -> {
                 counts.increment(part.name.toToolCategory())

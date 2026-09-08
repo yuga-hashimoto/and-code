@@ -39,6 +39,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -545,6 +546,115 @@ class ChatViewModelTest {
 
             val reasoning = viewModel.uiState.value.messages.last().parts.single() as ChatPart.Reasoning
             assertEquals("Thinking more.", reasoning.text)
+        }
+
+    @Test
+    fun `reasoning text falls back to state reasoningDetails`() {
+        val part =
+            OpenCodePart(
+                id = "reason-1",
+                sessionId = "s1",
+                messageId = "m-assistant",
+                type = "reasoning",
+                text = "",
+                state =
+                    mapOf(
+                        "reasoningDetails" to
+                            buildJsonArray {
+                                add(buildJsonObject { put("text", JsonPrimitive("Deep ")) })
+                                add(buildJsonObject { put("text", JsonPrimitive("thought")) })
+                            },
+                    ),
+            )
+
+        val reasoning = part.toChatPart() as ChatPart.Reasoning
+        assertEquals("Deep thought", reasoning.text)
+    }
+
+    @Test
+    fun `reasoning text prefers top-level text over state`() {
+        val part =
+            OpenCodePart(
+                id = "reason-1",
+                sessionId = "s1",
+                messageId = "m-assistant",
+                type = "reasoning",
+                text = "Top level",
+                state = mapOf("text" to JsonPrimitive("State fallback")),
+            )
+
+        val reasoning = part.toChatPart() as ChatPart.Reasoning
+        assertEquals("Top level", reasoning.text)
+    }
+
+    @Test
+    fun `reasoning delta with reasoning field accumulates into a reasoning part`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+            viewModel.sendMessage("Think about it")
+            advanceUntilIdle()
+
+            backend.events.emit(
+                OpenCodeEvent.MessagePartDelta(
+                    sessionId = "s1",
+                    messageId = "m-assistant",
+                    partId = "reason-1",
+                    field = "reasoning",
+                    delta = "Thinking",
+                ),
+            )
+            backend.events.emit(
+                OpenCodeEvent.MessagePartDelta(
+                    sessionId = "s1",
+                    messageId = "m-assistant",
+                    partId = "reason-1",
+                    field = "reasoning",
+                    delta = " more.",
+                ),
+            )
+            advanceUntilIdle()
+
+            val reasoning = viewModel.uiState.value.messages.last().parts.single() as ChatPart.Reasoning
+            assertEquals("Thinking more.", reasoning.text)
+        }
+
+    @Test
+    fun `late empty reasoning snapshot preserves streamed deltas`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+            viewModel.sendMessage("Think about it")
+            advanceUntilIdle()
+
+            // A delta can outrun the part event that introduces it; the late snapshot
+            // carries the empty initial text and must not wipe the accumulated delta.
+            backend.events.emit(
+                OpenCodeEvent.MessagePartDelta(
+                    sessionId = "s1",
+                    messageId = "m-assistant",
+                    partId = "reason-1",
+                    field = "text",
+                    delta = "Early thought",
+                ),
+            )
+            backend.events.emit(
+                OpenCodeEvent.MessagePartUpdated(
+                    OpenCodePart(
+                        id = "reason-1",
+                        sessionId = "s1",
+                        messageId = "m-assistant",
+                        type = "reasoning",
+                        text = "",
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+
+            val reasoning = viewModel.uiState.value.messages.last().parts.single() as ChatPart.Reasoning
+            assertEquals("Early thought", reasoning.text)
         }
 
     @Test

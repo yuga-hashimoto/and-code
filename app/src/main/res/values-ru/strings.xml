@@ -43,6 +43,7 @@
     <string name="always_allow">Всегда разрешать</string>
     <string name="reject">Отклонить</string>
     <string name="reasoning_card_title">Рассуждение</string>
+    <string name="reasoning_empty">Нет содержания рассуждения</string>
     <string name="tool_status_pending">Ожидание</string>
     <string name="tool_status_running">Выполняется</string>
     <string name="tool_status_completed">Завершено</string>
