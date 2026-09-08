@@ -222,6 +222,7 @@
     <string name="no_git_info">No Git repository info</string>
     <string name="loading_changes">Loading changes</string>
     <string name="no_uncommitted_changes">No uncommitted changes</string>
+    <string name="open_file">Open</string>
 
     <string name="local_runtime_screen_title">Local runtime</string>
     <string name="refresh_diagnostics_description">Refresh diagnostics and update info</string>

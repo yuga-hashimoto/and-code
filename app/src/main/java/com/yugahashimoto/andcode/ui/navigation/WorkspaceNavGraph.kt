@@ -20,6 +20,7 @@ import com.yugahashimoto.andcode.feature.workspace.WorkspaceExplorerScreen
 import com.yugahashimoto.andcode.feature.workspace.WorkspaceExplorerViewModel
 import com.yugahashimoto.andcode.feature.workspace.WorkspaceViewModel
 import com.yugahashimoto.andcode.feature.workspace.WorkspacesScreen
+import com.yugahashimoto.andcode.feature.workspace.isOpenable
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.ui.ViewModelFactory
@@ -167,6 +168,11 @@ fun NavGraphBuilder.workspaceNavGraph(
                 onSearch = explorerViewModel::search,
                 onRefreshChanges = explorerViewModel::refreshChanges,
                 onOpenTerminal = { navController.navigate(ROUTE_TERMINAL) },
+                onOpenChange = { change ->
+                    if (change.isOpenable()) {
+                        navController.navigate(codeViewerRoute(runtime.id, workspace.path, change.displayPath))
+                    }
+                },
             )
         }
     }
