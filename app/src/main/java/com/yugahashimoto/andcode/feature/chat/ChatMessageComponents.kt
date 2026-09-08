@@ -61,6 +61,7 @@ import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.core.ProvideSafeUriHandler
 import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.ui.theme.LocalThemeColors
@@ -285,8 +286,12 @@ private fun InlineText(
         remember(inlines, linkColor, codeBackground) {
             renderInline(inlines, codeBackground, linkColor)
         }
-    SelectionContainer {
-        Text(text = annotated, style = style)
+    // Agent-authored Markdown can contain file:// links: the default UriHandler would
+    // forward those to another app and crash with FileUriExposedException (issue #300).
+    ProvideSafeUriHandler {
+        SelectionContainer {
+            Text(text = annotated, style = style)
+        }
     }
 }
 
@@ -332,7 +337,10 @@ private fun LinkedText(
                 }
             }
         }
-    Text(text = annotated, style = style)
+    // Same file:// guard as InlineText above (issue #300).
+    ProvideSafeUriHandler {
+        Text(text = annotated, style = style)
+    }
 }
 
 @Composable

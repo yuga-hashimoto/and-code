@@ -1,8 +1,6 @@
 package com.yugahashimoto.andcode.feature.support
 
 import android.content.Context
-import android.content.Intent
-import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -253,11 +251,5 @@ fun openProjectLink(
     context: Context,
     url: String,
 ) {
-    runCatching {
-        context.startActivity(
-            Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            },
-        )
-    }
+    com.yugahashimoto.andcode.core.UrlLauncher.openUrl(context, url)
 }

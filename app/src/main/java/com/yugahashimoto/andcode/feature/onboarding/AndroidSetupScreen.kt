@@ -1,6 +1,5 @@
 package com.yugahashimoto.andcode.feature.onboarding
 
-import android.content.Intent
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -383,9 +382,7 @@ fun AndroidSetupScreen(
             onSubmit = onSubmitProviderAuth,
             onCompleteCode = onCompleteProviderOAuth,
             onLaunchBrowser = { url ->
-                runCatching {
-                    context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
-                }
+                com.yugahashimoto.andcode.core.UrlLauncher.openUrl(context, url)
             },
             onDismiss = onDismissProviderAuth,
         )
