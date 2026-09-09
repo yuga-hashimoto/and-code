@@ -1061,6 +1061,38 @@ class ChatViewModelTest {
             assertFalse(viewModel.uiState.value.isRunning)
         }
 
+    /** Issue #306: a provider connectivity failure arriving as session.error must self-heal. */
+    @Test
+    fun `a transient session error recovers once the runtime is reachable again`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("Hello")
+            advanceUntilIdle()
+
+            backend.events.tryEmit(
+                OpenCodeEvent.SessionError(
+                    "s1",
+                    "APIError: Cannot connect to API: Unable to connect. Is the computer able to access the url?",
+                    name = "APIError",
+                ),
+            )
+            runCurrent()
+
+            assertEquals(
+                ChatErrorKind.TRANSIENT_CONNECTION,
+                classifyChatError(viewModel.uiState.value.error),
+            )
+            assertFalse(viewModel.uiState.value.isRunning)
+
+            advanceUntilIdle()
+
+            assertNull(viewModel.uiState.value.error)
+            assertTrue(viewModel.uiState.value.isConnected)
+        }
+
     /**
      * The bubble of a turn interrupted mid-stream must survive the transcript reloads that start
      * with the replacement prompt. The interrupted turn is finalized asynchronously and some
