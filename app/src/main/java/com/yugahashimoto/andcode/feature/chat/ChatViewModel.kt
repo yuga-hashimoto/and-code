@@ -2152,12 +2152,20 @@ class ChatViewModel(
                 // The abort paths settle their own state; there is nothing to report here.
                 if (event.isAbort) return
                 event.sessionId?.let(::closeInterruptWindow)
+                val message = event.message ?: "OpenCode session failed"
                 _uiState.update {
                     it.copy(
                         isRunning = false,
                         isThinking = false,
-                        error = event.message ?: "OpenCode session failed",
+                        error = message,
                     )
+                }
+                // A provider-fetch failure that arrives as session.error (e.g. issue #306:
+                // "Cannot connect to API: Unable to connect...") left a static red card with
+                // no recovery: only reinstall cleared it. Route transient ones through the
+                // same reconnect loop as send failures so the chat retries instead of dying.
+                if (classifyChatError(message) == ChatErrorKind.TRANSIENT_CONNECTION) {
+                    scheduleTransientRecovery()
                 }
             }
             is OpenCodeEvent.SessionCreated -> Unit
