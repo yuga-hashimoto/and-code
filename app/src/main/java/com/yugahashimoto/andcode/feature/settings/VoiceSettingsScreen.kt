@@ -993,6 +993,14 @@ private fun WakeWordModelRow(
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
         }
+        if (state == VoskModelState.Missing) {
+            Text(
+                text = stringResource(R.string.wake_word_model_disclosure),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+        }
     }
 }
 
