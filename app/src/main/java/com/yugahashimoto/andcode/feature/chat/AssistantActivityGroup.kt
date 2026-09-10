@@ -187,7 +187,8 @@ fun groupConversationTimeline(messages: List<ChatMessage>): List<TimelineEntry> 
  * scheme the activity and todo groups already use. This repairs transcripts that already store
  * duplicate ids: a turn killed between persisting the user message and advancing the runtime's
  * step counter replays the same user-message id on the next send (see [TimelineEntry.UserMessage]),
- * and two rows sharing one key crashed the chat the moment it was opened.
+ * and two rows sharing one key crashed the chat the moment it was opened. (Only an original id
+ * that itself ends in `:<n>` and repeats could still collide — no runtime produces that shape.)
  */
 private fun List<TimelineEntry>.withUniqueIds(): List<TimelineEntry> {
     val seen = mutableMapOf<String, Int>()
