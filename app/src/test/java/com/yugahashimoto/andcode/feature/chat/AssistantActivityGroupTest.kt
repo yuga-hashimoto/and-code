@@ -392,6 +392,24 @@ class AssistantActivityGroupTest {
     }
 
     @Test
+    fun `duplicate user message ids still get unique entry ids`() {
+        // Antigravity persists the user turn before its step counter advances; a send killed in
+        // between (app killed mid-turn, stream read error) replays the same message id on the next
+        // send. Two rows sharing one LazyColumn key crashed the chat the moment it was opened.
+        val duplicated =
+            listOf(
+                ChatMessage(id = "s-user-2", isUser = true, parts = listOf(ChatPart.Text("u1", "first try"))),
+                ChatMessage(id = "s-user-2", isUser = true, parts = listOf(ChatPart.Text("u2", "second try"))),
+            )
+
+        val entries = groupConversationTimeline(duplicated)
+
+        assertEquals(listOf("user:s-user-2", "user:s-user-2:1"), entries.map { it.id })
+        assertEquals("first try", (entries[0] as TimelineEntry.UserMessage).message.text)
+        assertEquals("second try", (entries[1] as TimelineEntry.UserMessage).message.text)
+    }
+
+    @Test
     fun `blank reasoning parts are excluded from activity`() {
         // Blank reasoning carries nothing to expand; it must not produce a "Thinking" card.
         val entries =

@@ -233,7 +233,12 @@ class AntigravityRuntime(
                     val parser = AntigravityStreamJsonParser(sessionId, json)
                     val record0 = records[sessionId] ?: AntigravitySessionRecord(sessionId, null, workspace)
                     val turnNow = System.currentTimeMillis()
-                    val userId = "$sessionId-user-${record0.lastStep}"
+                    // The turn's wall clock keeps the id unique per send: lastStep only advances
+                    // once the turn finishes (below), so a death in between - the app being killed
+                    // mid-turn, a read error on the stream - would replay the same id on the next
+                    // send. Two user rows sharing one id then crashed the chat's LazyColumn the
+                    // moment that conversation was opened (issue #311).
+                    val userId = "$sessionId-user-${record0.lastStep}-$turnNow"
                     // Persist the user turn before the stream starts. The chat redraws from
                     // listMessages the moment it sees SessionIdle, and the composer's optimistic
                     // bubble is replaced by that snapshot - so a user turn that only lands at the
