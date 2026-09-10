@@ -77,6 +77,7 @@
     <string name="wake_word_model_language_japanese">اليابانية</string>
     <string name="wake_word_model_label">نموذج الكلام</string>
     <string name="wake_word_model_not_downloaded">لم يتم التنزيل (نحو %1$d ميغابايت)</string>
+    <string name="wake_word_model_disclosure">يتم التنزيل مباشرة من alphacephei.com فقط إذا نقرت على «تنزيل» أدناه — وهذا يحدث خارج عمليات التحقق من البناء والمصدر في F-Droid.</string>
     <string name="wake_word_model_downloading">جارٍ التنزيل…</string>
     <string name="wake_word_model_downloading_percent">جارٍ التنزيل… %1$d%%</string>
     <string name="wake_word_model_extracting">جارٍ فك الضغط…</string>
