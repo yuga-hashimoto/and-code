@@ -346,11 +346,13 @@ class AndCodeApplication : Application() {
                 installer = installer,
                 processLauncher = launcher,
                 updateEngine = updateEngine,
+                systemPrompt = { systemPromptStore.selectedPrompt() },
                 messages = runtimeMessages,
             )
-        // Keeps OpenCode's instructions file in step with the selected preset: on every switch, and
-        // on every runtime start, since a reinstall replaces the guest filesystem the file lives in.
-        // Claude Code needs none of this - it takes the prompt on the command line per session.
+        // Keeps OpenCode's instructions file in step with the selected preset while the runtime is
+        // up. The start sequence writes it too (see LocalRuntimeManager's systemPrompt), which is
+        // what covers a freshly installed guest filesystem; this collector is for switches made
+        // afterwards. Claude Code needs none of it - it takes the prompt on the command line.
         applicationScope.launch {
             // Watches the presets as well as the selection: editing the text of the preset already
             // selected leaves selectedId untouched, and OpenCode would have gone on reading the old

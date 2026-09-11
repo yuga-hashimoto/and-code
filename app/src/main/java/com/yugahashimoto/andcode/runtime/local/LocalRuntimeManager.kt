@@ -50,6 +50,15 @@ class LocalRuntimeManager(
     private val processAlive: () -> Boolean = { processLauncher?.isRunning() == true },
     private val updateEngine: LocalRuntimeUpdateEngine? = null,
     private val runtimeOperations: LocalRuntimeOperations? = null,
+    /**
+     * The system-prompt preset OpenCode should start with, read at start time.
+     *
+     * Written here rather than only from a collector watching [state]: the collector runs after
+     * [LocalRuntimeStatus.Ready] is published, so the first turn of a freshly started runtime - one
+     * whose guest filesystem a reinstall has just replaced - could go out before the file existed
+     * and silently miss the preset.
+     */
+    private val systemPrompt: () -> String? = { null },
     private val messages: LocalRuntimeMessages = LocalRuntimeMessages,
 ) {
     private val json: Json =
@@ -494,6 +503,8 @@ class LocalRuntimeManager(
             // Runtimes installed before the guest MCP provisioning existed pick it up here; the
             // call is idempotent and a failure must never block the runtime start.
             runCatching { installer?.provisionGuestCapabilitiesForExistingInstall() }
+            // Before the server starts, so its first turn already reads the selected preset.
+            applyOpenCodeSystemPrompt(installed.rootfs, systemPrompt())
             if (!portProbe(installed.metadata.port)) launcher.start(installed)
             val ready =
                 LocalRuntimeStatus.Ready(
