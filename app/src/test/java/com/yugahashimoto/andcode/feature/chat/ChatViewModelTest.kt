@@ -129,8 +129,8 @@ class ChatViewModelTest {
         }
 
     /**
-     * The draft is read before `createSession` suspends, so starting another blank chat while that
-     * request is in flight cannot take the choice away from the send it was made for.
+     * The draft is captured where the send is requested, so changing the preset while that request
+     * is in flight cannot take the choice away from the send it was made for.
      */
     @Test
     fun `a send keeps the preset it was started with`() =
@@ -143,7 +143,65 @@ class ChatViewModelTest {
             viewModel.selectSystemPrompt("debug")
 
             viewModel.sendMessage("Hello")
+            // Same chat, a change of mind after the tap: the send already has its answer.
+            viewModel.selectSystemPrompt("research")
+            advanceUntilIdle()
+
+            assertEquals(listOf("s1" to "debug"), applied)
+        }
+
+    /**
+     * The other half of that capture. Starting another blank chat before the send's createSession
+     * returns means the session it creates belongs to the *new* chat, so the abandoned chat's
+     * preset must not follow it there - dropping the choice is right, applying it is not.
+     */
+    @Test
+    fun `a preset is not applied to a chat it was not chosen in`() =
+        runTest(dispatcher) {
+            val applied = mutableListOf<Pair<String, String?>>()
+            val backend = FakeBackend()
+            val viewModel =
+                ChatViewModel(backend, onApplySystemPrompt = { sessionId, presetId -> applied += sessionId to presetId })
+            advanceUntilIdle()
+            viewModel.selectSystemPrompt("debug")
+
+            viewModel.sendMessage("Hello")
             viewModel.newSession()
+            advanceUntilIdle()
+
+            assertTrue(applied.isEmpty())
+        }
+
+    /**
+     * An offline queue drains whenever the server comes back, by which time the chip may have moved,
+     * so the choice travels with the held prompt rather than being read again on replay.
+     *
+     * The offline queue is the only queue this can matter for: the busy queue needs a turn already
+     * running, which means the chat already has a session, and a draft is only ever applied to one
+     * a send creates.
+     */
+    @Test
+    fun `a queued prompt carries the preset it was queued with`() =
+        runTest(dispatcher) {
+            val applied = mutableListOf<Pair<String, String?>>()
+            val backend = FakeBackend(healthy = false)
+            val viewModel =
+                ChatViewModel(
+                    backend,
+                    eventFlow = backend.events,
+                    onApplySystemPrompt = { sessionId, presetId -> applied += sessionId to presetId },
+                )
+            advanceUntilIdle()
+
+            viewModel.selectSystemPrompt("debug")
+            viewModel.sendMessage("Hello")
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isOfflineQueued)
+            assertTrue(applied.isEmpty())
+
+            // The chip moves on while the prompt is still held, then the server comes back.
+            viewModel.selectSystemPrompt("research")
+            backend.events.tryEmit(OpenCodeEvent.ServerConnected)
             advanceUntilIdle()
 
             assertEquals(listOf("s1" to "debug"), applied)
@@ -1626,7 +1684,10 @@ class ChatViewModelTest {
             ),
     )
 
-    private class FakeBackend : OpenCodeBackend {
+    private class FakeBackend(
+        /** False reports the server as down, which is what routes a send to the offline queue. */
+        private val healthy: Boolean = true,
+    ) : OpenCodeBackend {
         override val id: String = "fake"
         override val displayName: String = "Fake"
         override val kind: BackendKind = BackendKind.REMOTE
@@ -1650,7 +1711,7 @@ class ChatViewModelTest {
                 healthFailuresRemaining--
                 throw IOException("connection refused")
             }
-            return OpenCodeHealth(true, "test")
+            return OpenCodeHealth(healthy, "test")
         }
 
         override suspend fun listSessions(directory: String?): List<OpenCodeSession> = sessionsById.values.toList()

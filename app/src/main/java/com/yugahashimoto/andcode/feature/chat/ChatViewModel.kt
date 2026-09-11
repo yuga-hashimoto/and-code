@@ -239,6 +239,13 @@ private data class QueuedPrompt(
     val text: String,
     val attachments: List<PromptAttachment>,
     val imagePreviews: List<Bitmap>,
+    /**
+     * The chat's draft preset as it stood when this prompt was queued.
+     *
+     * Held with the prompt rather than read again on replay: a queue drains minutes later, by which
+     * time the chip may have moved, and the turn should carry what was chosen when it was sent.
+     */
+    val systemPrompt: StagedSystemPrompt? = null,
 )
 
 internal fun OpenCodePart.toChatPart(): ChatPart? {
@@ -384,6 +391,15 @@ data class ParentSessionRef(
 data class ChatUiState(
     val backendName: String = "",
     val sessionId: String? = null,
+    /**
+     * Counts chat changes, so a choice captured for one chat is not applied to another.
+     *
+     * A blank chat has no session id to identify it by - that is the whole reason the draft below
+     * exists - so this stands in. A send captures it alongside the draft and the draft is applied
+     * only if it still matches: tapping Send and then starting another blank chat lets that send's
+     * `createSession` land on the new chat, and the abandoned chat's preset must not follow it there.
+     */
+    val chatGeneration: Long = 0,
     /**
      * System-prompt preset chosen for this chat before it had a session to record it on.
      *
@@ -851,7 +867,7 @@ class ChatViewModel(
         if (switchingSession) pendingInterrupts.clear()
         // The composer is moving to another chat, so a preset chosen for the one it is leaving -
         // which never got a session to record it on - stops applying here.
-        _uiState.update { it.copy(draftSystemPrompt = null) }
+        _uiState.update { it.copy(chatGeneration = it.chatGeneration + 1, draftSystemPrompt = null) }
         streamedParts.clear()
         messageRoles.clear()
         // Opening the chat is an explicit act of attention, so questions the user hid earlier are
@@ -960,16 +976,20 @@ class ChatViewModel(
      * recomposition instead would race the message it is meant to accompany.
      *
      * [draft] is passed in rather than read here: it is captured synchronously where the send is
-     * requested, before the coroutine is even dispatched, so a chat started or a preset changed
-     * between the tap and the request landing cannot take the choice away from the send it was made
-     * for. It is consumed only once applied, so a failed `createSession` leaves it in place for the
-     * retry.
+     * requested, before the coroutine is even dispatched, so a preset changed between the tap and
+     * the request landing cannot take the choice away from the send it was made for. It is consumed
+     * only once applied, so a failed `createSession` leaves it in place for the retry.
+     *
+     * [generation] is what keeps that capture honest. If the composer has moved to another chat
+     * since, the session this send just created belongs to that chat, and the abandoned chat's
+     * preset would be applied to a conversation it was never chosen for - so it is dropped instead.
      */
     private fun applyDraftSystemPrompt(
         sessionId: String,
         draft: StagedSystemPrompt?,
+        generation: Long,
     ) {
-        if (draft == null) return
+        if (draft == null || _uiState.value.chatGeneration != generation) return
         onApplySystemPrompt(sessionId, draft.id)
         _uiState.update { it.copy(draftSystemPrompt = null) }
     }
@@ -981,6 +1001,7 @@ class ChatViewModel(
         pendingInterrupts.clear()
         _uiState.update {
             it.copy(
+                chatGeneration = it.chatGeneration + 1,
                 draftSystemPrompt = null,
                 sessionId = null,
                 sessionTitle = "",
@@ -1120,7 +1141,13 @@ class ChatViewModel(
 
         if (!_uiState.value.isConnected) {
             offlineMessageQueue.update {
-                it + QueuedPrompt(normalized, pendingAttachments, _uiState.value.imagePreviews)
+                it +
+                    QueuedPrompt(
+                        normalized,
+                        pendingAttachments,
+                        _uiState.value.imagePreviews,
+                        _uiState.value.draftSystemPrompt,
+                    )
             }
             val userMessage =
                 ChatMessage(
@@ -1147,7 +1174,13 @@ class ChatViewModel(
         val mustQueue = (currentBackend as? RuntimeTarget)?.capabilities?.forcesQueue == true
         if ((_sendBehavior.value == "queue" || mustQueue) && _uiState.value.isRunning) {
             messageQueue.update {
-                it + QueuedPrompt(normalized, pendingAttachments, _uiState.value.imagePreviews)
+                it +
+                    QueuedPrompt(
+                        normalized,
+                        pendingAttachments,
+                        _uiState.value.imagePreviews,
+                        _uiState.value.draftSystemPrompt,
+                    )
             }
             _uiState.update { it.copy(attachments = emptyList(), imagePreviews = emptyList()) }
             return
@@ -1181,6 +1214,7 @@ class ChatViewModel(
         // requested, and the coroutine does not begin until the dispatcher runs it - long enough
         // for a new chat to have been started and this choice cleared. See applyDraftSystemPrompt.
         val draftSystemPrompt = _uiState.value.draftSystemPrompt
+        val draftGeneration = _uiState.value.chatGeneration
         viewModelScope.launch {
             // Captured once the target session is known so onFailure below can tell whether the
             // failure still concerns the chat currently on screen.
@@ -1200,7 +1234,7 @@ class ChatViewModel(
                 val targetSessionId = existingSessionId ?: requireNotNull(session).id
                 capturedSessionId = targetSessionId
                 if (session != null) {
-                    applyDraftSystemPrompt(session.id, draftSystemPrompt)
+                    applyDraftSystemPrompt(session.id, draftSystemPrompt, draftGeneration)
                     _uiState.update {
                         it.copy(sessionId = session.id, sessionTitle = session.title)
                     }
@@ -1351,7 +1385,9 @@ class ChatViewModel(
         val messageIdsBeforeSend = _uiState.value.messages.map { it.id }.toSet()
 
         if (!_uiState.value.isConnected) {
-            offlineMessageQueue.update { it + QueuedPrompt(displayText, emptyList(), emptyList()) }
+            offlineMessageQueue.update {
+                it + QueuedPrompt(displayText, emptyList(), emptyList(), _uiState.value.draftSystemPrompt)
+            }
             val userMessage =
                 ChatMessage(
                     isUser = true,
@@ -1369,7 +1405,9 @@ class ChatViewModel(
 
         val mustQueue = (currentBackend as? RuntimeTarget)?.capabilities?.forcesQueue == true
         if ((_sendBehavior.value == "queue" || mustQueue) && _uiState.value.isRunning) {
-            messageQueue.update { it + QueuedPrompt(displayText, emptyList(), emptyList()) }
+            messageQueue.update {
+                it + QueuedPrompt(displayText, emptyList(), emptyList(), _uiState.value.draftSystemPrompt)
+            }
             return
         }
         val interrupting = _uiState.value.isRunning
@@ -1394,6 +1432,7 @@ class ChatViewModel(
 
         // As in sendMessage - the choice belongs to the request, not to whenever it is dispatched.
         val draftSystemPrompt = _uiState.value.draftSystemPrompt
+        val draftGeneration = _uiState.value.chatGeneration
         viewModelScope.launch {
             var capturedSessionId: String? = null
             runCatching {
@@ -1410,7 +1449,7 @@ class ChatViewModel(
                 val targetSessionId = existingSessionId ?: requireNotNull(session).id
                 capturedSessionId = targetSessionId
                 if (session != null) {
-                    applyDraftSystemPrompt(session.id, draftSystemPrompt)
+                    applyDraftSystemPrompt(session.id, draftSystemPrompt, draftGeneration)
                     _uiState.update {
                         it.copy(sessionId = session.id, sessionTitle = session.title)
                     }
@@ -2321,6 +2360,10 @@ class ChatViewModel(
             it.copy(
                 attachments = queuedPrompt.attachments,
                 imagePreviews = queuedPrompt.imagePreviews,
+                // Restored the same way the attachments are, so the replay's own capture picks it
+                // up. Inert once the chat has a session, since a draft is only ever applied to one
+                // this send creates.
+                draftSystemPrompt = queuedPrompt.systemPrompt,
             )
         }
         sendMessage(queuedPrompt.text)
