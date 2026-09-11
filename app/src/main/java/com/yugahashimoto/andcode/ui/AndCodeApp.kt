@@ -929,6 +929,14 @@ fun AndCodeApp(
                     }
 
                     composable(ROUTE_CHAT) {
+                        // A preset staged from the composer belongs to the chat it was chosen in, and
+                        // a chat that has sent nothing has no session to hold it. chatEpoch is what
+                        // makes leaving such a chat visible at all - sessionId stays null from one
+                        // blank chat to the next - so this is the one place the staged choice is let
+                        // go, rather than at each of the several newSession call sites.
+                        LaunchedEffect(chatState.chatEpoch) {
+                            workspaceViewModel.clearClaudeStagedSystemPrompt()
+                        }
                         // Keyed on the runtime too: a deep link that also switches the runtime must run
                         // against the view model of the new runtime, not the previous one's. While no
                         // runtime is selected yet (cold start) the chat backend does not exist and

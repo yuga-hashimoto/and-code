@@ -252,6 +252,55 @@ class ClaudeSystemPromptTest {
             assertNull(target.promptIdFor(next.id))
         }
 
+    /**
+     * The staged slot is target-wide, so without an explicit clear, staging a preset in one blank
+     * chat and then starting another would hand the first chat's choice to the second. The UI calls
+     * this on every chat change, keyed on `ChatUiState.chatEpoch`.
+     */
+    @Test
+    fun `abandoning a blank chat drops its staged preset`() =
+        runBlocking {
+            val target = target()
+            target.stageSystemPrompt(ClaudeSystemPrompts.DEBUG)
+
+            target.clearStagedSystemPrompt()
+            val next = target.createSession("Another blank chat", "/workspace")
+
+            assertNull(target.promptIdFor(next.id))
+        }
+
+    /** The staged id can dangle exactly as a session's can - see the delete tests above. */
+    @Test
+    fun `deleting a staged preset clears the staging slot`() =
+        runBlocking {
+            val target = target()
+            val preset = target.saveSystemPromptPreset("Scratch", "Anything goes.")
+            target.stageSystemPrompt(preset.id)
+
+            target.deleteSystemPromptPreset(preset.id)
+
+            assertNull(target.stagedSystemPrompt.value)
+            val session = target.createSession("New chat", "/workspace")
+            assertNull(target.promptIdFor(session.id))
+        }
+
+    /**
+     * A session id the target has no record for names a chat it does not have - deleted while open,
+     * or another agent's. Falling through to the default would retune every later chat, and the
+     * shared OpenCode instructions with it, for a chat that no longer exists.
+     */
+    @Test
+    fun `a preset for an unknown session changes nothing`() =
+        runBlocking {
+            val target = target()
+            target.selectSystemPrompt(ClaudeSystemPrompts.CODING)
+
+            target.selectSystemPrompt(ClaudeSystemPrompts.DEBUG, "not-a-session")
+
+            assertEquals(ClaudeSystemPrompts.CODING, target.defaultSystemPromptId.value)
+            assertNull(target.stagedSystemPrompt.value)
+        }
+
     /** Clearing the preset for a new chat is a choice too, not the absence of one. */
     @Test
     fun `staging None overrides the default for that chat`() =

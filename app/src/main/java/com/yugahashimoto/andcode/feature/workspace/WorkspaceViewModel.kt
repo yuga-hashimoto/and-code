@@ -364,6 +364,9 @@ class WorkspaceViewModel(
      */
     fun stageClaudeSystemPrompt(presetId: String?) = claudeCode?.stageSystemPrompt(presetId) ?: Unit
 
+    /** Called when the composer changes chats, so one blank chat's choice is not handed to the next. */
+    fun clearClaudeStagedSystemPrompt() = claudeCode?.clearStagedSystemPrompt() ?: Unit
+
     fun saveClaudeSystemPromptPreset(
         name: String,
         prompt: String,

@@ -217,6 +217,9 @@ class ClaudeCodeController(
     /** Holds a preset for the next session; see [ClaudeCodeTarget.stageSystemPrompt]. */
     fun stageSystemPrompt(presetId: String?) = target.stageSystemPrompt(presetId)
 
+    /** Drops a staged preset when the composer moves to another chat. */
+    fun clearStagedSystemPrompt() = target.clearStagedSystemPrompt()
+
     fun selectSystemPrompt(
         presetId: String?,
         sessionId: String? = null,

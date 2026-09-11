@@ -383,6 +383,15 @@ data class ParentSessionRef(
 data class ChatUiState(
     val backendName: String = "",
     val sessionId: String? = null,
+    /**
+     * Bumped every time the composer is pointed at a different chat, opened or blank.
+     *
+     * [sessionId] cannot stand in for this: a chat that has sent nothing has no session, so going
+     * from one blank chat to another leaves it null throughout and nothing downstream can tell that
+     * the chat changed. Anything held for "the chat on screen" and not yet written to a session -
+     * a staged system-prompt preset, so far - keys off this to know when to let go.
+     */
+    val chatEpoch: Long = 0,
     val sessionTitle: String = "",
     /** Non-null while the open session is a subagent session spawned by [ParentSessionRef.id]. */
     val parentSession: ParentSessionRef? = null,
@@ -830,6 +839,7 @@ class ChatViewModel(
         // because the old chat happened to be mid-turn when the user navigated away.
         val switchingSession = _uiState.value.sessionId != sessionId
         if (switchingSession) pendingInterrupts.clear()
+        _uiState.update { it.copy(chatEpoch = it.chatEpoch + 1) }
         streamedParts.clear()
         messageRoles.clear()
         // Opening the chat is an explicit act of attention, so questions the user hid earlier are
@@ -922,6 +932,7 @@ class ChatViewModel(
         pendingInterrupts.clear()
         _uiState.update {
             it.copy(
+                chatEpoch = it.chatEpoch + 1,
                 sessionId = null,
                 sessionTitle = "",
                 parentSession = null,
