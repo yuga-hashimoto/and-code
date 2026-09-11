@@ -913,7 +913,7 @@
     <string name="claude_permission_mode_label">Режим разрешений</string>
     <string name="system_prompt_settings_row">Системный промпт</string>
     <string name="system_prompt_title">Пресеты системного промпта</string>
-    <string name="system_prompt_caption">Добавляется к собственному системному промпту агента — переключайтесь между промптами для программирования, отладки, исследований или творчества. Claude Code применяет пресет к каждому чату отдельно; OpenCode — ко всем своим чатам, и в первый раз требует перезапуска среды.</string>
+    <string name="system_prompt_caption">Добавляется к системному промпту самого агента, чтобы переключаться между промптами для кода, отладки, исследования или творческой работы. Claude Code применяет набор к отдельному чату; OpenCode — ко всем своим чатам.</string>
     <string name="system_prompt_none">Нет (по умолчанию агента)</string>
     <string name="system_prompt_builtin_label">Встроенный</string>
     <string name="system_prompt_builtin_coding">Программирование</string>
