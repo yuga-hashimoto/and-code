@@ -190,9 +190,20 @@ class ClaudeCodeTarget(
         // through to the default would retune every later chat, and the shared OpenCode
         // instructions with it, in the name of a chat that no longer exists.
         val record = records[sessionId] ?: return
-        records[sessionId] = record.copy(promptId = presetId)
+        records[sessionId] = record.copy(promptId = livePresetId(presetId))
         persist()
     }
+
+    /**
+     * [presetId] if that preset still exists, and null - no preset - if it does not.
+     *
+     * A caller can be holding an id the user has since deleted from settings: the composer keeps a
+     * blank chat's choice while they navigate away, so picking a preset, deleting it, and then
+     * sending arrives here with an id that names nothing. Recording it would persist a dangling
+     * reference and send with no prompt anyway; null says the same thing without the lie, and the
+     * chip then reads "None" rather than a preset that is gone.
+     */
+    private fun livePresetId(presetId: String?): String? = presetId?.takeIf { systemPrompts.byId(it) != null }
 
     /** Creates a new custom preset, or updates one already saved when [id] names an existing one. */
     fun saveSystemPromptPreset(

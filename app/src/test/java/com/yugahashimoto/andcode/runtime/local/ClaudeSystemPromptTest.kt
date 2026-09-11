@@ -148,6 +148,45 @@ class ClaudeSystemPromptTest {
             assertEquals(ClaudeSystemPrompts.DEBUG, target.promptIdFor(session.id))
         }
 
+    /**
+     * A caller can hold an id the user has since deleted: the composer keeps a blank chat's choice
+     * while they navigate away, so picking a preset, deleting it in settings, and then sending
+     * arrives here naming nothing. Recording it would persist a dangling reference and send with no
+     * prompt anyway - the third shape this same class of bug has taken in this feature.
+     */
+    @Test
+    fun `a preset deleted before it is applied records no preset at all`() =
+        runBlocking {
+            val target = target()
+            val preset = target.saveSystemPromptPreset("Scratch", "Anything goes.")
+            val session = target.createSession("New chat", "/workspace")
+            target.deleteSystemPromptPreset(preset.id)
+
+            target.selectSystemPrompt(preset.id, session.id)
+
+            assertNull(target.promptIdFor(session.id))
+            assertTrue(!File(folder.root, "claude-sessions.json").readText().contains(preset.id))
+        }
+
+    /**
+     * A session id the target has no record for names a chat it does not have - deleted while open,
+     * or another agent's. Falling through to the default would retune every later chat, and the
+     * shared OpenCode instructions with it, for a chat that no longer exists.
+     *
+     * This test was lost when the staging-slot tests around it were removed; the guard it covers
+     * never went anywhere.
+     */
+    @Test
+    fun `a preset for an unknown session changes nothing`() =
+        runBlocking {
+            val target = target()
+            target.selectSystemPrompt(ClaudeSystemPrompts.CODING)
+
+            target.selectSystemPrompt(ClaudeSystemPrompts.DEBUG, "not-a-session")
+
+            assertEquals(ClaudeSystemPrompts.CODING, target.defaultSystemPromptId.value)
+        }
+
     @Test
     fun `editing a preset keeps its place in the list`() {
         val target = target()
