@@ -56,7 +56,13 @@ class SystemPromptStore(
         persist()
     }
 
-    /** Creates a new custom preset, or updates one already saved when [id] names an existing one. */
+    /**
+     * Creates a new custom preset, or updates one already saved when [id] names an existing one.
+     *
+     * An edit replaces the preset where it already sits rather than moving it to the end: there is
+     * no reorder action in the picker, so renaming the first of several presets must not shuffle
+     * the list under the user.
+     */
     fun save(
         name: String,
         prompt: String,
@@ -64,7 +70,13 @@ class SystemPromptStore(
     ): SystemPromptPreset {
         val presetId = id?.takeIf { byId(it)?.builtIn == false } ?: UUID.randomUUID().toString()
         val preset = SystemPromptPreset(id = presetId, name = name, prompt = prompt)
-        mutablePresets.value = mutablePresets.value.filterNot { it.id == preset.id } + preset
+        val existing = mutablePresets.value.indexOfFirst { it.id == preset.id }
+        mutablePresets.value =
+            if (existing >= 0) {
+                mutablePresets.value.toMutableList().apply { set(existing, preset) }
+            } else {
+                mutablePresets.value + preset
+            }
         persist()
         return preset
     }
