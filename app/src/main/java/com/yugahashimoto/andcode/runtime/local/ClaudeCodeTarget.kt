@@ -114,6 +114,18 @@ class ClaudeCodeTarget(
         }
 
     /**
+     * Which preset each session carries, as observable state.
+     *
+     * [records] is a plain map, so switching a preset for one chat changed nothing any screen was
+     * watching and the composer chip went on naming the previous preset until some unrelated state
+     * change happened to recompose it - even though the next turn already carried the new one.
+     * Published from [persist], which every mutation of [records] goes through, so this cannot drift
+     * out of step with what is on disk.
+     */
+    private val mutableSessionPromptIds = MutableStateFlow(records.mapValues { it.value.promptId })
+    val sessionSystemPromptIds: StateFlow<Map<String, String?>> = mutableSessionPromptIds.asStateFlow()
+
+    /**
      * Mode applied to sessions created from now on.
      *
      * Existing sessions keep the mode they were created with, because changing it mid-conversation
@@ -149,22 +161,6 @@ class ClaudeCodeTarget(
 
     /** Preset id applied to sessions created from now on, or null for no preset. */
     val defaultSystemPromptId: StateFlow<String?> get() = systemPrompts.selectedId
-
-    /**
-     * The preset [sessionId]'s next turn will actually carry.
-     *
-     * A session snapshots the default when it is created and keeps it from then on, exactly as it
-     * keeps its model and permission mode, so an existing chat's preset is not [defaultSystemPromptId]
-     * - showing that one on the composer would name a preset the send path is not going to use as
-     * soon as the user reopens an older chat. A session created before presets existed has none,
-     * which is the truthful answer rather than a reason to fall back to the default.
-     */
-    fun systemPromptIdFor(sessionId: String?): String? =
-        if (sessionId != null && records.containsKey(sessionId)) {
-            records[sessionId]?.promptId
-        } else {
-            systemPrompts.selectedId.value
-        }
 
     /**
      * Applies [presetId] to the chat [sessionId] names, or to the default new chats inherit when no
@@ -644,6 +640,7 @@ class ClaudeCodeTarget(
     }
 
     private fun persist() {
+        mutableSessionPromptIds.value = records.mapValues { it.value.promptId }
         runCatching {
             sessionsFile.parentFile?.mkdirs()
             sessionsFile.writeText(json.encodeToString(records.values.toList()))

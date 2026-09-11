@@ -116,7 +116,7 @@ class ClaudeSystemPromptTest {
             target.selectSystemPrompt(ClaudeSystemPrompts.DEBUG, session.id)
 
             assertNull(target.defaultSystemPromptId.value)
-            assertEquals(ClaudeSystemPrompts.DEBUG, target.systemPromptIdFor(session.id))
+            assertEquals(ClaudeSystemPrompts.DEBUG, target.promptIdFor(session.id))
         }
 
     @Test
@@ -160,9 +160,18 @@ class ClaudeSystemPromptTest {
         }
 
     /**
-     * What the composer names has to be what the send path will use. A session snapshots the
-     * default when it is created and keeps it, so an older chat's preset is not the current default
-     * - showing the default there would name a preset the next turn is not going to carry.
+     * What the composer names has to be what the send path will use, and it has to be observable -
+     * a switch must move the chip on the tap rather than whenever something else recomposes. So the
+     * target publishes each session's preset as state and the UI resolves it with
+     * [resolveSystemPromptId]; this exercises the pair the way the composer does.
+     */
+    private fun ClaudeCodeTarget.promptIdFor(sessionId: String?): String? =
+        resolveSystemPromptId(sessionId, sessionSystemPromptIds.value, defaultSystemPromptId.value)
+
+    /**
+     * A session snapshots the default when it is created and keeps it, so an older chat's preset is
+     * not the current default - showing the default there would name a preset the next turn is not
+     * going to carry.
      */
     @Test
     fun `an existing session keeps its own preset when the default moves on`() =
@@ -172,8 +181,8 @@ class ClaudeSystemPromptTest {
 
             target.selectSystemPrompt(ClaudeSystemPrompts.CODING)
 
-            assertNull(target.systemPromptIdFor(session.id))
-            assertEquals(ClaudeSystemPrompts.CODING, target.systemPromptIdFor(null))
+            assertNull(target.promptIdFor(session.id))
+            assertEquals(ClaudeSystemPrompts.CODING, target.promptIdFor(null))
         }
 
     @Test
@@ -185,9 +194,42 @@ class ClaudeSystemPromptTest {
 
             target.selectSystemPrompt(ClaudeSystemPrompts.DEBUG, switched.id)
 
-            assertEquals(ClaudeSystemPrompts.DEBUG, target.systemPromptIdFor(switched.id))
-            assertNull(target.systemPromptIdFor(untouched.id))
+            assertEquals(ClaudeSystemPrompts.DEBUG, target.promptIdFor(switched.id))
+            assertNull(target.promptIdFor(untouched.id))
         }
+
+    /**
+     * The regression behind this: a per-chat switch only mutated the session map and persisted it,
+     * so nothing the composer observed changed and the chip went on naming the previous preset
+     * until an unrelated state change recomposed it - while the next turn already carried the new
+     * one.
+     */
+    @Test
+    fun `a per-chat switch is published as state`() =
+        runBlocking {
+            val target = target()
+            val session = target.createSession("New chat", "/workspace")
+            assertEquals(mapOf(session.id to null), target.sessionSystemPromptIds.value)
+
+            target.selectSystemPrompt(ClaudeSystemPrompts.RESEARCH, session.id)
+
+            assertEquals(mapOf(session.id to ClaudeSystemPrompts.RESEARCH), target.sessionSystemPromptIds.value)
+        }
+
+    /** The composer resolves off the state, so the state has to answer the same way. */
+    @Test
+    fun `the ui state resolves a session's preset the same way`() {
+        val state =
+            ClaudeCodeUiState(
+                systemPromptId = ClaudeSystemPrompts.CODING,
+                sessionSystemPromptIds = mapOf("older" to null, "switched" to ClaudeSystemPrompts.DEBUG),
+            )
+
+        assertNull(state.systemPromptIdFor("older"))
+        assertEquals(ClaudeSystemPrompts.DEBUG, state.systemPromptIdFor("switched"))
+        assertEquals(ClaudeSystemPrompts.CODING, state.systemPromptIdFor("never-seen"))
+        assertEquals(ClaudeSystemPrompts.CODING, state.systemPromptIdFor(null))
+    }
 
     @Test
     fun `a custom preset's selection survives a new target instance`() {

@@ -63,8 +63,20 @@ data class ClaudeCodeUiState(
     val signedInAccount: String? = null,
     val permissionMode: ClaudePermissionMode = ClaudePermissionMode.DEFAULT,
     val systemPromptPresets: List<SystemPromptPreset> = ClaudeSystemPrompts.BUILT_IN,
+    /** Preset new chats inherit. An open chat keeps its own - see [systemPromptIdFor]. */
     val systemPromptId: String? = null,
-)
+    /** Which preset each existing chat carries, so the composer can name what the next turn sends. */
+    val sessionSystemPromptIds: Map<String, String?> = emptyMap(),
+) {
+    /**
+     * The preset [sessionId]'s next turn will actually carry, by the same rule the runtime applies.
+     *
+     * Resolved here rather than by calling the backend so that the answer is part of the state the
+     * composer observes: a per-chat switch has to move the chip on the tap, not on whatever
+     * recomposes next.
+     */
+    fun systemPromptIdFor(sessionId: String?): String? = resolveSystemPromptId(sessionId, sessionSystemPromptIds, systemPromptId)
+}
 
 /**
  * Single owner of the Claude Code install and sign-in flows.
@@ -97,9 +109,17 @@ class ClaudeCodeController(
             target.auth.state,
             target.defaultPermissionMode,
             target.systemPromptPresets,
-            target.defaultSystemPromptId,
-        ) { base, auth, mode, presets, promptId ->
-            base.copy(auth = auth, permissionMode = mode, systemPromptPresets = presets, systemPromptId = promptId)
+            // Nested to stay inside combine's five-flow arity: the default and the per-session
+            // snapshots are two halves of one answer, so they travel together.
+            combine(target.defaultSystemPromptId, target.sessionSystemPromptIds, ::Pair),
+        ) { base, auth, mode, presets, prompt ->
+            base.copy(
+                auth = auth,
+                permissionMode = mode,
+                systemPromptPresets = presets,
+                systemPromptId = prompt.first,
+                sessionSystemPromptIds = prompt.second,
+            )
         }.stateIn(scope, SharingStarted.Eagerly, ClaudeCodeUiState())
 
     private var installJob: Job? = null
@@ -189,9 +209,6 @@ class ClaudeCodeController(
         presetId: String?,
         sessionId: String? = null,
     ) = target.selectSystemPrompt(presetId, sessionId)
-
-    /** The preset [sessionId] will actually send with; see [ClaudeCodeTarget.systemPromptIdFor]. */
-    fun systemPromptIdFor(sessionId: String?): String? = target.systemPromptIdFor(sessionId)
 
     fun saveSystemPromptPreset(
         name: String,

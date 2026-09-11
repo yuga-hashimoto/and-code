@@ -991,13 +991,13 @@ fun AndCodeApp(
                                     .orEmpty(),
                             // The open chat's own preset, not the default new chats get: a session
                             // keeps what it was created with, so naming the default here would show
-                            // a preset the send path is not going to use. Read imperatively, but
-                            // still correct - it recomposes on both inputs it depends on, the chat's
-                            // session id and the Claude state a selection updates.
+                            // a preset the send path is not going to use. Resolved off the state
+                            // rather than by asking the backend, so a switch moves the chip on the
+                            // tap instead of on whatever recomposes next.
                             selectedSystemPromptId =
                                 workspaceState.claude
                                     .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
-                                    ?.let { workspaceViewModel.claudeSystemPromptIdFor(chatState.sessionId) },
+                                    ?.systemPromptIdFor(chatState.sessionId),
                             onSelectSystemPrompt = { presetId ->
                                 workspaceViewModel.selectClaudeSystemPrompt(presetId, chatState.sessionId)
                             },

@@ -18,6 +18,21 @@ private data class SystemPromptState(
 )
 
 /**
+ * Which preset [sessionId] carries: its own snapshot when it has a record, and the default new
+ * chats inherit when it does not.
+ *
+ * A session snapshots the default when it is created and keeps it from then on, so an older chat's
+ * preset is not the current default - and a chat that predates presets entirely carries none rather
+ * than falling back to whatever is selected now. Both the runtime ([ClaudeCodeTarget]) and the UI
+ * state ([ClaudeCodeUiState]) answer this question, so the rule lives here once instead of twice.
+ */
+internal fun resolveSystemPromptId(
+    sessionId: String?,
+    sessionPromptIds: Map<String, String?>,
+    default: String?,
+): String? = if (sessionId != null && sessionId in sessionPromptIds) sessionPromptIds[sessionId] else default
+
+/**
  * The system-prompt presets and the current selection, shared by every agent that can carry one.
  *
  * One store rather than one per agent: the presets are the user's own writing, and having "Debug"
