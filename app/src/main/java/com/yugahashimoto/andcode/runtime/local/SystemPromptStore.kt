@@ -18,6 +18,17 @@ private data class SystemPromptState(
 )
 
 /**
+ * Longest prompt a preset may hold.
+ *
+ * Claude Code takes the prompt as a single `--append-system-prompt` argv entry, and Linux caps one
+ * argument at `MAX_ARG_STRLEN` (128 KiB). A preset pasted past that would not merely fail to apply:
+ * it is persisted, so every later Claude process start would fail too until the user found and
+ * deleted it. 8000 characters is a long system prompt and, even as four-byte UTF-8, a quarter of
+ * the limit. The editor stops at the same number, so this is the backstop rather than the control.
+ */
+const val MAX_SYSTEM_PROMPT_LENGTH = 8_000
+
+/**
  * Which preset [sessionId] carries: its own snapshot when it has a record, and the default new
  * chats inherit when it does not.
  *
@@ -77,6 +88,9 @@ class SystemPromptStore(
      * An edit replaces the preset where it already sits rather than moving it to the end: there is
      * no reorder action in the picker, so renaming the first of several presets must not shuffle
      * the list under the user.
+     *
+     * The prompt is clamped to [MAX_SYSTEM_PROMPT_LENGTH] - see there for why a longer one would
+     * break Claude Code process starts rather than just this preset.
      */
     fun save(
         name: String,
@@ -84,7 +98,12 @@ class SystemPromptStore(
         id: String? = null,
     ): SystemPromptPreset {
         val presetId = id?.takeIf { byId(it)?.builtIn == false } ?: UUID.randomUUID().toString()
-        val preset = SystemPromptPreset(id = presetId, name = name, prompt = prompt)
+        val preset =
+            SystemPromptPreset(
+                id = presetId,
+                name = name,
+                prompt = prompt.take(MAX_SYSTEM_PROMPT_LENGTH),
+            )
         val existing = mutablePresets.value.indexOfFirst { it.id == preset.id }
         mutablePresets.value =
             if (existing >= 0) {

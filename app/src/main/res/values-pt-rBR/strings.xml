@@ -922,6 +922,7 @@
     <string name="system_prompt_dialog_title_edit">Editar predefinição</string>
     <string name="system_prompt_name_label">Nome</string>
     <string name="system_prompt_text_label">Prompt do sistema</string>
+    <string name="system_prompt_length_limit">%1$d / %2$d caracteres</string>
     <string name="system_prompt_delete_title">Excluir predefinição?</string>
     <string name="system_prompt_delete_body">%1$s será excluído permanentemente.</string>
     <string name="cd_add_system_prompt_preset">Adicionar predefinição</string>

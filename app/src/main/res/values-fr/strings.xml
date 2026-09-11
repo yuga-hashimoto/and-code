@@ -922,6 +922,7 @@
     <string name="system_prompt_dialog_title_edit">Modifier le préréglage</string>
     <string name="system_prompt_name_label">Nom</string>
     <string name="system_prompt_text_label">Invite système</string>
+    <string name="system_prompt_length_limit">%1$d / %2$d caractères</string>
     <string name="system_prompt_delete_title">Supprimer ce préréglage ?</string>
     <string name="system_prompt_delete_body">%1$s sera définitivement supprimé.</string>
     <string name="cd_add_system_prompt_preset">Ajouter un préréglage</string>

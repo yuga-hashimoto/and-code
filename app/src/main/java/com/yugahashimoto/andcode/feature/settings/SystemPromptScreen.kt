@@ -36,12 +36,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.runtime.local.MAX_SYSTEM_PROMPT_LENGTH
 import com.yugahashimoto.andcode.runtime.local.SystemPromptPreset
 import com.yugahashimoto.andcode.ui.components.systemPromptPresetLabel
 
 /**
- * Lets the user pick which system-prompt preset Claude Code's messages carry, and manage the
- * custom ones they have saved.
+ * Lets the user pick a system-prompt preset and manage the custom ones they have saved.
+ *
+ * One screen for every agent that can carry a preset, reached from both Claude Code's and
+ * OpenCode's settings, because the presets are one shared list - the same selection this screen
+ * writes is what both read. What differs is how far a switch reaches: Claude Code applies it per
+ * chat, so a chat opened from the composer chip can hold its own, while OpenCode reads it from one
+ * instructions file every session on the runtime shares.
  *
  * Built-in presets (Coding, Debug, Research, Creative) cover the modes requested in issue #294 and
  * cannot be edited or deleted; a user's own presets can be added, edited, and removed freely.
@@ -232,10 +238,26 @@ private fun SystemPromptEditDialog(
                 )
                 OutlinedTextField(
                     value = prompt,
-                    onValueChange = { prompt = it },
+                    onValueChange = { prompt = it.take(MAX_SYSTEM_PROMPT_LENGTH) },
                     label = { Text(stringResource(R.string.system_prompt_text_label)) },
                     minLines = 4,
                     maxLines = 8,
+                    // Only once the cap is in sight: a counter on every preset would be noise, but
+                    // silently refusing the next keystroke would look broken.
+                    supportingText =
+                        if (prompt.length >= MAX_SYSTEM_PROMPT_LENGTH - MAX_SYSTEM_PROMPT_LENGTH / 10) {
+                            {
+                                Text(
+                                    stringResource(
+                                        R.string.system_prompt_length_limit,
+                                        prompt.length,
+                                        MAX_SYSTEM_PROMPT_LENGTH,
+                                    ),
+                                )
+                            }
+                        } else {
+                            null
+                        },
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

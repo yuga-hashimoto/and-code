@@ -928,6 +928,7 @@
     <string name="system_prompt_dialog_title_edit">تعديل الإعداد</string>
     <string name="system_prompt_name_label">الاسم</string>
     <string name="system_prompt_text_label">موجّه النظام</string>
+    <string name="system_prompt_length_limit">%1$d / %2$d حرف</string>
     <string name="system_prompt_delete_title">هل تريد حذف هذا الإعداد؟</string>
     <string name="system_prompt_delete_body">سيتم حذف \"%1$s\" نهائيًا.</string>
     <string name="cd_add_system_prompt_preset">إضافة إعداد</string>

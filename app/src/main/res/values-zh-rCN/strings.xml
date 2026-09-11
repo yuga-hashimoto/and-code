@@ -918,6 +918,7 @@
     <string name="system_prompt_dialog_title_edit">编辑预设</string>
     <string name="system_prompt_name_label">名称</string>
     <string name="system_prompt_text_label">系统提示词</string>
+    <string name="system_prompt_length_limit">%1$d / %2$d 字符</string>
     <string name="system_prompt_delete_title">删除预设？</string>
     <string name="system_prompt_delete_body">“%1$s” 将被永久删除。</string>
     <string name="cd_add_system_prompt_preset">添加预设</string>

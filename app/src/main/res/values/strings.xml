@@ -919,6 +919,7 @@
     <string name="system_prompt_dialog_title_edit">Edit preset</string>
     <string name="system_prompt_name_label">Name</string>
     <string name="system_prompt_text_label">System prompt</string>
+    <string name="system_prompt_length_limit">%1$d / %2$d characters</string>
     <string name="system_prompt_delete_title">Delete preset?</string>
     <string name="system_prompt_delete_body">%1$s will be permanently deleted.</string>
     <string name="cd_add_system_prompt_preset">Add preset</string>

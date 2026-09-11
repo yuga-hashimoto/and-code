@@ -924,6 +924,7 @@
     <string name="system_prompt_dialog_title_edit">Изменить пресет</string>
     <string name="system_prompt_name_label">Название</string>
     <string name="system_prompt_text_label">Системный промпт</string>
+    <string name="system_prompt_length_limit">%1$d / %2$d символов</string>
     <string name="system_prompt_delete_title">Удалить пресет?</string>
     <string name="system_prompt_delete_body">«%1$s» будет удалён без возможности восстановления.</string>
     <string name="cd_add_system_prompt_preset">Добавить пресет</string>

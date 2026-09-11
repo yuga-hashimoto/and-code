@@ -922,6 +922,7 @@
     <string name="system_prompt_dialog_title_edit">Editar preajuste</string>
     <string name="system_prompt_name_label">Nombre</string>
     <string name="system_prompt_text_label">Prompt del sistema</string>
+    <string name="system_prompt_length_limit">%1$d / %2$d caracteres</string>
     <string name="system_prompt_delete_title">¿Eliminar preajuste?</string>
     <string name="system_prompt_delete_body">%1$s se eliminará permanentemente.</string>
     <string name="cd_add_system_prompt_preset">Añadir preajuste</string>

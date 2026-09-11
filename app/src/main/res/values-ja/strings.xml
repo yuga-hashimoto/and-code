@@ -930,6 +930,7 @@
     <string name="system_prompt_dialog_title_edit">プリセットを編集</string>
     <string name="system_prompt_name_label">名前</string>
     <string name="system_prompt_text_label">システムプロンプト</string>
+    <string name="system_prompt_length_limit">%1$d / %2$d 文字</string>
     <string name="system_prompt_delete_title">プリセットを削除しますか？</string>
     <string name="system_prompt_delete_body">「%1$s」は完全に削除されます。</string>
     <string name="cd_add_system_prompt_preset">プリセットを追加</string>

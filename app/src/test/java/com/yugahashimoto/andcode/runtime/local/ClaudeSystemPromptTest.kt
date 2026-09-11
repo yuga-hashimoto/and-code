@@ -53,6 +53,21 @@ class ClaudeSystemPromptTest {
         assertEquals(listOf(updated), target.systemPromptPresets.value.filterNot(SystemPromptPreset::builtIn))
     }
 
+    /**
+     * The prompt travels as one `--append-system-prompt` argv entry, and one argument past Linux's
+     * MAX_ARG_STRLEN fails `exec`. Since the preset is persisted, an over-long one would fail every
+     * later Claude process start, not just its own turn.
+     */
+    @Test
+    fun `an over-long prompt is clamped rather than persisted whole`() {
+        val target = target()
+
+        val saved = target.saveSystemPromptPreset("Pasted", "x".repeat(MAX_SYSTEM_PROMPT_LENGTH * 2))
+
+        assertEquals(MAX_SYSTEM_PROMPT_LENGTH, saved.prompt.length)
+        assertEquals(MAX_SYSTEM_PROMPT_LENGTH, target.systemPromptPresets.value.last().prompt.length)
+    }
+
     @Test
     fun `deleting a custom preset removes it`() {
         val target = target()
