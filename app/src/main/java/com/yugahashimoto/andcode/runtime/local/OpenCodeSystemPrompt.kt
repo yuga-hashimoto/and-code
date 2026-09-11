@@ -72,8 +72,8 @@ internal fun applyOpenCodeSystemPrompt(
         // Created in the target's own directory, so the rename below stays within one filesystem
         // and can be atomic - and with a unique name, so that two writers (the runtime start and
         // the switch collector) cannot stage over each other, and so the cleanup below can only
-        // ever remove a file this call made. A fixed name would let it delete whatever already sat
-        // there, a directory of the user's included.
+        // ever remove a file this call made. With a fixed name, a directory the user had created
+        // at that path would fail the open and then be deleted by the cleanup below.
         val staging = File.createTempFile("${target.name}.", ".staged", target.parentFile)
         try {
             Files

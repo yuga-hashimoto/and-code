@@ -492,7 +492,7 @@ class LocalRuntimeManager(
 
     /**
      * Internal rather than private so [LocalRuntimeManagerTest] can drive the start ordering
-     * directly: every public route in reaches this through [LocalRuntimeInstaller], which needs a
+     * directly: every public way in reaches this through [LocalRuntimeInstaller], which needs a
      * `Context` a JVM unit test has no way to supply.
      */
     internal suspend fun startInstalled(installed: LocalRuntimeInstaller.InstalledRuntime): LocalRuntimeStatus.Ready =
