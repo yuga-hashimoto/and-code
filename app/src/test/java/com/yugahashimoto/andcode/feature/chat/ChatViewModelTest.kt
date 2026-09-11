@@ -129,11 +129,13 @@ class ChatViewModelTest {
         }
 
     /**
-     * The draft is captured where the send is requested, so changing the preset while that request
-     * is in flight cannot take the choice away from the send it was made for.
+     * A preset belongs to a session, not to a turn: `ClaudeCodeTarget` reads one `promptId` off the
+     * session record for every turn it sends. So while the session is still being created there is
+     * one choice to make about it, and a second tap before it exists replaces the first rather than
+     * queueing behind it - which is also what a tap does once the chat has a session.
      */
     @Test
-    fun `a send keeps the preset it was started with`() =
+    fun `the last preset picked before the session exists is the one applied`() =
         runTest(dispatcher) {
             val applied = mutableListOf<Pair<String, String?>>()
             val backend = FakeBackend()
@@ -143,17 +145,18 @@ class ChatViewModelTest {
             viewModel.selectSystemPrompt("debug")
 
             viewModel.sendMessage("Hello")
-            // Same chat, a change of mind after the tap: the send already has its answer.
             viewModel.selectSystemPrompt("research")
             advanceUntilIdle()
 
-            assertEquals(listOf("s1" to "debug"), applied)
+            assertEquals(listOf("s1" to "research"), applied)
+            // Nothing orphaned: the chip and the session now say the same thing.
+            assertNull(viewModel.uiState.value.draftSystemPrompt)
         }
 
     /**
-     * The other half of that capture. Starting another blank chat before the send's createSession
-     * returns means the session it creates belongs to the *new* chat, so the abandoned chat's
-     * preset must not follow it there - dropping the choice is right, applying it is not.
+     * Starting another blank chat before the send's createSession returns means the session it
+     * creates belongs to the *new* chat, so the abandoned chat's preset must not follow it there -
+     * dropping the choice is right, applying it is not.
      */
     @Test
     fun `a preset is not applied to a chat it was not chosen in`() =
@@ -173,15 +176,12 @@ class ChatViewModelTest {
         }
 
     /**
-     * An offline queue drains whenever the server comes back, by which time the chip may have moved,
-     * so the choice travels with the held prompt rather than being read again on replay.
-     *
-     * The offline queue is the only queue this can matter for: the busy queue needs a turn already
-     * running, which means the chat already has a session, and a draft is only ever applied to one
-     * a send creates.
+     * An offline prompt is held until the server returns, and the session is created when it drains.
+     * The chat's choice at that moment is what the session gets - there is nothing per-prompt to
+     * carry, since every turn of that session reads the same record.
      */
     @Test
-    fun `a queued prompt carries the preset it was queued with`() =
+    fun `an offline prompt takes the chat's preset when the queue drains`() =
         runTest(dispatcher) {
             val applied = mutableListOf<Pair<String, String?>>()
             val backend = FakeBackend(healthy = false)
@@ -199,8 +199,6 @@ class ChatViewModelTest {
             assertTrue(viewModel.uiState.value.isOfflineQueued)
             assertTrue(applied.isEmpty())
 
-            // The chip moves on while the prompt is still held, then the server comes back.
-            viewModel.selectSystemPrompt("research")
             backend.events.tryEmit(OpenCodeEvent.ServerConnected)
             advanceUntilIdle()
 
