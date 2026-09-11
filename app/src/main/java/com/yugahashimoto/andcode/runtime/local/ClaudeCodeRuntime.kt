@@ -75,6 +75,7 @@ class ClaudeCodeRuntime(
         val directory: String,
         val model: String?,
         val effort: String?,
+        val systemPrompt: String?,
     )
 
     private val sessions = linkedMapOf<String, SessionProcess>()
@@ -279,9 +280,11 @@ class ClaudeCodeRuntime(
         model: String?,
         effort: String?,
         attachments: List<PromptAttachment> = emptyList(),
+        systemPrompt: String? = null,
     ): Result<Unit> =
         runCatching {
-            val session = ensureProcess(sessionId, directory.ifBlank { "/workspace" }, permissionMode, model, effort)
+            val session =
+                ensureProcess(sessionId, directory.ifBlank { "/workspace" }, permissionMode, model, effort, systemPrompt)
             session.parser.beginTurn()
             recordUserMessage(sessionId, prompt, attachments)
             session.process.outputStream.apply {
@@ -333,16 +336,18 @@ class ClaudeCodeRuntime(
         permissionMode: ClaudePermissionMode,
         model: String?,
         effort: String?,
+        systemPrompt: String? = null,
     ): SessionProcess {
         val existing = sessions[sessionId]
-        // Permission mode, working directory and model are read once at startup, so a change to any
-        // of them means the process has to be replaced rather than reused.
+        // Permission mode, working directory, model and system prompt are read once at startup, so
+        // a change to any of them means the process has to be replaced rather than reused.
         if (existing != null &&
             existing.process.isAlive &&
             existing.permissionMode == permissionMode &&
             existing.directory == directory &&
             existing.model == model &&
-            existing.effort == effort
+            existing.effort == effort &&
+            existing.systemPrompt == systemPrompt
         ) {
             return existing
         }
@@ -367,7 +372,7 @@ class ClaudeCodeRuntime(
                     runtime = runtime,
                     workspaceHostDir = File(runtimeDirectory, "workspace").apply { mkdirs() },
                     workingDirectory = directory,
-                    arguments = processArguments(sessionId, effectiveMode, model, effort),
+                    arguments = processArguments(sessionId, effectiveMode, model, effort, systemPrompt),
                     pty = false,
                 ),
             ).directory(runtimeDirectory)
@@ -411,7 +416,7 @@ class ClaudeCodeRuntime(
                 }
             }
 
-        return SessionProcess(process, readerJob, parser, permissionMode, directory, model, effort)
+        return SessionProcess(process, readerJob, parser, permissionMode, directory, model, effort, systemPrompt)
             .also { sessions[sessionId] = it }
     }
 
@@ -420,6 +425,7 @@ class ClaudeCodeRuntime(
         permissionMode: ClaudePermissionMode,
         model: String?,
         effort: String?,
+        systemPrompt: String? = null,
     ): List<String> =
         buildList {
             add("--print")
@@ -441,6 +447,12 @@ class ClaudeCodeRuntime(
             }
             ClaudeModels.cliEffort(effort)?.let {
                 add("--effort")
+                add(it)
+            }
+            // Appended to Claude's own system prompt rather than replacing it, so a preset only
+            // needs to describe what makes this mode different.
+            systemPrompt?.takeIf(String::isNotBlank)?.let {
+                add("--append-system-prompt")
                 add(it)
             }
             // `--session-id` *creates* the session in Claude Code's store, so it is only right the

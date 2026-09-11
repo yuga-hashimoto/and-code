@@ -19,6 +19,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -65,6 +66,7 @@ import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Terminal
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.VerifiedUser
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material.icons.outlined.Shield
@@ -135,8 +137,10 @@ import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.local.AntigravityPermissionMode
 import com.yugahashimoto.andcode.runtime.local.ClaudePermissionMode
+import com.yugahashimoto.andcode.runtime.local.SystemPromptPreset
 import com.yugahashimoto.andcode.ui.components.StatusChip
 import com.yugahashimoto.andcode.ui.components.VolumeMeter
+import com.yugahashimoto.andcode.ui.components.systemPromptPresetLabel
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
 import kotlinx.coroutines.launch
 
@@ -173,6 +177,15 @@ fun ChatHomeScreen(
     /** Non-null only for runtimes that decide tool permissions per session, i.e. Claude Code. */
     claudePermissionMode: ClaudePermissionMode? = null,
     onSelectClaudePermissionMode: (ClaudePermissionMode) -> Unit = {},
+    /**
+     * System-prompt presets to switch between, empty for runtimes that cannot carry one.
+     *
+     * Switching is a per-task choice - Coding for one turn, Debug for the next - so it belongs on
+     * the composer next to the thinking chip rather than only in settings.
+     */
+    systemPromptPresets: List<SystemPromptPreset> = emptyList(),
+    selectedSystemPromptId: String? = null,
+    onSelectSystemPrompt: (String?) -> Unit = {},
     /** The same, for Antigravity: non-null only while that runtime is the selected one. */
     antigravityPermissionMode: AntigravityPermissionMode? = null,
     onSelectAntigravityPermissionMode: (AntigravityPermissionMode) -> Unit = {},
@@ -587,6 +600,9 @@ fun ChatHomeScreen(
                     onSelectClaudePermissionMode = onSelectClaudePermissionMode,
                     antigravityPermissionMode = antigravityPermissionMode,
                     onSelectAntigravityPermissionMode = onSelectAntigravityPermissionMode,
+                    systemPromptPresets = systemPromptPresets,
+                    selectedSystemPromptId = selectedSystemPromptId,
+                    onSelectSystemPrompt = onSelectSystemPrompt,
                     onToggleAutoAccept = onToggleAutoAccept,
                     sendBehavior = sendBehavior,
                     enterToSend = enterToSend,
@@ -1142,6 +1158,9 @@ private fun ChatComposer(
     onSelectClaudePermissionMode: (ClaudePermissionMode) -> Unit,
     antigravityPermissionMode: AntigravityPermissionMode?,
     onSelectAntigravityPermissionMode: (AntigravityPermissionMode) -> Unit,
+    systemPromptPresets: List<SystemPromptPreset>,
+    selectedSystemPromptId: String?,
+    onSelectSystemPrompt: (String?) -> Unit,
     sendBehavior: String,
     enterToSend: Boolean,
     contextTokensUsed: Long,
@@ -1448,9 +1467,13 @@ private fun ChatComposer(
         }
         Spacer(Modifier.height(6.dp))
         Row(
+            // Scrollable because the chips vary with the runtime: Claude Code shows permission,
+            // thinking and system-prompt chips plus the context meter, which no longer fits a narrow
+            // phone. None of the chips take a weight, so scrolling only affects overflow.
             modifier =
                 Modifier
                     .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -1494,6 +1517,13 @@ private fun ChatComposer(
                     options = thinkingOptions,
                     selected = selectedVariant,
                     onSelect = onSelectVariant,
+                )
+            }
+            if (systemPromptPresets.isNotEmpty()) {
+                SystemPromptChip(
+                    presets = systemPromptPresets,
+                    selectedId = selectedSystemPromptId,
+                    onSelect = onSelectSystemPrompt,
                 )
             }
             if (contextLimit > 0L) {
@@ -1562,7 +1592,7 @@ private fun ThinkingChip(
             ) {
                 Icon(Icons.Default.Psychology, contentDescription = stringResource(R.string.cd_thinking), modifier = Modifier.size(14.dp))
                 Text(
-                    selected ?: stringResource(R.string.chat_thinking_default),
+                    selected?.let { thinkingLevelLabel(it) } ?: stringResource(R.string.chat_thinking_default),
                     style = MaterialTheme.typography.labelMedium,
                     maxLines = 1,
                 )
@@ -1578,7 +1608,7 @@ private fun ThinkingChip(
             )
             options.forEach { option ->
                 DropdownMenuItem(
-                    text = { Text(option.replaceFirstChar { it.uppercase() }) },
+                    text = { Text(thinkingLevelLabel(option)) },
                     onClick = {
                         onSelect(option)
                         expanded = false
@@ -1588,6 +1618,101 @@ private fun ThinkingChip(
         }
     }
 }
+
+/**
+ * Switches the system-prompt preset this chat sends with, without leaving it.
+ *
+ * Per chat, not per turn: [com.yugahashimoto.andcode.runtime.local.ClaudeCodeTarget] keeps one
+ * preset id on the session and reads it for every turn, so a switch holds for the rest of the
+ * conversation until it is switched again - the same scope as the thinking and permission chips it
+ * sits beside. Settings still manages the presets themselves (adding, editing, deleting); picking
+ * one for the chat in front of you is a one-tap move from here.
+ */
+@Composable
+private fun SystemPromptChip(
+    presets: List<SystemPromptPreset>,
+    selectedId: String?,
+    onSelect: (String?) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selected = presets.firstOrNull { it.id == selectedId }
+    Box {
+        Surface(
+            modifier =
+                Modifier
+                    .clip(RoundedCornerShape(100.dp))
+                    .clickable(onClick = { expanded = true }),
+            shape = RoundedCornerShape(100.dp),
+            color =
+                if (selected != null) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant
+                },
+            contentColor =
+                if (selected != null) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(Icons.Default.Tune, contentDescription = stringResource(R.string.cd_system_prompt), modifier = Modifier.size(14.dp))
+                Text(
+                    // A preset name is free text, so it is capped rather than allowed to push the
+                    // context meter off the row.
+                    text = selected?.let { systemPromptPresetLabel(it) } ?: stringResource(R.string.chat_system_prompt_default),
+                    style = MaterialTheme.typography.labelMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.widthIn(max = 96.dp),
+                )
+            }
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.system_prompt_none)) },
+                onClick = {
+                    onSelect(null)
+                    expanded = false
+                },
+            )
+            presets.forEach { preset ->
+                DropdownMenuItem(
+                    text = { Text(systemPromptPresetLabel(preset)) },
+                    onClick = {
+                        onSelect(preset.id)
+                        expanded = false
+                    },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * A model variant's display label for the thinking chip.
+ *
+ * Claude Code and Antigravity both offer reasoning-effort slugs ("low", "medium", "high", plus
+ * Claude Code's own "xhigh" and "max"); those get their proper names ("Extra High", "Max") instead
+ * of the raw slug, which used to make the CLI's highest level ("max") look like just another word
+ * next to "xhigh" rather than the new top tier it is. Any other provider's variant id - OpenCode's
+ * own models offer different ones - falls back to capitalizing the raw value, as before.
+ */
+@Composable
+private fun thinkingLevelLabel(level: String): String =
+    when (level.lowercase()) {
+        "low" -> stringResource(R.string.chat_thinking_level_low)
+        "medium" -> stringResource(R.string.chat_thinking_level_medium)
+        "high" -> stringResource(R.string.chat_thinking_level_high)
+        "xhigh" -> stringResource(R.string.chat_thinking_level_xhigh)
+        "max" -> stringResource(R.string.chat_thinking_level_max)
+        else -> level.replaceFirstChar { it.uppercase() }
+    }
 
 @Composable
 private fun AttachmentTray(

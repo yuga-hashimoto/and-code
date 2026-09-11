@@ -33,6 +33,7 @@ import com.yugahashimoto.andcode.data.settings.DraftRepository
 import com.yugahashimoto.andcode.runtime.OpenCodeBackend
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
+import com.yugahashimoto.andcode.runtime.local.StagedSystemPrompt
 import com.yugahashimoto.andcode.runtime.local.VideoAttachmentHelper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
@@ -440,6 +441,26 @@ data class ParentSessionRef(
 data class ChatUiState(
     val backendName: String = "",
     val sessionId: String? = null,
+    /**
+     * Counts chat changes, so a choice captured for one chat is not applied to another.
+     *
+     * A blank chat has no session id to identify it by - that is the whole reason the draft below
+     * exists - so this stands in. A send captures it alongside the draft and the draft is applied
+     * only if it still matches: tapping Send and then starting another blank chat lets that send's
+     * `createSession` land on the new chat, and the abandoned chat's preset must not follow it there.
+     */
+    val chatGeneration: Long = 0,
+    /**
+     * System-prompt preset chosen for this chat before it had a session to record it on.
+     *
+     * A chat's session is not created until its first message, so this holds the composer's choice
+     * until [ChatViewModel] can write it to that session. It lives here, rather than on the agent,
+     * because it belongs to this chat alone: it dies with this view model when the runtime changes,
+     * is cleared when the composer moves to another chat, survives a trip to Settings and back, and
+     * cannot be picked up by a session that some other entry point - a schedule, voice, the
+     * quick-input widget - happens to create in the meantime.
+     */
+    val draftSystemPrompt: StagedSystemPrompt? = null,
     val sessionTitle: String = "",
     /** Non-null while the open session is a subagent session spawned by [ParentSessionRef.id]. */
     val parentSession: ParentSessionRef? = null,
@@ -502,6 +523,13 @@ class ChatViewModel(
     /** Reports a question that was answered or declined, so its notification can be cancelled. */
     private val onQuestionResolved: (String) -> Unit = {},
     private val onSessionCreated: () -> Unit = {},
+    /**
+     * Records [ChatUiState.draftSystemPrompt] against the session the first message just created.
+     *
+     * Injected rather than reached for directly so this stays backend-agnostic: only Claude Code
+     * carries a system prompt, and only the app knows how to route it there.
+     */
+    private val onApplySystemPrompt: (sessionId: String, presetId: String?) -> Unit = { _, _ -> },
     /**
      * Reports whether this chat is working, so the drawer shows real state even when no stream
      * events arrive. Deriving it from events alone left every chat on the idle marker.
@@ -906,6 +934,9 @@ class ChatViewModel(
         // because the old chat happened to be mid-turn when the user navigated away.
         val switchingSession = _uiState.value.sessionId != sessionId
         if (switchingSession) pendingInterrupts.clear()
+        // The composer is moving to another chat, so a preset chosen for the one it is leaving -
+        // which never got a session to record it on - stops applying here.
+        _uiState.update { it.copy(chatGeneration = it.chatGeneration + 1, draftSystemPrompt = null) }
         streamedParts.clear()
         messageRoles.clear()
         // Opening the chat is an explicit act of attention, so questions the user hid earlier are
@@ -991,6 +1022,49 @@ class ChatViewModel(
         }
     }
 
+    /**
+     * Picks a system-prompt preset for this chat.
+     *
+     * Recorded on the session when there is one, and held as [ChatUiState.draftSystemPrompt] until
+     * the first message creates one when there is not.
+     */
+    fun selectSystemPrompt(presetId: String?) {
+        val sessionId = _uiState.value.sessionId
+        if (sessionId == null) {
+            _uiState.update { it.copy(draftSystemPrompt = StagedSystemPrompt(presetId)) }
+            return
+        }
+        onApplySystemPrompt(sessionId, presetId)
+    }
+
+    /**
+     * Writes the preset [draft] onto the session this send just created, and consumes it.
+     *
+     * Called inside the send's own coroutine, before the turn is dispatched, because the send path
+     * reads the session's preset when it builds the process arguments - doing this from a
+     * recomposition instead would race the message it is meant to accompany.
+     *
+     * Only the chat's identity is captured by the caller, not the choice itself: a preset belongs to
+     * a session, not to a turn - `ClaudeCodeTarget` reads one `promptId` off the session record for
+     * every turn it sends - so while the session is still being created there is one choice to make
+     * about it, and the last tap before it exists is that choice. Reading the draft here is what
+     * makes the chip's answer and the session's answer the same thing.
+     *
+     * [generation] is what the caller does capture. If the composer has moved to another chat since,
+     * the session this send just created belongs to that chat, and the abandoned chat's preset would
+     * be applied to a conversation it was never chosen for - so it is dropped instead. The draft is
+     * consumed only once applied, so a failed `createSession` leaves it in place for the retry.
+     */
+    private fun applyDraftSystemPrompt(
+        sessionId: String,
+        generation: Long,
+    ) {
+        if (_uiState.value.chatGeneration != generation) return
+        val draft = _uiState.value.draftSystemPrompt ?: return
+        onApplySystemPrompt(sessionId, draft.id)
+        _uiState.update { it.copy(draftSystemPrompt = null) }
+    }
+
     fun newSession() {
         streamedParts.clear()
         messageRoles.clear()
@@ -998,6 +1072,8 @@ class ChatViewModel(
         pendingInterrupts.clear()
         _uiState.update {
             it.copy(
+                chatGeneration = it.chatGeneration + 1,
+                draftSystemPrompt = null,
                 sessionId = null,
                 sessionTitle = "",
                 parentSession = null,
@@ -1205,6 +1281,10 @@ class ChatViewModel(
         // clock has to be restarted here rather than only on the idle-to-running transition.
         recordProgress()
 
+        // Which chat asked, captured here because the coroutine below does not begin until the
+        // dispatcher runs it - long enough for another chat to have been started. See
+        // applyDraftSystemPrompt.
+        val draftGeneration = _uiState.value.chatGeneration
         viewModelScope.launch {
             // Captured once the target session is known so onFailure below can tell whether the
             // failure still concerns the chat currently on screen.
@@ -1224,6 +1304,7 @@ class ChatViewModel(
                 val targetSessionId = existingSessionId ?: requireNotNull(session).id
                 capturedSessionId = targetSessionId
                 if (session != null) {
+                    applyDraftSystemPrompt(session.id, draftGeneration)
                     _uiState.update {
                         it.copy(sessionId = session.id, sessionTitle = session.title)
                     }
@@ -1415,6 +1496,8 @@ class ChatViewModel(
         // clock has to be restarted here rather than only on the idle-to-running transition.
         recordProgress()
 
+        // As in sendMessage - which chat asked, so a preset is not applied to a different one.
+        val draftGeneration = _uiState.value.chatGeneration
         viewModelScope.launch {
             var capturedSessionId: String? = null
             runCatching {
@@ -1431,6 +1514,7 @@ class ChatViewModel(
                 val targetSessionId = existingSessionId ?: requireNotNull(session).id
                 capturedSessionId = targetSessionId
                 if (session != null) {
+                    applyDraftSystemPrompt(session.id, draftGeneration)
                     _uiState.update {
                         it.copy(sessionId = session.id, sessionTitle = session.title)
                     }

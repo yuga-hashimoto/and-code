@@ -287,6 +287,11 @@ fun AndCodeApp(
                         onPermissionResolved = app.activityRepository::resolvePermission,
                         onQuestionResolved = app.notifications::cancelQuestion,
                         onSessionCreated = app.catalogRepository::refreshSessionsOnly,
+                        // Only Claude Code carries a system prompt, so the chat view model holds
+                        // the choice and hands it here rather than reaching for that agent itself.
+                        onApplySystemPrompt = { sessionId, presetId ->
+                            app.claudeCodeController.selectSystemPrompt(presetId, sessionId)
+                        },
                         onSessionAborted = { sessionId ->
                             app.activityRepository.markSessionAborted(sessionId)
                             // Stopping the run answers the "this run has gone quiet" notice.
@@ -1019,6 +1024,33 @@ fun AndCodeApp(
                             onSelectClaudePermissionMode = { mode ->
                                 workspaceViewModel.setClaudePermissionMode(mode, chatState.sessionId)
                             },
+                            // Only Claude Code can carry one: its CLI takes --append-system-prompt,
+                            // while agy has no equivalent flag, so the chip stays off elsewhere
+                            // rather than offering a control that would do nothing.
+                            systemPromptPresets =
+                                workspaceState.claude
+                                    .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
+                                    ?.systemPromptPresets
+                                    .orEmpty(),
+                            // The open chat's own preset, not the default new chats get: a session
+                            // keeps what it was created with, so naming the default here would show
+                            // a preset the send path is not going to use. Resolved off state rather
+                            // than by asking the backend, so a switch moves the chip on the tap
+                            // instead of on whatever recomposes next. A chat with no session yet
+                            // answers from its own draft, which is where its choice lives until the
+                            // first message creates the session to record it on.
+                            selectedSystemPromptId =
+                                workspaceState.claude
+                                    .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
+                                    ?.let { claude ->
+                                        // Presence of the draft decides, not its id: choosing None
+                                        // for this chat is a draft whose id is null, and an elvis
+                                        // here would read that as "no draft" and show the default
+                                        // while the first turn sent no prompt at all.
+                                        val draft = chatState.draftSystemPrompt
+                                        if (draft != null) draft.id else claude.systemPromptIdFor(chatState.sessionId)
+                                    },
+                            onSelectSystemPrompt = chatViewModel::selectSystemPrompt,
                             // The mode settings shows, so the chip is not left naming whatever agent id
                             // another runtime last remembered - see AntigravityTarget.listAgents.
                             antigravityPermissionMode =
@@ -1151,6 +1183,18 @@ fun AndCodeApp(
                                 onSubmitCode = workspaceViewModel::submitClaudeSignInCode,
                                 onCancelSignIn = workspaceViewModel::cancelClaudeSignIn,
                                 onSignOut = workspaceViewModel::signOutClaude,
+                                // The settings screen edits the default new chats get, so it
+                                // passes no session: handing it the open chat's id would also
+                                // rewrite that chat's own snapshot as a side effect. Per-chat
+                                // switching lives on the composer chip above, which passes the
+                                // session on purpose.
+                                onSelectSystemPrompt = { presetId ->
+                                    workspaceViewModel.selectClaudeSystemPrompt(presetId)
+                                },
+                                onSaveSystemPromptPreset = { name, prompt, id ->
+                                    workspaceViewModel.saveClaudeSystemPromptPreset(name, prompt, id)
+                                },
+                                onDeleteSystemPromptPreset = workspaceViewModel::deleteClaudeSystemPromptPreset,
                             ),
                         antigravity = { antigravityState },
                         antigravityActions =

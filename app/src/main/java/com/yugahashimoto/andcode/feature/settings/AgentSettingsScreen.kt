@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -59,6 +60,7 @@ import com.yugahashimoto.andcode.ui.components.RuntimeUpdateProgressCard
 import com.yugahashimoto.andcode.ui.components.SectionCard
 import com.yugahashimoto.andcode.ui.components.displayName
 import com.yugahashimoto.andcode.ui.components.formatRuntimeBytes
+import com.yugahashimoto.andcode.ui.components.systemPromptPresetLabel
 import com.yugahashimoto.andcode.ui.runtimeAgentIcon
 
 /**
@@ -148,6 +150,7 @@ fun ClaudeCodeAgentSettingsScreen(
     onSubmitCode: (String) -> Unit,
     onCancelSignIn: () -> Unit,
     onSignOut: () -> Unit,
+    onOpenSystemPrompt: () -> Unit,
     onOpenMcp: () -> Unit,
     onOpenUrl: (String) -> Unit,
     onBack: () -> Unit,
@@ -177,6 +180,16 @@ fun ClaudeCodeAgentSettingsScreen(
             }
         }
         SettingsSection(title = stringResource(R.string.settings_agents_section)) {
+            SettingsRow(
+                icon = Icons.Default.Psychology,
+                title = stringResource(R.string.system_prompt_settings_row),
+                value =
+                    claude.systemPromptPresets.firstOrNull { it.id == claude.systemPromptId }
+                        ?.let { systemPromptPresetLabel(it) }
+                        ?: stringResource(R.string.system_prompt_none),
+                onClick = onOpenSystemPrompt,
+            )
+            SettingsDivider()
             SettingsRow(
                 icon = Icons.Default.Extension,
                 title = stringResource(R.string.mcp_settings_row),
@@ -212,6 +225,8 @@ fun OpenCodeAgentSettingsScreen(
     onOpenSetup: () -> Unit,
     onOpenProviderSettings: () -> Unit,
     onOpenModelVisibility: () -> Unit,
+    onOpenSystemPrompt: () -> Unit,
+    systemPromptLabel: String,
     onOpenMcp: () -> Unit,
     onBack: () -> Unit,
 ) {
@@ -268,6 +283,13 @@ fun OpenCodeAgentSettingsScreen(
                 icon = Icons.Default.Visibility,
                 title = stringResource(R.string.model_visibility_row),
                 onClick = onOpenModelVisibility,
+            )
+            SettingsDivider()
+            SettingsRow(
+                icon = Icons.Default.Psychology,
+                title = stringResource(R.string.system_prompt_settings_row),
+                value = systemPromptLabel,
+                onClick = onOpenSystemPrompt,
             )
             SettingsDivider()
             SettingsRow(

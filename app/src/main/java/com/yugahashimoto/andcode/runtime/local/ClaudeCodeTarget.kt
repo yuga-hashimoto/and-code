@@ -54,12 +54,20 @@ private data class ClaudeSessionRecord(
     @SerialName("effort") val effort: String? = null,
     /** Hidden from the drawer without deleting the transcript, like the OpenCode server's archive. */
     @SerialName("archived") val archived: Boolean = false,
+    /** Which [SystemPromptPreset] this session's turns are sent with, or null for none. */
+    @SerialName("promptId") val promptId: String? = null,
 )
 
 /** Exposes the Android-local Claude Code agent as a selectable runtime. */
 class ClaudeCodeTarget(
     private val runtime: ClaudeCodeRuntime,
     private val messages: ClaudeMessages = ClaudeMessages,
+    /**
+     * Shared with every other agent that can carry a preset, so the user writes each one once.
+     * Defaults to the runtime directory so tests and older call sites need not build one.
+     */
+    private val systemPrompts: SystemPromptStore =
+        SystemPromptStore(File(runtime.runtimeDirectory, "claude-system-prompts.json")),
 ) : RuntimeTarget {
     override val id = LocalAgent.CLAUDE_CODE.targetId
     override val displayName = "Claude Code"
@@ -106,6 +114,18 @@ class ClaudeCodeTarget(
         }
 
     /**
+     * Which preset each session carries, as observable state.
+     *
+     * [records] is a plain map, so switching a preset for one chat changed nothing any screen was
+     * watching and the composer chip went on naming the previous preset until some unrelated state
+     * change happened to recompose it - even though the next turn already carried the new one.
+     * Published from [persist], which every mutation of [records] goes through, so this cannot drift
+     * out of step with what is on disk.
+     */
+    private val mutableSessionPromptIds = MutableStateFlow(records.mapValues { it.value.promptId })
+    val sessionSystemPromptIds: StateFlow<Map<String, String?>> = mutableSessionPromptIds.asStateFlow()
+
+    /**
      * Mode applied to sessions created from now on.
      *
      * Existing sessions keep the mode they were created with, because changing it mid-conversation
@@ -135,6 +155,76 @@ class ClaudeCodeTarget(
         val record = sessionId?.let(records::get) ?: return
         records[sessionId] = record.copy(permissionMode = mode.cliValue)
         persist()
+    }
+
+    val systemPromptPresets: StateFlow<List<SystemPromptPreset>> get() = systemPrompts.presets
+
+    /** Preset id applied to sessions created from now on, or null for no preset. */
+    val defaultSystemPromptId: StateFlow<String?> get() = systemPrompts.selectedId
+
+    /**
+     * Applies [presetId] to the chat [sessionId] identifies, or to the default new chats inherit
+     * when no session is given.
+     *
+     * Unlike [setPermissionMode], picking a preset for one open chat deliberately leaves the default
+     * alone. Two reasons: the composer chip is the per-chat control and the settings screen is the
+     * default's, so moving both from the chip would silently retune every future chat; and this
+     * store is shared with OpenCode, where the selection is written to an instructions file every
+     * session on the runtime reads - a per-chat Claude switch has no business changing what OpenCode
+     * is told.
+     *
+     * A chat with no session yet (nothing sent in it) has nothing here to write to; its choice is
+     * held by the composer as `ChatUiState.draftSystemPrompt` and arrives here, with a session id,
+     * the moment its first message creates one.
+     */
+    fun selectSystemPrompt(
+        presetId: String?,
+        sessionId: String? = null,
+    ) {
+        if (sessionId == null) {
+            systemPrompts.select(presetId)
+            return
+        }
+        // A session id with no record names a chat this target does not have - one deleted while
+        // still open, or another agent's. Dropping the call is the only safe answer: falling
+        // through to the default would retune every later chat, and the shared OpenCode
+        // instructions with it, in the name of a chat that no longer exists.
+        val record = records[sessionId] ?: return
+        records[sessionId] = record.copy(promptId = livePresetId(presetId))
+        persist()
+    }
+
+    /**
+     * [presetId] if that preset still exists, and null - no preset - if it does not.
+     *
+     * A caller can be holding an id the user has since deleted from settings: the composer keeps a
+     * blank chat's choice while they navigate away, so picking a preset, deleting it, and then
+     * sending arrives here with an id that names nothing. Recording it would persist a dangling
+     * reference and send with no prompt anyway; null says the same thing without the lie, and the
+     * chip then reads "None" rather than a preset that is gone.
+     */
+    private fun livePresetId(presetId: String?): String? = presetId?.takeIf { systemPrompts.byId(it) != null }
+
+    /** Creates a new custom preset, or updates one already saved when [id] names an existing one. */
+    fun saveSystemPromptPreset(
+        name: String,
+        prompt: String,
+        id: String? = null,
+    ): SystemPromptPreset = systemPrompts.save(name, prompt, id)
+
+    /**
+     * Removes a custom preset, and with it any session still pointing at that preset.
+     *
+     * Left dangling, a session's promptId would keep naming a preset that no longer exists; the
+     * store clears the default selection for the same reason.
+     */
+    fun deleteSystemPromptPreset(id: String) {
+        if (!systemPrompts.delete(id)) return
+        val affectedSessionIds = records.filterValues { it.promptId == id }.keys
+        if (affectedSessionIds.isNotEmpty()) {
+            affectedSessionIds.forEach { sessionId -> records[sessionId] = records.getValue(sessionId).copy(promptId = null) }
+            persist()
+        }
     }
 
     private val titleScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -223,7 +313,12 @@ class ClaudeCodeTarget(
                 title = title ?: DEFAULT_TITLE,
                 time = OpenCodeTime(now, now),
             )
-        records[session.id] = ClaudeSessionRecord(session, mutableDefaultPermissionMode.value.cliValue)
+        records[session.id] =
+            ClaudeSessionRecord(
+                session = session,
+                permissionMode = mutableDefaultPermissionMode.value.cliValue,
+                promptId = systemPrompts.selectedId.value,
+            )
         persist()
         return session
     }
@@ -285,6 +380,7 @@ class ClaudeCodeTarget(
                 model = model,
                 effort = effort,
                 attachments = request.attachments,
+                systemPrompt = systemPrompts.byId(record.promptId)?.prompt,
             ).getOrThrow()
         }
     }
@@ -560,6 +656,7 @@ class ClaudeCodeTarget(
     }
 
     private fun persist() {
+        mutableSessionPromptIds.value = records.mapValues { it.value.promptId }
         runCatching {
             sessionsFile.parentFile?.mkdirs()
             sessionsFile.writeText(json.encodeToString(records.values.toList()))

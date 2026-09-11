@@ -193,7 +193,7 @@ private fun sha256Hex(bytes: ByteArray): String {
  * following it, so it catches this case too. (A symlinked *parent* directory is still caught by
  * the canonical-in-rootfs check, since the parent does exist and canonicalizes normally.)
  */
-private fun manageablePathOrNull(
+internal fun manageablePathOrNull(
     rootfsCanonical: File,
     target: File,
 ): File? {

@@ -37,8 +37,12 @@ class LocalRuntimeProcessLauncherTest {
         assertEquals("/android/proot-tmp", environment["PROOT_TMP_DIR"])
         assertEquals("/native/lib", environment["LD_LIBRARY_PATH"])
         assertTrue(environment["OPENCODE_DISABLE_AUTOUPDATE"] == "true")
+        // The second path is the selected system-prompt preset. Only the path is fixed here, at
+        // launch; OpenCode re-reads the file's content per turn, which is what lets a preset switch
+        // take effect without a restart - see applyOpenCodeSystemPrompt.
         assertEquals(
-            "{\"instructions\":[\"/root/.config/opencode/and-code-context.md\"]}",
+            "{\"instructions\":[\"/root/.config/opencode/and-code-context.md\"," +
+                "\"/root/.config/opencode/and-code-system-prompt.md\"]}",
             environment["OPENCODE_CONFIG_CONTENT"],
         )
     }

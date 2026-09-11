@@ -10,10 +10,78 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 
 class LocalRuntimeManagerTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
+
+    /**
+     * The selected preset has to be on disk before the OpenCode server is launched: the collector
+     * that keeps it in step afterwards only runs once [LocalRuntimeStatus.Ready] is published, so a
+     * caller that awaits `start()` and sends immediately would otherwise beat it - and a freshly
+     * installed guest filesystem has no file there at all.
+     *
+     * `portProbe` answers true so nothing is actually exec'd; what this pins is that the write
+     * happens on the start path, ahead of the launch branch, rather than only from the collector.
+     * The file-level behaviour is covered by [OpenCodeSystemPromptTest].
+     */
+    @Test
+    fun `starting an installed runtime writes the selected prompt`() =
+        runBlocking {
+            val rootfs = temporaryFolder.newFolder("rootfs")
+            val manager =
+                LocalRuntimeManager(
+                    runtimeDirectory = temporaryFolder.root,
+                    abi = "arm64-v8a",
+                    portProbe = { true },
+                    processLauncher = LocalRuntimeProcessLauncher(temporaryFolder.root, { true }),
+                    systemPrompt = { "Focus on debugging." },
+                )
+
+            val ready = manager.startInstalled(installedRuntime(rootfs))
+
+            assertEquals("Focus on debugging.", File(rootfs, OPENCODE_SYSTEM_PROMPT_PATH).readText())
+            assertEquals(4096, ready.port)
+        }
+
+    /** No preset selected has to clear the file, not leave the last one in place. */
+    @Test
+    fun `starting with no preset selected leaves no prompt file`() =
+        runBlocking {
+            val rootfs = temporaryFolder.newFolder("rootfs-none")
+            val stale = File(rootfs, OPENCODE_SYSTEM_PROMPT_PATH)
+            stale.parentFile?.mkdirs()
+            stale.writeText("Be creative.")
+            val manager =
+                LocalRuntimeManager(
+                    runtimeDirectory = temporaryFolder.root,
+                    abi = "arm64-v8a",
+                    portProbe = { true },
+                    processLauncher = LocalRuntimeProcessLauncher(temporaryFolder.root, { true }),
+                    systemPrompt = { null },
+                )
+
+            manager.startInstalled(installedRuntime(rootfs))
+
+            assertTrue(!stale.exists())
+        }
+
+    private fun installedRuntime(rootfs: File): LocalRuntimeInstaller.InstalledRuntime =
+        LocalRuntimeInstaller.InstalledRuntime(
+            metadata = LocalRuntimeMetadata(version = "1.17.20", port = 4096, installedAt = 123),
+            commandSuite =
+                EmbeddedCommandSuite.Paths(
+                    home = rootfs,
+                    tmp = rootfs,
+                    nativeLibraryDirectory = rootfs,
+                    proot = rootfs,
+                    loader = rootfs,
+                    loader32 = rootfs,
+                ),
+            rootfs = rootfs,
+            openCode = null,
+        )
 
     @Test
     fun `arm64 without metadata is not installed`() {
