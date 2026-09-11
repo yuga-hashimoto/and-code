@@ -102,6 +102,36 @@ class ClaudeSystemPromptTest {
             assertTrue(persisted.contains("\"promptId\":\"debug\""))
         }
 
+    /**
+     * The composer chip is the per-chat control and the settings screen is the default's. A chip
+     * switch that also moved the default would silently retune every future chat - and, because the
+     * store is shared with OpenCode, rewrite the instructions file every OpenCode session reads.
+     */
+    @Test
+    fun `switching an open session's preset leaves the default alone`() =
+        runBlocking {
+            val target = target()
+            val session = target.createSession("New chat", "/workspace")
+
+            target.selectSystemPrompt(ClaudeSystemPrompts.DEBUG, session.id)
+
+            assertNull(target.defaultSystemPromptId.value)
+            assertEquals(ClaudeSystemPrompts.DEBUG, target.systemPromptIdFor(session.id))
+        }
+
+    @Test
+    fun `editing a preset keeps its place in the list`() {
+        val target = target()
+        val first = target.saveSystemPromptPreset("First", "One.")
+        val second = target.saveSystemPromptPreset("Second", "Two.")
+
+        target.saveSystemPromptPreset("First, renamed", "One, rewritten.", id = first.id)
+
+        val custom = target.systemPromptPresets.value.filterNot(SystemPromptPreset::builtIn)
+        assertEquals(listOf(first.id, second.id), custom.map(SystemPromptPreset::id))
+        assertEquals("First, renamed", custom.first().name)
+    }
+
     @Test
     fun `deleting the selected default preset clears the selection`() {
         val target = target()

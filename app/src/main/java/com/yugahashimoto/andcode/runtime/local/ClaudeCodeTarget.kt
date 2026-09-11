@@ -167,16 +167,28 @@ class ClaudeCodeTarget(
         }
 
     /**
-     * Applies [presetId] to new sessions, and to [sessionId] when one is given - the same
-     * immediate-effect rule [setPermissionMode] follows, since switching prompts mid-conversation is
-     * an explicit choice about that conversation.
+     * Applies [presetId] to the chat [sessionId] names, or to the default new chats inherit when no
+     * session is given.
+     *
+     * Unlike [setPermissionMode], picking a preset for one open chat deliberately leaves the default
+     * alone. Two reasons: the composer chip is the per-chat control and the settings screen is the
+     * default's, so moving both from the chip would silently retune every future chat; and this
+     * store is shared with OpenCode, where the selection is written to an instructions file every
+     * session on the runtime reads - a per-chat Claude switch has no business changing what OpenCode
+     * is told.
+     *
+     * A chat with no session yet (nothing sent in it) has no record to write to, so its choice lands
+     * on the default and is snapshotted by [createSession] a moment later.
      */
     fun selectSystemPrompt(
         presetId: String?,
         sessionId: String? = null,
     ) {
-        systemPrompts.select(presetId)
-        val record = sessionId?.let(records::get) ?: return
+        val record = sessionId?.let(records::get)
+        if (sessionId == null || record == null) {
+            systemPrompts.select(presetId)
+            return
+        }
         records[sessionId] = record.copy(promptId = presetId)
         persist()
     }
