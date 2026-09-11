@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.runtime.local.MAX_SYSTEM_PROMPT_LENGTH
 import com.yugahashimoto.andcode.runtime.local.SystemPromptPreset
+import com.yugahashimoto.andcode.runtime.local.sanitizeSystemPrompt
 import com.yugahashimoto.andcode.ui.components.systemPromptPresetLabel
 
 /**
@@ -238,7 +239,7 @@ private fun SystemPromptEditDialog(
                 )
                 OutlinedTextField(
                     value = prompt,
-                    onValueChange = { prompt = it.take(MAX_SYSTEM_PROMPT_LENGTH) },
+                    onValueChange = { prompt = sanitizeSystemPrompt(it) },
                     label = { Text(stringResource(R.string.system_prompt_text_label)) },
                     minLines = 4,
                     maxLines = 8,

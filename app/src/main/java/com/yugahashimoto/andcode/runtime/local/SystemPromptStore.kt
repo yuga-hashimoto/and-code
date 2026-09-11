@@ -29,10 +29,24 @@ private data class SystemPromptState(
 const val MAX_SYSTEM_PROMPT_LENGTH = 8_000
 
 /**
- * A preset held for a chat that has no session yet.
+ * Strips what `exec` will not carry, and clamps the rest to [MAX_SYSTEM_PROMPT_LENGTH].
  *
- * Wrapped rather than passed as a bare id so that a staged "None" - the user clearing the preset
- * for this chat - is distinguishable from nothing having been staged at all.
+ * A NUL is the sharp edge: `ProcessBuilder` refuses an argument containing one outright, so a
+ * preset pasted with a NUL in it would be persisted and then fail every Claude turn until the user
+ * worked out which preset to edit - the same trap as an over-long one. The other C0 controls are
+ * dropped with it because none of them means anything in a system prompt and several would corrupt
+ * the argument; the three that do carry meaning in prose - tab, newline, carriage return - stay.
+ */
+internal fun sanitizeSystemPrompt(prompt: String): String =
+    prompt
+        .filterNot { char -> char.isISOControl() && char != '\n' && char != '\r' && char != '\t' }
+        .take(MAX_SYSTEM_PROMPT_LENGTH)
+
+/**
+ * A preset chosen for a chat that has no session yet, held as `ChatUiState.draftSystemPrompt`.
+ *
+ * Wrapped rather than passed as a bare id so that choosing "None" for this chat is distinguishable
+ * from having chosen nothing at all.
  */
 @JvmInline
 value class StagedSystemPrompt(
@@ -45,8 +59,8 @@ value class StagedSystemPrompt(
  *
  * A session snapshots the default when it is created and keeps it from then on, so an older chat's
  * preset is not the current default - and a chat that predates presets entirely carries none rather
- * than falling back to whatever is selected now. A chat with no session yet shows what it has
- * [staged], if anything, since that is what its first turn will be created with.
+ * than falling back to whatever is selected now. A chat with no session yet has no answer here at
+ * all; what it shows is its own [StagedSystemPrompt] draft, which the composer holds.
  *
  * Both the runtime ([ClaudeCodeTarget]) and the UI state ([ClaudeCodeUiState]) answer this
  * question, so the rule lives here once instead of twice.
@@ -55,13 +69,7 @@ internal fun resolveSystemPromptId(
     sessionId: String?,
     sessionPromptIds: Map<String, String?>,
     default: String?,
-    staged: StagedSystemPrompt? = null,
-): String? =
-    when {
-        sessionId != null && sessionId in sessionPromptIds -> sessionPromptIds[sessionId]
-        staged != null -> staged.id
-        else -> default
-    }
+): String? = if (sessionId != null && sessionId in sessionPromptIds) sessionPromptIds[sessionId] else default
 
 /**
  * The system-prompt presets and the current selection, shared by every agent that can carry one.
@@ -109,8 +117,8 @@ class SystemPromptStore(
      * no reorder action in the picker, so renaming the first of several presets must not shuffle
      * the list under the user.
      *
-     * The prompt is clamped to [MAX_SYSTEM_PROMPT_LENGTH] - see there for why a longer one would
-     * break Claude Code process starts rather than just this preset.
+     * The prompt goes through [sanitizeSystemPrompt] - see there for the two ways a pasted one can
+     * break every later Claude Code process start rather than just its own turn.
      */
     fun save(
         name: String,
@@ -122,7 +130,7 @@ class SystemPromptStore(
             SystemPromptPreset(
                 id = presetId,
                 name = name,
-                prompt = prompt.take(MAX_SYSTEM_PROMPT_LENGTH),
+                prompt = sanitizeSystemPrompt(prompt),
             )
         val existing = mutablePresets.value.indexOfFirst { it.id == preset.id }
         mutablePresets.value =
