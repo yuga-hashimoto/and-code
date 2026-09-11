@@ -1133,8 +1133,13 @@ fun AndCodeApp(
                                 onSubmitCode = workspaceViewModel::submitClaudeSignInCode,
                                 onCancelSignIn = workspaceViewModel::cancelClaudeSignIn,
                                 onSignOut = workspaceViewModel::signOutClaude,
+                                // The settings screen edits the default new chats get, so it
+                                // passes no session: handing it the open chat's id would also
+                                // rewrite that chat's own snapshot as a side effect. Per-chat
+                                // switching lives on the composer chip above, which passes the
+                                // session on purpose.
                                 onSelectSystemPrompt = { presetId ->
-                                    workspaceViewModel.selectClaudeSystemPrompt(presetId, chatState.sessionId)
+                                    workspaceViewModel.selectClaudeSystemPrompt(presetId)
                                 },
                                 onSaveSystemPromptPreset = { name, prompt, id ->
                                     workspaceViewModel.saveClaudeSystemPromptPreset(name, prompt, id)
