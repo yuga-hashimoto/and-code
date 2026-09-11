@@ -2,6 +2,9 @@ package com.yugahashimoto.andcode.runtime.local
 
 import java.io.File
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.StandardOpenOption
 
 /**
  * Where the selected preset is written inside the guest filesystem.
@@ -29,9 +32,16 @@ internal const val OPENCODE_SYSTEM_PROMPT_PATH = "root/.config/opencode/and-code
  *   the runtime restarts.
  *
  * Best-effort like the rest of the guest-filesystem writes: a preset that cannot be written simply
- * is not applied, rather than failing a runtime start or a settings tap. Every path goes through
- * [manageablePathOrNull], so a guest that replaces the file (or a parent) with a symlink pointing
- * out of the sandbox cannot make this write land outside `rootfs`.
+ * is not applied, rather than failing a runtime start or a settings tap.
+ *
+ * The path goes through [manageablePathOrNull], which refuses anything resolving outside `rootfs`,
+ * anything that is already a symlink, and anything that is not a plain file; the write then opens
+ * the file `NOFOLLOW_LINKS`, so a symlink swapped in after that check fails the open instead of
+ * being followed. Removal unlinks the name, which never follows either. What is left uncovered is a
+ * *parent* directory swapped for a symlink inside that same window, which Java cannot close without
+ * an `openat` walk - and it buys nothing, because the guest runs under PRoot as the app's own uid
+ * and can write any of these files directly. These checks exist to keep AndCode from clobbering a
+ * path the user has taken over, not as a privilege boundary.
  */
 internal fun applyOpenCodeSystemPrompt(
     rootfs: File,
@@ -52,8 +62,19 @@ internal fun applyOpenCodeSystemPrompt(
             return
         }
         target.parentFile?.mkdirs()
-        target.writeText(prompt)
+        Files
+            .newOutputStream(
+                target.toPath(),
+                StandardOpenOption.CREATE,
+                StandardOpenOption.WRITE,
+                StandardOpenOption.TRUNCATE_EXISTING,
+                LinkOption.NOFOLLOW_LINKS,
+            ).use { out -> out.write(prompt.toByteArray()) }
     } catch (e: IOException) {
-        // Skipped, as above.
+        // Skipped, as above - including the ELOOP a swapped-in symlink turns the open into.
+    } catch (e: UnsupportedOperationException) {
+        // A filesystem provider that will not take NOFOLLOW_LINKS as an open option. Skipping the
+        // preset is the same best-effort outcome as any other failed write; it must not crash a
+        // settings tap.
     }
 }
