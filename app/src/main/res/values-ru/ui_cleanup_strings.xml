@@ -77,6 +77,7 @@
     <string name="wake_word_model_language_japanese">Японский</string>
     <string name="wake_word_model_label">Речевая модель</string>
     <string name="wake_word_model_not_downloaded">Не загружена (около %1$d МБ)</string>
+    <string name="wake_word_model_disclosure">Загружается напрямую с alphacephei.com, только если вы нажмёте «Загрузить» ниже — это происходит вне проверок сборки и исходного кода F-Droid.</string>
     <string name="wake_word_model_downloading">Загрузка…</string>
     <string name="wake_word_model_downloading_percent">Загрузка… %1$d%%</string>
     <string name="wake_word_model_extracting">Распаковка…</string>

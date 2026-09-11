@@ -77,6 +77,7 @@
     <string name="wake_word_model_language_japanese">日语</string>
     <string name="wake_word_model_label">语音模型</string>
     <string name="wake_word_model_not_downloaded">未下载（约 %1$d MB）</string>
+    <string name="wake_word_model_disclosure">仅在您点击下方“下载”时才会直接从 alphacephei.com 下载——该过程不在 F-Droid 的构建和源码检查范围内。</string>
     <string name="wake_word_model_downloading">下载中…</string>
     <string name="wake_word_model_downloading_percent">下载中… %1$d%%</string>
     <string name="wake_word_model_extracting">解压中…</string>

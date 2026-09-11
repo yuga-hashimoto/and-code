@@ -165,6 +165,27 @@ class LocalRuntimeManagementViewModelTest {
         }
 
     @Test
+    fun `development tool state is loaded and install action is invoked`() =
+        runTest(dispatcher) {
+            // Agent-only runtimes have a Linux environment without an OpenCode server.
+            val runtimeState = MutableStateFlow<LocalRuntimeStatus>(LocalRuntimeStatus.NotInstalled)
+            var installCalls = 0
+            val viewModel =
+                viewModel(
+                    runtimeState = runtimeState,
+                    runtimeEnvironmentInstalledProvider = { true },
+                    fullDevelopmentToolsInstalledProvider = { false },
+                    installFullDevelopmentToolsAction = { installCalls++ },
+                )
+            advanceUntilIdle()
+
+            assertTrue(viewModel.state.value.runtimeEnvironmentInstalled)
+            assertFalse(viewModel.state.value.fullDevelopmentToolsInstalled)
+            viewModel.installFullDevelopmentTools()
+            assertEquals(1, installCalls)
+        }
+
+    @Test
     fun `adb state is collected from adb state flow`() =
         runTest(dispatcher) {
             val runtimeState = MutableStateFlow<LocalRuntimeStatus>(LocalRuntimeStatus.Ready("1.18.3", 4097))
@@ -264,6 +285,9 @@ class LocalRuntimeManagementViewModelTest {
         diagnosticsProvider: suspend () -> LocalRuntimeDiagnostics = { diagnostics(runtimeState.value) },
         lastOperationState: MutableStateFlow<LocalRuntimeOperationResult?> = MutableStateFlow(null),
         repairAction: () -> Unit = {},
+        installFullDevelopmentToolsAction: () -> Unit = {},
+        runtimeEnvironmentInstalledProvider: () -> Boolean = { false },
+        fullDevelopmentToolsInstalledProvider: () -> Boolean = { false },
         deleteAction: () -> Unit = {},
         deleteTimeoutMillis: Long = 30_000L,
         adbState: MutableStateFlow<AdbConnectionState>? = null,
@@ -276,6 +300,9 @@ class LocalRuntimeManagementViewModelTest {
         lastOperationState = lastOperationState,
         diagnosticsProvider = diagnosticsProvider,
         repairAction = repairAction,
+        installFullDevelopmentToolsAction = installFullDevelopmentToolsAction,
+        runtimeEnvironmentInstalledProvider = runtimeEnvironmentInstalledProvider,
+        fullDevelopmentToolsInstalledProvider = fullDevelopmentToolsInstalledProvider,
         deleteAction = deleteAction,
         getString = { resId -> "string/$resId" },
         deleteTimeoutMillis = deleteTimeoutMillis,

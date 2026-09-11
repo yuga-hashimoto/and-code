@@ -77,6 +77,7 @@
     <string name="wake_word_model_language_japanese">Japonês</string>
     <string name="wake_word_model_label">Modelo de voz</string>
     <string name="wake_word_model_not_downloaded">Não baixado (cerca de %1$d MB)</string>
+    <string name="wake_word_model_disclosure">Baixado diretamente de alphacephei.com somente se você tocar em Baixar abaixo — isso acontece fora das verificações de build e de código-fonte do F-Droid.</string>
     <string name="wake_word_model_downloading">Baixando…</string>
     <string name="wake_word_model_downloading_percent">Baixando… %1$d%%</string>
     <string name="wake_word_model_extracting">Descompactando…</string>

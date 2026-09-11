@@ -119,57 +119,72 @@ of flavor, so leaving them applied would still embed inert Google project
 identifiers in the fdroid build).
 
 Submitting to the official catalog means opening a merge request against
-[fdroiddata](https://gitlab.com/fdroid/fdroiddata) with metadata resembling:
+[fdroiddata](https://gitlab.com/fdroid/fdroiddata). This has been done:
+[!48005](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/48005). Current
+metadata, after review feedback from F-Droid maintainers:
 
 ```yaml
 Categories:
   - AI Chat
 License: MIT
+AuthorName: Yu-ga
 RepoType: git
 Repo: https://github.com/yuga-hashimoto/and-code
 SourceCode: https://github.com/yuga-hashimoto/and-code
 IssueTracker: https://github.com/yuga-hashimoto/and-code/issues
 Changelog: https://github.com/yuga-hashimoto/and-code/releases
 
+AntiFeatures:
+  NonFreeNet: optional GitHub OAuth sign-in, not required for core functionality
+  TetheredNet: the on-demand Vosk wake-word speech model is only ever fetched from alphacephei.com
+
 Builds:
-  - versionName: "1.2.16"
-    versionCode: 55
-    commit: v1.2.16
+  - versionName: "1.2.17"
+    versionCode: 56
+    commit: 6551a03a6c37772d3610b0fd4caad4b8d51365ae
     subdir: app
     gradle:
       - fdroid
     gradleprops:
       - andcode.fdroidBuild=true
-    # google-services/firebase-crashlytics still appear (apply false) in both
-    # build.gradle.kts files; allowlist those known-safe lines rather than
-    # have the scanner flag them.
-    scanignore:
-      - build.gradle.kts
-      - app/build.gradle.kts
+    # The google-services/firebase-crashlytics Gradle plugins are declared with
+    # `apply false` in both build.gradle.kts files (needed by the "github" flavor;
+    # never applied for this fdroid build, see `andcode.fdroidBuild` above), but the
+    # source scanner still flags the bare "apply false" declaration lines. Strip
+    # just those lines instead of scanignoring the whole files.
+    prebuild:
+      - sed -i '/id("com.google.gms.google-services").*apply false/d' ../build.gradle.kts
+      - sed -i '/id("com.google.firebase.crashlytics").*apply false/d' ../build.gradle.kts
+      - sed -i '/id("com.google.gms.google-services").*apply false/d' build.gradle.kts
+      - sed -i '/id("com.google.firebase.crashlytics").*apply false/d' build.gradle.kts
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: "1.2.16"
-CurrentVersionCode: 55
+CurrentVersion: "1.2.17"
+CurrentVersionCode: 56
 ```
 
-This recipe was dry-run locally with `fdroid build --test` (pip-installed
-`fdroidserver`, no Docker/buildserver VM available) against this repo's actual
-`fdroid` flavor and confirmed to work end-to-end: clone at a pinned commit,
-`clean`, source scan, and `assembleFdroidRelease` all succeeded, producing an
-APK whose embedded versionName/versionCode matched the metadata. Both
-`Repo`/`RepoType` and the two-line `scanignore` above were only discovered as
-necessary through that dry run (without them, the build never even reaches the
-Gradle step). It has not been submitted as a merge request yet — remaining
-before that:
+This recipe was dry-run locally: after a fresh checkout at the pinned commit
+with the two `prebuild` sed lines applied to each file by hand,
+`./gradlew -Pandcode.fdroidBuild=true :app:assembleFdroidRelease` still built
+successfully end-to-end. `AntiFeatures` is a map with a reason per entry
+(the initial submission used a plain list), and `commit:` is the resolved
+full SHA rather than the tag name — both per review feedback.
 
-- decide whether any remaining dependency (e.g. the Vosk speech model,
-  downloaded on first use from alphacephei.com rather than bundled — the
-  models themselves are Apache-2.0, so this is likely not an `AntiFeature`,
-  but F-Droid reviewers may still ask about it) needs an `AntiFeature` tag
-- decide how to describe the GitHub OAuth sign-in dependency, since GitHub
-  itself is a non-free network service (used for optional sign-in, not core
-  functionality, so likely not `NonFreeNet`, but again a reviewer question)
-- a real dry run against F-Droid's actual buildserver (`fdroid build --test
-  --server`), which needs the Debian/Docker buildserver image this sandbox
-  does not have
+Review also asked whether the Vosk model download is opt-in and discloses
+that it bypasses F-Droid's build/source checks. Checked the app source: the
+download was already gated behind an explicit "Download" button in Settings
+(never auto-triggered by the wake-word toggle), so declining was already no
+harder than accepting. The missing piece — an in-app disclosure of the
+bypass — has been written (visible text next to the Download button, plus a
+regression test in `LegalDisclosureComplianceTest`), but **is not yet in a
+tagged release**, so the merge request's `Builds:` entry above still points
+at v1.2.17, which predates the fix. The MR's `Builds:` entry needs updating
+to a new release once this lands and is tagged.
+
+The fork's own CI (`soccer.hy620/fdroiddata`) is separately blocked: GitLab's
+GraphQL API reports every pipeline run failing with
+`"The pipeline failed due to the user not being verified."` — an
+account-level verification gate on shared-runner minutes, unrelated to the
+recipe itself. That needs clearing on the GitLab account before the fork's
+own pipeline can go green (does not block F-Droid's own review process).

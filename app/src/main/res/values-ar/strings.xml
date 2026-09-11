@@ -43,6 +43,7 @@
     <string name="always_allow">السماح دائمًا</string>
     <string name="reject">رفض</string>
     <string name="reasoning_card_title">الاستدلال</string>
+    <string name="reasoning_empty">لا يوجد محتوى للاستدلال</string>
     <string name="tool_status_pending">قيد الانتظار</string>
     <string name="tool_status_running">قيد التشغيل</string>
     <string name="tool_status_completed">مكتمل</string>
@@ -239,6 +240,7 @@
     <string name="no_git_info">لا توجد معلومات مستودع Git</string>
     <string name="loading_changes">جارٍ تحميل التغييرات</string>
     <string name="no_uncommitted_changes">لا توجد تغييرات غير ملتزم بها</string>
+    <string name="open_file">فتح</string>
 
     <string name="local_runtime_screen_title">OpenCode المحلي</string>
     <string name="refresh_diagnostics_description">تحديث التشخيصات ومعلومات التحديث</string>
@@ -824,6 +826,8 @@
     <string name="attach_file">File</string>
     <string name="attach_camera">Camera</string>
     <string name="attach_gallery">Gallery</string>
+    <string name="attachment_load_failed">Could not attach file</string>
+    <string name="error_video_not_supported">Video files cannot be sent directly. Remove the video and attach images instead.</string>
     <string name="status_queued">Queued</string>
 
     <!-- Resume command -->
@@ -1131,4 +1135,16 @@
     <string name="guest_browser_back">رجوع</string>
     <string name="guest_browser_forward">تقدم</string>
     <string name="guest_browser_reload">إعادة تحميل</string>
+    <string name="setup_step_development_tools">أدوات التطوير</string>
+    <string name="setup_development_tools_description">يتم تثبيت مكونات التشغيل الضرورية فقط افتراضيًا، ويمكنك إضافة مجموعة أدوات التطوير الكاملة.</string>
+    <string name="setup_required_tools_description">سيتم دائمًا تثبيت Linux والوكلاء المحددين وGit وأدوات الدعم التي يستخدمها AndCode.</string>
+    <string name="setup_install_full_development_tools">تثبيت أدوات التطوير الكاملة</string>
+    <string name="setup_install_full_development_tools_description">تضيف بيئات اللغات والمترجمات وأدوات البناء والمحررات والأدوات المساعدة، مع تنزيل بيانات إضافية.</string>
+    <string name="setup_development_tools_settings_hint">يمكنك تخطي ذلك وتثبيت مجموعة الأدوات الكاملة لاحقًا من الإعدادات → بيئة التشغيل المحلية.</string>
+    <string name="install_step_installing_runtime_tools">جارٍ تثبيت أدوات التشغيل الضرورية</string>
+    <string name="full_development_tools_title">أدوات التطوير</string>
+    <string name="full_development_tools_description">بيئات لغات ومترجمات وأدوات بناء وأدوات مساعدة اختيارية للمشاريع.</string>
+    <string name="full_development_tools_installed">تم تثبيت أدوات التطوير الكاملة</string>
+    <string name="install_full_development_tools_button">تثبيت مجموعة الأدوات الكاملة</string>
+    <string name="runtime_full_development_tools_start_failed">تعذر بدء تثبيت أدوات التطوير</string>
 </resources>

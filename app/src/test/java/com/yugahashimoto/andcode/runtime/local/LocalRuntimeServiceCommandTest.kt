@@ -15,6 +15,10 @@ class LocalRuntimeServiceCommandTest {
             localRuntimeServiceCommand(LocalRuntimeService.ACTION_INSTALL_AND_START),
         )
         assertEquals(
+            LocalRuntimeServiceCommand.InstallFullDevelopmentTools,
+            localRuntimeServiceCommand(LocalRuntimeService.ACTION_INSTALL_FULL_DEVELOPMENT_TOOLS),
+        )
+        assertEquals(
             LocalRuntimeServiceCommand.Start,
             localRuntimeServiceCommand(LocalRuntimeService.ACTION_START),
         )
@@ -143,6 +147,7 @@ class LocalRuntimeServiceCommandTest {
     @Test
     fun `commands that are not an explicit start leave the user-stopped flag alone`() {
         assertFalse(clearsUserStoppedFlag(LocalRuntimeServiceCommand.Stop))
+        assertFalse(clearsUserStoppedFlag(LocalRuntimeServiceCommand.InstallFullDevelopmentTools))
         assertFalse(clearsUserStoppedFlag(LocalRuntimeServiceCommand.Restore))
         assertFalse(clearsUserStoppedFlag(LocalRuntimeServiceCommand.Delete))
         assertFalse(clearsUserStoppedFlag(LocalRuntimeServiceCommand.Ignore))

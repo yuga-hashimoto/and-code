@@ -43,6 +43,7 @@
     <string name="always_allow">始终允许</string>
     <string name="reject">拒绝</string>
     <string name="reasoning_card_title">推理</string>
+    <string name="reasoning_empty">暂无推理内容</string>
     <string name="tool_status_pending">等待中</string>
     <string name="tool_status_running">运行中</string>
     <string name="tool_status_completed">已完成</string>
@@ -234,6 +235,7 @@
     <string name="no_git_info">没有 Git 仓库信息</string>
     <string name="loading_changes">正在加载更改</string>
     <string name="no_uncommitted_changes">没有未提交的更改</string>
+    <string name="open_file">打开</string>
 
     <string name="local_runtime_screen_title">本地 OpenCode</string>
     <string name="refresh_diagnostics_description">刷新诊断和更新信息</string>
@@ -814,6 +816,8 @@
     <string name="attach_file">File</string>
     <string name="attach_camera">Camera</string>
     <string name="attach_gallery">Gallery</string>
+    <string name="attachment_load_failed">Could not attach file</string>
+    <string name="error_video_not_supported">Video files cannot be sent directly. Remove the video and attach images instead.</string>
     <string name="status_queued">Queued</string>
 
     <!-- Resume command -->
@@ -1121,4 +1125,16 @@
     <string name="guest_browser_back">后退</string>
     <string name="guest_browser_forward">前进</string>
     <string name="guest_browser_reload">重新加载</string>
+    <string name="setup_step_development_tools">开发工具</string>
+    <string name="setup_development_tools_description">默认只安装运行所需组件，也可以一并安装完整开发工具链。</string>
+    <string name="setup_required_tools_description">Linux、所选智能体、Git 以及 AndCode 功能依赖的支持工具，将始终安装。</string>
+    <string name="setup_install_full_development_tools">安装完整开发工具</string>
+    <string name="setup_install_full_development_tools_description">将添加语言运行时、编译器、构建工具、编辑器和其他实用工具，需要下载更多数据。</string>
+    <string name="setup_development_tools_settings_hint">可以跳过此步骤，稍后在“设置 → 本地运行时”中安装完整工具链。</string>
+    <string name="install_step_installing_runtime_tools">正在安装运行所需工具</string>
+    <string name="full_development_tools_title">开发工具</string>
+    <string name="full_development_tools_description">用于项目的可选语言运行时、编译器、构建工具和实用程序。</string>
+    <string name="full_development_tools_installed">完整开发工具已安装</string>
+    <string name="install_full_development_tools_button">安装完整工具链</string>
+    <string name="runtime_full_development_tools_start_failed">无法开始安装开发工具</string>
 </resources>

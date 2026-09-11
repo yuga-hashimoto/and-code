@@ -30,7 +30,6 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
@@ -56,27 +55,9 @@ class ScheduleExecutionService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var app: AndCodeApplication
     private var inForeground = false
-    private var executionJob: Job? = null
 
-    /**
-     * Which schedule [executionJob] belongs to.
-     *
-     * The service is one instance shared by every schedule, so the job alone cannot say whose run
-     * is in flight - and reporting another schedule's run as this one's "previous run" would be a
-     * plain lie in the history and in the notification.
-     */
-    private var runningScheduleId: String? = null
-
-    /** Why the event stream stopped, when it stopped before the run settled. */
-    @Volatile
-    private var streamFailure: String? = null
-
-    /**
-     * Elapsed-realtime stamp of the last sign of life from the run, on which the idle timeout is
-     * measured. Written by the event stream and the transcript poll, read by [awaitSettlement].
-     */
-    @Volatile
-    private var lastProgressAt: Long = 0L
+    /** Active schedule IDs; different schedules use independent sessions concurrently. */
+    private val executionCoordinator = ScheduleExecutionCoordinator()
 
     override fun onCreate() {
         super.onCreate()
@@ -120,38 +101,29 @@ class ScheduleExecutionService : Service() {
             stopSelf()
             return START_NOT_STICKY
         }
-        if (executionJob?.isActive == true) {
-            // One service instance runs one schedule at a time, and per-run state (the idle stamp,
-            // the stream failure) lives on it, so a second run cannot simply be started alongside.
-            // Which schedule is holding the slot decides what to say and whether to try again.
-            val ownRun = runningScheduleId == scheduleId
+        if (!executionCoordinator.tryStart(scheduleId, startId)) {
+            // A service instance can host multiple independent schedules. Only the same schedule
+            // is rejected here; a different schedule gets its own session and execution state.
             app.scheduleRepository.schedule(scheduleId)?.let { schedule ->
                 app.reportScheduleStartFailure(
                     schedule = schedule,
-                    reason =
-                        getString(
-                            if (ownRun) R.string.schedule_run_overlapping else R.string.schedule_service_busy,
-                        ),
+                    reason = getString(R.string.schedule_run_overlapping),
                     failedAttempts = failedAttempts,
-                    // This schedule's own run is still going: a retry would only ask the same
-                    // question and stack a second session on it if the answer ever changed. Another
-                    // schedule's run is the opposite - it ends on its own, and the retry is exactly
-                    // what lets this slot still happen instead of being lost to a neighbour.
-                    retryable = !ownRun && automatic,
+                    retryable = false,
                 )
             }
             return START_NOT_STICKY
         }
-        runningScheduleId = scheduleId
-        executionJob =
-            scope.launch {
-                try {
-                    execute(scheduleId, failedAttempts, automatic)
-                } finally {
+        scope.launch {
+            try {
+                execute(scheduleId, failedAttempts, automatic)
+            } finally {
+                executionCoordinator.finish(scheduleId)?.let { latestStartId ->
                     stopForeground(STOP_FOREGROUND_REMOVE)
-                    stopSelf()
+                    stopSelfResult(latestStartId)
                 }
             }
+        }
         return START_NOT_STICKY
     }
 
@@ -239,7 +211,7 @@ class ScheduleExecutionService : Service() {
             // The slot is covered; a retry armed by an earlier attempt would now start a second run.
             app.scheduleManager.cancelRetry(schedule.id)
             updateForegroundNotification(app.getString(R.string.schedule_notification_running))
-            runPrompt(target, schedule, run)
+            runPrompt(target, schedule, run, ScheduleExecutionState())
         } catch (cancellation: CancellationException) {
             // The system stopped the service under us. Settle the run so hasActiveRun does not go
             // on blocking the schedule until the next process start, but never report it as a
@@ -303,17 +275,17 @@ class ScheduleExecutionService : Service() {
         target: RuntimeTarget,
         schedule: Schedule,
         run: ScheduleRun,
+        state: ScheduleExecutionState,
     ) {
         val autoAccept = schedule.autoAcceptPermissions ?: app.settings.autoAcceptPermissions
-        streamFailure = null
-        markProgress()
+        state.markProgress()
         // Subscribe before sending: fast runtimes can emit idle during sendMessage itself.
         val watcher: Deferred<ScheduleCompletion> =
             scope.async(start = CoroutineStart.UNDISPATCHED) {
-                awaitStreamCompletion(target, schedule, run, autoAccept)
+                awaitStreamCompletion(target, schedule, run, autoAccept, state)
             }
         // The poll sleeps before its first read, so it only ever sees this prompt's own turn.
-        val transcriptPoll: Deferred<ScheduleCompletion> = scope.async { pollForCompletion(target, run) }
+        val transcriptPoll: Deferred<ScheduleCompletion> = scope.async { pollForCompletion(target, run, state) }
         val settled: Deferred<ScheduleCompletion> =
             scope.async {
                 select<ScheduleCompletion> {
@@ -331,14 +303,14 @@ class ScheduleExecutionService : Service() {
                     agent = schedule.agentId,
                 ),
             )
-            when (val settlement = awaitSettlement(settled)) {
+            when (val settlement = awaitSettlement(settled, state)) {
                 is ScheduleSettlement.Settled -> settle(target, schedule, run, settlement.completion)
                 is ScheduleSettlement.GaveUp -> {
                     val message =
                         when (settlement.timeout) {
                             // A stream that stopped early explains the silence better than the
                             // timeout does.
-                            ScheduleRunTimeout.IDLE -> streamFailure ?: getString(R.string.schedule_completion_timeout)
+                            ScheduleRunTimeout.IDLE -> state.streamFailure ?: getString(R.string.schedule_completion_timeout)
                             ScheduleRunTimeout.MAX_DURATION -> getString(R.string.schedule_max_duration)
                         }
                     recordFailed(run, message)
@@ -361,7 +333,10 @@ class ScheduleExecutionService : Service() {
      * The old flat cap on the whole run failed every schedule whose work honestly takes longer than
      * the cap, however healthy it was - a prompt that writes twenty articles never stood a chance.
      */
-    private suspend fun awaitSettlement(settled: Deferred<ScheduleCompletion>): ScheduleSettlement {
+    private suspend fun awaitSettlement(
+        settled: Deferred<ScheduleCompletion>,
+        state: ScheduleExecutionState,
+    ): ScheduleSettlement {
         val startedAt = SystemClock.elapsedRealtime()
         while (true) {
             withTimeoutOrNull(WATCHDOG_TICK_MS) { settled.await() }
@@ -369,7 +344,7 @@ class ScheduleExecutionService : Service() {
             val now = SystemClock.elapsedRealtime()
             scheduleRunTimeout(
                 elapsedMs = now - startedAt,
-                sinceProgressMs = now - lastProgressAt,
+                sinceProgressMs = now - state.lastProgressAt,
                 idleTimeoutMs = IDLE_TIMEOUT_MS,
                 maxDurationMs = MAX_RUN_DURATION_MS,
             )?.let { return ScheduleSettlement.GaveUp(it) }
@@ -459,10 +434,11 @@ class ScheduleExecutionService : Service() {
         schedule: Schedule,
         run: ScheduleRun,
         autoAccept: Boolean,
+        state: ScheduleExecutionState,
     ): ScheduleCompletion {
         val reason =
             try {
-                watchForCompletion(target, schedule, run, autoAccept)?.let { return it }
+                watchForCompletion(target, schedule, run, autoAccept, state)?.let { return it }
                 getString(R.string.schedule_event_stream_ended)
             } catch (cancellation: CancellationException) {
                 throw cancellation
@@ -470,7 +446,7 @@ class ScheduleExecutionService : Service() {
                 error.message?.takeIf(String::isNotBlank) ?: error.javaClass.simpleName
             }
         Log.w(TAG, "Event stream stopped before the run settled: $reason")
-        streamFailure = reason
+        state.streamFailure = reason
         awaitCancellation()
     }
 
@@ -482,6 +458,7 @@ class ScheduleExecutionService : Service() {
     private suspend fun pollForCompletion(
         target: RuntimeTarget,
         run: ScheduleRun,
+        state: ScheduleExecutionState,
     ): ScheduleCompletion {
         var settling: String? = null
         var progressMark: String? = null
@@ -497,7 +474,7 @@ class ScheduleExecutionService : Service() {
             // holds the idle timeout off.
             val mark = transcriptProgressMarkOf(messages)
             if (mark != progressMark) {
-                if (progressMark != null) markProgress()
+                if (progressMark != null) state.markProgress()
                 progressMark = mark
             }
             val newest = messages.lastOrNull()?.info
@@ -524,13 +501,14 @@ class ScheduleExecutionService : Service() {
         schedule: Schedule,
         run: ScheduleRun,
         autoAccept: Boolean,
+        state: ScheduleExecutionState,
     ): ScheduleCompletion? {
         val targetSessionId = run.sessionId
         val notifyUser = target.id != app.runtimeRegistry.selected.value?.id
 
         try {
             target.events().collect { event ->
-                if (progressSessionIdOf(event) == targetSessionId) markProgress()
+                if (progressSessionIdOf(event) == targetSessionId) state.markProgress()
                 when (event) {
                     is OpenCodeEvent.SessionIdle -> {
                         if (event.sessionId == targetSessionId) {
@@ -570,10 +548,6 @@ class ScheduleExecutionService : Service() {
             return signal.result
         }
         return null
-    }
-
-    private fun markProgress() {
-        lastProgressAt = SystemClock.elapsedRealtime()
     }
 
     private fun recordCompleted(run: ScheduleRun) {

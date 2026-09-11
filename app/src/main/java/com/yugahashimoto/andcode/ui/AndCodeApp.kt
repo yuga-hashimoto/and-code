@@ -1,7 +1,6 @@
 package com.yugahashimoto.andcode.ui
 
 import android.Manifest
-import android.content.Intent
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -70,6 +69,7 @@ import androidx.navigation.navArgument
 import com.yugahashimoto.andcode.AndCodeApplication
 import com.yugahashimoto.andcode.BuildConfig
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.core.UrlLauncher
 import com.yugahashimoto.andcode.core.diagnostics.CrashLog
 import com.yugahashimoto.andcode.feature.activity.ActivityViewModel
 import com.yugahashimoto.andcode.feature.assistant.SpeechRecognizerManager
@@ -97,6 +97,7 @@ import com.yugahashimoto.andcode.feature.workspace.WorkspaceViewModel
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.runtime.local.GitCloneResult
+import com.yugahashimoto.andcode.runtime.local.LocalRuntimeOperationResult
 import com.yugahashimoto.andcode.ui.components.SessionStatus
 import com.yugahashimoto.andcode.ui.navigation.ClaudeSettingsActions
 import com.yugahashimoto.andcode.ui.navigation.DRAWER_ROOT_ROUTES
@@ -322,6 +323,7 @@ fun AndCodeApp(
                         // backgrounded - neither loop's result is visible to anyone until it is
                         // foreground again.
                         awaitForeground = { app.appForeground.foreground.first { visible -> visible } },
+                        videoNotSupportedMessage = context.getString(R.string.error_video_not_supported),
                     )
                 },
         )
@@ -487,10 +489,41 @@ fun AndCodeApp(
             voiceScope.launch {
                 runCatching {
                     withContext(Dispatchers.IO) {
-                        com.yugahashimoto.andcode.runtime.local.AttachmentImporter(context).import(uri)
+                        val importer = com.yugahashimoto.andcode.runtime.local.AttachmentImporter(context)
+                        importer.importAll(uri).map { attachment ->
+                            val preview =
+                                if (com.yugahashimoto.andcode.runtime.local.VideoAttachmentHelper.isImageMime(
+                                        attachment.mime,
+                                    )
+                                ) {
+                                    runCatching {
+                                        val base64 =
+                                            attachment.url.substringAfter("base64,", missingDelimiterValue = "")
+                                        if (base64.isEmpty()) return@runCatching null
+                                        val bytes = android.util.Base64.decode(base64, android.util.Base64.DEFAULT)
+                                        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                                    }.getOrNull()
+                                } else {
+                                    null
+                                }
+                            attachment to preview
+                        }
                     }
-                }.onSuccess { attachment ->
-                    chatViewModel.addAttachment(attachment)
+                }.onSuccess { attachments ->
+                    attachments.forEach { (attachment, preview) ->
+                        if (preview != null) {
+                            chatViewModel.addImageAttachment(attachment, preview)
+                        } else {
+                            chatViewModel.addAttachment(attachment)
+                        }
+                    }
+                }.onFailure { error ->
+                    android.util.Log.w("AndCodeApp", "Failed to attach file", error)
+                    android.widget.Toast.makeText(
+                        context,
+                        context.getString(R.string.attachment_load_failed),
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
                 }
             }
         }
@@ -873,11 +906,16 @@ fun AndCodeApp(
 
                     composable(ROUTE_ANDROID_SETUP) {
                         val localRuntimeStatus by app.localRuntimeManager.state.collectAsState()
+                        val localRuntimeLastOperation by app.localRuntimeManager.lastOperation.collectAsState()
                         AndroidSetupScreen(
                             runtimeStatus = localRuntimeStatus,
                             claude = workspaceState.claude,
                             antigravity = antigravityState,
-                            onStartSetup = { agents ->
+                            fullDevelopmentToolsInstalled = app.localRuntimeManager.fullDevelopmentToolsInstalled(),
+                            fullDevelopmentToolsInstallFailed =
+                                (localRuntimeLastOperation as? LocalRuntimeOperationResult.Failed)?.operation ==
+                                    "development-tools-install",
+                            onStartSetup = { agents, installFullDevelopmentTools ->
                                 // Ticking Claude Code or Antigravity next to OpenCode used to install
                                 // neither of them: the two branches below were guarded on OpenCode
                                 // *not* being selected, and the OpenCode path never received the
@@ -886,11 +924,11 @@ fun AndCodeApp(
                                 // already knew how to do - and it must stay one install, because a
                                 // second one would race it for the same staging directory.
                                 if (com.yugahashimoto.andcode.runtime.LocalAgent.OPEN_CODE in agents) {
-                                    workspaceViewModel.setupLocalRuntime(agents)
+                                    workspaceViewModel.setupLocalRuntime(agents, installFullDevelopmentTools)
                                 } else if (com.yugahashimoto.andcode.runtime.LocalAgent.ANTIGRAVITY in agents) {
-                                    app.antigravityController.install(agents)
+                                    app.antigravityController.install(agents, installFullDevelopmentTools)
                                 } else if (com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE in agents) {
-                                    workspaceViewModel.installClaudeCode()
+                                    workspaceViewModel.installClaudeCode(installFullDevelopmentTools)
                                 }
                             },
                             onSelectClaudePermissionMode = { mode ->
@@ -908,7 +946,7 @@ fun AndCodeApp(
                                 app.antigravityController.setPermissionMode(mode, chatState.sessionId)
                             },
                             onOpenUrl = { url ->
-                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
+                                UrlLauncher.openUrl(context, url)
                             },
                             settingsState = settingsState,
                             onOpenProviderAuth = settingsViewModel::openProviderAuth,
@@ -925,7 +963,7 @@ fun AndCodeApp(
                             onRefreshAntigravityState = app.antigravityController::refresh,
                             onConnectGitHub = { settingsViewModel.beginGitHubDeviceFlow() },
                             onOpenGitHubVerification = { url ->
-                                context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                                UrlLauncher.openUrl(context, url)
                             },
                             onDisconnectGitHub = settingsViewModel::disconnectGitHub,
                             onBack = { navController.popBackStack() },
@@ -1106,7 +1144,7 @@ fun AndCodeApp(
                                 chatViewModel.openParentSession()
                             },
                             onOpenUrl = { url ->
-                                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
+                                UrlLauncher.openUrl(context, url)
                             },
                         )
                     }

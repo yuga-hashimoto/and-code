@@ -8,6 +8,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import java.io.File
+import java.io.FileOutputStream
 
 class VerifiedRuntimeDownloader(
     private val httpClient: OkHttpClient = OkHttpClient(),
@@ -53,38 +54,86 @@ class VerifiedRuntimeDownloader(
         destination.parentFile?.mkdirs()
         val partial = File(destination.parentFile, destination.name + ".partial")
         val backup = File(destination.parentFile, destination.name + ".backup")
-        partial.delete()
         recoverBackupIfDestinationMissing(destination, backup)
 
+        var completed = false
+        var validationFailed = false
         try {
-            val requestBuilder = Request.Builder().url(parsedUrl).get()
-            headers.forEach { (name, value) -> requestBuilder.header(name, value) }
-            val request = requestBuilder.build()
-            var downloaded = 0L
-            httpClient.newCall(request).execute().use { response ->
-                require(response.isSuccessful) {
-                    "Runtime download failed with HTTP ${response.code}"
-                }
-                val body = requireNotNull(response.body) { "Runtime download response had no body" }
-                partial.outputStream().buffered().use { output ->
-                    body.byteStream().use { input ->
-                        val buffer = ByteArray(64 * 1024)
-                        while (true) {
-                            val count = input.read(buffer)
-                            if (count < 0) break
-                            output.write(buffer, 0, count)
-                            downloaded += count
-                            onProgress(expectedSizeBytes?.let { downloaded.toFloat() / it })
+            var downloaded = partial.length().coerceAtLeast(0L)
+            if (expectedSizeBytes != null && downloaded > expectedSizeBytes) {
+                partial.delete()
+                downloaded = 0L
+            }
+            // The process may have died after writing the final byte but before verification. In
+            // that case a range request starts at EOF and commonly receives HTTP 416 forever.
+            // Verify the preserved body first so a complete partial can be activated offline.
+            val partialAlreadyComplete =
+                downloaded > 0L &&
+                    (expectedSizeBytes == null || downloaded == expectedSizeBytes) &&
+                    runCatching {
+                        RuntimeArchive.verifySha256(partial, expectedSha256)
+                    }.isSuccess
+            if (!partialAlreadyComplete && expectedSizeBytes != null && downloaded == expectedSizeBytes) {
+                partial.delete()
+                downloaded = 0L
+            }
+            if (!partialAlreadyComplete) {
+                val resume = downloaded > 0L
+                val requestBuilder = Request.Builder().url(parsedUrl).get()
+                headers.forEach { (name, value) -> requestBuilder.header(name, value) }
+                if (resume) requestBuilder.header("Range", "bytes=$downloaded-")
+                val request = requestBuilder.build()
+                httpClient.newCall(request).execute().use { response ->
+                    if (resume && response.code == 416) {
+                        require(partial.delete()) { "Unable to discard an invalid partial download" }
+                        response.close()
+                        return downloadLocked(
+                            url = url,
+                            destination = destination,
+                            expectedSha256 = expectedSha256,
+                            expectedSizeBytes = expectedSizeBytes,
+                            headers = headers,
+                            onProgress = onProgress,
+                        )
+                    }
+                    require(response.isSuccessful) {
+                        "Runtime download failed with HTTP ${response.code}"
+                    }
+                    val body = requireNotNull(response.body) { "Runtime download response had no body" }
+                    // A compliant server returns 206 for a range request. If it ignores Range and
+                    // returns 200, restart from byte zero rather than duplicating the prefix.
+                    val append = resume && response.code == 206
+                    if (append) {
+                        validationFailed = true
+                        require(response.header("Content-Range")?.startsWith("bytes $downloaded-") == true) {
+                            "Runtime download returned an invalid Content-Range"
+                        }
+                        validationFailed = false
+                    }
+                    if (!append) downloaded = 0L
+                    FileOutputStream(partial, append).buffered().use { output ->
+                        body.byteStream().use { input ->
+                            val buffer = ByteArray(64 * 1024)
+                            while (true) {
+                                val count = input.read(buffer)
+                                if (count < 0) break
+                                output.write(buffer, 0, count)
+                                downloaded += count
+                                onProgress(expectedSizeBytes?.let { downloaded.toFloat() / it })
+                            }
                         }
                     }
                 }
-            }
-            expectedSizeBytes?.let { expected ->
-                require(downloaded == expected) {
-                    "Runtime download size mismatch: expected $expected, got $downloaded"
+                expectedSizeBytes?.let { expected ->
+                    validationFailed = true
+                    require(downloaded == expected) {
+                        "Runtime download size mismatch: expected $expected, got $downloaded"
+                    }
                 }
+                validationFailed = true
+                RuntimeArchive.verifySha256(partial, expectedSha256)
+                validationFailed = false
             }
-            RuntimeArchive.verifySha256(partial, expectedSha256)
 
             if (destination.isFile &&
                 runCatching {
@@ -107,6 +156,7 @@ class VerifiedRuntimeDownloader(
             try {
                 move(partial, destination)
                 backup.delete()
+                completed = true
             } catch (error: Throwable) {
                 destination.delete()
                 if (backup.exists()) {
@@ -117,8 +167,13 @@ class VerifiedRuntimeDownloader(
                 throw error
             }
             onProgress(1f)
+        } catch (error: Throwable) {
+            // Keep an incomplete body for transient network/process failures. Invalid complete
+            // bodies are never useful for a retry and are removed just as before.
+            if (validationFailed) partial.delete()
+            throw error
         } finally {
-            partial.delete()
+            if (completed) partial.delete()
             recoverBackupIfDestinationMissing(destination, backup)
         }
     }

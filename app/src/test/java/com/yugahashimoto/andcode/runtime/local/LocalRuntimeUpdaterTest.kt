@@ -6,6 +6,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import okhttp3.mockwebserver.SocketPolicy
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -15,6 +16,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 import java.io.File
+import java.io.IOException
 import java.security.MessageDigest
 
 class LocalRuntimeUpdaterTest {
@@ -388,6 +390,174 @@ class VerifiedRuntimeDownloaderTest {
                 assertTrue(error?.message.orEmpty().contains("SHA-256"))
                 assertEquals("existing", destination.readText())
                 assertFalse(root.resolve("asset.tar.gz.partial").exists())
+            } finally {
+                root.deleteRecursively()
+            }
+        }
+
+    @Test
+    fun `partial download resumes with an HTTP range request`() =
+        runTest {
+            val root = createTempDir(prefix = "verified-downloader-resume-")
+            try {
+                val destination = root.resolve("asset.tar.gz")
+                root.resolve("asset.tar.gz.partial").writeText("hello ")
+                val payload = "hello world"
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(206)
+                        .setHeader("Content-Range", "bytes 6-10/11")
+                        .setBody("world"),
+                )
+
+                VerifiedRuntimeDownloader(OkHttpClient()).download(
+                    url = server.url("/asset").toString(),
+                    destination = destination,
+                    expectedSha256 = sha256(payload),
+                    expectedSizeBytes = payload.toByteArray().size.toLong(),
+                )
+
+                assertEquals("bytes=6-", server.takeRequest().getHeader("Range"))
+                assertEquals(payload, destination.readText())
+                assertFalse(root.resolve("asset.tar.gz.partial").exists())
+            } finally {
+                root.deleteRecursively()
+            }
+        }
+
+    @Test
+    fun `server ignoring range restarts the partial download`() =
+        runTest {
+            val root = createTempDir(prefix = "verified-downloader-restart-")
+            try {
+                val destination = root.resolve("asset.tar.gz")
+                root.resolve("asset.tar.gz.partial").writeText("stale prefix")
+                val payload = "complete payload"
+                server.enqueue(MockResponse().setResponseCode(200).setBody(payload))
+
+                VerifiedRuntimeDownloader(OkHttpClient()).download(
+                    url = server.url("/asset").toString(),
+                    destination = destination,
+                    expectedSha256 = sha256(payload),
+                    expectedSizeBytes = payload.toByteArray().size.toLong(),
+                )
+
+                assertEquals("bytes=12-", server.takeRequest().getHeader("Range"))
+                assertEquals(payload, destination.readText())
+            } finally {
+                root.deleteRecursively()
+            }
+        }
+
+    @Test
+    fun `interrupted response retains bytes and the next attempt resumes`() =
+        runTest {
+            val root = kotlin.io.path.createTempDirectory("verified-downloader-interrupted-").toFile()
+            try {
+                val destination = root.resolve("asset.tar.gz").apply { writeText("existing") }
+                val partial = root.resolve("asset.tar.gz.partial")
+                val payload = "0123456789abcdef".repeat(8192)
+                val downloader = VerifiedRuntimeDownloader(OkHttpClient())
+                server.enqueue(MockResponse().setBody(payload).setSocketPolicy(SocketPolicy.DISCONNECT_DURING_RESPONSE_BODY))
+
+                val failure =
+                    runCatching {
+                        downloader.download(server.url("/asset").toString(), destination, sha256(payload), payload.length.toLong())
+                    }.exceptionOrNull()
+
+                assertTrue(failure is IOException)
+                assertEquals("existing", destination.readText())
+                val offset = partial.length()
+                assertTrue(offset in 1 until payload.length.toLong())
+                assertEquals(payload.take(offset.toInt()), partial.readText())
+                server.takeRequest()
+                server.enqueue(
+                    MockResponse()
+                        .setResponseCode(206)
+                        .setHeader("Content-Range", "bytes $offset-${payload.lastIndex}/${payload.length}")
+                        .setBody(payload.drop(offset.toInt())),
+                )
+
+                downloader.download(server.url("/asset").toString(), destination, sha256(payload), payload.length.toLong())
+
+                assertEquals("bytes=$offset-", server.takeRequest().getHeader("Range"))
+                assertEquals(payload, destination.readText())
+                assertFalse(partial.exists())
+            } finally {
+                root.deleteRecursively()
+            }
+        }
+
+    @Test
+    fun `invalid range discards partial without replacing the active file`() =
+        runTest {
+            val root = kotlin.io.path.createTempDirectory("verified-downloader-bad-range-").toFile()
+            try {
+                val destination = root.resolve("asset.tar.gz").apply { writeText("existing") }
+                val partial = root.resolve("asset.tar.gz.partial").apply { writeText("hello ") }
+                server.enqueue(MockResponse().setResponseCode(206).setHeader("Content-Range", "bytes 0-4/11").setBody("world"))
+
+                val failure =
+                    runCatching {
+                        VerifiedRuntimeDownloader(OkHttpClient()).download(
+                            server.url("/asset").toString(),
+                            destination,
+                            sha256("hello world"),
+                            11L,
+                        )
+                    }.exceptionOrNull()
+
+                assertTrue(failure?.message.orEmpty().contains("Content-Range"))
+                assertEquals("existing", destination.readText())
+                assertFalse(partial.exists())
+            } finally {
+                root.deleteRecursively()
+            }
+        }
+
+    @Test
+    fun `complete partial download is reused without another request`() =
+        runTest {
+            val root = createTempDir(prefix = "verified-downloader-complete-partial-")
+            try {
+                val destination = root.resolve("asset.tar.gz")
+                val payload = "complete payload"
+                root.resolve("asset.tar.gz.partial").writeText(payload)
+
+                VerifiedRuntimeDownloader(OkHttpClient()).download(
+                    url = server.url("/asset").toString(),
+                    destination = destination,
+                    expectedSha256 = sha256(payload),
+                )
+
+                assertEquals(payload, destination.readText())
+                assertEquals(0, server.requestCount)
+                assertFalse(root.resolve("asset.tar.gz.partial").exists())
+            } finally {
+                root.deleteRecursively()
+            }
+        }
+
+    @Test
+    fun `range not satisfiable retries once from byte zero`() =
+        runTest {
+            val root = createTempDir(prefix = "verified-downloader-range-retry-")
+            try {
+                val destination = root.resolve("asset.tar.gz")
+                root.resolve("asset.tar.gz.partial").writeText("stale")
+                val payload = "complete payload"
+                server.enqueue(MockResponse().setResponseCode(416))
+                server.enqueue(MockResponse().setResponseCode(200).setBody(payload))
+
+                VerifiedRuntimeDownloader(OkHttpClient()).download(
+                    url = server.url("/asset").toString(),
+                    destination = destination,
+                    expectedSha256 = sha256(payload),
+                )
+
+                assertEquals("bytes=5-", server.takeRequest().getHeader("Range"))
+                assertEquals(null, server.takeRequest().getHeader("Range"))
+                assertEquals(payload, destination.readText())
             } finally {
                 root.deleteRecursively()
             }

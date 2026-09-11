@@ -43,6 +43,7 @@
     <string name="always_allow">Toujours autoriser</string>
     <string name="reject">Refuser</string>
     <string name="reasoning_card_title">Raisonnement</string>
+    <string name="reasoning_empty">Aucun contenu de raisonnement</string>
     <string name="tool_status_pending">En attente</string>
     <string name="tool_status_running">En cours</string>
     <string name="tool_status_completed">Terminé</string>
@@ -236,6 +237,7 @@
     <string name="no_git_info">Aucune information de dépôt Git</string>
     <string name="loading_changes">Chargement des modifications</string>
     <string name="no_uncommitted_changes">Aucune modification non validée</string>
+    <string name="open_file">Ouvrir</string>
 
     <string name="local_runtime_screen_title">OpenCode local</string>
     <string name="refresh_diagnostics_description">Actualiser les diagnostics et les informations de mise à jour</string>
@@ -818,6 +820,8 @@
     <string name="attach_file">File</string>
     <string name="attach_camera">Camera</string>
     <string name="attach_gallery">Gallery</string>
+    <string name="attachment_load_failed">Could not attach file</string>
+    <string name="error_video_not_supported">Video files cannot be sent directly. Remove the video and attach images instead.</string>
     <string name="status_queued">Queued</string>
 
     <!-- Resume command -->
@@ -1125,4 +1129,16 @@
     <string name="guest_browser_back">Retour</string>
     <string name="guest_browser_forward">Avancer</string>
     <string name="guest_browser_reload">Recharger</string>
+    <string name="setup_step_development_tools">Outils de développement</string>
+    <string name="setup_development_tools_description">Installe uniquement le nécessaire par défaut, ou incluez la chaîne complète d’outils.</string>
+    <string name="setup_required_tools_description">Linux, les agents sélectionnés, Git et les outils requis par AndCode. Ils sont toujours installés.</string>
+    <string name="setup_install_full_development_tools">Installer tous les outils de développement</string>
+    <string name="setup_install_full_development_tools_description">Ajoute les runtimes, compilateurs, outils de build, éditeurs et utilitaires. Plus de données seront téléchargées.</string>
+    <string name="setup_development_tools_settings_hint">Vous pouvez ignorer cette étape et installer la chaîne complète plus tard dans Paramètres → Environnement local.</string>
+    <string name="install_step_installing_runtime_tools">Installation des outils nécessaires</string>
+    <string name="full_development_tools_title">Outils de développement</string>
+    <string name="full_development_tools_description">Runtimes, compilateurs, outils de build et utilitaires facultatifs pour vos projets.</string>
+    <string name="full_development_tools_installed">Tous les outils de développement sont installés</string>
+    <string name="install_full_development_tools_button">Installer la chaîne complète</string>
+    <string name="runtime_full_development_tools_start_failed">Impossible de démarrer l’installation des outils</string>
 </resources>

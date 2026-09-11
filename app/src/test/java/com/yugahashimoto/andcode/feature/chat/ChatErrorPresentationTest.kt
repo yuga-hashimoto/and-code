@@ -117,6 +117,18 @@ class ChatErrorPresentationTest {
     }
 
     @Test
+    fun `classifies issue 306 provider connectivity failure as transient`() {
+        assertEquals(
+            ChatErrorKind.TRANSIENT_CONNECTION,
+            classifyChatError("Cannot connect to API: Unable to connect. Is the computer able to access the url?"),
+        )
+        assertEquals(
+            ChatErrorKind.TRANSIENT_CONNECTION,
+            classifyChatError("APIError: Cannot connect to API: Unable to connect. Is the computer able to access the url?"),
+        )
+    }
+
+    @Test
     fun `classifies non-HTTP throwable by message`() {
         assertEquals(
             ChatErrorKind.TRANSIENT_CONNECTION,
