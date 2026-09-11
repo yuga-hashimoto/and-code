@@ -128,6 +128,27 @@ class ChatViewModelTest {
             assertNull(viewModel.uiState.value.draftSystemPrompt)
         }
 
+    /**
+     * The draft is read before `createSession` suspends, so starting another blank chat while that
+     * request is in flight cannot take the choice away from the send it was made for.
+     */
+    @Test
+    fun `a send keeps the preset it was started with`() =
+        runTest(dispatcher) {
+            val applied = mutableListOf<Pair<String, String?>>()
+            val backend = FakeBackend()
+            val viewModel =
+                ChatViewModel(backend, onApplySystemPrompt = { sessionId, presetId -> applied += sessionId to presetId })
+            advanceUntilIdle()
+            viewModel.selectSystemPrompt("debug")
+
+            viewModel.sendMessage("Hello")
+            viewModel.newSession()
+            advanceUntilIdle()
+
+            assertEquals(listOf("s1" to "debug"), applied)
+        }
+
     /** Clearing the preset for this chat is a choice too, not the absence of one. */
     @Test
     fun `picking None before the first message is applied as None`() =

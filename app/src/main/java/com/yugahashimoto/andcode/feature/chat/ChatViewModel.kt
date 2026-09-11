@@ -953,14 +953,23 @@ class ChatViewModel(
     }
 
     /**
-     * Writes this chat's draft preset onto the session its first message just created.
+     * Writes the preset [draft] onto the session this send just created, and consumes it.
      *
-     * Called inside that same coroutine, before the turn is dispatched, because the send path reads
-     * the session's preset when it builds the process arguments - doing this from a recomposition
-     * instead would race the message it is meant to accompany.
+     * Called inside the send's own coroutine, before the turn is dispatched, because the send path
+     * reads the session's preset when it builds the process arguments - doing this from a
+     * recomposition instead would race the message it is meant to accompany.
+     *
+     * [draft] is passed in rather than read here: it is captured synchronously where the send is
+     * requested, before the coroutine is even dispatched, so a chat started or a preset changed
+     * between the tap and the request landing cannot take the choice away from the send it was made
+     * for. It is consumed only once applied, so a failed `createSession` leaves it in place for the
+     * retry.
      */
-    private fun applyDraftSystemPrompt(sessionId: String) {
-        val draft = _uiState.value.draftSystemPrompt ?: return
+    private fun applyDraftSystemPrompt(
+        sessionId: String,
+        draft: StagedSystemPrompt?,
+    ) {
+        if (draft == null) return
         onApplySystemPrompt(sessionId, draft.id)
         _uiState.update { it.copy(draftSystemPrompt = null) }
     }
@@ -1168,6 +1177,10 @@ class ChatViewModel(
         // clock has to be restarted here rather than only on the idle-to-running transition.
         recordProgress()
 
+        // Taken here rather than inside the coroutine below: this is the moment the send was
+        // requested, and the coroutine does not begin until the dispatcher runs it - long enough
+        // for a new chat to have been started and this choice cleared. See applyDraftSystemPrompt.
+        val draftSystemPrompt = _uiState.value.draftSystemPrompt
         viewModelScope.launch {
             // Captured once the target session is known so onFailure below can tell whether the
             // failure still concerns the chat currently on screen.
@@ -1187,7 +1200,7 @@ class ChatViewModel(
                 val targetSessionId = existingSessionId ?: requireNotNull(session).id
                 capturedSessionId = targetSessionId
                 if (session != null) {
-                    applyDraftSystemPrompt(session.id)
+                    applyDraftSystemPrompt(session.id, draftSystemPrompt)
                     _uiState.update {
                         it.copy(sessionId = session.id, sessionTitle = session.title)
                     }
@@ -1379,6 +1392,8 @@ class ChatViewModel(
         // clock has to be restarted here rather than only on the idle-to-running transition.
         recordProgress()
 
+        // As in sendMessage - the choice belongs to the request, not to whenever it is dispatched.
+        val draftSystemPrompt = _uiState.value.draftSystemPrompt
         viewModelScope.launch {
             var capturedSessionId: String? = null
             runCatching {
@@ -1395,7 +1410,7 @@ class ChatViewModel(
                 val targetSessionId = existingSessionId ?: requireNotNull(session).id
                 capturedSessionId = targetSessionId
                 if (session != null) {
-                    applyDraftSystemPrompt(session.id)
+                    applyDraftSystemPrompt(session.id, draftSystemPrompt)
                     _uiState.update {
                         it.copy(sessionId = session.id, sessionTitle = session.title)
                     }
