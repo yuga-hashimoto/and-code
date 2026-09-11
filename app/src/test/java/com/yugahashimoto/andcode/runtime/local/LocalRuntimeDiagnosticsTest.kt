@@ -94,6 +94,25 @@ class LocalRuntimeDiagnosticsTest {
     }
 
     @Test
+    fun `full toolchain diagnostics include optional tools`() {
+        val runtime = temporaryFolder.newFolder("full-toolchain")
+        val collector =
+            LocalRuntimeDiagnosticsCollector(
+                runtimeDirectory = runtime,
+                abi = "arm64-v8a",
+                statusProvider = { LocalRuntimeStatus.Ready("1.18.3", 4097) },
+                processMetricsProvider = { null },
+                commandExecutor = { LocalRuntimeCommandResult(0, "installed") },
+                fullDevelopmentToolsInstalledProvider = { true },
+            )
+
+        val result = collector.collect()
+
+        assertTrue(result.tools.any { it.id == "java" })
+        assertTrue(result.tools.any { it.id == "node" })
+    }
+
+    @Test
     fun `sums resident memory for the full runtime process tree`() {
         val statuses =
             mapOf(

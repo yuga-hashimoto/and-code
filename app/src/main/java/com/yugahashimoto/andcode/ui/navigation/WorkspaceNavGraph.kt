@@ -20,6 +20,7 @@ import com.yugahashimoto.andcode.feature.workspace.WorkspaceExplorerScreen
 import com.yugahashimoto.andcode.feature.workspace.WorkspaceExplorerViewModel
 import com.yugahashimoto.andcode.feature.workspace.WorkspaceViewModel
 import com.yugahashimoto.andcode.feature.workspace.WorkspacesScreen
+import com.yugahashimoto.andcode.feature.workspace.isOpenable
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.ui.ViewModelFactory
@@ -99,6 +100,9 @@ fun NavGraphBuilder.workspaceNavGraph(
                                 }
                             },
                             repairAction = app.localRuntimeController::reinstall,
+                            installFullDevelopmentToolsAction = app.localRuntimeController::installFullDevelopmentTools,
+                            runtimeEnvironmentInstalledProvider = app.localRuntimeManager::runtimeEnvironmentInstalled,
+                            fullDevelopmentToolsInstalledProvider = app.localRuntimeManager::fullDevelopmentToolsInstalled,
                             deleteAction = app.localRuntimeController::delete,
                             getString = { app.getString(it) },
                             adbState = app.adbConnectionManager.state,
@@ -122,6 +126,7 @@ fun NavGraphBuilder.workspaceNavGraph(
             onBack = { navController.popBackStack() },
             onRefresh = managementViewModel::refresh,
             onRepair = managementViewModel::repair,
+            onInstallFullDevelopmentTools = managementViewModel::installFullDevelopmentTools,
             onRequestDelete = managementViewModel::requestDelete,
             onDismissDelete = managementViewModel::dismissDelete,
             onConfirmDelete = managementViewModel::confirmDelete,
@@ -163,6 +168,11 @@ fun NavGraphBuilder.workspaceNavGraph(
                 onSearch = explorerViewModel::search,
                 onRefreshChanges = explorerViewModel::refreshChanges,
                 onOpenTerminal = { navController.navigate(ROUTE_TERMINAL) },
+                onOpenChange = { change ->
+                    if (change.isOpenable()) {
+                        navController.navigate(codeViewerRoute(runtime.id, workspace.path, change.displayPath))
+                    }
+                },
             )
         }
     }

@@ -90,10 +90,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -249,12 +247,6 @@ fun ChatHomeScreen(
     val coroutineScope = rememberCoroutineScope()
     var showSlashCommands by remember { mutableStateOf(false) }
     var showSidePanel by remember { mutableStateOf(false) }
-    val attachedImages = remember { mutableStateListOf<Bitmap>() }
-    DisposableEffect(Unit) {
-        onDispose {
-            attachedImages.clear()
-        }
-    }
     val context = androidx.compose.ui.platform.LocalContext.current
     val imageSaveLauncher =
         rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("image/*")) { uri ->
@@ -277,7 +269,6 @@ fun ChatHomeScreen(
             ActivityResultContracts.TakePicturePreview(),
         ) { bitmap ->
             if (bitmap != null) {
-                attachedImages.add(bitmap)
                 onImageAttachment(bitmap)
             }
         }
@@ -300,7 +291,6 @@ fun ChatHomeScreen(
                             android.graphics.BitmapFactory.decodeStream(it)
                         }
                     if (bitmap != null) {
-                        attachedImages.add(bitmap)
                         onImageAttachment(bitmap)
                     }
                 } catch (e: Exception) {
@@ -343,12 +333,6 @@ fun ChatHomeScreen(
     // A subagent session is a detour, not a destination: the system back gesture returns to the
     // main agent instead of leaving the chat, matching the in-chat return banner.
     BackHandler(enabled = state.parentSession != null) { onReturnToParentSession() }
-
-    LaunchedEffect(state.attachments) {
-        if (state.attachments.isEmpty()) {
-            attachedImages.clear()
-        }
-    }
 
     Box(
         modifier =
@@ -638,11 +622,12 @@ fun ChatHomeScreen(
                     githubRefs = githubRefs,
                     pullRequests = state.pullRequests,
                     onOpenUrl = onOpenUrl,
-                    attachedImages = attachedImages,
-                    onRemoveImage = {
-                        val removed = attachedImages.removeAt(it)
-                        if (!removed.isRecycled) removed.recycle()
-                        onRemoveAttachment(it)
+                    // The composer thumbnails render the ViewModel's previews directly: a local
+                    // copy of the list drifted out of step with the attachments it stood for, so a
+                    // removal could drop the wrong image or leave a thumbnail with nothing behind it.
+                    attachedImages = state.imagePreviews,
+                    onRemoveImage = { previewIndex ->
+                        attachmentIndexForPreview(state.attachments, previewIndex)?.let(onRemoveAttachment)
                     },
                     onCameraLaunch = {
                         if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA)

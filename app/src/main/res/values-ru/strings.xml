@@ -43,6 +43,7 @@
     <string name="always_allow">Всегда разрешать</string>
     <string name="reject">Отклонить</string>
     <string name="reasoning_card_title">Рассуждение</string>
+    <string name="reasoning_empty">Нет содержания рассуждения</string>
     <string name="tool_status_pending">Ожидание</string>
     <string name="tool_status_running">Выполняется</string>
     <string name="tool_status_completed">Завершено</string>
@@ -237,6 +238,7 @@
     <string name="no_git_info">Нет информации о репозитории Git</string>
     <string name="loading_changes">Загрузка изменений</string>
     <string name="no_uncommitted_changes">Нет незафиксированных изменений</string>
+    <string name="open_file">Открыть</string>
 
     <string name="local_runtime_screen_title">Локальный OpenCode</string>
     <string name="refresh_diagnostics_description">Обновить диагностику и информацию об обновлении</string>
@@ -820,6 +822,8 @@
     <string name="attach_file">File</string>
     <string name="attach_camera">Camera</string>
     <string name="attach_gallery">Gallery</string>
+    <string name="attachment_load_failed">Could not attach file</string>
+    <string name="error_video_not_supported">Video files cannot be sent directly. Remove the video and attach images instead.</string>
     <string name="status_queued">Queued</string>
 
     <!-- Resume command -->
@@ -1127,4 +1131,16 @@
     <string name="guest_browser_back">Назад</string>
     <string name="guest_browser_forward">Вперёд</string>
     <string name="guest_browser_reload">Обновить</string>
+    <string name="setup_step_development_tools">Инструменты разработки</string>
+    <string name="setup_development_tools_description">По умолчанию устанавливаются только необходимые компоненты. При желании можно добавить полный набор инструментов.</string>
+    <string name="setup_required_tools_description">Linux, выбранные агенты, Git и вспомогательные инструменты AndCode. Они устанавливаются всегда.</string>
+    <string name="setup_install_full_development_tools">Установить полный набор инструментов</string>
+    <string name="setup_install_full_development_tools_description">Добавляет языковые среды, компиляторы, инструменты сборки, редакторы и утилиты. Будет загружено больше данных.</string>
+    <string name="setup_development_tools_settings_hint">Можно пропустить этот шаг и установить полный набор позже в Настройки → Локальная среда.</string>
+    <string name="install_step_installing_runtime_tools">Установка необходимых инструментов</string>
+    <string name="full_development_tools_title">Инструменты разработки</string>
+    <string name="full_development_tools_description">Дополнительные языковые среды, компиляторы, инструменты сборки и утилиты для проектов.</string>
+    <string name="full_development_tools_installed">Полный набор инструментов установлен</string>
+    <string name="install_full_development_tools_button">Установить полный набор</string>
+    <string name="runtime_full_development_tools_start_failed">Не удалось начать установку инструментов разработки</string>
 </resources>

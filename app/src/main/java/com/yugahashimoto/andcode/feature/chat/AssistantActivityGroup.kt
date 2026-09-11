@@ -4,26 +4,34 @@ package com.yugahashimoto.andcode.feature.chat
  * A single row of the chat timeline: a user bubble, assistant body text, or a collapsed run of
  * reasoning/tool/patch parts that the user can expand to inspect.
  *
- * Ids are namespaced by kind so they stay unique as `LazyColumn` keys across the whole transcript.
+ * Ids are namespaced by kind so they stay unique as `LazyColumn` keys across the whole transcript;
+ * [groupConversationTimeline] additionally suffixes any id the transcript repeats, so a stored
+ * transcript that contains the same id twice can never crash the list.
  */
 sealed interface TimelineEntry {
     val id: String
 
-    data class UserMessage(val message: ChatMessage) : TimelineEntry {
-        override val id: String get() = "user:${message.id}"
-    }
+    data class UserMessage(
+        override val id: String,
+        val message: ChatMessage,
+    ) : TimelineEntry
 
-    data class Body(val messageId: String, val part: ChatPart.Text) : TimelineEntry {
-        override val id: String get() = "body:${part.id}"
-    }
+    data class Body(
+        override val id: String,
+        val messageId: String,
+        val part: ChatPart.Text,
+    ) : TimelineEntry
 
-    data class Image(val messageId: String, val part: ChatPart.Image) : TimelineEntry {
-        override val id: String get() = "image:${part.id}"
-    }
+    data class Image(
+        override val id: String,
+        val messageId: String,
+        val part: ChatPart.Image,
+    ) : TimelineEntry
 
-    data class Error(val part: ChatPart.Error) : TimelineEntry {
-        override val id: String get() = "error:${part.id}"
-    }
+    data class Error(
+        override val id: String,
+        val part: ChatPart.Error,
+    ) : TimelineEntry
 
     data class Activity(override val id: String, val parts: List<ChatPart>) : TimelineEntry
 
@@ -126,7 +134,7 @@ fun groupConversationTimeline(messages: List<ChatMessage>): List<TimelineEntry> 
             flush()
             flushTurnFooter()
             lastUserAt = message.timestamp
-            entries += TimelineEntry.UserMessage(message)
+            entries += TimelineEntry.UserMessage("user:${message.id}", message)
             return@forEach
         }
         if (turnStartAt == null) turnStartAt = message.timestamp
@@ -135,6 +143,11 @@ fun groupConversationTimeline(messages: List<ChatMessage>): List<TimelineEntry> 
             turnCompletedAt = maxOf(turnCompletedAt ?: 0L, completed)
         }
         message.parts.forEach { part ->
+            // Blank reasoning carries nothing to expand: the server emits empty reasoning parts
+            // (e.g. an initial streaming snapshot, or a reasoning_details-only part whose text
+            // lives in state), and showing them produced "Thinking" cards that expanded to
+            // nothing. Skip them so they never form an activity group or a detail row.
+            if (part is ChatPart.Reasoning && part.text.isBlank()) return@forEach
             when {
                 part is ChatPart.Tool && part.name == "todowrite" && part.todos.isNotEmpty() -> {
                     flush()
@@ -145,18 +158,18 @@ fun groupConversationTimeline(messages: List<ChatMessage>): List<TimelineEntry> 
                 }
                 part is ChatPart.Image -> {
                     flush()
-                    entries += TimelineEntry.Image(message.id, part)
+                    entries += TimelineEntry.Image("image:${part.id}", message.id, part)
                 }
                 part is ChatPart.Error -> {
                     flush()
                     // Footer must trail the error card the way it trails a body text entry.
-                    entries += TimelineEntry.Error(part)
+                    entries += TimelineEntry.Error("error:${part.id}", part)
                     flushTurnFooter()
                 }
                 part !is ChatPart.Text -> pending += part
                 part.text.isNotBlank() -> {
                     flush()
-                    entries += TimelineEntry.Body(message.id, part)
+                    entries += TimelineEntry.Body("body:${part.id}", message.id, part)
                 }
                 else -> Unit
             }
@@ -164,8 +177,38 @@ fun groupConversationTimeline(messages: List<ChatMessage>): List<TimelineEntry> 
     }
     flush()
     flushTurnFooter()
-    return entries
+    return entries.withUniqueIds()
 }
+
+/**
+ * Suffixes any id the transcript repeats so `LazyColumn` keys stay unique.
+ *
+ * The first occurrence keeps its bare id; each later one gains `:<occurrence>`, matching the
+ * scheme the activity and todo groups already use. This repairs transcripts that already store
+ * duplicate ids: a turn killed between persisting the user message and advancing the runtime's
+ * step counter replays the same user-message id on the next send (see [TimelineEntry.UserMessage]),
+ * and two rows sharing one key crashed the chat the moment it was opened. (Only an original id
+ * that itself ends in `:<n>` and repeats could still collide — no runtime produces that shape.)
+ */
+private fun List<TimelineEntry>.withUniqueIds(): List<TimelineEntry> {
+    val seen = mutableMapOf<String, Int>()
+    return map { entry ->
+        val occurrence = seen[entry.id] ?: 0
+        seen[entry.id] = occurrence + 1
+        if (occurrence == 0) entry else entry.repeated(occurrence)
+    }
+}
+
+private fun TimelineEntry.repeated(occurrence: Int): TimelineEntry =
+    when (this) {
+        is TimelineEntry.UserMessage -> copy(id = "$id:$occurrence")
+        is TimelineEntry.Body -> copy(id = "$id:$occurrence")
+        is TimelineEntry.Image -> copy(id = "$id:$occurrence")
+        is TimelineEntry.Error -> copy(id = "$id:$occurrence")
+        is TimelineEntry.Activity -> copy(id = "$id:$occurrence")
+        is TimelineEntry.Todo -> copy(id = "$id:$occurrence")
+        is TimelineEntry.Footer -> copy(id = "$id:$occurrence")
+    }
 
 /**
  * Re-resolves an activity group by id against the current messages.
@@ -192,7 +235,7 @@ fun summarizeActivity(parts: List<ChatPart>): ActivitySummary {
 
     parts.forEach { part ->
         when (part) {
-            is ChatPart.Reasoning -> reasoning++
+            is ChatPart.Reasoning -> if (part.text.isNotBlank()) reasoning++
             is ChatPart.Patch -> counts.increment(ToolCategory.EDIT)
             is ChatPart.Tool -> {
                 counts.increment(part.name.toToolCategory())

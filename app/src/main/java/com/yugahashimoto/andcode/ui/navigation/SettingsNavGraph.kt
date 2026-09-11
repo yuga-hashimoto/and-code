@@ -1,7 +1,6 @@
 package com.yugahashimoto.andcode.ui.navigation
 
 import android.content.Context
-import android.content.Intent
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -14,6 +13,7 @@ import androidx.navigation.NavController
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.compose.composable
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.core.UrlLauncher
 import com.yugahashimoto.andcode.data.settings.AppPreferences
 import com.yugahashimoto.andcode.data.settings.AppPreferencesRepository
 import com.yugahashimoto.andcode.feature.assistant.TtsPreview
@@ -357,7 +357,7 @@ fun NavGraphBuilder.settingsNavGraph(
             onOpenSystemPrompt = { navController.navigate(ROUTE_SETTINGS_SYSTEM_PROMPT) },
             onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP_CLAUDE) },
             onOpenUrl = { url ->
-                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
+                UrlLauncher.openUrl(context, url)
             },
             onBack = { navController.popBackStack() },
         )
@@ -387,7 +387,7 @@ fun NavGraphBuilder.settingsNavGraph(
             onSignOut = antigravityActions.onSignOut,
             onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP_ANTIGRAVITY) },
             onOpenUrl = { url ->
-                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
+                UrlLauncher.openUrl(context, url)
             },
             onBack = { navController.popBackStack() },
         )
@@ -407,12 +407,8 @@ fun NavGraphBuilder.settingsNavGraph(
             onCompleteProviderOAuth = settingsViewModel::completeProviderOAuth,
             onDisconnectProvider = settingsViewModel::disconnectProvider,
             onLaunchOAuthBrowser = { url ->
-                runCatching {
-                    context.startActivity(
-                        Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)),
-                    )
-                }.onFailure { error ->
-                    settingsViewModel.reportOAuthError(error.message.orEmpty())
+                if (!UrlLauncher.openUrl(context, url)) {
+                    settingsViewModel.reportOAuthError(context.getString(R.string.provider_auth_failed))
                 }
             },
             onDismissProviderAuth = settingsViewModel::dismissProviderAuth,
@@ -427,8 +423,9 @@ fun NavGraphBuilder.settingsNavGraph(
             onConnect = settingsViewModel::beginGitHubDeviceFlow,
             onDisconnect = settingsViewModel::disconnectGitHub,
             onOpenVerification = { url ->
-                runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url))) }
-                    .onFailure { error -> settingsViewModel.reportOAuthError(error.message.orEmpty()) }
+                if (!UrlLauncher.openUrl(context, url)) {
+                    settingsViewModel.reportOAuthError(context.getString(R.string.provider_auth_failed))
+                }
             },
             onBack = { navController.popBackStack() },
         )
@@ -439,7 +436,7 @@ fun NavGraphBuilder.settingsNavGraph(
             registry = runtimeRegistry,
             agent = com.yugahashimoto.andcode.runtime.LocalAgent.OPEN_CODE,
             onOpenBrowser = { url ->
-                context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse(url)))
+                UrlLauncher.openUrl(context, url)
             },
             onBack = { navController.popBackStack() },
         )

@@ -172,6 +172,24 @@ class LegalDisclosureComplianceTest {
     }
 
     @Test
+    fun `Vosk model download discloses that it bypasses F-Droid's build and source checks`() {
+        listOf(
+            "app/src/main/res/values/ui_cleanup_strings.xml" to listOf("F-Droid", "alphacephei.com"),
+            "app/src/main/res/values-ja/ui_cleanup_strings.xml" to listOf("F-Droid", "alphacephei.com"),
+        ).forEach { (path, mustContain) ->
+            val text = readRepoFile(path)
+            assertTrue(
+                "$path should define wake_word_model_disclosure",
+                text.contains("name=\"wake_word_model_disclosure\""),
+            )
+            val disclosure = text.substringAfter("name=\"wake_word_model_disclosure\">").substringBefore("</string>")
+            mustContain.forEach { term ->
+                assertTrue("$path's wake_word_model_disclosure should mention $term", disclosure.contains(term))
+            }
+        }
+    }
+
+    @Test
     fun `no wake-word model files are bundled in the APK`() {
         // The previous openWakeWord models were CC BY-NC-SA 4.0 - a NonCommercial license this
         // project could not clear for downstream distribution. Nothing may quietly reappear under

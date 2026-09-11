@@ -21,6 +21,8 @@ data class LocalRuntimeManagementUiState(
     val lastOperation: LocalRuntimeOperationResult? = null,
     val isLoading: Boolean = true,
     val isDeleting: Boolean = false,
+    val runtimeEnvironmentInstalled: Boolean = false,
+    val fullDevelopmentToolsInstalled: Boolean = false,
     val showDeleteConfirmation: Boolean = false,
     val deleteCompleted: Boolean = false,
     val error: String? = null,
@@ -35,6 +37,9 @@ class LocalRuntimeManagementViewModel(
     lastOperationState: StateFlow<LocalRuntimeOperationResult?>,
     private val diagnosticsProvider: suspend () -> LocalRuntimeDiagnostics,
     private val repairAction: () -> Unit,
+    private val installFullDevelopmentToolsAction: () -> Unit = {},
+    private val runtimeEnvironmentInstalledProvider: () -> Boolean = { false },
+    private val fullDevelopmentToolsInstalledProvider: () -> Boolean = { false },
     private val deleteAction: () -> Unit,
     private val getString: (Int) -> String,
     private val deleteTimeoutMillis: Long = 30_000L,
@@ -120,6 +125,8 @@ class LocalRuntimeManagementViewModel(
                         it.copy(
                             diagnostics = diagnostics,
                             runtimeStatus = diagnostics.status,
+                            runtimeEnvironmentInstalled = runtimeEnvironmentInstalledProvider(),
+                            fullDevelopmentToolsInstalled = fullDevelopmentToolsInstalledProvider(),
                             isLoading = false,
                             error = null,
                         )
@@ -141,6 +148,13 @@ class LocalRuntimeManagementViewModel(
 
     fun repair() {
         dispatchAction(getString(R.string.runtime_repair_start_failed), repairAction)
+    }
+
+    fun installFullDevelopmentTools() {
+        dispatchAction(
+            getString(R.string.runtime_full_development_tools_start_failed),
+            installFullDevelopmentToolsAction,
+        )
     }
 
     fun requestDelete() {
@@ -239,6 +253,18 @@ class LocalRuntimeManagementViewModel(
             mutableState.update {
                 it.copy(
                     diagnostics = diagnostics ?: it.diagnostics,
+                    runtimeEnvironmentInstalled =
+                        if (diagnostics == null) {
+                            it.runtimeEnvironmentInstalled
+                        } else {
+                            runtimeEnvironmentInstalledProvider()
+                        },
+                    fullDevelopmentToolsInstalled =
+                        if (diagnostics == null) {
+                            it.fullDevelopmentToolsInstalled
+                        } else {
+                            fullDevelopmentToolsInstalledProvider()
+                        },
                     error = if (diagnostics == null) it.error else null,
                 )
             }

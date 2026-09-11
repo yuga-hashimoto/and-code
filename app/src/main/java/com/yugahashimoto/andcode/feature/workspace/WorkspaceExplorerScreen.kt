@@ -62,6 +62,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -83,6 +84,9 @@ data class CommitInfo(
 
 enum class DiffViewMode { UNIFIED, SPLIT }
 
+/** Whether the changed file can be opened in the viewer. Deleted files no longer exist on disk. */
+internal fun OpenCodeFileChange.isOpenable(): Boolean = displayPath.isNotBlank() && !status.equals("deleted", ignoreCase = true)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun WorkspaceExplorerScreen(
@@ -103,6 +107,7 @@ fun WorkspaceExplorerScreen(
     tabManager: WorkspaceTabManager? = null,
     workspaceDeck: List<String> = emptyList(),
     onOpenTerminal: () -> Unit = {},
+    onOpenChange: (OpenCodeFileChange) -> Unit = {},
 ) {
     var selectedTab by rememberSaveable { mutableIntStateOf(0) }
     val tabs =
@@ -172,7 +177,7 @@ fun WorkspaceExplorerScreen(
                 when (selectedTab) {
                     0 -> FilesTab(state, onOpenNode, onNavigateUp)
                     1 -> SearchTab(state, onSearch)
-                    2 -> ChangesTab(state, branches, onSwitchBranch, onCreateBranch, commits)
+                    2 -> ChangesTab(state, branches, onSwitchBranch, onCreateBranch, commits, onOpenChange)
                     else -> PrTab(prTitle, prStatus, prDescription)
                 }
             }
@@ -180,7 +185,7 @@ fun WorkspaceExplorerScreen(
             when (selectedTab) {
                 0 -> FilesTab(state, onOpenNode, onNavigateUp)
                 1 -> SearchTab(state, onSearch)
-                2 -> ChangesTab(state, branches, onSwitchBranch, onCreateBranch, commits)
+                2 -> ChangesTab(state, branches, onSwitchBranch, onCreateBranch, commits, onOpenChange)
                 else -> PrTab(prTitle, prStatus, prDescription)
             }
         }
@@ -538,6 +543,7 @@ private fun ChangesTab(
     onSwitchBranch: (String) -> Unit,
     onCreateBranch: (String) -> Unit,
     commits: List<CommitInfo>,
+    onOpenChange: (OpenCodeFileChange) -> Unit = {},
 ) {
     var showBranchSheet by remember { mutableStateOf(false) }
     var diffViewMode by remember { mutableStateOf(DiffViewMode.UNIFIED) }
@@ -603,7 +609,7 @@ private fun ChangesTab(
         } else {
             items(state.changes, key = { it.displayPath }) { change ->
                 val detailed = state.diff.firstOrNull { it.displayPath == change.displayPath } ?: change
-                ChangeCard(detailed, diffViewMode)
+                ChangeCard(detailed, diffViewMode, onOpenChange)
             }
         }
 
@@ -752,9 +758,21 @@ private fun BranchSwitcherSheet(
 private fun ChangeCard(
     change: OpenCodeFileChange,
     diffViewMode: DiffViewMode,
+    onOpen: (OpenCodeFileChange) -> Unit = {},
 ) {
     var expanded by remember(change.displayPath, change.patch) { mutableStateOf(false) }
-    SectionCard {
+    val canOpen = change.isOpenable()
+    SectionCard(
+        modifier =
+            if (canOpen) {
+                Modifier.clickable(
+                    role = Role.Button,
+                    onClickLabel = stringResource(R.string.open_file),
+                ) { onOpen(change) }
+            } else {
+                Modifier
+            },
+    ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -774,6 +792,11 @@ private fun ChangeCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
+                }
+            }
+            if (canOpen) {
+                OutlinedButton(onClick = { onOpen(change) }) {
+                    Text(stringResource(R.string.open_file))
                 }
             }
             if (!change.patch.isNullOrBlank()) {

@@ -34,6 +34,7 @@ import com.yugahashimoto.andcode.runtime.OpenCodeBackend
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.local.StagedSystemPrompt
+import com.yugahashimoto.andcode.runtime.local.VideoAttachmentHelper
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -246,7 +247,7 @@ internal fun OpenCodePart.toChatPart(): ChatPart? {
     val stateMap = state.orEmpty()
     return when (type) {
         "text" -> ChatPart.Text(partId, text.orEmpty())
-        "reasoning" -> ChatPart.Reasoning(partId, text.orEmpty())
+        "reasoning" -> ChatPart.Reasoning(partId, extractReasoningText(text, stateMap))
         "file", "image" -> {
             val partUrl = url.orEmpty()
             val partMime = imageMime(mime, partUrl)
@@ -281,6 +282,38 @@ internal fun OpenCodePart.toChatPart(): ChatPart? {
     }
 }
 
+/**
+ * Reasoning text is normally the part's top-level `text`, but some servers and OpenAI-compatible
+ * providers persist it under `state` instead (e.g. `state.reasoningDetails[*].text`) while leaving
+ * the top level empty. Without this fallback every such part rendered as a "Thinking" card that
+ * showed nothing when expanded.
+ */
+internal fun extractReasoningText(
+    topLevelText: String?,
+    state: Map<String, JsonElement>,
+): String {
+    if (!topLevelText.isNullOrBlank()) return topLevelText
+    state["text"]?.jsonPrimitiveOrNull()?.takeIf { it.isNotBlank() }?.let { return it }
+    state["content"]?.jsonPrimitiveOrNull()?.takeIf { it.isNotBlank() }?.let { return it }
+    state["reasoning"]?.jsonPrimitiveOrNull()?.takeIf { it.isNotBlank() }?.let { return it }
+    for (key in listOf("reasoningDetails", "reasoning_details", "details")) {
+        extractReasoningDetailsText(state[key])?.takeIf { it.isNotBlank() }?.let { return it }
+    }
+    return ""
+}
+
+private fun extractReasoningDetailsText(element: JsonElement?): String? {
+    val array = element as? JsonArray ?: return null
+    val texts =
+        array.mapNotNull { entry ->
+            val obj = entry as? JsonObject ?: return@mapNotNull null
+            obj["text"]?.jsonPrimitiveOrNull()?.takeIf { it.isNotBlank() }
+                ?: obj["content"]?.jsonPrimitiveOrNull()?.takeIf { it.isNotBlank() }
+                ?: obj["summary"]?.jsonPrimitiveOrNull()?.takeIf { it.isNotBlank() }
+        }
+    return texts.joinToString("").takeIf { it.isNotBlank() }
+}
+
 /** Image-producing tools do not consistently include a MIME field in their file parts. */
 internal fun imageMime(
     declaredMime: String?,
@@ -299,6 +332,30 @@ internal fun imageMime(
         else -> null
     }
 }
+
+/**
+ * Maps an index into [ChatUiState.attachments] onto its index in [ChatUiState.imagePreviews],
+ * or null when the attachment carries no preview.
+ *
+ * The two lists are not parallel: a file picked with the paperclip appends an attachment without a
+ * preview bitmap, so the previews line up with the *image* attachments in attachment order rather
+ * than with every attachment. Removing attachment 2 must not drop preview 2 when the images sit at
+ * different offsets.
+ */
+internal fun previewIndexForAttachment(
+    attachments: List<PromptAttachment>,
+    attachmentIndex: Int,
+): Int? {
+    val attachment = attachments.getOrNull(attachmentIndex) ?: return null
+    if (!attachment.mime.startsWith("image/")) return null
+    return attachments.take(attachmentIndex).count { it.mime.startsWith("image/") }
+}
+
+/** Inverse of [previewIndexForAttachment]: the attachment behind the preview thumbnail at [previewIndex]. */
+internal fun attachmentIndexForPreview(
+    attachments: List<PromptAttachment>,
+    previewIndex: Int,
+): Int? = attachments.indices.filter { attachments[it].mime.startsWith("image/") }.getOrNull(previewIndex)
 
 /**
  * Appends the message-level error reported by the runtime when the turn itself carries no error
@@ -505,6 +562,14 @@ class ChatViewModel(
      * would otherwise never return from a real wait - running unattended.
      */
     private val awaitForeground: suspend () -> Unit = {},
+    /**
+     * Shown when a video attachment reaches the send path. Videos are converted to image
+     * frames at attach time, so this only fires for stale or queued attachments that slipped
+     * through. Injected the same way as WorkspaceViewModel.incompleteConnectionMessage so
+     * the real app shows a localized string while tests keep the English default.
+     */
+    private val videoNotSupportedMessage: String =
+        "Video files cannot be sent directly. Remove the video and attach images instead.",
 ) : ViewModel() {
     private val _uiState =
         MutableStateFlow(
@@ -808,12 +873,23 @@ class ChatViewModel(
         }
     }
 
+    /**
+     * Drops the attachment at [index], along with its preview thumbnail when it has one.
+     *
+     * The preview bitmap is dropped, never recycled: the same instance is still referenced by the
+     * composer row Compose is drawing this frame (and, once sent, by the optimistic message in the
+     * transcript and by any queued prompt), so recycling it here crashed the next draw pass with
+     * "Canvas: trying to use a recycled bitmap". Since API 26 the pixels live on the native heap
+     * and are freed with the bitmap by the GC, so letting the last reference go is enough.
+     */
     fun removeAttachment(index: Int) {
-        _uiState.value.imagePreviews.getOrNull(index)?.let { if (!it.isRecycled) it.recycle() }
         _uiState.update { state ->
+            val previewIndex = previewIndexForAttachment(state.attachments, index)
             state.copy(
                 attachments = state.attachments.filterIndexed { i, _ -> i != index },
-                imagePreviews = state.imagePreviews.filterIndexed { i, _ -> i != index },
+                imagePreviews =
+                    previewIndex?.let { removed -> state.imagePreviews.filterIndexed { i, _ -> i != removed } }
+                        ?: state.imagePreviews,
             )
         }
     }
@@ -1115,11 +1191,23 @@ class ChatViewModel(
         val normalized = text.trim()
         val pendingAttachments = _uiState.value.attachments
         val messageIdsBeforeSend = _uiState.value.messages.map { it.id }.toSet()
+        val pendingPreviews = _uiState.value.imagePreviews
         val pendingPreviewsByFilename =
-            pendingAttachments.mapIndexedNotNull { index, attachment ->
-                _uiState.value.imagePreviews.getOrNull(index)?.let { attachment.filename to it }
-            }.toMap()
+            pendingAttachments
+                .filter { it.mime.startsWith("image/") }
+                .mapIndexedNotNull { index, attachment ->
+                    pendingPreviews.getOrNull(index)?.let { attachment.filename to it }
+                }.toMap()
         if (normalized.isEmpty() && pendingAttachments.isEmpty()) return
+        // Video file parts are rejected by most providers
+        // ("'file part media type video/mp4' functionality not supported"), failing the
+        // whole turn. Videos are converted to image frames at attach time, so reaching
+        // here means a stale/queued attachment slipped through: block the send with a
+        // clear error instead of breaking the session.
+        if (pendingAttachments.any { VideoAttachmentHelper.isVideoMime(it.mime) }) {
+            _uiState.update { it.copy(error = videoNotSupportedMessage) }
+            return
+        }
         val currentBackend = backend
         if (currentBackend == null) {
             _uiState.update { it.copy(error = "OpenCode connection is not configured") }
@@ -2025,11 +2113,38 @@ class ChatViewModel(
                 val partId = part.id ?: messageId
                 val chatPart = part.toChatPart() ?: return
                 val messageParts = streamedParts.getOrPut(messageId) { linkedMapOf() }
-                messageParts[partId] = chatPart
+                // Deltas can arrive before the part event that introduces them (see issue #26924):
+                // they are accumulated under the same part id, and the late snapshot must not wipe
+                // them out with its own (often empty) initial text.
+                val mergedPart =
+                    when (val existing = messageParts[partId]) {
+                        is ChatPart.Text ->
+                            when {
+                                chatPart is ChatPart.Text && chatPart.text.isBlank() && existing.text.isNotBlank() -> existing
+                                // An early delta was stored as Text (deltas carry no part type) but
+                                // the snapshot reveals it was reasoning: keep the accumulated text.
+                                chatPart is ChatPart.Reasoning && chatPart.text.isBlank() && existing.text.isNotBlank() ->
+                                    chatPart.copy(text = existing.text)
+                                else -> chatPart
+                            }
+                        is ChatPart.Reasoning ->
+                            if ((chatPart is ChatPart.Reasoning && chatPart.text.isBlank()) ||
+                                (chatPart is ChatPart.Text && chatPart.text.isBlank())
+                            ) {
+                                if (existing.text.isNotBlank()) existing else chatPart
+                            } else {
+                                chatPart
+                            }
+                        else -> chatPart
+                    }
+                messageParts[partId] = mergedPart
                 updateStreamingMessage(messageId, messageParts.values.toList())
             }
             is OpenCodeEvent.MessagePartDelta -> {
-                if (event.sessionId != activeSession || event.field != "text") return
+                // OpenCode streams both text and reasoning deltas with field="text"; the Claude
+                // bridge uses field="reasoning" for thinking deltas. Anything else carries no
+                // displayable text.
+                if (event.sessionId != activeSession || (event.field != "text" && event.field != "reasoning")) return
                 connectionMonitor.recordStreamToken()
                 val messageParts = streamedParts.getOrPut(event.messageId) { linkedMapOf() }
                 val updatedPart =
@@ -2038,7 +2153,12 @@ class ChatViewModel(
                         is ChatPart.Reasoning -> existing.copy(text = existing.text + event.delta)
                         // A delta can outrun the part event that introduces it; start the part here
                         // rather than dropping the text on the floor.
-                        null -> ChatPart.Text(event.partId, event.delta)
+                        null ->
+                            if (event.field == "reasoning") {
+                                ChatPart.Reasoning(event.partId, event.delta)
+                            } else {
+                                ChatPart.Text(event.partId, event.delta)
+                            }
                         else -> return
                     }
                 messageParts[event.partId] = updatedPart
@@ -2116,12 +2236,20 @@ class ChatViewModel(
                 // The abort paths settle their own state; there is nothing to report here.
                 if (event.isAbort) return
                 event.sessionId?.let(::closeInterruptWindow)
+                val message = event.message ?: "OpenCode session failed"
                 _uiState.update {
                     it.copy(
                         isRunning = false,
                         isThinking = false,
-                        error = event.message ?: "OpenCode session failed",
+                        error = message,
                     )
+                }
+                // A provider-fetch failure that arrives as session.error (e.g. issue #306:
+                // "Cannot connect to API: Unable to connect...") left a static red card with
+                // no recovery: only reinstall cleared it. Route transient ones through the
+                // same reconnect loop as send failures so the chat retries instead of dying.
+                if (classifyChatError(message) == ChatErrorKind.TRANSIENT_CONNECTION) {
+                    scheduleTransientRecovery()
                 }
             }
             is OpenCodeEvent.SessionCreated -> Unit
@@ -2343,10 +2471,8 @@ class ChatViewModel(
     }
 
     override fun onCleared() {
-        _uiState.value.imagePreviews.forEach { if (!it.isRecycled) it.recycle() }
-        _uiState.value.messages.forEach { msg ->
-            msg.imagePreviews.forEach { if (!it.isRecycled) it.recycle() }
-        }
+        // Preview bitmaps are deliberately not recycled here either: the composition that draws
+        // them can outlive the ViewModel during teardown, and the GC reclaims them anyway.
         eventJob?.cancel()
         tts?.stop()
         tts = null

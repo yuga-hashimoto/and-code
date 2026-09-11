@@ -56,6 +56,7 @@ class LocalRuntimeDiagnosticsCollector(
     },
     private val processMetricsProvider: () -> LocalRuntimeProcessMetrics?,
     private val commandExecutor: (LocalRuntimeToolDefinition) -> LocalRuntimeCommandResult,
+    private val fullDevelopmentToolsInstalledProvider: () -> Boolean = { false },
     private val nowMillis: () -> Long = System::currentTimeMillis,
     private val maxLogCharacters: Int = 12_000,
     private val messages: LocalRuntimeMessages = LocalRuntimeMessages,
@@ -69,9 +70,12 @@ class LocalRuntimeDiagnosticsCollector(
         val installed =
             status !is LocalRuntimeStatus.NotInstalled &&
                 status !is LocalRuntimeStatus.UnsupportedAbi
+        val definitions =
+            REQUIRED_TOOLS +
+                OPTIONAL_TOOLS.takeIf { fullDevelopmentToolsInstalledProvider() }.orEmpty()
         val tools =
             if (installed) {
-                REQUIRED_TOOLS.map { definition ->
+                definitions.map { definition ->
                     runCatching { commandExecutor(definition) }
                         .fold(
                             onSuccess = { result ->
@@ -102,7 +106,7 @@ class LocalRuntimeDiagnosticsCollector(
                         )
                 }
             } else {
-                REQUIRED_TOOLS.map { definition ->
+                definitions.map { definition ->
                     LocalRuntimeToolCheck(
                         id = definition.id,
                         label = displayLabel(definition),
@@ -179,9 +183,13 @@ class LocalRuntimeDiagnosticsCollector(
                     "test -s /etc/ssl/certs/ca-certificates.crt && echo installed",
                 ),
                 LocalRuntimeToolDefinition("adb", "ADB", "adb version | head -n 1"),
+                LocalRuntimeToolDefinition("python3", "Python", "python3 --version"),
+            )
+
+        val OPTIONAL_TOOLS =
+            listOf(
                 LocalRuntimeToolDefinition("java", "Java", "java -version 2>&1 | head -n 1"),
                 LocalRuntimeToolDefinition("gradle", "Gradle", "gradle --version 2>&1 | head -n 1"),
-                LocalRuntimeToolDefinition("python3", "Python", "python3 --version"),
                 LocalRuntimeToolDefinition("node", "Node.js", "node --version"),
                 LocalRuntimeToolDefinition("npm", "npm", "npm --version"),
                 LocalRuntimeToolDefinition("go", "Go", "go version"),
