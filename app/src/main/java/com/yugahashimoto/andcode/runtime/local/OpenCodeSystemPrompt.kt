@@ -79,7 +79,15 @@ internal fun applyOpenCodeSystemPrompt(
                     StandardOpenOption.TRUNCATE_EXISTING,
                     LinkOption.NOFOLLOW_LINKS,
                 ).use { out -> out.write(prompt.toByteArray()) }
-            Files.move(staging.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE)
+            // REPLACE_EXISTING alongside ATOMIC_MOVE, as LocalProviderCredentialStore does:
+            // ATOMIC_MOVE leaves replacement of an existing target provider-defined, and a
+            // provider that refuses one would fail every switch after the first.
+            Files.move(
+                staging.toPath(),
+                target.toPath(),
+                StandardCopyOption.ATOMIC_MOVE,
+                StandardCopyOption.REPLACE_EXISTING,
+            )
         } finally {
             // A no-op once the move succeeded; on any failure it clears the half-written staging
             // file so the next switch does not inherit it.
