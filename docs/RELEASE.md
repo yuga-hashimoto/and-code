@@ -139,9 +139,9 @@ AntiFeatures:
   TetheredNet: the on-demand Vosk wake-word speech model is only ever fetched from alphacephei.com
 
 Builds:
-  - versionName: "1.2.17"
-    versionCode: 56
-    commit: 6551a03a6c37772d3610b0fd4caad4b8d51365ae
+  - versionName: "1.2.20"
+    versionCode: 59
+    commit: 4184ea3154dce9ad25fec56aa9ef9bb215c77036
     subdir: app
     gradle:
       - fdroid
@@ -160,8 +160,8 @@ Builds:
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: "1.2.17"
-CurrentVersionCode: 56
+CurrentVersion: "1.2.20"
+CurrentVersionCode: 59
 ```
 
 This recipe was dry-run locally: after a fresh checkout at the pinned commit
@@ -176,11 +176,10 @@ that it bypasses F-Droid's build/source checks. Checked the app source: the
 download was already gated behind an explicit "Download" button in Settings
 (never auto-triggered by the wake-word toggle), so declining was already no
 harder than accepting. The missing piece — an in-app disclosure of the
-bypass — has been written (visible text next to the Download button, plus a
-regression test in `LegalDisclosureComplianceTest`), but **is not yet in a
-tagged release**, so the merge request's `Builds:` entry above still points
-at v1.2.17, which predates the fix. The MR's `Builds:` entry needs updating
-to a new release once this lands and is tagged.
+bypass — shipped in v1.2.20 (PR #309: visible text next to the Download
+button, plus a regression test in `LegalDisclosureComplianceTest`), so the
+merge request's `Builds:` entry above now points at v1.2.20. The remaining
+step is editing MR !48005 itself to this entry.
 
 The fork's own CI (`soccer.hy620/fdroiddata`) is separately blocked: GitLab's
 GraphQL API reports every pipeline run failing with
