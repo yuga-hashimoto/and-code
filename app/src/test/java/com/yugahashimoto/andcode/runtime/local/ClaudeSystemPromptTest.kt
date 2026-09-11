@@ -181,7 +181,12 @@ class ClaudeSystemPromptTest {
      * [resolveSystemPromptId]; this exercises the pair the way the composer does.
      */
     private fun ClaudeCodeTarget.promptIdFor(sessionId: String?): String? =
-        resolveSystemPromptId(sessionId, sessionSystemPromptIds.value, defaultSystemPromptId.value)
+        resolveSystemPromptId(
+            sessionId,
+            sessionSystemPromptIds.value,
+            defaultSystemPromptId.value,
+            stagedSystemPrompt.value,
+        )
 
     /**
      * A session snapshots the default when it is created and keeps it, so an older chat's preset is
@@ -211,6 +216,54 @@ class ClaudeSystemPromptTest {
 
             assertEquals(ClaudeSystemPrompts.DEBUG, target.promptIdFor(switched.id))
             assertNull(target.promptIdFor(untouched.id))
+        }
+
+    /**
+     * A chat's session is not created until its first message, so the composer's choice in an empty
+     * chat has nowhere to be written. Writing it to the default instead would retune every later
+     * chat and, since the presets are shared, rewrite what OpenCode is told - for what the chip
+     * presents as a choice about this one chat.
+     */
+    @Test
+    fun `a preset chosen before the first message is staged, not made the default`() =
+        runBlocking {
+            val target = target()
+
+            target.stageSystemPrompt(ClaudeSystemPrompts.DEBUG)
+
+            assertNull(target.defaultSystemPromptId.value)
+            assertEquals(ClaudeSystemPrompts.DEBUG, target.promptIdFor(null))
+
+            val session = target.createSession("New chat", "/workspace")
+            assertEquals(ClaudeSystemPrompts.DEBUG, target.promptIdFor(session.id))
+        }
+
+    /** The choice belongs to the chat it was made in, so the chat after it starts fresh. */
+    @Test
+    fun `a staged preset is consumed by the session it was staged for`() =
+        runBlocking {
+            val target = target()
+            target.stageSystemPrompt(ClaudeSystemPrompts.DEBUG)
+            target.createSession("Staged chat", "/workspace")
+
+            val next = target.createSession("Next chat", "/workspace")
+
+            assertNull(target.stagedSystemPrompt.value)
+            assertNull(target.promptIdFor(next.id))
+        }
+
+    /** Clearing the preset for a new chat is a choice too, not the absence of one. */
+    @Test
+    fun `staging None overrides the default for that chat`() =
+        runBlocking {
+            val target = target()
+            target.selectSystemPrompt(ClaudeSystemPrompts.CODING)
+
+            target.stageSystemPrompt(null)
+            val session = target.createSession("New chat", "/workspace")
+
+            assertEquals(ClaudeSystemPrompts.CODING, target.defaultSystemPromptId.value)
+            assertNull(target.promptIdFor(session.id))
         }
 
     /**
@@ -244,6 +297,11 @@ class ClaudeSystemPromptTest {
         assertEquals(ClaudeSystemPrompts.DEBUG, state.systemPromptIdFor("switched"))
         assertEquals(ClaudeSystemPrompts.CODING, state.systemPromptIdFor("never-seen"))
         assertEquals(ClaudeSystemPrompts.CODING, state.systemPromptIdFor(null))
+        assertEquals(
+            ClaudeSystemPrompts.DEBUG,
+            state.copy(stagedSystemPrompt = StagedSystemPrompt(ClaudeSystemPrompts.DEBUG)).systemPromptIdFor(null),
+        )
+        assertNull(state.copy(stagedSystemPrompt = StagedSystemPrompt(null)).systemPromptIdFor(null))
     }
 
     @Test

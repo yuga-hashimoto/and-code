@@ -29,19 +29,39 @@ private data class SystemPromptState(
 const val MAX_SYSTEM_PROMPT_LENGTH = 8_000
 
 /**
+ * A preset held for a chat that has no session yet.
+ *
+ * Wrapped rather than passed as a bare id so that a staged "None" - the user clearing the preset
+ * for this chat - is distinguishable from nothing having been staged at all.
+ */
+@JvmInline
+value class StagedSystemPrompt(
+    val id: String?,
+)
+
+/**
  * Which preset [sessionId] carries: its own snapshot when it has a record, and the default new
  * chats inherit when it does not.
  *
  * A session snapshots the default when it is created and keeps it from then on, so an older chat's
  * preset is not the current default - and a chat that predates presets entirely carries none rather
- * than falling back to whatever is selected now. Both the runtime ([ClaudeCodeTarget]) and the UI
- * state ([ClaudeCodeUiState]) answer this question, so the rule lives here once instead of twice.
+ * than falling back to whatever is selected now. A chat with no session yet shows what it has
+ * [staged], if anything, since that is what its first turn will be created with.
+ *
+ * Both the runtime ([ClaudeCodeTarget]) and the UI state ([ClaudeCodeUiState]) answer this
+ * question, so the rule lives here once instead of twice.
  */
 internal fun resolveSystemPromptId(
     sessionId: String?,
     sessionPromptIds: Map<String, String?>,
     default: String?,
-): String? = if (sessionId != null && sessionId in sessionPromptIds) sessionPromptIds[sessionId] else default
+    staged: StagedSystemPrompt? = null,
+): String? =
+    when {
+        sessionId != null && sessionId in sessionPromptIds -> sessionPromptIds[sessionId]
+        staged != null -> staged.id
+        else -> default
+    }
 
 /**
  * The system-prompt presets and the current selection, shared by every agent that can carry one.

@@ -998,8 +998,17 @@ fun AndCodeApp(
                                 workspaceState.claude
                                     .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
                                     ?.systemPromptIdFor(chatState.sessionId),
+                            // A new chat has no session until its first message, so its choice is
+                            // staged for the session that message creates. Writing it to the
+                            // default instead would retune every later chat - and, since the
+                            // presets are shared, rewrite what OpenCode is told.
                             onSelectSystemPrompt = { presetId ->
-                                workspaceViewModel.selectClaudeSystemPrompt(presetId, chatState.sessionId)
+                                val sessionId = chatState.sessionId
+                                if (sessionId == null) {
+                                    workspaceViewModel.stageClaudeSystemPrompt(presetId)
+                                } else {
+                                    workspaceViewModel.selectClaudeSystemPrompt(presetId, sessionId)
+                                }
                             },
                             // The mode settings shows, so the chip is not left naming whatever agent id
                             // another runtime last remembered - see AntigravityTarget.listAgents.
