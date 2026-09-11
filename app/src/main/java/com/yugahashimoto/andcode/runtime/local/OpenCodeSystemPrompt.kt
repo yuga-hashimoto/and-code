@@ -35,10 +35,11 @@ internal const val OPENCODE_SYSTEM_PROMPT_PATH = "root/.config/opencode/and-code
  * Best-effort like the rest of the guest-filesystem writes: a preset that cannot be written simply
  * is not applied, rather than failing a runtime start or a settings tap.
  *
- * The new prompt is staged beside the target and renamed onto it, never written into it in place:
- * OpenCode re-reads this file every turn, so truncating the live file would let a turn that starts
- * mid-write see an empty or half-written prompt. A rename swaps the name in one step, so every read
- * sees either the old prompt or the new one.
+ * The new prompt is staged beside the target under a unique name and renamed onto it, never
+ * written into it in place: OpenCode re-reads this file every turn, so truncating the live file
+ * would let a turn that starts mid-write see an empty or half-written prompt. A rename swaps the
+ * name in one step, so every read sees either the old prompt or the new one - and if two writers
+ * overlap, the later rename wins whole rather than the two interleaving.
  *
  * The path goes through [manageablePathOrNull], which refuses anything resolving outside `rootfs`,
  * anything that is already a symlink, and anything that is not a plain file; the staging file is
@@ -68,8 +69,12 @@ internal fun applyOpenCodeSystemPrompt(
             return
         }
         target.parentFile?.mkdirs()
-        // Same directory, so the rename below stays within one filesystem and can be atomic.
-        val staging = File(target.parentFile, "${target.name}.staged")
+        // Created in the target's own directory, so the rename below stays within one filesystem
+        // and can be atomic - and with a unique name, so that two writers (the runtime start and
+        // the switch collector) cannot stage over each other, and so the cleanup below can only
+        // ever remove a file this call made. A fixed name would let it delete whatever already sat
+        // there, a directory of the user's included.
+        val staging = File.createTempFile("${target.name}.", ".staged", target.parentFile)
         try {
             Files
                 .newOutputStream(
@@ -90,7 +95,7 @@ internal fun applyOpenCodeSystemPrompt(
             )
         } finally {
             // A no-op once the move succeeded; on any failure it clears the half-written staging
-            // file so the next switch does not inherit it.
+            // file. Safe because this name was just created here and belongs to this call alone.
             staging.delete()
         }
     } catch (e: IOException) {
