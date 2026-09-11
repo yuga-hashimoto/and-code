@@ -41,6 +41,22 @@ class OpenCodeSystemPromptTest {
         assertEquals("Be creative.", promptFile(rootfs).readText())
     }
 
+    /**
+     * The prompt is staged beside the target and renamed onto it, because OpenCode re-reads the
+     * file every turn and a turn starting mid-write would otherwise see it empty or half written.
+     * The staging file must not be left behind for the instructions glob or a later switch to find.
+     */
+    @Test
+    fun `a switch leaves no staging file behind`() {
+        val rootfs = rootfs()
+
+        applyOpenCodeSystemPrompt(rootfs, "Focus on debugging.")
+        applyOpenCodeSystemPrompt(rootfs, "Be creative.")
+
+        val directory = promptFile(rootfs).parentFile
+        assertEquals(listOf(promptFile(rootfs).name), directory.list()!!.toList())
+    }
+
     /** An empty file would still be announced to the model as "Instructions from: ...". */
     @Test
     fun `selecting no preset removes the file`() {

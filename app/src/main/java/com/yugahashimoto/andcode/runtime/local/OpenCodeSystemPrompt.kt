@@ -4,6 +4,7 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.LinkOption
+import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 
 /**
@@ -34,14 +35,19 @@ internal const val OPENCODE_SYSTEM_PROMPT_PATH = "root/.config/opencode/and-code
  * Best-effort like the rest of the guest-filesystem writes: a preset that cannot be written simply
  * is not applied, rather than failing a runtime start or a settings tap.
  *
+ * The new prompt is staged beside the target and renamed onto it, never written into it in place:
+ * OpenCode re-reads this file every turn, so truncating the live file would let a turn that starts
+ * mid-write see an empty or half-written prompt. A rename swaps the name in one step, so every read
+ * sees either the old prompt or the new one.
+ *
  * The path goes through [manageablePathOrNull], which refuses anything resolving outside `rootfs`,
- * anything that is already a symlink, and anything that is not a plain file; the write then opens
- * the file `NOFOLLOW_LINKS`, so a symlink swapped in after that check fails the open instead of
- * being followed. Removal unlinks the name, which never follows either. What is left uncovered is a
- * *parent* directory swapped for a symlink inside that same window, which Java cannot close without
- * an `openat` walk - and it buys nothing, because the guest runs under PRoot as the app's own uid
- * and can write any of these files directly. These checks exist to keep AndCode from clobbering a
- * path the user has taken over, not as a privilege boundary.
+ * anything that is already a symlink, and anything that is not a plain file; the staging file is
+ * then opened `NOFOLLOW_LINKS`, and the rename and the removal both act on the name rather than
+ * following it. What is left uncovered is a *parent* directory swapped for a symlink between the
+ * check and the write, which Java cannot close without an `openat` walk - and it buys nothing,
+ * because the guest runs under PRoot as the app's own uid and can write any of these files
+ * directly. These checks exist to keep AndCode from clobbering a path the user has taken over, not
+ * as a privilege boundary.
  */
 internal fun applyOpenCodeSystemPrompt(
     rootfs: File,
@@ -62,14 +68,23 @@ internal fun applyOpenCodeSystemPrompt(
             return
         }
         target.parentFile?.mkdirs()
-        Files
-            .newOutputStream(
-                target.toPath(),
-                StandardOpenOption.CREATE,
-                StandardOpenOption.WRITE,
-                StandardOpenOption.TRUNCATE_EXISTING,
-                LinkOption.NOFOLLOW_LINKS,
-            ).use { out -> out.write(prompt.toByteArray()) }
+        // Same directory, so the rename below stays within one filesystem and can be atomic.
+        val staging = File(target.parentFile, "${target.name}.staged")
+        try {
+            Files
+                .newOutputStream(
+                    staging.toPath(),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.WRITE,
+                    StandardOpenOption.TRUNCATE_EXISTING,
+                    LinkOption.NOFOLLOW_LINKS,
+                ).use { out -> out.write(prompt.toByteArray()) }
+            Files.move(staging.toPath(), target.toPath(), StandardCopyOption.ATOMIC_MOVE)
+        } finally {
+            // A no-op once the move succeeded; on any failure it clears the half-written staging
+            // file so the next switch does not inherit it.
+            staging.delete()
+        }
     } catch (e: IOException) {
         // Skipped, as above - including the ELOOP a swapped-in symlink turns the open into.
     } catch (e: UnsupportedOperationException) {
