@@ -1635,10 +1635,13 @@ private fun ThinkingChip(
 }
 
 /**
- * Switches the system-prompt preset the next turn carries, without leaving the chat.
+ * Switches the system-prompt preset this chat sends with, without leaving it.
  *
- * The preset is a per-task choice, so it sits beside the thinking chip: settings still manages the
- * presets themselves (adding, editing, deleting), but picking one is a one-tap move from here.
+ * Per chat, not per turn: [com.yugahashimoto.andcode.runtime.local.ClaudeCodeTarget] keeps one
+ * preset id on the session and reads it for every turn, so a switch holds for the rest of the
+ * conversation until it is switched again - the same scope as the thinking and permission chips it
+ * sits beside. Settings still manages the presets themselves (adding, editing, deleting); picking
+ * one for the chat in front of you is a one-tap move from here.
  */
 @Composable
 private fun SystemPromptChip(

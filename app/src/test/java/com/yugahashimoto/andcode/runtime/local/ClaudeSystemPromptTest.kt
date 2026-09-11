@@ -299,6 +299,26 @@ class ClaudeSystemPromptTest {
         assertEquals(ClaudeSystemPrompts.CODING, state.systemPromptIdFor(null))
     }
 
+    /**
+     * The presets are the user's own writing, and `writeText` truncates before it writes: a process
+     * death mid-write left a half-written file that the next launch could only read as "no presets
+     * at all". Staged and renamed now, so a reader sees the old state or the new one - and the
+     * staging file must not be left behind for a later write to trip over.
+     */
+    @Test
+    fun `saving a preset leaves a complete file and no staging file`() {
+        val target = target()
+
+        target.saveSystemPromptPreset("Release notes", "Write in a formal, changelog style.")
+
+        val stored = File(folder.root, "claude-system-prompts.json")
+        assertTrue(stored.readText().contains("Release notes"))
+        assertEquals(
+            listOf(stored.name),
+            folder.root.list()!!.filter { it.startsWith(stored.name) }.toList(),
+        )
+    }
+
     @Test
     fun `a custom preset's selection survives a new target instance`() {
         val id: String

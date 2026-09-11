@@ -8,6 +8,8 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.UUID
 
 /** What is persisted: the user's own presets, plus which one is active. */
@@ -158,17 +160,47 @@ class SystemPromptStore(
         return true
     }
 
+    /**
+     * Writes the state to a temporary file and renames it over the real one.
+     *
+     * `writeText` truncates before it writes, so the only copy of the user's own presets was empty
+     * for the length of the write. A process death in that window - Android killing the app during
+     * a settings change is ordinary, not exotic - left a half-written file, and the next launch
+     * caught the parse error and started from no custom presets and no selection. Their writing,
+     * gone, with no error to explain it.
+     *
+     * A rename replaces the name in one step, so a reader sees either the previous state or the new
+     * one. Same options as [LocalProviderCredentialStore], for the same reason: ATOMIC_MOVE leaves
+     * replacing an existing target provider-defined, so REPLACE_EXISTING goes with it.
+     */
     private fun persist() {
         runCatching {
-            file.parentFile?.mkdirs()
-            file.writeText(
+            val state =
                 json.encodeToString(
                     SystemPromptState(
                         customPresets = mutablePresets.value.filterNot(SystemPromptPreset::builtIn),
                         selectedPresetId = mutableSelectedId.value,
                     ),
-                ),
-            )
+                )
+            val directory = file.parentFile
+            if (directory == null) {
+                // No directory to stage in; a plain write is the only option left.
+                file.writeText(state)
+                return@runCatching
+            }
+            directory.mkdirs()
+            val staging = File.createTempFile("${file.name}.", ".staged", directory)
+            try {
+                staging.writeText(state)
+                Files.move(
+                    staging.toPath(),
+                    file.toPath(),
+                    StandardCopyOption.ATOMIC_MOVE,
+                    StandardCopyOption.REPLACE_EXISTING,
+                )
+            } finally {
+                staging.delete()
+            }
         }
     }
 }
