@@ -67,8 +67,6 @@ data class ClaudeCodeUiState(
     val systemPromptId: String? = null,
     /** Which preset each existing chat carries, so the composer can name what the next turn sends. */
     val sessionSystemPromptIds: Map<String, String?> = emptyMap(),
-    /** Held for a chat that has not sent anything yet; see [ClaudeCodeTarget.stagedSystemPrompt]. */
-    val stagedSystemPrompt: StagedSystemPrompt? = null,
 ) {
     /**
      * The preset [sessionId]'s next turn will actually carry, by the same rule the runtime applies.
@@ -77,8 +75,7 @@ data class ClaudeCodeUiState(
      * composer observes: a per-chat switch has to move the chip on the tap, not on whatever
      * recomposes next.
      */
-    fun systemPromptIdFor(sessionId: String?): String? =
-        resolveSystemPromptId(sessionId, sessionSystemPromptIds, systemPromptId, stagedSystemPrompt)
+    fun systemPromptIdFor(sessionId: String?): String? = resolveSystemPromptId(sessionId, sessionSystemPromptIds, systemPromptId)
 }
 
 /**
@@ -112,14 +109,9 @@ class ClaudeCodeController(
             target.auth.state,
             target.defaultPermissionMode,
             target.systemPromptPresets,
-            // Nested to stay inside combine's five-flow arity: the default, the per-session
-            // snapshots and a staged choice are three parts of one answer, so they travel together.
-            combine(
-                target.defaultSystemPromptId,
-                target.sessionSystemPromptIds,
-                target.stagedSystemPrompt,
-                ::Triple,
-            ),
+            // Nested to stay inside combine's five-flow arity: the default and the per-session
+            // snapshots are two halves of one answer, so they travel together.
+            combine(target.defaultSystemPromptId, target.sessionSystemPromptIds, ::Pair),
         ) { base, auth, mode, presets, prompt ->
             base.copy(
                 auth = auth,
@@ -127,7 +119,6 @@ class ClaudeCodeController(
                 systemPromptPresets = presets,
                 systemPromptId = prompt.first,
                 sessionSystemPromptIds = prompt.second,
-                stagedSystemPrompt = prompt.third,
             )
         }.stateIn(scope, SharingStarted.Eagerly, ClaudeCodeUiState())
 
@@ -213,12 +204,6 @@ class ClaudeCodeController(
         mode: ClaudePermissionMode,
         sessionId: String? = null,
     ) = target.setPermissionMode(mode, sessionId)
-
-    /** Holds a preset for the next session; see [ClaudeCodeTarget.stageSystemPrompt]. */
-    fun stageSystemPrompt(presetId: String?) = target.stageSystemPrompt(presetId)
-
-    /** Drops a staged preset when the composer moves to another chat. */
-    fun clearStagedSystemPrompt() = target.clearStagedSystemPrompt()
 
     fun selectSystemPrompt(
         presetId: String?,

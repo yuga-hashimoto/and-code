@@ -54,6 +54,20 @@ class ClaudeSystemPromptTest {
     }
 
     /**
+     * `ProcessBuilder` refuses an argument containing a NUL outright, so a pasted preset with one
+     * in it would be persisted and then fail every later Claude turn - the same trap as an
+     * over-long prompt, and just as hard to trace back to the preset that caused it.
+     */
+    @Test
+    fun `a prompt pasted with control characters is stripped of what exec refuses`() {
+        val target = target()
+
+        val saved = target.saveSystemPromptPreset("Pasted", "Focus\u0000 on\u0007 debugging.\nSecond line.\tIndented.")
+
+        assertEquals("Focus on debugging.\nSecond line.\tIndented.", saved.prompt)
+    }
+
+    /**
      * The prompt travels as one `--append-system-prompt` argv entry, and one argument past Linux's
      * MAX_ARG_STRLEN fails `exec`. Since the preset is persisted, an over-long one would fail every
      * later Claude process start, not just its own turn.
@@ -181,12 +195,7 @@ class ClaudeSystemPromptTest {
      * [resolveSystemPromptId]; this exercises the pair the way the composer does.
      */
     private fun ClaudeCodeTarget.promptIdFor(sessionId: String?): String? =
-        resolveSystemPromptId(
-            sessionId,
-            sessionSystemPromptIds.value,
-            defaultSystemPromptId.value,
-            stagedSystemPrompt.value,
-        )
+        resolveSystemPromptId(sessionId, sessionSystemPromptIds.value, defaultSystemPromptId.value)
 
     /**
      * A session snapshots the default when it is created and keeps it, so an older chat's preset is
@@ -216,103 +225,6 @@ class ClaudeSystemPromptTest {
 
             assertEquals(ClaudeSystemPrompts.DEBUG, target.promptIdFor(switched.id))
             assertNull(target.promptIdFor(untouched.id))
-        }
-
-    /**
-     * A chat's session is not created until its first message, so the composer's choice in an empty
-     * chat has nowhere to be written. Writing it to the default instead would retune every later
-     * chat and, since the presets are shared, rewrite what OpenCode is told - for what the chip
-     * presents as a choice about this one chat.
-     */
-    @Test
-    fun `a preset chosen before the first message is staged, not made the default`() =
-        runBlocking {
-            val target = target()
-
-            target.stageSystemPrompt(ClaudeSystemPrompts.DEBUG)
-
-            assertNull(target.defaultSystemPromptId.value)
-            assertEquals(ClaudeSystemPrompts.DEBUG, target.promptIdFor(null))
-
-            val session = target.createSession("New chat", "/workspace")
-            assertEquals(ClaudeSystemPrompts.DEBUG, target.promptIdFor(session.id))
-        }
-
-    /** The choice belongs to the chat it was made in, so the chat after it starts fresh. */
-    @Test
-    fun `a staged preset is consumed by the session it was staged for`() =
-        runBlocking {
-            val target = target()
-            target.stageSystemPrompt(ClaudeSystemPrompts.DEBUG)
-            target.createSession("Staged chat", "/workspace")
-
-            val next = target.createSession("Next chat", "/workspace")
-
-            assertNull(target.stagedSystemPrompt.value)
-            assertNull(target.promptIdFor(next.id))
-        }
-
-    /**
-     * The staged slot is target-wide, so without an explicit clear, staging a preset in one blank
-     * chat and then starting another would hand the first chat's choice to the second. The UI calls
-     * this on every chat change, keyed on `ChatUiState.chatEpoch`.
-     */
-    @Test
-    fun `abandoning a blank chat drops its staged preset`() =
-        runBlocking {
-            val target = target()
-            target.stageSystemPrompt(ClaudeSystemPrompts.DEBUG)
-
-            target.clearStagedSystemPrompt()
-            val next = target.createSession("Another blank chat", "/workspace")
-
-            assertNull(target.promptIdFor(next.id))
-        }
-
-    /** The staged id can dangle exactly as a session's can - see the delete tests above. */
-    @Test
-    fun `deleting a staged preset clears the staging slot`() =
-        runBlocking {
-            val target = target()
-            val preset = target.saveSystemPromptPreset("Scratch", "Anything goes.")
-            target.stageSystemPrompt(preset.id)
-
-            target.deleteSystemPromptPreset(preset.id)
-
-            assertNull(target.stagedSystemPrompt.value)
-            val session = target.createSession("New chat", "/workspace")
-            assertNull(target.promptIdFor(session.id))
-        }
-
-    /**
-     * A session id the target has no record for names a chat it does not have - deleted while open,
-     * or another agent's. Falling through to the default would retune every later chat, and the
-     * shared OpenCode instructions with it, for a chat that no longer exists.
-     */
-    @Test
-    fun `a preset for an unknown session changes nothing`() =
-        runBlocking {
-            val target = target()
-            target.selectSystemPrompt(ClaudeSystemPrompts.CODING)
-
-            target.selectSystemPrompt(ClaudeSystemPrompts.DEBUG, "not-a-session")
-
-            assertEquals(ClaudeSystemPrompts.CODING, target.defaultSystemPromptId.value)
-            assertNull(target.stagedSystemPrompt.value)
-        }
-
-    /** Clearing the preset for a new chat is a choice too, not the absence of one. */
-    @Test
-    fun `staging None overrides the default for that chat`() =
-        runBlocking {
-            val target = target()
-            target.selectSystemPrompt(ClaudeSystemPrompts.CODING)
-
-            target.stageSystemPrompt(null)
-            val session = target.createSession("New chat", "/workspace")
-
-            assertEquals(ClaudeSystemPrompts.CODING, target.defaultSystemPromptId.value)
-            assertNull(target.promptIdFor(session.id))
         }
 
     /**
@@ -346,11 +258,6 @@ class ClaudeSystemPromptTest {
         assertEquals(ClaudeSystemPrompts.DEBUG, state.systemPromptIdFor("switched"))
         assertEquals(ClaudeSystemPrompts.CODING, state.systemPromptIdFor("never-seen"))
         assertEquals(ClaudeSystemPrompts.CODING, state.systemPromptIdFor(null))
-        assertEquals(
-            ClaudeSystemPrompts.DEBUG,
-            state.copy(stagedSystemPrompt = StagedSystemPrompt(ClaudeSystemPrompts.DEBUG)).systemPromptIdFor(null),
-        )
-        assertNull(state.copy(stagedSystemPrompt = StagedSystemPrompt(null)).systemPromptIdFor(null))
     }
 
     @Test

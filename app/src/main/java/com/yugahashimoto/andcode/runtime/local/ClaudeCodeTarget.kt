@@ -126,19 +126,6 @@ class ClaudeCodeTarget(
     val sessionSystemPromptIds: StateFlow<Map<String, String?>> = mutableSessionPromptIds.asStateFlow()
 
     /**
-     * A preset chosen from the composer in a chat that has no session yet, waiting for
-     * [createSession] to snapshot it.
-     *
-     * A chat's session is not created until its first message, so this covers the whole time a new
-     * chat sits empty - which is exactly when someone sets the mode they are about to ask in. The
-     * choice cannot be written to the default instead: this store is shared with OpenCode, so that
-     * would rewrite the instructions file every OpenCode session reads, and retune every later
-     * Claude chat, for what the chip presents as a choice about this one.
-     */
-    private val mutableStagedSystemPrompt = MutableStateFlow<StagedSystemPrompt?>(null)
-    val stagedSystemPrompt: StateFlow<StagedSystemPrompt?> = mutableStagedSystemPrompt.asStateFlow()
-
-    /**
      * Mode applied to sessions created from now on.
      *
      * Existing sessions keep the mode they were created with, because changing it mid-conversation
@@ -186,8 +173,9 @@ class ClaudeCodeTarget(
      * session on the runtime reads - a per-chat Claude switch has no business changing what OpenCode
      * is told.
      *
-     * A chat with no session yet (nothing sent in it) has nothing here to write to; that choice goes
-     * to [stageSystemPrompt] instead.
+     * A chat with no session yet (nothing sent in it) has nothing here to write to; its choice is
+     * held by the composer as `ChatUiState.draftSystemPrompt` and arrives here, with a session id,
+     * the moment its first message creates one.
      */
     fun selectSystemPrompt(
         presetId: String?,
@@ -206,28 +194,6 @@ class ClaudeCodeTarget(
         persist()
     }
 
-    /**
-     * Holds [presetId] for the next session this target creates, without moving the default.
-     *
-     * What the composer calls for a chat that has not sent anything yet - see [stagedSystemPrompt]
-     * for why such a choice must not land on the default.
-     */
-    fun stageSystemPrompt(presetId: String?) {
-        mutableStagedSystemPrompt.value = StagedSystemPrompt(presetId)
-    }
-
-    /**
-     * Drops a staged choice, because the chat it was made in is no longer the one on screen.
-     *
-     * The slot is target-wide, so without this, staging a preset in a blank chat and then starting
-     * another blank one would hand the first chat's choice to the second. The UI calls this when
-     * the composer changes chats - see `ChatUiState.chatEpoch`, which is what makes leaving a chat
-     * that never had a session observable at all.
-     */
-    fun clearStagedSystemPrompt() {
-        mutableStagedSystemPrompt.value = null
-    }
-
     /** Creates a new custom preset, or updates one already saved when [id] names an existing one. */
     fun saveSystemPromptPreset(
         name: String,
@@ -236,17 +202,13 @@ class ClaudeCodeTarget(
     ): SystemPromptPreset = systemPrompts.save(name, prompt, id)
 
     /**
-     * Removes a custom preset, and with it any session - or staged choice - still pointing at it.
+     * Removes a custom preset, and with it any session still pointing at that preset.
      *
      * Left dangling, a session's promptId would keep naming a preset that no longer exists; the
      * store clears the default selection for the same reason.
      */
     fun deleteSystemPromptPreset(id: String) {
         if (!systemPrompts.delete(id)) return
-        // The staged slot holds an id like a session record does, so it can dangle the same way:
-        // the next chat would persist a reference to a preset that no longer exists and send with
-        // no prompt at all.
-        if (mutableStagedSystemPrompt.value?.id == id) mutableStagedSystemPrompt.value = null
         val affectedSessionIds = records.filterValues { it.promptId == id }.keys
         if (affectedSessionIds.isNotEmpty()) {
             affectedSessionIds.forEach { sessionId -> records[sessionId] = records.getValue(sessionId).copy(promptId = null) }
@@ -340,15 +302,11 @@ class ClaudeCodeTarget(
                 title = title ?: DEFAULT_TITLE,
                 time = OpenCodeTime(now, now),
             )
-        // Consumed, not merely read: a staged choice belongs to the chat the user made it in, so
-        // the next new chat after this one starts from the default again.
-        val staged = mutableStagedSystemPrompt.value
-        mutableStagedSystemPrompt.value = null
         records[session.id] =
             ClaudeSessionRecord(
                 session = session,
                 permissionMode = mutableDefaultPermissionMode.value.cliValue,
-                promptId = if (staged != null) staged.id else systemPrompts.selectedId.value,
+                promptId = systemPrompts.selectedId.value,
             )
         persist()
         return session

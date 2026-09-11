@@ -64,6 +64,87 @@ class ChatViewModelTest {
         Dispatchers.resetMain()
     }
 
+    /**
+     * A chat's session is not created until its first message, so a preset picked in a blank chat
+     * is held here and written to that session before its turn goes out. It lives on this view
+     * model rather than on the agent because it belongs to this chat: an agent-wide slot would be
+     * consumed by whichever session was created first, including one a schedule, a voice turn, or
+     * the quick-input widget made in the meantime.
+     */
+    @Test
+    fun `a preset picked before the first message is applied to the session it creates`() =
+        runTest(dispatcher) {
+            val applied = mutableListOf<Pair<String, String?>>()
+            val backend = FakeBackend()
+            val viewModel =
+                ChatViewModel(backend, onApplySystemPrompt = { sessionId, presetId -> applied += sessionId to presetId })
+            advanceUntilIdle()
+
+            viewModel.selectSystemPrompt("debug")
+            assertEquals("debug", viewModel.uiState.value.draftSystemPrompt?.id)
+
+            viewModel.sendMessage("Hello")
+            advanceUntilIdle()
+
+            assertEquals(listOf("s1" to "debug"), applied)
+            // Consumed by the session it was picked for, so the next blank chat starts clean.
+            assertNull(viewModel.uiState.value.draftSystemPrompt)
+        }
+
+    /** With a session already open there is nothing to hold: the choice goes straight to it. */
+    @Test
+    fun `a preset picked in an open chat is applied to that chat at once`() =
+        runTest(dispatcher) {
+            val applied = mutableListOf<Pair<String, String?>>()
+            val backend = FakeBackend()
+            val viewModel =
+                ChatViewModel(backend, onApplySystemPrompt = { sessionId, presetId -> applied += sessionId to presetId })
+            advanceUntilIdle()
+            viewModel.sendMessage("Hello")
+            advanceUntilIdle()
+
+            viewModel.selectSystemPrompt("research")
+
+            assertEquals(listOf("s1" to "research"), applied)
+            assertNull(viewModel.uiState.value.draftSystemPrompt)
+        }
+
+    /** The choice belongs to the chat it was made in, so leaving that chat drops it. */
+    @Test
+    fun `starting another blank chat drops the previous draft preset`() =
+        runTest(dispatcher) {
+            val applied = mutableListOf<Pair<String, String?>>()
+            val backend = FakeBackend()
+            val viewModel =
+                ChatViewModel(backend, onApplySystemPrompt = { sessionId, presetId -> applied += sessionId to presetId })
+            advanceUntilIdle()
+            viewModel.selectSystemPrompt("debug")
+
+            viewModel.newSession()
+            viewModel.sendMessage("Hello")
+            advanceUntilIdle()
+
+            assertTrue(applied.isEmpty())
+            assertNull(viewModel.uiState.value.draftSystemPrompt)
+        }
+
+    /** Clearing the preset for this chat is a choice too, not the absence of one. */
+    @Test
+    fun `picking None before the first message is applied as None`() =
+        runTest(dispatcher) {
+            val applied = mutableListOf<Pair<String, String?>>()
+            val backend = FakeBackend()
+            val viewModel =
+                ChatViewModel(backend, onApplySystemPrompt = { sessionId, presetId -> applied += sessionId to presetId })
+            advanceUntilIdle()
+
+            viewModel.selectSystemPrompt(null)
+            viewModel.sendMessage("Hello")
+            advanceUntilIdle()
+
+            assertEquals(listOf<Pair<String, String?>>("s1" to null), applied)
+        }
+
     @Test
     fun `sending blank input does nothing`() =
         runTest(dispatcher) {

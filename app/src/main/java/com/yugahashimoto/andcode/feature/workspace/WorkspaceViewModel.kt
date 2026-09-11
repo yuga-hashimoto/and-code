@@ -358,15 +358,6 @@ class WorkspaceViewModel(
         sessionId: String? = null,
     ) = claudeCode?.selectSystemPrompt(presetId, sessionId) ?: Unit
 
-    /**
-     * What the composer calls for a chat that has not sent anything yet, which has no session to
-     * write to - see [com.yugahashimoto.andcode.runtime.local.ClaudeCodeTarget.stagedSystemPrompt].
-     */
-    fun stageClaudeSystemPrompt(presetId: String?) = claudeCode?.stageSystemPrompt(presetId) ?: Unit
-
-    /** Called when the composer changes chats, so one blank chat's choice is not handed to the next. */
-    fun clearClaudeStagedSystemPrompt() = claudeCode?.clearStagedSystemPrompt() ?: Unit
-
     fun saveClaudeSystemPromptPreset(
         name: String,
         prompt: String,
