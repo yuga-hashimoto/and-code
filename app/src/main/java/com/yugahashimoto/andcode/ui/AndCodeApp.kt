@@ -1005,8 +1005,12 @@ fun AndCodeApp(
                                 workspaceState.claude
                                     .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
                                     ?.let { claude ->
-                                        chatState.draftSystemPrompt?.id
-                                            ?: claude.systemPromptIdFor(chatState.sessionId)
+                                        // Presence of the draft decides, not its id: choosing None
+                                        // for this chat is a draft whose id is null, and an elvis
+                                        // here would read that as "no draft" and show the default
+                                        // while the first turn sent no prompt at all.
+                                        val draft = chatState.draftSystemPrompt
+                                        if (draft != null) draft.id else claude.systemPromptIdFor(chatState.sessionId)
                                     },
                             onSelectSystemPrompt = chatViewModel::selectSystemPrompt,
                             // The mode settings shows, so the chip is not left naming whatever agent id
