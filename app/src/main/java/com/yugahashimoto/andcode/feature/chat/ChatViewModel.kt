@@ -2578,29 +2578,30 @@ private fun updateQuestionAnswerSelection(
     answer: String,
     multiple: Boolean,
 ): List<String> {
-    val normalized = answer.trim()
+    // Typed answers are kept verbatim, because trimming here would swallow the space the user
+    // just typed while a word is still being written. [sanitizeQuestionAnswer] trims on submit.
     val optionLabels = prompt.options.map { it.label }.toSet()
     if (prompt.options.isEmpty()) {
-        return normalized.takeIf { it.isNotEmpty() }?.let(::listOf).orEmpty()
+        return answer.takeIf { it.isNotEmpty() }?.let(::listOf).orEmpty()
     }
 
     val optionAnswers = current.filter { it in optionLabels }
     val fallback = current.lastOrNull { it !in optionLabels }
-    if (normalized in optionLabels) {
+    if (answer in optionLabels) {
         return if (multiple) {
             val toggled =
-                if (normalized in optionAnswers) {
-                    optionAnswers.filterNot { it == normalized }
+                if (answer in optionAnswers) {
+                    optionAnswers.filterNot { it == answer }
                 } else {
-                    optionAnswers + normalized
+                    optionAnswers + answer
                 }
             toggled + listOfNotNull(fallback?.takeIf { it.isNotBlank() })
         } else {
-            listOf(normalized)
+            listOf(answer)
         }
     }
 
-    val nextFallback = normalized.takeIf { it.isNotEmpty() }
+    val nextFallback = answer.takeIf { it.isNotEmpty() }
     return if (multiple) {
         optionAnswers + listOfNotNull(nextFallback)
     } else {

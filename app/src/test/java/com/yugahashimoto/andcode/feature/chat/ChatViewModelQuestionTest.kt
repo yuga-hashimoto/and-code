@@ -111,7 +111,7 @@ class ChatViewModelQuestionTest {
         }
 
     @Test
-    fun `failed answer keeps question and trims fallback input`() =
+    fun `failed answer keeps question and trims fallback input on submit`() =
         runTest(dispatcher) {
             val backend = FakeBackend(answerResult = false)
             val viewModel = ChatViewModel(backend)
@@ -137,9 +137,43 @@ class ChatViewModelQuestionTest {
 
             assertEquals(listOf(listOf("src/main")), backend.answeredQuestions.single().answers)
             val pending = viewModel.uiState.value.pendingQuestions.single()
-            assertEquals(listOf("src/main"), pending.selectedAnswers.single())
+            assertEquals(listOf("   src/main   "), pending.selectedAnswers.single())
             assertEquals("OpenCode question failed", pending.error)
             assertFalse(pending.isSubmitting)
+        }
+
+    @Test
+    fun `typed answer keeps the spaces between words`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+
+            viewModel.openSession("session-1")
+            advanceUntilIdle()
+            backend.events.emit(
+                OpenCodeEvent.QuestionAsked(
+                    request(
+                        id = "q-1",
+                        sessionId = "session-1",
+                        options = listOf("src", "docs"),
+                    ),
+                ),
+            )
+            advanceUntilIdle()
+
+            "hello world".indices.forEach { end ->
+                viewModel.selectQuestionAnswer("q-1", 0, "hello world".substring(0, end + 1))
+            }
+
+            assertEquals(
+                listOf("hello world"),
+                viewModel.uiState.value.pendingQuestions.single().selectedAnswers.single(),
+            )
+
+            viewModel.submitQuestion("q-1")
+            advanceUntilIdle()
+
+            assertEquals(listOf(listOf("hello world")), backend.answeredQuestions.single().answers)
         }
 
     @Test
