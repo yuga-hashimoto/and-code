@@ -2,9 +2,8 @@ name: OCR PR Review
 
 # DISABLED 2026-08: OpenCode Zen's free tier keeps failing with
 # "Upstream request failed: Model is unavailable", so every PR went red on a
-# check that had produced no findings at all. Automated review moved to
-# copilot-review.yml; restore the pull_request_target trigger below once the
-# free tier is dependable again.
+# check that had produced no findings at all. Restore the pull_request_target
+# trigger below once the free tier is dependable again.
 on:
   workflow_dispatch:
 

@@ -27,8 +27,7 @@ fun ProviderIcon(
             providerId.contains("openai", ignoreCase = true) ||
                 providerId.contains("codex", ignoreCase = true) ||
                 providerId.contains("gpt", ignoreCase = true) -> Icons.Default.SmartToy
-            providerId.contains("copilot", ignoreCase = true) ||
-                providerId.contains("github", ignoreCase = true) -> Icons.Default.Code
+            providerId.contains("github", ignoreCase = true) -> Icons.Default.Code
             providerId.contains("gemini", ignoreCase = true) ||
                 providerId.contains("google", ignoreCase = true) -> Icons.Default.Android
             providerId.contains("opencode", ignoreCase = true) -> Icons.Default.Terminal
