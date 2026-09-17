@@ -75,6 +75,11 @@ jobs:
             exit 1
           fi
            ./gradlew detekt spotlessCheck :app:lintGithubDebug :app:testGithubDebugUnitTest assembleGithubDebug assembleGithubRelease
+          # Separate invocation, deliberately without GITHUB_CLIENT_ID: this is the same flavor and
+          # signing config F-Droid's own build server produces (gradleprops: andcode.fdroidBuild=true,
+          # no client ID), so this asset is what fdroiddata's Binaries:/AllowedAPKSigningKeys: verify
+          # a reproducible build against - it must be built exactly the way F-Droid builds it.
+          ./gradlew -Pandcode.fdroidBuild=true :app:assembleFdroidRelease
 
       - name: Resolve tag
         id: tag
@@ -106,5 +111,12 @@ jobs:
            else
              cp app/build/outputs/apk/github/release/app-github-release-unsigned.apk "and-code-$TAG-release-unsigned.apk"
              ASSETS+=("and-code-$TAG-release-unsigned.apk")
+          fi
+          # F-Droid's own build server produces this same flavor/signing combination from source
+          # (see the "Verify and build APKs" step above); publishing it lets fdroiddata's
+          # Binaries:/AllowedAPKSigningKeys: metadata verify a reproducible build against it.
+          if [ -f app/build/outputs/apk/fdroid/release/app-fdroid-release.apk ]; then
+            cp app/build/outputs/apk/fdroid/release/app-fdroid-release.apk "and-code-$TAG-fdroid-release.apk"
+            ASSETS+=("and-code-$TAG-fdroid-release.apk")
           fi
           gh release upload "$TAG" --clobber "${ASSETS[@]}"

@@ -121,69 +121,67 @@ identifiers in the fdroid build).
 Submitting to the official catalog means opening a merge request against
 [fdroiddata](https://gitlab.com/fdroid/fdroiddata). This has been done:
 [!48005](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/48005). Current
-metadata, after review feedback from F-Droid maintainers:
+metadata, after several rounds of review feedback:
 
 ```yaml
+AntiFeatures:
+  NonFreeNet:
+    en-US: optional GitHub OAuth sign-in, not required for core functionality
+  TetheredNet:
+    en-US: the on-demand Vosk wake-word speech model is only ever fetched from alphacephei.com
 Categories:
   - AI Chat
 License: MIT
 AuthorName: Yu-ga
-RepoType: git
-Repo: https://github.com/yuga-hashimoto/and-code
 SourceCode: https://github.com/yuga-hashimoto/and-code
 IssueTracker: https://github.com/yuga-hashimoto/and-code/issues
 Changelog: https://github.com/yuga-hashimoto/and-code/releases
 
-AntiFeatures:
-  NonFreeNet: optional GitHub OAuth sign-in, not required for core functionality
-  TetheredNet: the on-demand Vosk wake-word speech model is only ever fetched from alphacephei.com
+AutoName: AndCode
+
+RepoType: git
+Repo: https://github.com/yuga-hashimoto/and-code
+Binaries: 
+  https://github.com/yuga-hashimoto/and-code/releases/download/v%v/and-code-v%v-fdroid-release.apk
 
 Builds:
-  - versionName: "1.2.20"
-    versionCode: 59
-    commit: 4184ea3154dce9ad25fec56aa9ef9bb215c77036
+  - versionName: 1.2.22
+    versionCode: 61
+    commit: aa5474d0c0c0a4e1c01b436d56ea18342187e516
     subdir: app
     gradle:
       - fdroid
+    prebuild: sed -i -e '/firebase/d' -e '/gms/d' {..,.}/build.gradle.kts
     gradleprops:
       - andcode.fdroidBuild=true
-    # The google-services/firebase-crashlytics Gradle plugins are declared with
-    # `apply false` in both build.gradle.kts files (needed by the "github" flavor;
-    # never applied for this fdroid build, see `andcode.fdroidBuild` above), but the
-    # source scanner still flags the bare "apply false" declaration lines. Strip
-    # just those lines instead of scanignoring the whole files.
-    prebuild:
-      - sed -i '/id("com.google.gms.google-services").*apply false/d' ../build.gradle.kts
-      - sed -i '/id("com.google.firebase.crashlytics").*apply false/d' ../build.gradle.kts
-      - sed -i '/id("com.google.gms.google-services").*apply false/d' build.gradle.kts
-      - sed -i '/id("com.google.firebase.crashlytics").*apply false/d' build.gradle.kts
+
+AllowedAPKSigningKeys: f036e07002d8c2e6a5a64000f1211398d4831ff37cf280456a9a26d2f12617df
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: "1.2.20"
-CurrentVersionCode: 59
+CurrentVersion: 1.2.22
+CurrentVersionCode: 61
 ```
 
-This recipe was dry-run locally: after a fresh checkout at the pinned commit
-with the two `prebuild` sed lines applied to each file by hand,
-`./gradlew -Pandcode.fdroidBuild=true :app:assembleFdroidRelease` still built
-successfully end-to-end. `AntiFeatures` is a map with a reason per entry
-(the initial submission used a plain list), and `commit:` is the resolved
-full SHA rather than the tag name — both per review feedback.
+This is the exact field order/quoting `fdroid rewritemeta` produces (it also
+drops YAML comments, so any explanatory comments only live in this file and
+the MR's discussion thread, not in the metadata itself).
 
-Review also asked whether the Vosk model download is opt-in and discloses
-that it bypasses F-Droid's build/source checks. Checked the app source: the
-download was already gated behind an explicit "Download" button in Settings
-(never auto-triggered by the wake-word toggle), so declining was already no
-harder than accepting. The missing piece — an in-app disclosure of the
-bypass — shipped in v1.2.20 (PR #309: visible text next to the Download
-button, plus a regression test in `LegalDisclosureComplianceTest`), so the
-merge request's `Builds:` entry above now points at v1.2.20. The remaining
-step is editing MR !48005 itself to this entry.
+`AllowedAPKSigningKeys` is the SHA-256 of the app's signing certificate,
+extracted directly from a published release APK's APK Signing Block v2 (not
+from the keystore) — `keytool`/`apksigner` weren't available locally, so this
+was parsed by hand from the APK's binary signing block. `Binaries:` is a URL
+template (`%v` = versionName) F-Droid's build server uses to fetch the
+officially-published binary and diff it against what it builds from source,
+as a supply-chain check.
 
-The fork's own CI (`soccer.hy620/fdroiddata`) is separately blocked: GitLab's
-GraphQL API reports every pipeline run failing with
-`"The pipeline failed due to the user not being verified."` — an
-account-level verification gate on shared-runner minutes, unrelated to the
-recipe itself. That needs clearing on the GitLab account before the fork's
-own pipeline can go green (does not block F-Droid's own review process).
+The `Binaries:` URL points at a `-fdroid-release.apk` asset, not the plain
+`-release.apk` one — the latter is the `github` flavor (Firebase included)
+and will never byte-diff-match a `fdroid` flavor build. The Release workflow
+(`.github/workflows/release.yml`) now also runs
+`./gradlew -Pandcode.fdroidBuild=true :app:assembleFdroidRelease` (deliberately
+without `GITHUB_CLIENT_ID`, matching how F-Droid's own build server invokes
+it) and publishes that APK alongside the existing assets so this comparison
+has something correct to compare against. It's signed with the same release
+signing config as the `github` flavor, hence the shared `AllowedAPKSigningKeys`
+fingerprint above.
