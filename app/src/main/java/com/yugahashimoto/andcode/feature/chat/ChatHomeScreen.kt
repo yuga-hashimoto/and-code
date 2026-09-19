@@ -472,6 +472,7 @@ fun ChatHomeScreen(
                                         entry,
                                         onOpenActivity = { activityGroupId = it },
                                         onImageClick = { selectedImage = it },
+                                        onOpenProviderSettings = onOpenProviderSettings,
                                     )
                                 }
                             }
@@ -519,6 +520,7 @@ fun ChatHomeScreen(
                                         kind = errorKind ?: ChatErrorKind.GENERIC,
                                         onOpenLocalSetup = onOpenLocalSetup,
                                         onOpenRemoteSetup = onOpenRemoteSetup,
+                                        onOpenProviderSettings = onOpenProviderSettings,
                                     )
                                 }
                             }
@@ -1027,6 +1029,7 @@ private fun ChatErrorCard(
     kind: ChatErrorKind,
     onOpenLocalSetup: () -> Unit,
     onOpenRemoteSetup: () -> Unit,
+    onOpenProviderSettings: (() -> Unit)?,
 ) {
     Surface(
         shape = RoundedCornerShape(16.dp),
@@ -1034,7 +1037,23 @@ private fun ChatErrorCard(
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
         Column(modifier = Modifier.padding(14.dp)) {
-            if (kind == ChatErrorKind.RUNTIME_NOT_READY) {
+            if (kind == ChatErrorKind.ZEN_FREE_TIER) {
+                Text(
+                    text = stringResource(R.string.chat_error_zen_free_tier_title),
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = stringResource(R.string.chat_error_zen_free_tier_body),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (onOpenProviderSettings != null) {
+                    Spacer(Modifier.height(12.dp))
+                    Button(onClick = onOpenProviderSettings) {
+                        Text(stringResource(R.string.chat_error_zen_free_tier_action))
+                    }
+                }
+            } else if (kind == ChatErrorKind.RUNTIME_NOT_READY) {
                 Text(
                     text = stringResource(R.string.runtime_setup_required_title),
                     fontWeight = FontWeight.SemiBold,

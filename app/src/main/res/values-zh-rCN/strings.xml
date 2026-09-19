@@ -809,6 +809,9 @@
     <string name="error_answer_required">Answer required</string>
     <string name="error_question_failed">提问失败</string>
     <string name="error_session_failed">会话出错</string>
+    <string name="chat_error_zen_free_tier_title">OpenCode 免费模型需要登录 Zen</string>
+    <string name="chat_error_zen_free_tier_body">除非登录 OpenCode Zen，否则 OpenCode 仅允许在官方桌面端和 CLI 中使用免费模型。请在设置 → 提供方中连接 OpenCode，或使用其他提供方。</string>
+    <string name="chat_error_zen_free_tier_action">打开提供方</string>
 
     <!-- Connection dialog -->
     <string name="connection_test_success">OpenCode %1$s</string>

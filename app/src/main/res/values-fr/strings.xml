@@ -813,6 +813,9 @@
     <string name="error_answer_required">Answer required</string>
     <string name="error_question_failed">La question a échoué</string>
     <string name="error_session_failed">La session a échoué</string>
+    <string name="chat_error_zen_free_tier_title">Les modèles gratuits OpenCode nécessitent une connexion Zen</string>
+    <string name="chat_error_zen_free_tier_body">OpenCode réserve ses modèles gratuits au bureau et à la CLI officiels, sauf si vous vous connectez à OpenCode Zen. Connectez OpenCode dans Paramètres → Fournisseurs, ou utilisez un autre fournisseur.</string>
+    <string name="chat_error_zen_free_tier_action">Ouvrir les fournisseurs</string>
 
     <!-- Connection dialog -->
     <string name="connection_test_success">OpenCode %1$s</string>

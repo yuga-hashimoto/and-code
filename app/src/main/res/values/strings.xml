@@ -811,6 +811,9 @@
     <string name="error_answer_required">Answer required</string>
     <string name="error_question_failed">The question failed</string>
     <string name="error_session_failed">The session failed</string>
+    <string name="chat_error_zen_free_tier_title">OpenCode free models need a Zen login</string>
+    <string name="chat_error_zen_free_tier_body">OpenCode limits its free models to the official desktop and CLI unless you sign in to OpenCode Zen. Connect OpenCode in Settings → Providers, or use another provider.</string>
+    <string name="chat_error_zen_free_tier_action">Open providers</string>
 
     <!-- Connection dialog -->
     <string name="connection_test_success">OpenCode %1$s</string>

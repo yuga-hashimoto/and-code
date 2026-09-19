@@ -9,6 +9,7 @@ internal enum class ChatErrorKind {
     RATE_LIMITED,
     SERVER_ERROR,
     NOT_FOUND,
+    ZEN_FREE_TIER,
     GENERIC,
 }
 
@@ -32,6 +33,11 @@ internal fun classifyChatError(message: String?): ChatErrorKind? {
             "connection is not configured",
             "runtime is not configured",
             "no runtime configured",
+        )
+    val zenFreeTierSignals =
+        listOf(
+            "free tier can only be used from within opencode",
+            "free tier can only be used in opencode",
         )
     val transientSignals =
         listOf(
@@ -58,6 +64,7 @@ internal fun classifyChatError(message: String?): ChatErrorKind? {
         )
     return when {
         runtimeNotReadySignals.any(normalized::contains) -> ChatErrorKind.RUNTIME_NOT_READY
+        zenFreeTierSignals.any(normalized::contains) -> ChatErrorKind.ZEN_FREE_TIER
         transientSignals.any(normalized::contains) -> ChatErrorKind.TRANSIENT_CONNECTION
         else -> ChatErrorKind.GENERIC
     }

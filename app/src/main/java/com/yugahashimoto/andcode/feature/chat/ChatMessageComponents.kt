@@ -165,12 +165,13 @@ fun TimelineEntryRow(
     entry: TimelineEntry,
     onOpenActivity: (String) -> Unit = {},
     onImageClick: (ChatImageSource) -> Unit = {},
+    onOpenProviderSettings: (() -> Unit)? = null,
 ) {
     when (entry) {
         is TimelineEntry.UserMessage -> MessageBubble(entry.message, onImageClick)
         is TimelineEntry.Body -> MarkdownText(entry.part.text, onImageClick = onImageClick)
         is TimelineEntry.Image -> ImagePartView(entry.part, onImageClick)
-        is TimelineEntry.Error -> ErrorPartCard(entry.part)
+        is TimelineEntry.Error -> ErrorPartCard(entry.part, onOpenProviderSettings)
         is TimelineEntry.Activity ->
             AssistantActivityRow(
                 parts = entry.parts,
@@ -183,7 +184,11 @@ fun TimelineEntryRow(
 
 /** An assistant turn that failed (provider error, retries exhausted, ...) surfaced in the chat. */
 @Composable
-private fun ErrorPartCard(part: ChatPart.Error) {
+private fun ErrorPartCard(
+    part: ChatPart.Error,
+    onOpenProviderSettings: (() -> Unit)?,
+) {
+    val zenFreeTier = classifyChatError(part.message) == ChatErrorKind.ZEN_FREE_TIER
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.45f)),
@@ -200,14 +205,35 @@ private fun ErrorPartCard(part: ChatPart.Error) {
                     tint = MaterialTheme.colorScheme.error,
                 )
                 Text(
-                    text = stringResource(R.string.error_session_failed),
+                    text =
+                        stringResource(
+                            if (zenFreeTier) {
+                                R.string.chat_error_zen_free_tier_title
+                            } else {
+                                R.string.error_session_failed
+                            },
+                        ),
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.error,
                 )
             }
             Spacer(Modifier.height(6.dp))
-            Text(text = part.message, color = MaterialTheme.colorScheme.onSurface)
+            Text(
+                text =
+                    if (zenFreeTier) {
+                        stringResource(R.string.chat_error_zen_free_tier_body)
+                    } else {
+                        part.message
+                    },
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            if (zenFreeTier && onOpenProviderSettings != null) {
+                Spacer(Modifier.height(12.dp))
+                Button(onClick = onOpenProviderSettings) {
+                    Text(stringResource(R.string.chat_error_zen_free_tier_action))
+                }
+            }
         }
     }
 }

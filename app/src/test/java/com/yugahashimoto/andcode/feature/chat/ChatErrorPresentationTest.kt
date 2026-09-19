@@ -140,4 +140,26 @@ class ChatErrorPresentationTest {
     fun `returns null for null throwable`() {
         assertNull(classifyChatError(null as Throwable?))
     }
+
+    @Test
+    fun `classifies issue 339 zen free tier client gate`() {
+        assertEquals(
+            ChatErrorKind.ZEN_FREE_TIER,
+            classifyChatError(
+                "Error from provider (Console): OpenCode's free tier can only be used from within OpenCode, use the official OpenCode desktop or CLI instead.",
+            ),
+        )
+        assertEquals(
+            ChatErrorKind.ZEN_FREE_TIER,
+            classifyChatError("OpenCode's free tier can only be used in OpenCode"),
+        )
+    }
+
+    @Test
+    fun `does not treat unrelated provider errors as the zen free tier gate`() {
+        assertEquals(
+            ChatErrorKind.GENERIC,
+            classifyChatError("Error from provider (Console): rate limit exceeded"),
+        )
+    }
 }

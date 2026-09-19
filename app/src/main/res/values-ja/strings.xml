@@ -821,6 +821,9 @@
     <string name="error_answer_required">回答が必要です</string>
     <string name="error_question_failed">質問の処理に失敗しました</string>
     <string name="error_session_failed">セッションでエラーが発生しました</string>
+    <string name="chat_error_zen_free_tier_title">OpenCodeの無料モデルはZenへのログインが必要です</string>
+    <string name="chat_error_zen_free_tier_body">OpenCodeの無料モデルは、公式のデスクトップ/CLI以外ではZenにサインインしないと使えません。設定 → プロバイダーでOpenCodeに接続するか、別のプロバイダを使ってください。</string>
+    <string name="chat_error_zen_free_tier_action">プロバイダーを開く</string>
 
     <!-- Connection dialog -->
     <string name="connection_test_success">OpenCode %1$s</string>
