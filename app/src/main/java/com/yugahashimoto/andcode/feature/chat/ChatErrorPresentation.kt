@@ -24,9 +24,6 @@ internal fun classifyChatError(throwable: Throwable?): ChatErrorKind? {
 internal fun classifyChatError(message: String?): ChatErrorKind? {
     val normalized = message?.trim()?.lowercase()?.takeIf { it.isNotEmpty() } ?: return null
 
-    val httpCode = HTTP_CODE_REGEX.find(normalized)?.groupValues?.get(1)?.toIntOrNull()
-    if (httpCode != null) return classifyByStatusCode(httpCode)
-
     val runtimeNotReadySignals =
         listOf(
             "runtime is not installed",
@@ -62,9 +59,11 @@ internal fun classifyChatError(message: String?): ChatErrorKind? {
             "timed out",
             "event stream closed",
         )
+    val httpCode = HTTP_CODE_REGEX.find(normalized)?.groupValues?.get(1)?.toIntOrNull()
     return when {
         runtimeNotReadySignals.any(normalized::contains) -> ChatErrorKind.RUNTIME_NOT_READY
         zenFreeTierSignals.any(normalized::contains) -> ChatErrorKind.ZEN_FREE_TIER
+        httpCode != null -> classifyByStatusCode(httpCode)
         transientSignals.any(normalized::contains) -> ChatErrorKind.TRANSIENT_CONNECTION
         else -> ChatErrorKind.GENERIC
     }

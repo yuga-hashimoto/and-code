@@ -153,6 +153,12 @@ class ChatErrorPresentationTest {
             ChatErrorKind.ZEN_FREE_TIER,
             classifyChatError("OpenCode's free tier can only be used in OpenCode"),
         )
+        assertEquals(
+            ChatErrorKind.ZEN_FREE_TIER,
+            classifyChatError(
+                "OpenCode request failed (HTTP 403): OpenCode's free tier can only be used from within OpenCode",
+            ),
+        )
     }
 
     @Test
