@@ -62,6 +62,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeProvider
 import com.yugahashimoto.andcode.data.schedule.CronExpression
 import com.yugahashimoto.andcode.data.schedule.Schedule
 import com.yugahashimoto.andcode.feature.chat.ModelAndRuntimePickerSheet
+import com.yugahashimoto.andcode.feature.settings.loadAssistantProviders
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.ui.runtimeAgentIcon
@@ -89,6 +90,7 @@ fun ScheduleEditorScreen(
     runtimeTargets: List<RuntimeTarget>,
     providers: List<OpenCodeProvider>,
     workspaces: List<WorkspaceRef>,
+    selectedRuntimeId: String? = null,
     favoriteModelKeys: Set<String> = emptySet(),
     recentModelKeys: List<String> = emptyList(),
     hiddenModelKeys: Set<String> = emptySet(),
@@ -130,7 +132,25 @@ fun ScheduleEditorScreen(
     }
 
     val selectedTarget = runtimeTargets.firstOrNull { it.id == runtimeId }
-    val selectedProvider = providers.firstOrNull { it.id == providerId }
+
+    /*
+     * The model catalog belongs to the agent this schedule runs on, not to the runtime the chat has
+     * open: [providers] only ever holds the chat runtime's catalog, so choosing Claude Code or
+     * Antigravity here kept offering OpenCode's models. The chat runtime's own catalog is reused
+     * as-is; any other target is connected and queried, and one that cannot be reached offers
+     * nothing rather than another agent's models.
+     */
+    var loadedProviders by remember { mutableStateOf<List<OpenCodeProvider>>(emptyList()) }
+    LaunchedEffect(selectedTarget?.id, selectedRuntimeId) {
+        val target = selectedTarget
+        loadedProviders = emptyList()
+        if (target != null && target.id != selectedRuntimeId) {
+            loadedProviders = loadAssistantProviders(target)
+        }
+    }
+    val targetProviders =
+        if (selectedTarget == null || selectedTarget.id == selectedRuntimeId) providers else loadedProviders
+    val selectedProvider = targetProviders.firstOrNull { it.id == providerId }
     val selectedModelName = selectedProvider?.models?.get(modelId)?.name
 
     /*
@@ -526,8 +546,15 @@ fun ScheduleEditorScreen(
         ModelAndRuntimePickerSheet(
             runtimeTargets = runtimeTargets,
             selectedRuntimeId = runtimeId,
-            onSelectRuntime = { runtimeId = it },
-            providers = providers,
+            onSelectRuntime = { id ->
+                if (id != runtimeId) {
+                    // A model id from one agent's catalog means nothing to another agent.
+                    providerId = null
+                    modelId = null
+                }
+                runtimeId = id
+            },
+            providers = targetProviders,
             selectedProviderId = providerId,
             selectedModelId = modelId,
             onSelectModel = { newProviderId, newModelId ->
@@ -537,9 +564,10 @@ fun ScheduleEditorScreen(
             },
             favoriteModelKeys = favoriteModelKeys,
             recentModelKeys = recentModelKeys,
-            // Unlike the chat picker, applied unconditionally: visibility keys come from the
-            // OpenCode-managed catalog and never collide with agent pseudo-catalog provider ids.
-            hiddenModelKeys = hiddenModelKeys,
+            // Same rule as the chat picker: visibility keys only describe catalogs that list
+            // provider models.
+            hiddenModelKeys =
+                hiddenModelKeys.takeIf { selectedTarget?.capabilities?.providerModelList == true }.orEmpty(),
             onToggleFavorite = onToggleFavorite,
             onDismiss = { showModelPicker = false },
         )

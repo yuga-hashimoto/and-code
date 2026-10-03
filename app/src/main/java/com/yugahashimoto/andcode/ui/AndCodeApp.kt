@@ -1352,6 +1352,7 @@ fun AndCodeApp(
                             runtimeTargets = runtimeTargets,
                             providers = settingsState.providers,
                             workspaces = workspaceState.workspaces,
+                            selectedRuntimeId = selectedRuntime?.id,
                             favoriteModelKeys = settingsState.favoriteModelKeys,
                             recentModelKeys = settingsState.recentModelKeys,
                             hiddenModelKeys = settingsState.hiddenModelKeys,
