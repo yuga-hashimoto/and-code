@@ -48,6 +48,7 @@
         MANAGE_EXTERNAL_STORAGE did not exist yet. It is ignored from Android 11 on.
     -->
     <application
+        android:largeHeap="true"
         android:name=".AndCodeApplication"
         android:allowBackup="false"
         android:dataExtractionRules="@xml/data_extraction_rules"

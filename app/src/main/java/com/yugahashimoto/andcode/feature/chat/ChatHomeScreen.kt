@@ -95,6 +95,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -239,7 +240,7 @@ fun ChatHomeScreen(
     onOpenPatchDiff: (ChatPart.Patch) -> Unit = {},
     onDismissPatchDiff: () -> Unit = {},
 ) {
-    var input by remember { mutableStateOf("") }
+    var input by rememberSaveable { mutableStateOf("") }
     val listState = rememberLazyListState()
     var showModelPicker by remember { mutableStateOf(false) }
     val errorKind = classifyChatError(state.error)
