@@ -7,10 +7,10 @@
             "libandroid-shmem",
             "libtalloc"
           ],
-          "filename": "pool/main/p/proot/proot_5.1.107.92_aarch64.deb",
+          "filename": "pool/main/p/proot/proot_5.1.107.96_aarch64.deb",
           "name": "proot",
-          "sha256": "1f1c983509701f6826f568482c70673ee453a9ba38c9f5fa445a472d6b7524e9",
-          "version": "5.1.107.92"
+          "sha256": "8199dca06dccb693ec09fb1759e3e1ad08b4863f0c11c612f89c20bd9ecdc1a0",
+          "version": "5.1.107.96"
         },
         {
           "depends": [],
@@ -21,10 +21,10 @@
         },
         {
           "depends": [],
-          "filename": "pool/main/libt/libtalloc/libtalloc_2.4.3_aarch64.deb",
+          "filename": "pool/main/libt/libtalloc/libtalloc_2.5.0_aarch64.deb",
           "name": "libtalloc",
-          "sha256": "ac81ad623d74c209718b9f3acb2dd702cc8a88c431e820d212229910b4db29da",
-          "version": "2.4.3"
+          "sha256": "556591f43bb773ad8777e1a29522640866a55f95dab71914418b94a8c58ad5a7",
+          "version": "2.5.0"
         }
       ],
       "termux_arch": "aarch64"
@@ -36,10 +36,10 @@
             "libandroid-shmem",
             "libtalloc"
           ],
-          "filename": "pool/main/p/proot/proot_5.1.107.92_x86_64.deb",
+          "filename": "pool/main/p/proot/proot_5.1.107.96_x86_64.deb",
           "name": "proot",
-          "sha256": "70236632826c30ec0245082b633bbc7ef1e9fa5531bd51bd4f20231bfcdc999b",
-          "version": "5.1.107.92"
+          "sha256": "77ea45540071ca543adda2b51aca2bc3761c52904d013fd0890682288eff9455",
+          "version": "5.1.107.96"
         },
         {
           "depends": [],
@@ -50,10 +50,10 @@
         },
         {
           "depends": [],
-          "filename": "pool/main/libt/libtalloc/libtalloc_2.4.3_x86_64.deb",
+          "filename": "pool/main/libt/libtalloc/libtalloc_2.5.0_x86_64.deb",
           "name": "libtalloc",
-          "sha256": "7ca2eaae2e53b28228a01301bc410b62845403d6317c25b8e0a7f40681de0628",
-          "version": "2.4.3"
+          "sha256": "b8c6d95f20075dc1f9ec6573575b2444e8d526e48e0d8d6d5cf4e071e6e06530",
+          "version": "2.5.0"
         }
       ],
       "termux_arch": "x86_64"
