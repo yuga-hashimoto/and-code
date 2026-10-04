@@ -590,7 +590,6 @@
     <string name="legal_license_lgpl3">LGPL-3.0</string>
     <string name="legal_license_bsd3">BSD-3-Clause (libandroid-shmem)</string>
     <string name="legal_license_apache2">رخصة Apache 2.0</string>
-    <string name="legal_license_ccbyncsa4">CC BY-NC-SA 4.0 (نماذج كلمة التنبيه)</string>
     <string name="section_appearance_settings">المظهر</string>
     <string name="theme_row">السمة</string>
     <string name="theme_dialog_title">تحديد السمة</string>

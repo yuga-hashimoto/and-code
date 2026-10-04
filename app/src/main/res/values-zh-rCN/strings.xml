@@ -585,7 +585,6 @@
     <string name="legal_license_lgpl3">LGPL-3.0</string>
     <string name="legal_license_bsd3">BSD-3-Clause (libandroid-shmem)</string>
     <string name="legal_license_apache2">Apache 许可证 2.0</string>
-    <string name="legal_license_ccbyncsa4">CC BY-NC-SA 4.0（唤醒词模型）</string>
     <string name="section_appearance_settings">外观</string>
     <string name="theme_row">主题</string>
     <string name="theme_dialog_title">选择主题</string>

@@ -151,7 +151,6 @@ class LegalDisclosureComplianceTest {
             "LGPL-3.0.txt",
             "BSD-3-Clause-libandroid-shmem.txt",
             "Apache-2.0.txt",
-            "CC-BY-NC-SA-4.0.txt",
         ).forEach { name ->
             val text = readRepoFile("app/src/main/assets/legal/licenses/$name")
             assertTrue("$name should be non-trivial license text", text.length > 200)
