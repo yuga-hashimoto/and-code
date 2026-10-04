@@ -30,7 +30,7 @@ import com.yugahashimoto.andcode.core.diagnostics.provesRunProgress
 import com.yugahashimoto.andcode.core.util.safeMessage
 import com.yugahashimoto.andcode.data.repository.PullRequestStatusRepository
 import com.yugahashimoto.andcode.data.settings.Draft
-import com.yugahashimoto.andcode.data.settings.DraftRepository
+import com.yugahashimoto.andcode.data.settings.DraftStore
 import com.yugahashimoto.andcode.runtime.OpenCodeBackend
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
@@ -560,7 +560,7 @@ class ChatViewModel(
      */
     private val onRunStateChanged: (String, Boolean) -> Unit = { _, _ -> },
     private val onSessionAborted: (String) -> Unit = {},
-    private val draftRepo: DraftRepository? = null,
+    private val draftRepo: DraftStore? = null,
     /**
      * Starts the periodic connection probe. It runs an unbounded polling loop, which a virtual
      * test clock advances through forever, so it stays off unless the real app asks for it.
@@ -862,13 +862,21 @@ class ChatViewModel(
         _workspaceTitleSource.value = source
     }
 
+    /**
+     * Keeps unsent composer text for [sessionId]. Blank text clears the entry instead, so emptying
+     * the field never leaves an empty draft behind to be "restored" later.
+     */
     fun saveDraft(
         sessionId: String,
         text: String,
-        model: String?,
-        agent: String?,
+        model: String? = null,
+        agent: String? = null,
     ) {
-        draftRepo?.save(sessionId, Draft(text, emptyList(), model, agent))
+        if (text.isBlank()) {
+            draftRepo?.clear(sessionId)
+        } else {
+            draftRepo?.save(sessionId, Draft(text, emptyList(), model, agent))
+        }
     }
 
     fun loadDraft(sessionId: String): Draft? = draftRepo?.load(sessionId)

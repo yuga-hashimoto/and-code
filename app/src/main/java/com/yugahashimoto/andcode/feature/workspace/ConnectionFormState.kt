@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.feature.workspace
 
+import androidx.compose.runtime.saveable.listSaver
 import com.yugahashimoto.andcode.core.security.OpenCodeUrl
 import com.yugahashimoto.andcode.data.connection.ConnectionProfile
 import java.util.UUID
@@ -54,6 +55,25 @@ data class ConnectionFormState(
                 password = profile.password.orEmpty(),
                 allowInsecureLan = profile.allowInsecureLan,
                 testSucceeded = true,
+            )
+
+        /**
+         * Carries the typed fields across a configuration change. The password is left out on
+         * purpose - saved instance state is not a place for credentials - and so are the transient
+         * test results, which describe a probe that no longer applies after the form is rebuilt.
+         */
+        val Saver =
+            listSaver<ConnectionFormState, Any>(
+                save = { listOf(it.id, it.name, it.baseUrl, it.username, it.allowInsecureLan) },
+                restore = {
+                    ConnectionFormState(
+                        id = it[0] as String,
+                        name = it[1] as String,
+                        baseUrl = it[2] as String,
+                        username = it[3] as String,
+                        allowInsecureLan = it[4] as Boolean,
+                    )
+                },
             )
     }
 }

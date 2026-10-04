@@ -61,4 +61,22 @@ class ClaudeMessageStoreTest {
 
         file.delete()
     }
+
+    /** The history is written through a temporary file, which must not be left behind (#350). */
+    @Test
+    fun `flush replaces the history file and leaves no temporary file`() {
+        val directory = java.nio.file.Files.createTempDirectory("claude-message-store").toFile()
+        val file = File(directory, "messages.json")
+        val json = Json { encodeDefaults = true }
+        val store = ClaudeMessageStore(file, json)
+        store.upsert("s1", OpenCodeMessage(info = OpenCodeMessageInfo("m1", "s1", "user")))
+
+        store.flush()
+        store.upsert("s1", OpenCodeMessage(info = OpenCodeMessageInfo("m2", "s1", "assistant")))
+        store.flush()
+
+        assertEquals(listOf("messages.json"), directory.list()?.toList())
+        assertEquals(listOf("m1", "m2"), ClaudeMessageStore(file, json).list("s1").map { it.info.id })
+        directory.deleteRecursively()
+    }
 }

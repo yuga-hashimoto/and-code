@@ -43,6 +43,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,6 +72,7 @@ import com.yugahashimoto.andcode.BuildConfig
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.UrlLauncher
 import com.yugahashimoto.andcode.core.diagnostics.CrashLog
+import com.yugahashimoto.andcode.data.settings.DraftRepository
 import com.yugahashimoto.andcode.feature.activity.ActivityViewModel
 import com.yugahashimoto.andcode.feature.assistant.SpeechRecognizerManager
 import com.yugahashimoto.andcode.feature.assistant.SpeechResult
@@ -322,6 +324,7 @@ fun AndCodeApp(
                                 )
                             }
                         },
+                        draftRepo = DraftRepository(context.applicationContext),
                         monitorConnectionQuality = true,
                         resolvedPermissionFlow = app.activityRepository.resolvedPermissions,
                         pullRequestStatuses = app.pullRequestStatusRepository,
@@ -1197,6 +1200,8 @@ fun AndCodeApp(
                             },
                             onOpenPatchDiff = chatViewModel::openPatchDiff,
                             onDismissPatchDiff = chatViewModel::dismissPatchDiff,
+                            onLoadDraft = { sessionId -> chatViewModel.loadDraft(sessionId)?.text },
+                            onSaveDraft = { sessionId, text -> chatViewModel.saveDraft(sessionId, text) },
                         )
                     }
 
@@ -1445,11 +1450,11 @@ private fun GithubCloneDialog(
     onCloned: (String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var source by remember { mutableStateOf(if (githubConfigured) CloneSource.REPOS else CloneSource.URL) }
-    var url by remember { mutableStateOf("") }
+    var source by rememberSaveable { mutableStateOf(if (githubConfigured) CloneSource.REPOS else CloneSource.URL) }
+    var url by rememberSaveable { mutableStateOf("") }
     var repos by remember { mutableStateOf<List<GitHubRepo>>(emptyList()) }
     var isLoadingRepos by remember { mutableStateOf(false) }
-    var search by remember { mutableStateOf("") }
+    var search by rememberSaveable { mutableStateOf("") }
     var isCloning by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
