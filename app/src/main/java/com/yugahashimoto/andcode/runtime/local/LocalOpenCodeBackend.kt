@@ -36,12 +36,14 @@ import kotlinx.serialization.json.JsonObject
 
 class LocalOpenCodeBackend(
     private val portProvider: () -> Int?,
+    private val passwordProvider: () -> String? = { null },
     private val backendFactory: (ConnectionProfile) -> RemoteOpenCodeBackend = { profile ->
         RemoteOpenCodeBackend(profile)
     },
 ) : OpenCodeBackend {
     constructor(runtimeManager: LocalRuntimeManager) : this(
         portProvider = runtimeManager::installedPort,
+        passwordProvider = runtimeManager::localServerPassword,
     )
 
     override val id: String = "local-android"
@@ -56,21 +58,23 @@ class LocalOpenCodeBackend(
         val port =
             portProvider()
                 ?: error("Android local OpenCode runtime is not installed")
-        cached?.takeIf { it.port == port }?.let { return it.backend }
+        val password = passwordProvider()
+        cached?.takeIf { it.port == port && it.password == password }?.let { return it.backend }
 
         synchronized(lock) {
-            cached?.takeIf { it.port == port }?.let { return it.backend }
+            cached?.takeIf { it.port == port && it.password == password }?.let { return it.backend }
             val backend =
                 backendFactory(
                     ConnectionProfile(
                         id = id,
                         name = displayName,
                         baseUrl = "http://127.0.0.1:$port/",
-                        username = "opencode",
+                        username = LocalServerAuth.USERNAME,
+                        password = password,
                         allowInsecureLan = true,
                     ),
                 )
-            cached = CachedDelegate(port, backend)
+            cached = CachedDelegate(port, password, backend)
             return backend
         }
     }
@@ -254,6 +258,7 @@ class LocalOpenCodeBackend(
 
     private data class CachedDelegate(
         val port: Int,
+        val password: String?,
         val backend: RemoteOpenCodeBackend,
     )
 }

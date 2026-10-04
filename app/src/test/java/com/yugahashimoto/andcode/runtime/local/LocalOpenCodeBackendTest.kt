@@ -1,7 +1,9 @@
 package com.yugahashimoto.andcode.runtime.local
 
+import com.yugahashimoto.andcode.data.connection.ConnectionProfile
 import com.yugahashimoto.andcode.runtime.remote.RemoteOpenCodeBackend
 import kotlinx.coroutines.runBlocking
+import okhttp3.Credentials
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
 import org.junit.After
@@ -74,5 +76,56 @@ class LocalOpenCodeBackendTest {
             val request = server.takeRequest()
             assertEquals("/question/q-1/reply?directory=%2Fworkspace%2Frepo", request.path)
             assertEquals("""{"answers":[["src"],["docs","tests"]]}""", request.body.readUtf8())
+        }
+
+    @Test
+    fun `supplies the local server password and rebuilds when it changes`() {
+        var password: String? = "first-secret"
+        val profiles = mutableListOf<ConnectionProfile>()
+        val backend =
+            LocalOpenCodeBackend(
+                portProvider = { 4097 },
+                passwordProvider = { password },
+                backendFactory = { profile ->
+                    profiles += profile
+                    RemoteOpenCodeBackend(profile)
+                },
+            )
+
+        val first = backend.delegate()
+        assertSame(first, backend.delegate())
+        assertEquals(1, profiles.size)
+        assertEquals("first-secret", profiles.single().password)
+        assertEquals(LocalServerAuth.USERNAME, profiles.single().username)
+
+        password = "second-secret"
+        val second = backend.delegate()
+        assertNotSame(first, second)
+        assertEquals("second-secret", profiles.last().password)
+    }
+
+    @Test
+    fun `sends basic auth to the local server when a password is set`() =
+        runBlocking {
+            server.enqueue(MockResponse().setBody("true"))
+
+            val backend =
+                LocalOpenCodeBackend(
+                    portProvider = { server.port },
+                    passwordProvider = { "local-server-secret" },
+                    backendFactory = { profile ->
+                        RemoteOpenCodeBackend(
+                            profile.copy(baseUrl = server.url("/").toString()),
+                        )
+                    },
+                )
+
+            assertTrue(backend.answerQuestion("q-1", emptyList(), "/workspace/repo"))
+
+            val request = server.takeRequest()
+            assertEquals(
+                Credentials.basic(LocalServerAuth.USERNAME, "local-server-secret"),
+                request.getHeader("Authorization"),
+            )
         }
 }

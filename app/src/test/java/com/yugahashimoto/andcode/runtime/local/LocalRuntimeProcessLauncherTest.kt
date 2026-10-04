@@ -375,6 +375,30 @@ class LocalRuntimeProcessLauncherTest {
     }
 
     @Test
+    fun `guest environment configures basic auth for the local server`() {
+        val environment =
+            localRuntimeEnvironment(
+                suiteEnvironment = emptyMap(),
+                prootTmp = File("/android/proot-tmp"),
+                serverPassword = "local-server-secret",
+            )
+
+        assertEquals("local-server-secret", environment[LocalServerAuth.PASSWORD_ENV])
+        assertEquals("opencode", environment["OPENCODE_SERVER_USERNAME"])
+    }
+
+    @Test
+    fun `guest environment leaves the local server unauthenticated only when no secret is supplied`() {
+        val environment =
+            localRuntimeEnvironment(
+                suiteEnvironment = emptyMap(),
+                prootTmp = File("/android/proot-tmp"),
+            )
+
+        assertFalse(environment.containsKey(LocalServerAuth.PASSWORD_ENV))
+    }
+
+    @Test
     fun `process tree termination order is children before parent`() {
         val children =
             mapOf(
