@@ -94,6 +94,12 @@ class LocalRuntimeManager(
 
     fun installedPort(): Int? = readMetadata()?.port
 
+    /**
+     * The basic-auth secret protecting the on-device OpenCode server, or null when nothing is
+     * installed. See [LocalServerAuth] for why the server is not reachable without it.
+     */
+    fun localServerPassword(): String? = readMetadata()?.let { LocalServerAuth.password(runtimeDirectory) }
+
     fun isHealthy(): Boolean = installedPort()?.let(portProbe) == true
 
     fun setOnExit(callback: ((Int?, Long?, Long) -> Unit)?) {

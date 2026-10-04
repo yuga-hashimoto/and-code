@@ -6,6 +6,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -169,6 +170,38 @@ class LocalRuntimeManagerTest {
             )
 
         assertEquals(LocalRuntimeStatus.Stopped("1.17.20", 4096), manager.status())
+    }
+
+    @Test
+    fun `local server password is generated for an installed runtime`() {
+        createRuntimeFiles()
+        temporaryFolder.newFile("metadata.json").writeText(
+            """{"version":"1.17.20","port":4096,"installedAt":123}""",
+        )
+        val manager =
+            LocalRuntimeManager(
+                runtimeDirectory = temporaryFolder.root,
+                abi = "arm64-v8a",
+                portProbe = { false },
+            )
+
+        val password = manager.localServerPassword()
+
+        assertTrue(!password.isNullOrEmpty())
+        assertEquals(password, LocalServerAuth.password(temporaryFolder.root))
+        assertEquals(password, File(temporaryFolder.root, "server-password").readText().trim())
+    }
+
+    @Test
+    fun `local server password is absent without installed metadata`() {
+        val manager =
+            LocalRuntimeManager(
+                runtimeDirectory = temporaryFolder.root,
+                abi = "arm64-v8a",
+                portProbe = { false },
+            )
+
+        assertNull(manager.localServerPassword())
     }
 
     @Test
