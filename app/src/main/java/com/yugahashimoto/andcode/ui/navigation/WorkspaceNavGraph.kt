@@ -200,10 +200,11 @@ fun NavGraphBuilder.workspaceNavGraph(
 
     composable(GUEST_BROWSER_ROUTE_PATTERN) { backStack ->
         val requestedUrl = backStack.arguments?.getString(GUEST_BROWSER_ARG_URL)?.let { decodeRouteArg(it) }
+        // Opened from Settings without a URL, there is no page to guess at: the runtime's HTTP
+        // servers (opencode serve included) are APIs, not UIs, and the local one now requires basic
+        // auth. Leave the URL bar empty for the user to fill in instead of loading a 401.
         GuestBrowserScreen(
-            initialUrl =
-                requestedUrl
-                    ?: app.localRuntimeManager.installedPort()?.let { "http://127.0.0.1:$it/" }.orEmpty(),
+            initialUrl = requestedUrl.orEmpty(),
             onBack = { navController.popBackStack() },
         )
     }
