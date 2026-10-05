@@ -1,5 +1,6 @@
 # Mirrored verbatim from https://github.com/termux/termux-packages/blob/master/packages/libtalloc/build.sh
-# Retrieved: 2026-08-02. Mirrored here (rather than only linked) because the upstream
+# Retrieved: 2026-10-02, at commit bddd9721910e56bc36412a764b4b4f7bbdbb1eb1 ("bump(main/libtalloc):
+# 2.5.0"). Mirrored here (rather than only linked) because the upstream
 # 'master' branch is mutable and would otherwise be an unstable reference for the exact
 # packaging recipe used to build the binaries pinned by SHA-256 in
 # runtime_tools/termux_assets.lock.json.
@@ -8,9 +9,9 @@ TERMUX_PKG_HOMEPAGE=https://talloc.samba.org/talloc/doc/html/index.html
 TERMUX_PKG_DESCRIPTION="Hierarchical, reference counted memory pool system with destructors"
 TERMUX_PKG_LICENSE="GPL-3.0"
 TERMUX_PKG_MAINTAINER="@termux"
-TERMUX_PKG_VERSION=2.4.3
+TERMUX_PKG_VERSION=2.5.0
 TERMUX_PKG_SRCURL=https://www.samba.org/ftp/talloc/talloc-${TERMUX_PKG_VERSION}.tar.gz
-TERMUX_PKG_SHA256=dc46c40b9f46bb34dd97fe41f548b0e8b247b77a918576733c528e83abd854dd
+TERMUX_PKG_SHA256=912afa237510ae542a7733998eb18a12bcda35ab6729c8e2ddb43e8d0ebab007
 TERMUX_PKG_BREAKS="libtalloc-dev"
 TERMUX_PKG_REPLACES="libtalloc-dev"
 TERMUX_PKG_BUILD_IN_SRC=true
