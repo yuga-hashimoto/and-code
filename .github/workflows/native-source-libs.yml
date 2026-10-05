@@ -13,6 +13,8 @@ on:
       - "scripts/prepare_android_runtime_assets.py"
       - "scripts/prepare_android_runtime_native_libs.py"
       - "runtime_tools/**"
+      - "app/build.gradle.kts"
+      - ".github/workflows/release.yml"
       - ".github/workflows/native-source-libs.yml"
 
 permissions:

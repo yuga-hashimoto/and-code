@@ -14,11 +14,22 @@ NATIVE_EXECUTABLES = {
     "libexec/proot/loader32": "libopencode_android_proot_loader32.so",
 }
 RUNTIME_LIBRARIES = {
-    "libandroid-shmem.so": "libandroid-shmem.so",
-    "libc++_shared.so": "libc++_shared.so",
-    "libtalloc.so.2.4.3": "libtalloc.so",
+    # pattern -> (destination name, required). The talloc SONAME tracks the package
+    # version (e.g. libtalloc.so.2.4.3, or .2.5.0 after the 2.5.0 bump), so it is matched by
+    # glob rather than hardcoded.
+    "libandroid-shmem.so": ("libandroid-shmem.so", True),
+    "libc++_shared.so": ("libc++_shared.so", False),
+    "libtalloc.so.*": ("libtalloc.so", True),
 }
 NATIVE_EXECUTABLE_SEARCH_DIRS = ("bin", "libexec")
+
+
+def select_runtime_library(lib_dir: Path, source_pattern: str) -> Path | None:
+    matches = sorted(lib_dir.glob(source_pattern))
+    # Prefer a real file over a version symlink so the copied payload is self-contained.
+    regular = [path for path in matches if not path.is_symlink()]
+    chosen = (regular or matches)
+    return chosen[-1] if chosen else None
 
 
 def native_executable_name(relative_path: str) -> str:
@@ -56,12 +67,15 @@ def copy_abi(linux_assets_dir: Path, output_dir: Path, abi: str) -> None:
         shutil.copy2(source, destination)
         destination.chmod(0o755)
     lib_dir = prefix_dir / "lib"
-    for source_name, destination_name in sorted(RUNTIME_LIBRARIES.items()):
-        source = lib_dir / source_name
-        if source.is_file():
-            destination = abi_output / destination_name
-            shutil.copy2(source, destination)
-            destination.chmod(0o755)
+    for source_pattern, (destination_name, required) in sorted(RUNTIME_LIBRARIES.items()):
+        source = select_runtime_library(lib_dir, source_pattern)
+        if source is None:
+            if required:
+                raise FileNotFoundError(f"Required Android runtime library missing: {lib_dir / source_pattern}")
+            continue
+        destination = abi_output / destination_name
+        shutil.copy2(source, destination)
+        destination.chmod(0o755)
     patch_needed(abi_output / "libopencode_android_proot.so", "libtalloc.so.2", "libtalloc.so")
 
 

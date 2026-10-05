@@ -18,7 +18,7 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 90
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -82,6 +82,13 @@ jobs:
             exit 1
           fi
            ./gradlew detekt spotlessCheck :app:lintGithubDebug :app:testGithubDebugUnitTest assembleGithubDebug assembleGithubRelease
+          # Separate invocation, deliberately without GITHUB_CLIENT_ID: this is the same flavor and
+          # signing config F-Droid's own build server produces (gradleprops: andcode.fdroidBuild=true,
+          # no client ID), so this asset is what fdroiddata's Binaries:/AllowedAPKSigningKeys: verify
+          # a reproducible build against - it must be built exactly the way F-Droid builds it.
+          # GITHUB_CLIENT_ID is set at step level above, so it must be unset here explicitly:
+          # otherwise it is baked into BuildConfig and classes.dex no longer matches F-Droid's.
+          #
           # The fdroid APK is built the way F-Droid's build server builds it, including the
           # native runtime payload: proot, libtalloc and libandroid-shmem are compiled from
           # the pinned Termux recipes with the NDK here so no prebuilt binary is downloaded.
