@@ -1123,6 +1123,7 @@
     <string name="pr_collapse">收起</string>
     <string name="cd_pull_request_expand">显示另外 %1$d 个拉取请求</string>
     <string name="cd_pull_request_collapse">减少显示的拉取请求</string>
+    <string name="cd_pull_request_dismiss">隐藏拉取请求 #%1$d</string>
     <string name="runtime_connection_unhealthy">本地 OpenCode 运行环境异常</string>
     <string name="runtime_connection_failed">无法连接本地 OpenCode</string>
     <string name="runtime_update_insufficient_space">更新所需的可用空间不足：需要 %1$d 字节，可用 %2$d 字节</string>

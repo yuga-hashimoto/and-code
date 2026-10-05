@@ -204,6 +204,8 @@ fun ChatHomeScreen(
     onCancelQuestion: (String) -> Unit = {},
     onDismissQuestion: (String) -> Unit = {},
     onDismissTodoBar: (String) -> Unit = {},
+    /** Hides one pull request badge above the composer, by its ref key. */
+    onDismissPullRequest: (String) -> Unit = {},
     autoAcceptPermissions: Boolean = false,
     /** False for a runtime that never raises permission prompts, so the auto-accept chip is hidden. */
     supportsPermissions: Boolean = true,
@@ -634,6 +636,7 @@ fun ChatHomeScreen(
                     githubRefs = githubRefs,
                     pullRequests = state.pullRequests,
                     onOpenUrl = onOpenUrl,
+                    onDismissPullRequest = onDismissPullRequest,
                     // The composer thumbnails render the ViewModel's previews directly: a local
                     // copy of the list drifted out of step with the attachments it stood for, so a
                     // removal could drop the wrong image or leave a thumbnail with nothing behind it.
@@ -1214,6 +1217,7 @@ private fun ChatComposer(
     githubRefs: List<GitHubReference>,
     pullRequests: List<ChatPullRequest>,
     onOpenUrl: (String) -> Unit,
+    onDismissPullRequest: (String) -> Unit,
     attachedImages: List<Bitmap>,
     onRemoveImage: (Int) -> Unit,
     onCameraLaunch: () -> Unit,
@@ -1274,6 +1278,7 @@ private fun ChatComposer(
         PullRequestLinkBar(
             pullRequests = pullRequests,
             onOpenUrl = onOpenUrl,
+            onDismiss = onDismissPullRequest,
             modifier = Modifier.padding(bottom = 6.dp),
         )
 
