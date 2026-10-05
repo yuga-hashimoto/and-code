@@ -7,26 +7,33 @@ source code.** See [TRADEMARKS.md](TRADEMARKS.md) for trademark notices.
 
 ## Bundled native runtime components (PRoot / Termux-derived)
 
-These binaries are downloaded from the official Termux package mirror at build time (pinned by
-package version and SHA-256 hash of the compiled `.deb` in
-[`runtime_tools/termux_assets.lock.json`](runtime_tools/termux_assets.lock.json)) and packaged into
-the APK so the on-device Linux runtime can start. AndCode does not patch or modify these packages
-beyond what Termux's own packaging performs. **Full license text for each of GPL-2.0, GPL-3.0 (which
-LGPL-3.0 incorporates by reference), LGPL-3.0, and the BSD-3-Clause text used by
-`libandroid-shmem` is bundled verbatim, unmodified, in [`THIRD_PARTY_LICENSES/`](THIRD_PARTY_LICENSES/)
-in this repository and at `assets/legal/licenses/*.txt` inside the shipped APK** — not just linked.
+These binaries reach the APK one of two ways. The **github** flavor downloads them from the official
+Termux package mirror at build time (pinned by package version and SHA-256 hash of the compiled
+`.deb` in [`runtime_tools/termux_assets.lock.json`](runtime_tools/termux_assets.lock.json)). The
+**fdroid** flavor compiles the same three Termux packages from source with the Android NDK, from the
+pinned `termux-packages` commit declared by the fdroiddata recipe's `srclibs:` (`TermuxPackages`).
+Either way they are packaged into the APK so the on-device Linux runtime can start, and AndCode does
+not patch or modify these packages beyond what Termux's own packaging performs. **Full license text
+for each of GPL-2.0, GPL-3.0 (which LGPL-3.0 incorporates by reference), LGPL-3.0, and the
+BSD-3-Clause text used by `libandroid-shmem` is bundled verbatim, unmodified, in
+[`THIRD_PARTY_LICENSES/`](THIRD_PARTY_LICENSES/) in this repository and at
+`assets/legal/licenses/*.txt` inside the shipped APK** — not just linked.
 
 | Package | Version | License (verified against upstream source, not guessed) | Copyright | Corresponding source (content-addressed) |
 |---|---|---|---|---|
-| `proot` | 5.1.107.92 | [GPL-2.0](THIRD_PARTY_LICENSES/GPL-2.0.txt), per [`TERMUX_PKG_LICENSE`](runtime_tools/termux-packaging-recipes/proot.build.sh) | The PRoot contributors | Upstream source archive `v5.1.107.92.zip`, SHA-256 `29385d1ddb619a9c4449ab512bfd55032034b22f724ddf98fc95ff300ea32135` (from [github.com/termux/proot](https://github.com/termux/proot/archive/v5.1.107.92.zip), tagged release, not `master`) |
+| `proot` | 5.1.107.96 | [GPL-2.0](THIRD_PARTY_LICENSES/GPL-2.0.txt), per [`TERMUX_PKG_LICENSE`](runtime_tools/termux-packaging-recipes/proot.build.sh) | The PRoot contributors | Upstream source archive `v5.1.107.96.zip`, SHA-256 `75f654fe60dea92dabff2bf083ae8bfe4f91baa6a1a374786a6bf391015eebaa` (from [github.com/termux/proot](https://github.com/termux/proot/archive/v5.1.107.96.zip), tagged release, not `master`) |
 | `libandroid-shmem` | 0.7 | [BSD-3-Clause](THIRD_PARTY_LICENSES/BSD-3-Clause-libandroid-shmem.txt), per [`TERMUX_PKG_LICENSE`](runtime_tools/termux-packaging-recipes/libandroid-shmem.build.sh) and the project's own `LICENSE` file | Copyright (c) 2013 Sergii Pylypenko; Copyright (c) 2017 Fredrik Fornwall | Upstream source archive `v0.7.tar.gz`, SHA-256 `1e5ff8459bc0a8c229dd8a94b27d119987e09ef3414331c2b5ebfff20b98e867` (from [github.com/termux/libandroid-shmem](https://github.com/termux/libandroid-shmem/archive/refs/tags/v0.7.tar.gz), tagged release, not `master`) |
-| `libtalloc` | 2.4.3 | [LGPL-3.0-or-later](THIRD_PARTY_LICENSES/LGPL-3.0.txt) for the actual runtime library. Termux's own packaging metadata tags the *package* `GPL-3.0` (a coarser, package-level tag), but the shared library source itself (`talloc.c`/`talloc.h`, the only files that become `libtalloc.a`/`libtalloc.so`) carries its own header: *"the following LGPL license applies to the talloc library. This does NOT imply that all of Samba is released under the LGPL"* — version 3 or later. Resolved; no longer `REQUIRES_LICENSE_REVIEW`. | Copyright (C) Andrew Tridgell 2004; Copyright (C) Stefan Metzmacher 2006 | Upstream source archive `talloc-2.4.3.tar.gz`, SHA-256 `dc46c40b9f46bb34dd97fe41f548b0e8b247b77a918576733c528e83abd854dd` (from [samba.org/ftp/talloc](https://www.samba.org/ftp/talloc/talloc-2.4.3.tar.gz), versioned release path, not a mutable branch) |
+| `libtalloc` | 2.5.0 | [LGPL-3.0-or-later](THIRD_PARTY_LICENSES/LGPL-3.0.txt) for the actual runtime library. Termux's own packaging metadata tags the *package* `GPL-3.0` (a coarser, package-level tag), but the shared library source itself (`talloc.c`/`talloc.h`, the only files that become `libtalloc.a`/`libtalloc.so`) carries its own header: *"the following LGPL license applies to the talloc library. This does NOT imply that all of Samba is released under the LGPL"* — version 3 or later. Resolved; no longer `REQUIRES_LICENSE_REVIEW`. | Copyright (C) Andrew Tridgell 2004; Copyright (C) Stefan Metzmacher 2006 | Upstream source archive `talloc-2.5.0.tar.gz`, SHA-256 `912afa237510ae542a7733998eb18a12bcda35ab6729c8e2ddb43e8d0ebab007` (from [samba.org/ftp/talloc](https://www.samba.org/ftp/talloc/talloc-2.5.0.tar.gz), versioned release path, not a mutable branch) |
+
+The fdroid flavor compiles all three from the pinned `TermuxPackages` commit, which can lag the
+mirror by a version or two (currently `proot` 5.1.107.94, `libtalloc` 2.4.3, `libandroid-shmem` 0.7).
 
 **Packaging recipes, mirrored (not just linked):** the exact `TERMUX_PKG_*` build recipe used for
 each package above — the thing that actually produces the `.deb` pinned by hash in
 `termux_assets.lock.json` — is copied verbatim into
 [`runtime_tools/termux-packaging-recipes/`](runtime_tools/termux-packaging-recipes/) in this
-repository, as retrieved from `termux/termux-packages` on 2026-08-02. This exists specifically so
+repository, as retrieved from `termux/termux-packages` (the retrieval date, and for the recipes
+refreshed here the exact commit, are recorded in each file's header). This exists specifically so
 the corresponding-source reference does not depend on the upstream `termux-packages` repository's
 mutable `master` branch continuing to show the same content in the future; the recipe as it existed
 at the time these exact binaries were built is preserved here.
@@ -36,13 +43,13 @@ at the time these exact binaries were built is preserved here.
 - *Provided:* the exact, versioned, content-addressed upstream source archive for each package
   (verifiable by the SHA-256 shown, independent of any branch or tag being later force-moved), and
   the exact `TERMUX_PKG_*` recipe file for each package, mirrored as retrieved from
-  `termux/termux-packages` on 2026-08-02.
+  `termux/termux-packages` (see each file's header).
 - *Not yet provided, and not claimed to be complete:* the recipe files above are not self-contained.
   They call into the broader `termux-packages` **build framework** — `termux_step_*` helper
   functions, environment set up by the framework's own scripts, the `termux-chroot` template file
   `proot`'s recipe references, and the cross-compilation toolchain — none of which is vendored into
   this repository. Nor has this project independently confirmed that the `termux-packages` `master`
-  commit these recipes were retrieved from on 2026-08-02 is the *exact* commit that produced the
+  commit these recipes were retrieved from is the *exact* commit that produced the
   specific `.deb` binaries pinned by SHA-256 in `termux_assets.lock.json` (Termux does not publish a
   per-package-build commit pin in the `.deb` itself, and this project has not yet cross-referenced
   `termux-packages`' commit history against the pinned hashes to establish that link).
