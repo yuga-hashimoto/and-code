@@ -26,14 +26,14 @@ BSD-3-Clause text used by `libandroid-shmem` is bundled verbatim, unmodified, in
 | `libtalloc` | 2.5.0 | [LGPL-3.0-or-later](THIRD_PARTY_LICENSES/LGPL-3.0.txt) for the actual runtime library. Termux's own packaging metadata tags the *package* `GPL-3.0` (a coarser, package-level tag), but the shared library source itself (`talloc.c`/`talloc.h`, the only files that become `libtalloc.a`/`libtalloc.so`) carries its own header: *"the following LGPL license applies to the talloc library. This does NOT imply that all of Samba is released under the LGPL"* — version 3 or later. Resolved; no longer `REQUIRES_LICENSE_REVIEW`. | Copyright (C) Andrew Tridgell 2004; Copyright (C) Stefan Metzmacher 2006 | Upstream source archive `talloc-2.5.0.tar.gz`, SHA-256 `912afa237510ae542a7733998eb18a12bcda35ab6729c8e2ddb43e8d0ebab007` (from [samba.org/ftp/talloc](https://www.samba.org/ftp/talloc/talloc-2.5.0.tar.gz), versioned release path, not a mutable branch) |
 
 The fdroid flavor compiles all three from the pinned `TermuxPackages` commit, which can lag the
-mirror by a patch or two (currently `proot` 5.1.107.94, `libtalloc` 2.4.3, `libandroid-shmem` 0.7).
+mirror by a version or two (currently `proot` 5.1.107.94, `libtalloc` 2.4.3, `libandroid-shmem` 0.7).
 
 **Packaging recipes, mirrored (not just linked):** the exact `TERMUX_PKG_*` build recipe used for
 each package above — the thing that actually produces the `.deb` pinned by hash in
 `termux_assets.lock.json` — is copied verbatim into
 [`runtime_tools/termux-packaging-recipes/`](runtime_tools/termux-packaging-recipes/) in this
-repository, as retrieved from `termux/termux-packages` (each file's header records the exact commit
-and retrieval date). This exists specifically so
+repository, as retrieved from `termux/termux-packages` (the retrieval date, and for the recipes
+refreshed here the exact commit, are recorded in each file's header). This exists specifically so
 the corresponding-source reference does not depend on the upstream `termux-packages` repository's
 mutable `master` branch continuing to show the same content in the future; the recipe as it existed
 at the time these exact binaries were built is preserved here.
