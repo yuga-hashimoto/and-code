@@ -1,0 +1,3 @@
+- Security: the local OpenCode server now requires authentication, so other apps on the device can no longer reach it on loopback.
+- Updated the bundled runtime launcher (proot) to a version that is still published upstream.
+- Removed an unused license text from the in-app legal notices, and the guest browser no longer opens the local API endpoint by default.
