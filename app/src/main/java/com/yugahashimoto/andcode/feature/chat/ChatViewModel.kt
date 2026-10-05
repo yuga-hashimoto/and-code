@@ -612,7 +612,9 @@ class ChatViewModel(
     /**
      * Pull requests the user hid with [dismissPullRequest]. Scanning re-derives the refs from the
      * transcript on every message change, so without this set every refetch would put the dismissed
-     * badge back. Like [dismissedQuestionIds] it lives only as long as this chat's view model.
+     * badge back. Like [dismissedQuestionIds] it is cleared when the composer moves to another chat:
+     * the dismissal belongs to the chat it was made in, and opening a chat is an explicit act of
+     * attention that offers its badges again.
      */
     private val dismissedPullRequestKeys = mutableSetOf<String>()
 
@@ -984,6 +986,7 @@ class ChatViewModel(
         // Opening the chat is an explicit act of attention, so questions the user hid earlier are
         // offered again rather than staying suppressed by a stale dismissal.
         dismissedQuestionIds.clear()
+        dismissedPullRequestKeys.clear()
         _uiState.update {
             it.copy(
                 sessionId = sessionId,
@@ -1111,6 +1114,7 @@ class ChatViewModel(
         streamedParts.clear()
         messageRoles.clear()
         dismissedQuestionIds.clear()
+        dismissedPullRequestKeys.clear()
         pendingInterrupts.clear()
         _uiState.update {
             it.copy(

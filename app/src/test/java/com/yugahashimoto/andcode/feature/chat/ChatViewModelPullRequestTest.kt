@@ -20,6 +20,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
@@ -41,6 +42,7 @@ import org.junit.Test
 @OptIn(ExperimentalCoroutinesApi::class)
 class ChatViewModelPullRequestTest {
     private val dispatcher = StandardTestDispatcher()
+    private val statusScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @Before
     fun setUp() {
@@ -49,6 +51,7 @@ class ChatViewModelPullRequestTest {
 
     @After
     fun tearDown() {
+        statusScope.cancel()
         Dispatchers.resetMain()
     }
 
@@ -115,6 +118,29 @@ class ChatViewModelPullRequestTest {
             assertEquals(listOf(PullRequestRef("o", "r", 7)), viewModel.uiState.value.pullRequests.map { it.ref })
         }
 
+    /** The dismissal belongs to the chat it was made in, so reopening the chat offers it again. */
+    @Test
+    fun `reopening the chat offers a dismissed pull request again`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend, pullRequestStatuses = pullRequestStatuses())
+            viewModel.openSession("session-1")
+            advanceUntilIdle()
+
+            backend.emitAssistantText("session-1", "part-1", "Opened https://github.com/o/r/pull/7 for review.")
+            advanceUntilIdle()
+            viewModel.dismissPullRequest(PullRequestRef("o", "r", 7).key)
+            advanceUntilIdle()
+
+            backend.emitAssistantText("session-1", "part-2", "Also opened https://github.com/o/r/pull/9.")
+            advanceUntilIdle()
+            viewModel.openSession("session-1")
+            backend.emitAssistantText("session-1", "part-3", "Pull request https://github.com/o/r/pull/7 is merged.")
+            advanceUntilIdle()
+
+            assertEquals(listOf(PullRequestRef("o", "r", 7)), viewModel.uiState.value.pullRequests.map { it.ref })
+        }
+
     /**
      * The real repository is built against GitHub, but what these tests assert is the ref flow, not
      * the fetch, so a client that can never connect keeps them hermetic; a badge simply waits for
@@ -128,7 +154,7 @@ class ChatViewModelPullRequestTest {
                     client = OkHttpClient(),
                     baseUrl = "http://127.0.0.1:1",
                 ),
-            scope = CoroutineScope(SupervisorJob() + Dispatchers.IO),
+            scope = statusScope,
         )
 
     private class FakeBackend : OpenCodeBackend {
