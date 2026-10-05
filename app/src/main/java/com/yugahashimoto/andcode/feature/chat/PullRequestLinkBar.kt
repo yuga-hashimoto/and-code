@@ -92,7 +92,7 @@ fun PullRequestLinkBar(
                 ) {
                     DiffChip(pullRequest, onOpenUrl)
                     StateChip(pullRequest, onOpenUrl)
-                    // The toggle trails the last visible row so folded pull requests stay one tap
+                    // The toggle sits after the state chip so folded pull requests stay one tap
                     // away without costing a row of their own.
                     if (hidden > 0 && index == visible.lastIndex) {
                         ExpandChip(
