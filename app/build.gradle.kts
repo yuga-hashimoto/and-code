@@ -24,7 +24,15 @@ if (!isFdroidBuild) {
     apply(plugin = "com.google.firebase.crashlytics")
 }
 
+// When set, the native runtime payload (proot, libtalloc, libandroid-shmem) is built from
+// source by scripts/build_android_runtime_native_debs.sh before Gradle runs, and this build
+// extracts those .deb files instead of downloading them from the Termux mirror. F-Droid's
+// build server and the release workflow set this; local and CI test builds keep the
+// pinned-mirror path so they do not need an NDK.
+val useSourceNativeLibs = providers.gradleProperty("andcode.sourceNativeLibs").orNull.toBoolean()
+
 val repoRoot = rootProject.projectDir
+val sourceNativeDebsDir = repoRoot.resolve("build/termux-debs")
 val githubClientId =
     (
         System.getenv("GITHUB_CLIENT_ID")
@@ -48,6 +56,10 @@ val prepareOpenCodeRuntimeAssets =
             "--lock-file",
             repoRoot.resolve("runtime_tools/termux_assets.lock.json").absolutePath,
         )
+        if (useSourceNativeLibs) {
+            inputs.dir(sourceNativeDebsDir)
+            args("--local-debs-dir", sourceNativeDebsDir.absolutePath)
+        }
     }
 
 val prepareOpenCodeRuntimeNativeLibs =

@@ -217,6 +217,28 @@ def download_locked_package(
     return download_termux_main_path(package.filename, expected_sha256=package.sha256)
 
 
+def local_locked_package(
+    package: TermuxPackageRecord,
+    local_debs_dir: Path,
+    termux_arch: str,
+) -> bytes:
+    """Read a package built from source by scripts/build_android_runtime_native_debs.sh.
+
+    Resolved by package name and architecture because the locally built version may be
+    newer than the one pinned in the lock file (the lock only documents the mirror path).
+    """
+    arch_dir = Path(local_debs_dir) / termux_arch
+    exact = arch_dir / Path(package.filename).name
+    if exact.is_file():
+        return exact.read_bytes()
+    matches = sorted(arch_dir.glob(f"{package.name}_*_{termux_arch}.deb"))
+    if not matches:
+        raise FileNotFoundError(
+            f"No locally built package for {package.name} ({termux_arch}) under {arch_dir}"
+        )
+    return matches[0].read_bytes()
+
+
 def unique_locked_packages(lock_payload: dict) -> list[TermuxPackageRecord]:
     by_filename: dict[str, TermuxPackageRecord] = {}
     for android_abi, termux_arch in ANDROID_TO_TERMUX_ARCH.items():
@@ -493,7 +515,12 @@ def manifest_file_list(prefix_dir: Path) -> list[str]:
     ]
 
 
-def prepare_assets(output_dir: Path, lock_file: Path | None = DEFAULT_LOCK_FILE, refresh_lock_file: bool = False) -> None:
+def prepare_assets(
+    output_dir: Path,
+    lock_file: Path | None = DEFAULT_LOCK_FILE,
+    refresh_lock_file: bool = False,
+    local_debs_dir: Path | None = None,
+) -> None:
     lock_payload = None
     if lock_file is not None:
         if refresh_lock_file:
@@ -517,7 +544,11 @@ def prepare_assets(output_dir: Path, lock_file: Path | None = DEFAULT_LOCK_FILE,
 
             links: list[dict] = []
             for package in packages:
-                payload = download_locked_package(package, package_archive)
+                payload = (
+                    local_locked_package(package, local_debs_dir, termux_arch)
+                    if local_debs_dir is not None
+                    else download_locked_package(package, package_archive)
+                )
                 data_bytes, data_name = load_data_tar_bytes_from_deb(payload)
                 with open_data_tar(data_bytes, data_name) as tar:
                     links.extend(mirror_data_tar(tar, prefix_dir))
@@ -575,6 +606,11 @@ def main() -> None:
         action="store_true",
         help="Probe configured Termux main mirrors and print a JSON health report",
     )
+    parser.add_argument(
+        "--local-debs-dir",
+        help="Extract .deb packages built from source here (one subdirectory per Termux "
+        "architecture) instead of downloading the pinned mirror packages",
+    )
     parser.add_argument("--mirror-report", help="Optional path to write the mirror health JSON report")
     parser.add_argument("--termux-arch", default="x86_64", help="Termux arch used for mirror health probes")
     args = parser.parse_args()
@@ -590,6 +626,7 @@ def main() -> None:
         return
     output_dir = Path(args.output_dir).expanduser().resolve()
     lock_file = Path(args.lock_file).expanduser().resolve() if args.lock_file else None
+    local_debs_dir = Path(args.local_debs_dir).expanduser().resolve() if args.local_debs_dir else None
     if args.build_package_archive:
         if lock_file is None:
             raise ValueError("--build-package-archive requires --lock-file")
@@ -619,7 +656,12 @@ def main() -> None:
     if asset_root.exists():
         shutil.rmtree(asset_root)
     asset_root.mkdir(parents=True, exist_ok=True)
-    prepare_assets(output_dir, lock_file=lock_file, refresh_lock_file=args.refresh_lock_file)
+    prepare_assets(
+        output_dir,
+        lock_file=lock_file,
+        refresh_lock_file=args.refresh_lock_file,
+        local_debs_dir=local_debs_dir,
+    )
 
 
 if __name__ == "__main__":
