@@ -126,13 +126,19 @@ applied would still embed inert Google project identifiers in the fdroid build).
 
 Submitting to the official catalog means opening a merge request against
 [fdroiddata](https://gitlab.com/fdroid/fdroiddata). This has been done:
-[!48005](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/48005). Current
-metadata, after several rounds of review feedback:
+[!48005](https://gitlab.com/fdroid/fdroiddata/-/merge_requests/48005). The
+metadata below is a snapshot of the branch at the time of writing (v1.2.27);
+the live copy is the MR itself.
 
 ```yaml
 AntiFeatures:
+  NonFreeAdd:
+    en-US: can install and run proprietary agents at runtime (Anthropic Claude Code
+      from downloads.claude.ai, Google Antigravity CLI), never required for core use
   NonFreeNet:
-    en-US: optional GitHub OAuth sign-in, not required for core functionality
+    en-US: running agents talks to hosted, non-free LLM provider APIs, and the app
+      also calls the GitHub and GitLab APIs and Google OAuth for Antigravity; the
+      optional GitHub OAuth sign-in is disabled in this build
   TetheredNet:
     en-US: the on-demand Vosk wake-word speech model is only ever fetched from alphacephei.com
 Categories:
@@ -151,22 +157,38 @@ Binaries:
   https://github.com/yuga-hashimoto/and-code/releases/download/v%v/and-code-v%v-fdroid-release.apk
 
 Builds:
-  - versionName: 1.2.22
-    versionCode: 61
-    commit: aa5474d0c0c0a4e1c01b436d56ea18342187e516
+  - versionName: 1.2.27
+    versionCode: 66
+    commit: db8ed2e86e7f32b4b9151c0bd1d7ba974a1dcb5a
     subdir: app
+    sudo:
+      - apt-get update
+      - apt-get install -y autoconf autogen automake autopoint bison build-essential
+        curl file flex g++ g++-multilib gawk gettext gnupg gperf git intltool jq libfl-dev
+        libglib2.0-dev libltdl-dev libtool-bin lrzip lzip lz4 lzop m4 patch patchelf
+        pkg-config python-is-python3 python3-pip python3-setuptools python3-venv python-wheel-common
+        rsync scons tar unzip wget xz-utils zip zstd
+      - mkdir -p /data/data /tmp/andcode-termux-build
+      - chown -R vagrant /data /tmp/andcode-termux-build
     gradle:
       - fdroid
-    prebuild: sed -i -e '/firebase/d' -e '/gms/d' {..,.}/build.gradle.kts
+    srclibs:
+      - TermuxPackages@2a342d4bd78454dd20760e1fded33939f1712b2d
+    prebuild:
+      - sed -i -e '/firebase/d' -e '/gms/d' {..,.}/build.gradle.kts
+      - export REPO_ROOT=$(git rev-parse --show-toplevel); TERMUX_PACKAGES_DIR=$$TermuxPackages$$
+        NDK=$$NDK$$ ANDROID_HOME=$$SDK$$ bash "$REPO_ROOT/scripts/build_android_runtime_native_debs.sh"
+    ndk: r29
     gradleprops:
       - andcode.fdroidBuild=true
+      - andcode.sourceNativeLibs=true
 
 AllowedAPKSigningKeys: f036e07002d8c2e6a5a64000f1211398d4831ff37cf280456a9a26d2f12617df
 
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 1.2.22
-CurrentVersionCode: 61
+CurrentVersion: 1.2.27
+CurrentVersionCode: 66
 ```
 
 This is the exact field order/quoting `fdroid rewritemeta` produces (it also
