@@ -25,10 +25,11 @@ NATIVE_EXECUTABLE_SEARCH_DIRS = ("bin", "libexec")
 
 
 def select_runtime_library(lib_dir: Path, source_pattern: str) -> Path | None:
-    matches = sorted(lib_dir.glob(source_pattern))
-    # Prefer a real file over a version symlink so the copied payload is self-contained.
+    # is_file() follows symlinks, so a dangling version symlink is dropped rather than
+    # handed to copy2; prefer a real file over a version symlink either way.
+    matches = [path for path in sorted(lib_dir.glob(source_pattern)) if path.is_file()]
     regular = [path for path in matches if not path.is_symlink()]
-    chosen = (regular or matches)
+    chosen = regular or matches
     return chosen[-1] if chosen else None
 
 
