@@ -65,6 +65,14 @@ export ANDROID_HOME="${ANDROID_HOME:-$REPO_ROOT/build/android-sdk}"
 export ANDROID_SDK_ROOT="${ANDROID_SDK_ROOT:-$ANDROID_HOME}"
 export TERMUX_TOPDIR="${TERMUX_TOPDIR:-/tmp/andcode-termux-build}"
 
+# build-package.sh changes into the termux-packages checkout before resolving -o, so the
+# output directory must be absolute or the .deb files land inside that checkout instead.
+case "$OUTPUT_DIR" in
+  /*) : ;;
+  *) OUTPUT_DIR="$REPO_ROOT/$OUTPUT_DIR" ;;
+esac
+OUTPUT_DIR="$(realpath -m "$OUTPUT_DIR")"
+
 if [ -z "$TERMUX_PACKAGES_DIR" ]; then
   TERMUX_PACKAGES_DIR="$REPO_ROOT/build/termux-packages"
 fi
