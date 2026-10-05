@@ -95,6 +95,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -112,9 +113,11 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
@@ -144,6 +147,7 @@ import com.yugahashimoto.andcode.ui.components.VolumeMeter
 import com.yugahashimoto.andcode.ui.components.systemPromptPresetLabel
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -153,6 +157,8 @@ private data class MessageActionTarget(
     val text: String,
     val canEdit: Boolean,
 )
+
+private const val DRAFT_SAVE_DEBOUNCE_MS = 400L
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -240,8 +246,18 @@ fun ChatHomeScreen(
     /** Fetches and opens the diff dialog for a tapped [ChatPart.Patch] card. */
     onOpenPatchDiff: (ChatPart.Patch) -> Unit = {},
     onDismissPatchDiff: () -> Unit = {},
+    /** Reads the unsent text kept for a session, for restoring after the app was closed. */
+    onLoadDraft: (String) -> String? = { null },
+    /** Keeps the composer's unsent text for a session; blank text clears it. */
+    onSaveDraft: (String, String) -> Unit = { _, _ -> },
 ) {
-    var input by remember { mutableStateOf("") }
+    // Saved state, not plain remember: the Activity is recreated on rotation and other
+    // configuration changes, and a remembered field would come back empty. The TextFieldValue
+    // saver also keeps the cursor and selection, not just the string (issue #355).
+    var inputValue by rememberSaveable(stateSaver = TextFieldValue.Saver) {
+        mutableStateOf(TextFieldValue(""))
+    }
+    val input = inputValue.text
     val listState = rememberLazyListState()
     var showModelPicker by remember { mutableStateOf(false) }
     val errorKind = classifyChatError(state.error)
@@ -327,7 +343,35 @@ fun ChatHomeScreen(
 
     LaunchedEffect(state.partialText) {
         if ((state.isListening || state.isSpeechProcessing) && state.partialText.isNotBlank()) {
-            input = state.partialText
+            inputValue = TextFieldValue(state.partialText, TextRange(state.partialText.length))
+        }
+    }
+
+    // Keeps the unsent text beyond this composition: the saved state above survives rotation and
+    // the system reclaiming the process, while the stored draft also survives the user closing the
+    // app and gives each chat its own text. A draft restored on first show only fills an empty
+    // field, so it never overwrites what is being typed or text carried over from before a
+    // configuration change; moving to another chat swaps the field for that chat's draft instead
+    // of leaking the previous chat's text into it. A chat without a session yet has nothing to
+    // key a draft on and relies on the saved state alone.
+    val draftSessionId = state.sessionId
+    var lastDraftSessionId by remember { mutableStateOf(draftSessionId) }
+    LaunchedEffect(draftSessionId) {
+        val switched =
+            lastDraftSessionId != null && draftSessionId != null && lastDraftSessionId != draftSessionId
+        lastDraftSessionId = draftSessionId
+        if (draftSessionId != null && (switched || inputValue.text.isEmpty())) {
+            val draft = onLoadDraft(draftSessionId)?.takeIf { it.isNotEmpty() }.orEmpty()
+            if (switched || draft.isNotEmpty()) {
+                inputValue = TextFieldValue(draft, TextRange(draft.length))
+            }
+        }
+    }
+    LaunchedEffect(draftSessionId, input) {
+        if (draftSessionId != null) {
+            // Debounced so a burst of typing is one write; sending clears the stored draft itself.
+            delay(DRAFT_SAVE_DEBOUNCE_MS)
+            onSaveDraft(draftSessionId, input)
         }
     }
 
@@ -337,7 +381,7 @@ fun ChatHomeScreen(
     // than the user having to retype it.
     LaunchedEffect(state.editDraft) {
         state.editDraft?.let { draft ->
-            input = draft
+            inputValue = TextFieldValue(draft, TextRange(draft.length))
             onEditDraftConsumed()
         }
     }
@@ -567,16 +611,16 @@ fun ChatHomeScreen(
 
             if (!runtimeNotReady) {
                 ChatComposer(
-                    input = input,
-                    onInputChange = {
-                        input = it
-                        showSlashCommands = it.startsWith("/")
+                    inputValue = inputValue,
+                    onInputValueChange = {
+                        inputValue = it
+                        showSlashCommands = it.text.startsWith("/")
                     },
                     isRunning = state.isRunning,
                     onSend = {
                         if (input.isNotBlank() || state.attachments.isNotEmpty()) {
                             onSendMessage(input)
-                            input = ""
+                            inputValue = TextFieldValue("")
                             showSlashCommands = false
                         }
                     },
@@ -630,7 +674,8 @@ fun ChatHomeScreen(
                     slashCommands = state.slashCommands,
                     slashSkills = state.slashSkills,
                     onSlashCommandSelect = { suggestion ->
-                        input = suggestion.name + " "
+                        val completed = suggestion.name + " "
+                        inputValue = TextFieldValue(completed, TextRange(completed.length))
                         showSlashCommands = false
                     },
                     githubRefs = githubRefs,
@@ -1177,8 +1222,8 @@ private fun ChatStallCard(
 
 @Composable
 private fun ChatComposer(
-    input: String,
-    onInputChange: (String) -> Unit,
+    inputValue: TextFieldValue,
+    onInputValueChange: (TextFieldValue) -> Unit,
     isRunning: Boolean,
     onSend: () -> Unit,
     onAbort: () -> Unit,
@@ -1223,6 +1268,7 @@ private fun ChatComposer(
     onCameraLaunch: () -> Unit,
     onGalleryLaunch: () -> Unit,
 ) {
+    val input = inputValue.text
     val voiceActive = isListening || isSpeechProcessing
     var showAttachMenu by remember { mutableStateOf(false) }
 
@@ -1345,8 +1391,8 @@ private fun ChatComposer(
                         )
                     }
                     BasicTextField(
-                        value = input,
-                        onValueChange = onInputChange,
+                        value = inputValue,
+                        onValueChange = onInputValueChange,
                         modifier =
                             Modifier
                                 .fillMaxWidth()

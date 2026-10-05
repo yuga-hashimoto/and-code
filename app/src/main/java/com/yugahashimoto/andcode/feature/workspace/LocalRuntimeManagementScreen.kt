@@ -37,7 +37,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -523,8 +523,8 @@ private fun AdbPairDialog(
     onDismiss: () -> Unit,
     onPair: (Int, String) -> Unit,
 ) {
-    var portText by remember { mutableStateOf("") }
-    var codeText by remember { mutableStateOf("") }
+    var portText by rememberSaveable { mutableStateOf("") }
+    var codeText by rememberSaveable { mutableStateOf("") }
     val port = portText.toIntOrNull()
     val canPair = port != null && port in 1..65535 && codeText.length == 6 && !isPairing
 

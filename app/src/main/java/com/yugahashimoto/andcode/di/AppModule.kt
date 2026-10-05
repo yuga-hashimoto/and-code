@@ -12,6 +12,7 @@ import com.yugahashimoto.andcode.data.repository.RuntimeActivityRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeCatalogRepository
 import com.yugahashimoto.andcode.data.settings.AppPreferencesRepository
 import com.yugahashimoto.andcode.data.settings.DraftRepository
+import com.yugahashimoto.andcode.data.settings.DraftStore
 import com.yugahashimoto.andcode.feature.wakeword.VoskModelStore
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 import com.yugahashimoto.andcode.runtime.local.AndroidLocalRuntimeMessages
@@ -51,7 +52,7 @@ val appModule =
 
         single { AppPreferencesRepository(get()) }
 
-        single { DraftRepository(androidContext()) }
+        single<DraftStore> { DraftRepository(androidContext()) }
 
         single { RuntimeNotificationHelper(androidContext()) }
 

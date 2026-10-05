@@ -659,6 +659,7 @@ class LocalRuntimeInstaller(
             "android-screenshot.sh" to "android-screenshot",
             "android-instrument.sh" to "android-instrument",
             "android-app.sh" to "android-app",
+            "android-build-setup.sh" to "android-build-setup",
             "andcode-browser-mcp.py" to "andcode-browser-mcp.py",
             "andcode-schedule-mcp.py" to "andcode-schedule-mcp.py",
         ).forEach {

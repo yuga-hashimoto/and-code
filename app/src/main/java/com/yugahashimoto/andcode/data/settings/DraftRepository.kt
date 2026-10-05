@@ -14,7 +14,19 @@ data class Draft(
     val agent: String? = null,
 )
 
-class DraftRepository(context: Context) {
+/** Where unsent composer text is kept per session, so tests can swap in an in-memory store. */
+interface DraftStore {
+    fun save(
+        sessionId: String,
+        draft: Draft,
+    )
+
+    fun load(sessionId: String): Draft?
+
+    fun clear(sessionId: String)
+}
+
+class DraftRepository(context: Context) : DraftStore {
     private val preferences: SharedPreferences =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
     private val json: Json =
@@ -25,7 +37,7 @@ class DraftRepository(context: Context) {
         }
 
     @Synchronized
-    fun save(
+    override fun save(
         sessionId: String,
         draft: Draft,
     ) {
@@ -35,13 +47,13 @@ class DraftRepository(context: Context) {
     }
 
     @Synchronized
-    fun load(sessionId: String): Draft? =
+    override fun load(sessionId: String): Draft? =
         runCatching {
             preferences.getString(key(sessionId), null)?.let { json.decodeFromString<Draft>(it) }
         }.getOrNull()
 
     @Synchronized
-    fun clear(sessionId: String) {
+    override fun clear(sessionId: String) {
         preferences.edit().remove(key(sessionId)).apply()
     }
 

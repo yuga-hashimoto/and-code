@@ -26,6 +26,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -276,7 +277,7 @@ private fun BrowserStep(
     onCancelSignIn: () -> Unit,
     onOpenUrl: (String) -> Unit,
 ) {
-    var code by remember { mutableStateOf("") }
+    var code by rememberSaveable { mutableStateOf("") }
     Text(stringResource(R.string.claude_auth_instructions), style = MaterialTheme.typography.bodySmall)
     Button(onClick = { onOpenUrl(auth.url) }, modifier = Modifier.fillMaxWidth()) {
         Icon(Icons.Default.OpenInNew, contentDescription = null)

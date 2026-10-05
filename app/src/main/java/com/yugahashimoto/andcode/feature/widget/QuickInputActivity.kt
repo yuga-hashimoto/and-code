@@ -71,6 +71,8 @@ class QuickInputActivity : ComponentActivity() {
 
         val inputField =
             EditText(this).apply {
+                // A view only saves its text across recreation when it has an id.
+                id = R.id.quick_input_field
                 hint = getString(R.string.widget_quick_input_hint)
                 isSingleLine = true
                 layoutParams = LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f)

@@ -238,9 +238,20 @@ Androidローカル実行はPCの完全な代替ではない。
 - Docker
 - Android Emulatorの内側から別のAndroid Emulatorを動かすこと
 - iOSビルド
-- Gradle・Kotlin/Javaコンパイル・JVM単体テスト（規模を問わない）
+- JDK 21（`openjdk21`）を使う処理（起動できない。下記参照）
 - 長時間の高負荷処理
 
-PRootはptraceでsyscallをエミュレートするため、JVMが初期化に要求する実行可能メモリページ（`mprotect(PROT_EXEC)`）を確保できない。このためランタイム内ではJVMを使う処理が一切動作しない。AndroidアプリのビルドとInstrumentation Testは、PC等でビルドしたAPKを `android-app install` で端末へ入れ、`android-instrument` で実行する。
+JDKはバージョンによって挙動が異なる。
+
+- `openjdk21`（`default-jvm` の既定）は起動時に `mprotect(PROT_EXEC)` で失敗し、`-XX:` オプションの解析前に終了するため調整できない。ただしこのメッセージはHotSpotが実行可能メモリ周りの任意の失敗で出すもので、AndroidのW^Xポリシーを示すとは限らない（`mmap`/`mprotect` 自体は成功する）。表示される「grsecurity/PaX」のヒントは当てにならず、`strace -f java -version` で実際に失敗する要求を確認する。
+- `openjdk17`（`/usr/lib/jvm/java-17-openjdk`）はランタイム内で起動し、Gradle・Kotlin/Javaコンパイル・D8・apksignerが動作したという報告がある（Xiaomi 24117RN76E 1台での報告であり、全端末での保証ではない）。ランタイムは `JAVA_HOME=/usr/lib/jvm/java-17-openjdk` を既定で設定している（`default-jvm` が指すJDK 21は使わない）。別のシェルから使う場合は同じ値を設定する。
+
+arm64でAndroidアプリをビルドする場合の注意:
+
+- `android-build-setup --accept-licenses` を一度実行する。`$ANDROID_HOME/licenses/` へライセンスを配置し（Android SDK Licenseへの同意になるため、フラグ指定がなければ何もしない）、arm64ではSHA-256を検証した静的リンクのaarch64版 `aapt2`（Google公式はarm64 Linux版がなく動かない）を取得して `~/.gradle/gradle.properties` の `android.aapt2FromMavenOverride` に設定する。取得した `aapt2` はAGP 7.4.2・8.5.2で動作した報告があるが、AGP 9は未確認。
+- SDK約740MB・Gradleキャッシュ約3.7GBを消費する。クリーンビルドは5〜8分程度。
+- NDKのarm64 Linux版は存在しないため、C/C++を含むプロジェクトはPC/CIでビルドする。
+
+上記を満たせない場合は、PC等でビルドしたAPKを `android-app install` で端末へ入れ、`android-instrument` で実行する。
 
 重い作業はPCリモート実行へ切り替える。

@@ -30,6 +30,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -216,8 +217,8 @@ private fun SystemPromptEditDialog(
     onSave: (name: String, prompt: String) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var name by remember { mutableStateOf(initial?.name.orEmpty()) }
-    var prompt by remember { mutableStateOf(initial?.prompt.orEmpty()) }
+    var name by rememberSaveable { mutableStateOf(initial?.name.orEmpty()) }
+    var prompt by rememberSaveable { mutableStateOf(initial?.prompt.orEmpty()) }
 
     AlertDialog(
         onDismissRequest = onDismiss,

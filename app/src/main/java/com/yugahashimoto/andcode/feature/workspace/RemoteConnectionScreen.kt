@@ -56,6 +56,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -86,7 +87,9 @@ fun RemoteConnectionScreen(
     onBack: () -> Unit,
     onConnected: () -> Unit,
 ) {
-    var form by remember { mutableStateOf(ConnectionFormState()) }
+    var form by rememberSaveable(stateSaver = ConnectionFormState.Saver) {
+        mutableStateOf(ConnectionFormState())
+    }
     var passwordVisible by remember { mutableStateOf(false) }
     var discoveryDialogOpen by remember { mutableStateOf(false) }
     var isDiscovering by remember { mutableStateOf(false) }

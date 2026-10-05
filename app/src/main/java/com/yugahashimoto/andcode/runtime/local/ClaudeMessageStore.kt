@@ -1,10 +1,12 @@
 package com.yugahashimoto.andcode.runtime.local
 
 import com.yugahashimoto.andcode.core.api.OpenCodeMessage
-import kotlinx.serialization.encodeToString
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.decodeFromStream
+import kotlinx.serialization.json.encodeToStream
 import kotlinx.serialization.json.jsonPrimitive
 import java.io.File
 
@@ -13,7 +15,14 @@ import java.io.File
  *
  * Streaming a single answer produces hundreds of message updates, so writes are coalesced: the
  * in-memory map is authoritative and [flush] is called at turn boundaries rather than per update.
+ *
+ * The history is read and written as a stream. Going through `readText`/`encodeToString` held the
+ * whole file as a String on top of the decoded messages, several times the size of the history in
+ * heap at once, which is enough to hit the app's heap limit on a long history (issue #350). The
+ * write also goes to a temporary file first, so an allocation failure or a killed process
+ * mid-write cannot truncate the history that was already on disk.
  */
+@OptIn(ExperimentalSerializationApi::class)
 class ClaudeMessageStore(
     private val file: File,
     private val json: Json,
@@ -23,7 +32,7 @@ class ClaudeMessageStore(
 
     init {
         runCatching {
-            json.decodeFromString<Map<String, List<OpenCodeMessage>>>(file.readText())
+            file.inputStream().buffered().use { json.decodeFromStream<Map<String, List<OpenCodeMessage>>>(it) }
         }.getOrNull()?.forEach { (sessionId, sessionMessages) ->
             messages[sessionId] = sessionMessages.toMutableList()
         }
@@ -95,7 +104,14 @@ class ClaudeMessageStore(
         if (!dirty) return
         runCatching {
             file.parentFile?.mkdirs()
-            file.writeText(json.encodeToString(messages.mapValues { it.value.toList() }))
+            val temporary = File(file.parentFile, "${file.name}.tmp")
+            temporary.outputStream().buffered().use { output ->
+                json.encodeToStream(messages.mapValues { it.value.toList() }, output)
+            }
+            if (!temporary.renameTo(file)) {
+                temporary.delete()
+                error("Could not replace ${file.name}")
+            }
             dirty = false
         }
     }

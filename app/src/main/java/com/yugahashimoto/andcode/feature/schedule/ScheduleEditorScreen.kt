@@ -49,6 +49,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -98,8 +99,8 @@ fun ScheduleEditorScreen(
     onSave: (Schedule) -> Unit,
     onBack: () -> Unit,
 ) {
-    var name by remember { mutableStateOf(existing?.name.orEmpty()) }
-    var prompt by remember { mutableStateOf(existing?.prompt.orEmpty()) }
+    var name by rememberSaveable { mutableStateOf(existing?.name.orEmpty()) }
+    var prompt by rememberSaveable { mutableStateOf(existing?.prompt.orEmpty()) }
     var runtimeId by remember { mutableStateOf(existing?.runtimeId.orEmpty()) }
     var providerId by remember { mutableStateOf(existing?.providerId) }
     var modelId by remember { mutableStateOf(existing?.modelId) }

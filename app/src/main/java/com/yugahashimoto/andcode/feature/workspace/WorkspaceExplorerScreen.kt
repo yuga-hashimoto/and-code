@@ -651,8 +651,8 @@ private fun BranchSwitcherSheet(
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    var searchQuery by remember { mutableStateOf("") }
-    var newBranchName by remember { mutableStateOf("") }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var newBranchName by rememberSaveable { mutableStateOf("") }
     var showNewBranchField by remember { mutableStateOf(false) }
 
     val filteredBranches =
