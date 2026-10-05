@@ -1127,6 +1127,7 @@
     <string name="pr_collapse">Menos</string>
     <string name="cd_pull_request_expand">Mostrar mais %1$d pull requests</string>
     <string name="cd_pull_request_collapse">Mostrar menos pull requests</string>
+    <string name="cd_pull_request_dismiss">Ocultar o pull request #%1$d</string>
     <string name="runtime_connection_unhealthy">O runtime local do OpenCode não está funcionando corretamente</string>
     <string name="runtime_connection_failed">Não foi possível conectar ao OpenCode local</string>
     <string name="runtime_update_insufficient_space">Não há espaço livre suficiente para a atualização: são necessários %1$d bytes e há %2$d disponíveis</string>

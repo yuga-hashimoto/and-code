@@ -1133,6 +1133,7 @@
     <string name="pr_collapse">طيّ</string>
     <string name="cd_pull_request_expand">عرض %1$d طلبات سحب إضافية</string>
     <string name="cd_pull_request_collapse">عرض عدد أقل من طلبات السحب</string>
+    <string name="cd_pull_request_dismiss">إخفاء طلب السحب رقم %1$d</string>
     <string name="runtime_connection_unhealthy">بيئة OpenCode المحلية لا تعمل بشكل سليم</string>
     <string name="runtime_connection_failed">تعذر الاتصال بـ OpenCode المحلي</string>
     <string name="runtime_update_insufficient_space">لا توجد مساحة كافية للتحديث: المطلوب %1$d بايت والمتاح %2$d بايت</string>

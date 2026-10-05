@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.CallMerge
 import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -45,7 +46,7 @@ import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
 import com.yugahashimoto.andcode.ui.theme.LocalThemeColors
 
 /** Pull requests shown before the rest are folded behind the expand chip. */
-private const val COLLAPSED_PULL_REQUEST_COUNT = 2
+private const val COLLAPSED_PULL_REQUEST_COUNT = 1
 
 /**
  * GitHub's merged purple. The palette has no equivalent, and merged is the one state a git user
@@ -61,13 +62,16 @@ private val MergedPurple = Color(0xFF8957E5)
  * The diff opens the changed files on GitHub; the state opens the pull request itself.
  *
  * One chat often opens several pull requests, but the composer is the thing the screen is for: only
- * the two newest stay visible, and the rest sit behind a chip that expands them on demand.
+ * the newest stays visible, and the rest sit behind a chip that expands them on demand. A badge the
+ * user no longer cares about can be dismissed with its close button, which keeps it hidden without
+ * touching the transcript that produced it.
  */
 @Composable
 fun PullRequestLinkBar(
     pullRequests: List<ChatPullRequest>,
     onOpenUrl: (String) -> Unit,
     modifier: Modifier = Modifier,
+    onDismiss: (key: String) -> Unit = {},
 ) {
     if (pullRequests.isEmpty()) return
 
@@ -88,7 +92,7 @@ fun PullRequestLinkBar(
                 ) {
                     DiffChip(pullRequest, onOpenUrl)
                     StateChip(pullRequest, onOpenUrl)
-                    // The toggle trails the last visible row so folded pull requests stay one tap
+                    // The toggle sits after the state chip so folded pull requests stay one tap
                     // away without costing a row of their own.
                     if (hidden > 0 && index == visible.lastIndex) {
                         ExpandChip(
@@ -97,6 +101,7 @@ fun PullRequestLinkBar(
                             onClick = { expanded = !expanded },
                         )
                     }
+                    DismissChip(pullRequest, onDismiss)
                 }
             }
         }
@@ -205,6 +210,25 @@ private fun ExpandChip(
             text = if (expanded) stringResource(R.string.pr_collapse) else "+$hidden",
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
+        )
+    }
+}
+
+/** Stops showing this pull request's badges; the transcript that produced them is untouched. */
+@Composable
+private fun DismissChip(
+    pullRequest: ChatPullRequest,
+    onDismiss: (String) -> Unit,
+) {
+    PullRequestChip(
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        onClick = { onDismiss(pullRequest.ref.key) },
+        contentDescription = stringResource(R.string.cd_pull_request_dismiss, pullRequest.ref.number),
+    ) {
+        Icon(
+            imageVector = Icons.Default.Close,
+            contentDescription = null,
+            modifier = Modifier.size(14.dp),
         )
     }
 }

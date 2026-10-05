@@ -610,6 +610,15 @@ class ChatViewModel(
     private val pullRequestRefs = MutableStateFlow<List<PullRequestRef>>(emptyList())
 
     /**
+     * Pull requests the user hid with [dismissPullRequest]. Scanning re-derives the refs from the
+     * transcript on every message change, so without this set every refetch would put the dismissed
+     * badge back. Like [dismissedQuestionIds] it is cleared when the composer moves to another chat:
+     * the dismissal belongs to the chat it was made in, and opening a chat is an explicit act of
+     * attention that offers its badges again.
+     */
+    private val dismissedPullRequestKeys = mutableSetOf<String>()
+
+    /**
      * Sessions whose idles currently belong to a run this chat interrupted rather than to the prompt
      * sent in its place.
      *
@@ -778,7 +787,7 @@ class ChatViewModel(
                 .distinctUntilChanged()
                 .conflate()
                 .collect { messages ->
-                    val refs = pullRequestRefsIn(messages)
+                    val refs = pullRequestRefsIn(messages).filterNot { it.key in dismissedPullRequestKeys }
                     pullRequestRefs.value = refs
                     statuses.track(refs)
                     delay(PULL_REQUEST_SCAN_THROTTLE_MS)
@@ -799,6 +808,17 @@ class ChatViewModel(
      */
     fun refreshPullRequests() {
         pullRequestStatuses?.track(pullRequestRefs.value)
+    }
+
+    /**
+     * Hides one pull request's badges above the composer. Nothing server-side tracks this — the
+     * badge is a view over the transcript, and the transcript keeps its link — so this is purely a
+     * local "stop showing me this": the ref is dropped here, which also stops the periodic refresh
+     * from fetching its state, and stays dismissed for as long as this chat is open.
+     */
+    fun dismissPullRequest(key: String) {
+        dismissedPullRequestKeys += key
+        pullRequestRefs.value = pullRequestRefs.value.filterNot { it.key == key }
     }
 
     /**
@@ -966,6 +986,7 @@ class ChatViewModel(
         // Opening the chat is an explicit act of attention, so questions the user hid earlier are
         // offered again rather than staying suppressed by a stale dismissal.
         dismissedQuestionIds.clear()
+        dismissedPullRequestKeys.clear()
         _uiState.update {
             it.copy(
                 sessionId = sessionId,
@@ -1093,6 +1114,7 @@ class ChatViewModel(
         streamedParts.clear()
         messageRoles.clear()
         dismissedQuestionIds.clear()
+        dismissedPullRequestKeys.clear()
         pendingInterrupts.clear()
         _uiState.update {
             it.copy(

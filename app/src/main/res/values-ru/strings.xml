@@ -1129,6 +1129,7 @@
     <string name="pr_collapse">Свернуть</string>
     <string name="cd_pull_request_expand">Показать ещё пул-реквестов: %1$d</string>
     <string name="cd_pull_request_collapse">Показать меньше пул-реквестов</string>
+    <string name="cd_pull_request_dismiss">Скрыть пул-реквест #%1$d</string>
     <string name="runtime_connection_unhealthy">Локальная среда OpenCode работает некорректно</string>
     <string name="runtime_connection_failed">Не удалось подключиться к локальному OpenCode</string>
     <string name="runtime_update_insufficient_space">Недостаточно свободного места для обновления: требуется %1$d байт, доступно %2$d байт</string>
