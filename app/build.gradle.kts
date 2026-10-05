@@ -133,8 +133,8 @@ android {
         applicationId = "com.yugahashimoto.andcode"
         minSdk = 26
         targetSdk = 35
-        versionCode = 65
-        versionName = "1.2.26"
+        versionCode = 66
+        versionName = "1.2.27"
         buildConfigField("String", "GITHUB_CLIENT_ID", "\"$githubClientId\"")
 
         // The on-device runtime (see ANDROID_ABIS in scripts/prepare_android_runtime_native_libs.py)

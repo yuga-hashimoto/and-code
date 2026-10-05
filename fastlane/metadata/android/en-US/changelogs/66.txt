@@ -1,0 +1,2 @@
+- Fix: the bundled runtime is complete again. libtalloc was missing since the 2.5.0 package update, which could keep the on-device runtime from starting.
+- The F-Droid build now compiles the bundled runtime (proot, libtalloc, libandroid-shmem) from source instead of downloading ready-made binaries.
