@@ -109,14 +109,20 @@ The `app` module has a `distribution` flavor dimension for this:
 Build it locally with:
 
 ```bash
-./gradlew -Pandcode.fdroidBuild=true :app:assembleFdroidRelease
+# The fdroid flavor builds proot, libtalloc and libandroid-shmem from source with the NDK
+# (no prebuilt binary is downloaded), exactly as F-Droid's build server does. The
+# dependencies and NDK are fetched on the first run.
+bash scripts/build_android_runtime_native_debs.sh --setup --output-dir build/termux-debs
+./gradlew -Pandcode.fdroidBuild=true -Pandcode.sourceNativeLibs=true :app:assembleFdroidRelease
 ```
 
-The `-Pandcode.fdroidBuild=true` property additionally skips applying the
-`com.google.gms.google-services` / `com.google.firebase.crashlytics` Gradle
-plugins outright (they process `google-services.json` project-wide regardless
-of flavor, so leaving them applied would still embed inert Google project
-identifiers in the fdroid build).
+`andcode.sourceNativeLibs=true` makes the asset step extract the `.deb` files under
+`build/termux-debs` instead of downloading the pinned mirror packages; without it the build
+uses the mirror path (which is what normal CI and day-to-day `assembleGithubDebug` do, so no
+NDK is needed). `Pandcode.fdroidBuild=true` additionally skips applying the
+`com.google.gms.google-services` / `com.google.firebase.crashlytics` Gradle plugins outright
+(they process `google-services.json` project-wide regardless of flavor, so leaving them
+applied would still embed inert Google project identifiers in the fdroid build).
 
 Submitting to the official catalog means opening a merge request against
 [fdroiddata](https://gitlab.com/fdroid/fdroiddata). This has been done:
@@ -178,10 +184,11 @@ as a supply-chain check.
 The `Binaries:` URL points at a `-fdroid-release.apk` asset, not the plain
 `-release.apk` one — the latter is the `github` flavor (Firebase included)
 and will never byte-diff-match a `fdroid` flavor build. The Release workflow
-(`.github/workflows/release.yml`) now also runs
-`./gradlew -Pandcode.fdroidBuild=true :app:assembleFdroidRelease` (deliberately
-without `GITHUB_CLIENT_ID`, matching how F-Droid's own build server invokes
-it) and publishes that APK alongside the existing assets so this comparison
-has something correct to compare against. It's signed with the same release
-signing config as the `github` flavor, hence the shared `AllowedAPKSigningKeys`
-fingerprint above.
+(`.github/workflows/release.yml`) compiles the native runtime payload from the
+pinned Termux recipes and then runs
+`./gradlew -Pandcode.fdroidBuild=true -Pandcode.sourceNativeLibs=true :app:assembleFdroidRelease`
+(deliberately without `GITHUB_CLIENT_ID`, matching how F-Droid's own build server
+invokes it) and publishes that APK alongside the existing assets so this comparison
+has something correct to compare against — and so no prebuilt binary is shipped. It's
+signed with the same release signing config as the `github` flavor, hence the shared
+`AllowedAPKSigningKeys` fingerprint above.
