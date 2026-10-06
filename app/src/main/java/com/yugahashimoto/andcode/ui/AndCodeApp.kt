@@ -664,7 +664,9 @@ fun AndCodeApp(
     // Lets the in-guest agent pop the guest browser open for the user by dropping a command
     // file into the active workspace (see GuestBrowserCommandWatcher).
     GuestBrowserCommandWatcher(
-        workspacePath = chatState.selectedWorkspacePath,
+        workspacePath = chatState.sessionDirectory ?: chatState.selectedWorkspacePath,
+        agent = selectedRuntime?.agent,
+        runtimeDirectory = java.io.File(context.filesDir, "runtime"),
         onOpenUrl = { url ->
             navController.navigate(guestBrowserRoute(url)) { launchSingleTop = true }
         },

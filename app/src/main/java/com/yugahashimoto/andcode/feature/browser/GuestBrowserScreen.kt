@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -82,7 +83,9 @@ fun GuestBrowserScreen(
                 LinearProgressIndicator(progress = { progress / 100f })
             }
             AndroidView(
-                modifier = Modifier.weight(1f),
+                // WebView can draw its background outside its measured bounds, covering the URL
+                // field even while that field still accepts focus and keyboard input.
+                modifier = Modifier.weight(1f).clipToBounds(),
                 factory = { context ->
                     // Lets the in-guest agent drive this WebView over CDP (the devtools abstract
                     // socket is reachable from the guest, which shares the app's UID), so a page
