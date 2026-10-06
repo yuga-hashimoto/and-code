@@ -1,15 +1,16 @@
 package com.yugahashimoto.andcode.feature.browser
 
-import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
+import com.yugahashimoto.andcode.core.storage.DeviceStorage
+import com.yugahashimoto.andcode.runtime.LocalAgent
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 import java.io.File
 
-private const val COMMAND_FILE_RELATIVE_PATH = ".and-code/browser-command.json"
 private const val POLL_INTERVAL_MILLIS = 1000L
 
 /**
@@ -20,29 +21,22 @@ private const val POLL_INTERVAL_MILLIS = 1000L
 @Composable
 fun GuestBrowserCommandWatcher(
     workspacePath: String?,
+    agent: LocalAgent?,
+    runtimeDirectory: File,
     onOpenUrl: (String) -> Unit,
 ) {
-    LaunchedEffect(workspacePath) {
-        val path = workspacePath ?: return@LaunchedEffect
-        val commandFile = File(path, COMMAND_FILE_RELATIVE_PATH)
+    val openUrl by rememberUpdatedState(onOpenUrl)
+    LaunchedEffect(workspacePath, agent, runtimeDirectory) {
+        if (workspacePath == null || agent == null) return@LaunchedEffect
         while (true) {
             delay(POLL_INTERVAL_MILLIS)
-            val url = withContext(Dispatchers.IO) { consumeOpenCommand(commandFile) }
+            val url =
+                withContext(Dispatchers.IO) {
+                    consumeBrowserOpenCommand(workspacePath, agent, runtimeDirectory, DeviceStorage.mounts())
+                }
             if (url != null) {
-                onOpenUrl(url)
+                openUrl(url)
             }
         }
     }
 }
-
-private fun consumeOpenCommand(commandFile: File): String? =
-    runCatching {
-        if (!commandFile.exists()) {
-            return null
-        }
-        val text = commandFile.readText()
-        commandFile.delete()
-        JSONObject(text).optString("url").takeIf { url ->
-            url.isNotBlank() && Uri.parse(url).scheme in setOf("http", "https")
-        }
-    }.getOrNull()
