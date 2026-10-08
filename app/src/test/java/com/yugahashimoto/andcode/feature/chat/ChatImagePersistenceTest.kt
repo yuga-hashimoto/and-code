@@ -51,4 +51,19 @@ class ChatImagePersistenceTest {
 
         assertEquals(listOf(first, second), merged.single().attachments)
     }
+
+    @Test
+    fun `reload does not double a runtime-echoed image carried under a different filename`() {
+        // Codex echoes the prompt back and rebuilds the image from the data URL under its own
+        // filename; the optimistic copy carries the user's filename, so only the URL can tell the
+        // two are the same image.
+        val optimisticImage = PromptAttachment("image-1791365.png", "image/png", "data:image/png;base64,AQ==")
+        val echoedImage = PromptAttachment("attachment-1.png", "image/png", "data:image/png;base64,AQ==")
+        val optimistic = ChatMessage(id = "server-id", isUser = true, attachments = listOf(optimisticImage))
+        val persisted = ChatMessage(id = "server-id", isUser = true, attachments = listOf(echoedImage))
+
+        val merged = mergeReloadedMessages(listOf(persisted), listOf(optimistic))
+
+        assertEquals(listOf(echoedImage), merged.single().attachments)
+    }
 }

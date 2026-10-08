@@ -6,6 +6,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeMessage
 import com.yugahashimoto.andcode.core.api.OpenCodeSession
 import com.yugahashimoto.andcode.core.api.OpenCodeTime
 import com.yugahashimoto.andcode.core.api.PermissionRequest
+import com.yugahashimoto.andcode.core.api.PromptAttachment
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -354,9 +355,10 @@ class CodexRuntime(
     }
 
     /**
-     * Starts a turn. Attachments are not supported yet: the app-server's `UserInput` content types
-     * for images were not exercised against a live, signed-in account (see docs/CODEX.md), so
-     * guessing the wrong shape here would silently corrupt the request rather than fail loudly.
+     * Starts a turn. Image [attachments] are carried as Codex `image` inputs, an inline base64
+     * `data:` URL per the app-server's `UserInput` schema (see [codexTurnInput]): the app-server
+     * rejects remote HTTP(S) image URLs, and `UserInput` has no document/file variant, so any
+     * non-image attachment is left out rather than sent in a shape Codex would reject.
      *
      * The prompt is not recorded locally the way [ClaudeCodeRuntime.recordUserMessage] does: unlike
      * Claude Code's stream, Codex's own `item/started`/`item/completed` echo the prompt straight
@@ -367,21 +369,12 @@ class CodexRuntime(
         sessionId: String,
         prompt: String,
         model: String?,
+        attachments: List<PromptAttachment> = emptyList(),
     ) {
         val params =
             buildJsonObject {
                 put("threadId", JsonPrimitive(sessionId))
-                put(
-                    "input",
-                    buildJsonArray {
-                        add(
-                            buildJsonObject {
-                                put("type", JsonPrimitive("text"))
-                                put("text", JsonPrimitive(prompt))
-                            },
-                        )
-                    },
-                )
+                put("input", codexTurnInput(prompt, attachments))
                 model?.takeIf(String::isNotBlank)?.let { put("model", JsonPrimitive(it)) }
             }
         runCatching { call("turn/start", params) }
@@ -677,3 +670,36 @@ internal fun parseVersionLine(line: String): String = line.trim().removePrefix("
  * check reported every signed-out install as signed in.
  */
 internal fun hasSignedInAccount(accountRead: JsonObject): Boolean = accountRead["account"] is JsonObject
+
+/**
+ * The `turn/start` `input` array for [prompt] plus any image [attachments].
+ *
+ * Codex's `UserInput` has no document/file variant, and its app-server explicitly rejects remote
+ * HTTP(S) image URLs - only an inline `data:` URL or a `localImage` path is accepted - so only
+ * image MIME attachments carried as base64 data URLs are forwarded. Anything else is left out rather
+ * than sent in a shape Codex would reject; the app's `AttachmentImporter` always emits data URLs.
+ * Verified against the v2 `UserInput` schema (`codex app-server generate-json-schema`), where the
+ * app-server's `Image` variant serializes its URL as `url` under a `"type":"image"` tag.
+ */
+internal fun codexTurnInput(
+    prompt: String,
+    attachments: List<PromptAttachment>,
+): JsonArray =
+    buildJsonArray {
+        add(
+            buildJsonObject {
+                put("type", JsonPrimitive("text"))
+                put("text", JsonPrimitive(prompt))
+            },
+        )
+        attachments.forEach { attachment ->
+            if (attachment.mime.startsWith("image/") && attachment.url.startsWith("data:")) {
+                add(
+                    buildJsonObject {
+                        put("type", JsonPrimitive("image"))
+                        put("url", JsonPrimitive(attachment.url))
+                    },
+                )
+            }
+        }
+    }

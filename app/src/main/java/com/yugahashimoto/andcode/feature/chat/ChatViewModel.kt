@@ -165,10 +165,18 @@ internal fun mergeReloadedMessages(
                             (message.text.isNotBlank() || candidate.attachments.isNotEmpty())
                     }
             val previous = existingIndex?.let { index -> existing[index].also { usedExisting += index } }
-            val reloadedImageNames = message.attachments.filter { it.mime.startsWith("image/") }.map { it.filename }.toSet()
+            val reloadedImages = message.attachments.filter { it.mime.startsWith("image/") }
+            val reloadedImageNames = reloadedImages.map { it.filename }.toSet()
+            // A runtime that echoes the prompt back (Codex) rebuilds the image attachment from the
+            // data URL it was sent, under a filename of its own: matching by filename alone would
+            // read that image as "missing from the transcript" and append the optimistic copy,
+            // showing it twice. The URL is the same bytes either way, so it is the reliable key.
+            val reloadedImageUrls = reloadedImages.map { it.url }.toSet()
             val missingImages =
                 previous?.attachments.orEmpty().filter {
-                    it.mime.startsWith("image/") && it.filename !in reloadedImageNames
+                    it.mime.startsWith("image/") &&
+                        it.filename !in reloadedImageNames &&
+                        it.url !in reloadedImageUrls
                 }
             val attachments = message.attachments + missingImages
             val previews =

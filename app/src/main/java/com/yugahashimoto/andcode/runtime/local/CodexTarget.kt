@@ -229,7 +229,7 @@ class CodexTarget(
         sessionId: String,
         request: PromptRequest,
     ) {
-        withContext(Dispatchers.IO) { runtime.send(sessionId, request.text, request.modelId) }
+        withContext(Dispatchers.IO) { runtime.send(sessionId, request.text, request.modelId, request.attachments) }
     }
 
     override suspend fun abortSession(sessionId: String): Boolean = withContext(Dispatchers.IO) { runtime.abort(sessionId) }
