@@ -120,13 +120,76 @@ class CodexItemParser {
         item: JsonObject,
     ): Parsed {
         val id = item.string("id") ?: return Parsed()
-        val text = (item["content"] as? JsonArray)?.joinToString("") { (it as? JsonObject)?.string("text").orEmpty() }.orEmpty()
+        val content = item["content"] as? JsonArray
+        val text = content?.joinToString("") { (it as? JsonObject)?.string("text").orEmpty() }.orEmpty()
+        val textPart = OpenCodePart(id = "$id-text", sessionId = sessionId, messageId = id, type = "text", text = text)
+        val parts =
+            buildList {
+                add(textPart)
+                content?.forEachIndexed { index, element ->
+                    val contentItem = element as? JsonObject ?: return@forEachIndexed
+                    userInputImagePart(id, sessionId, index, contentItem)?.let(::add)
+                }
+            }
         val message =
             OpenCodeMessage(
                 info = OpenCodeMessageInfo(id = id, sessionId = sessionId, role = "user", time = now()),
-                parts = listOf(OpenCodePart(id = "$id-text", sessionId = sessionId, messageId = id, type = "text", text = text)),
+                parts = parts,
             )
-        return Parsed(events = message.parts.map(OpenCodeEvent::MessagePartUpdated), messages = listOf(message))
+        // Only the text part is emitted as a live event. ChatViewModel reconciles Codex's echoed
+        // userMessage into the optimistic bubble the composer already added by matching its text, so
+        // a live image part carries no text to match: on an attachment-only send (blank text) it
+        // would surface as a second, streamed message's image until the next reload. The file parts
+        // still ride in `messages`, which is what the store persists and a reload reads back.
+        return Parsed(events = listOf(OpenCodeEvent.MessagePartUpdated(textPart)), messages = listOf(message))
+    }
+
+    /**
+     * The `file` part for an image in a `userMessage` item's `content`, so an image the user attached
+     * shows in the echoed transcript (and survives a reload) instead of being dropped because it
+     * carries no `text`. The app sends images as `{"type":"image","url":"data:..."}` (see
+     * `codexTurnInput`); a `localImage` path is resolved by the chat the same way
+     * [imageGenerationPart]'s `savedPath` is. Any other content type (text, audio, skill, mention)
+     * has no image to render and is ignored.
+     */
+    private fun userInputImagePart(
+        messageId: String,
+        sessionId: String,
+        index: Int,
+        contentItem: JsonObject,
+    ): OpenCodePart? {
+        val mime: String
+        val url: String
+        when (contentItem.string("type")) {
+            "image" -> {
+                url = contentItem.string("url")?.takeIf(String::isNotBlank) ?: return null
+                mime =
+                    url.substringAfter("data:", "").substringBefore(';')
+                        .takeIf { it.startsWith("image/") }
+                        ?: "image/png"
+            }
+            "localImage" -> {
+                url = contentItem.string("path")?.takeIf(String::isNotBlank) ?: return null
+                mime = imageMimeForPath(url)
+            }
+            else -> return null
+        }
+        val extension =
+            when (mime) {
+                "image/jpeg" -> "jpg"
+                "image/webp" -> "webp"
+                "image/gif" -> "gif"
+                else -> "png"
+            }
+        return OpenCodePart(
+            id = "$messageId-file-$index",
+            sessionId = sessionId,
+            messageId = messageId,
+            type = "file",
+            mime = mime,
+            url = url,
+            filename = "attachment-$index.$extension",
+        )
     }
 
     private fun handleAssistantItem(

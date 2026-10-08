@@ -43,6 +43,75 @@ class CodexItemParserTest {
     }
 
     @Test
+    fun `a userMessage image becomes a file part so the echo shows the attachment`() {
+        val parsed =
+            parse(
+                "t1",
+                "item/started",
+                """
+                {"item":{"type":"userMessage","id":"um-1","clientId":null,
+                 "content":[{"type":"text","text":"What's on the picture?","text_elements":[]},
+                            {"type":"image","detail":null,"url":"data:image/png;base64,iVBORw0KGgo="}]},
+                 "threadId":"t1","turnId":"turn-1","startedAtMs":1}
+                """.trimIndent(),
+            )
+
+        val parts = parsed.messages.single().parts
+        assertEquals(2, parts.size)
+        assertEquals("text", parts[0].type)
+        assertEquals("What's on the picture?", parts[0].text)
+        val file = parts[1]
+        assertEquals("file", file.type)
+        assertEquals("image/png", file.mime)
+        assertEquals("data:image/png;base64,iVBORw0KGgo=", file.url)
+        assertEquals("attachment-1.png", file.filename)
+        // Only the text part may stream: a live image part would be rendered as a second message's
+        // image on an attachment-only send, since the echo is reconciled into the optimistic bubble
+        // by matching text (see handleUserMessage). The file part is persisted for the reload.
+        val streamed = parsed.events.filterIsInstance<OpenCodeEvent.MessagePartUpdated>()
+        assertEquals(1, streamed.size)
+        assertEquals("text", streamed.single().part.type)
+    }
+
+    @Test
+    fun `a userMessage localImage resolves from its path`() {
+        val parsed =
+            parse(
+                "t1",
+                "item/started",
+                """
+                {"item":{"type":"userMessage","id":"um-2","clientId":null,
+                 "content":[{"type":"text","text":"look","text_elements":[]},
+                            {"type":"localImage","detail":null,"path":"/tmp/shot.jpeg"}]},
+                 "threadId":"t1","turnId":"turn-1","startedAtMs":1}
+                """.trimIndent(),
+            )
+
+        val file = parsed.messages.single().parts[1]
+        assertEquals("/tmp/shot.jpeg", file.url)
+        assertEquals("image/jpeg", file.mime)
+    }
+
+    @Test
+    fun `a userMessage with only non-image content stays text-only`() {
+        val parsed =
+            parse(
+                "t1",
+                "item/started",
+                """
+                {"item":{"type":"userMessage","id":"um-3","clientId":null,
+                 "content":[{"type":"text","text":"speak","text_elements":[]},
+                            {"type":"audio","url":"data:audio/wav;base64,AAAA"}]},
+                 "threadId":"t1","turnId":"turn-1","startedAtMs":1}
+                """.trimIndent(),
+            )
+
+        val parts = parsed.messages.single().parts
+        assertEquals(1, parts.size)
+        assertEquals("text", parts.single().type)
+    }
+
+    @Test
     fun `a non-retrying error ends the turn`() {
         val parsed =
             parse(

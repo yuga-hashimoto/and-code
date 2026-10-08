@@ -81,7 +81,8 @@ Verified on the physical device (Codex-only, signed in with ChatGPT, 2026-09-23)
 
 ### Not verified
 
-API-key sign-in and sign-out through the UI, approval prompts, abort, attachments, MCP servers on a physical
+API-key sign-in and sign-out through the UI, approval prompts, abort, image attachments on a device
+(implemented from the schema, not yet run against a live, signed-in account), MCP servers on a physical
 device (verified on the emulator only), and
 whether threads listed after an app restart include chats whose only turn failed.
 
@@ -199,9 +200,14 @@ non-functional, second sandboxing layer.
   protocol's own JSON Schema instead and marked so in code comments and test names. `CodexItemParser`
   falls back to a generic "tool" part carrying the raw item JSON for any item type it does not have a
   dedicated mapping for, so an unrecognized shape surfaces in the UI instead of disappearing.
-- Attachments (images) are not sent on `turn/start` - the `UserInput` content type for an image was
-  not exercised against a live account, and guessing the wrong shape would silently corrupt the
-  request. Text-only turns only, for now.
+- Image attachments are sent on `turn/start` as `{"type":"image","url":"data:..."}` inputs, one per
+  `image/*` attachment, alongside the text input (`CodexRuntime.codexTurnInput`). The app-server's v2
+  `UserInput` schema (generated with `codex app-server generate-json-schema`, matching the
+  `rust-v0.155.1` source) names the URL field `url` under an `"image"` tag and accepts inline `data:`
+  URLs while rejecting remote HTTP(S) ones; `UserInput` has no document/file variant, so non-image
+  attachments are left out rather than sent in an unsupported shape. Not yet exercised against a
+  live, signed-in account. `CodexItemParser` maps the image back out of the echoed `userMessage`
+  content into a `file` part, so the attachment shows in the transcript and survives a reload.
 
 ## Testing
 
