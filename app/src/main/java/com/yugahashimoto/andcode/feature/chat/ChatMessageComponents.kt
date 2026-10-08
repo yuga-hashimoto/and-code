@@ -359,13 +359,21 @@ private fun LinkedText(
     val annotated =
         remember(inlines, linkColor) {
             buildAnnotatedString {
-                inlines.forEach { inline ->
-                    if (inline is MarkdownInline.Link) {
-                        withLink(linkAnnotation(inline.url, linkColor)) { append(inline.text) }
-                    } else {
-                        append(inline.text)
+                // User text is shown plain (no emphasis styling), but a link nested inside emphasis
+                // is still walked so `**http://localhost:4200**` remains tappable.
+                fun appendPlain(nodes: List<MarkdownInline>) {
+                    nodes.forEach { inline ->
+                        when (inline) {
+                            is MarkdownInline.Link ->
+                                withLink(linkAnnotation(inline.url, linkColor)) { append(inline.text) }
+                            is MarkdownInline.Bold -> appendPlain(inline.inlines)
+                            is MarkdownInline.Italic -> appendPlain(inline.inlines)
+                            is MarkdownInline.Strikethrough -> appendPlain(inline.inlines)
+                            else -> append(inline.text)
+                        }
                     }
                 }
+                appendPlain(inlines)
             }
         }
     // Same file:// guard as InlineText above (issue #300).
@@ -702,32 +710,38 @@ private fun renderInline(
     linkColor: Color,
 ): AnnotatedString =
     buildAnnotatedString {
-        inlines.forEach { inline ->
-            when (inline) {
-                is MarkdownInline.Plain -> append(inline.text)
-                is MarkdownInline.Bold -> withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(inline.text) }
-                is MarkdownInline.Italic -> withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { append(inline.text) }
-                is MarkdownInline.Strikethrough ->
-                    withStyle(
-                        SpanStyle(textDecoration = TextDecoration.LineThrough),
-                    ) { append(inline.text) }
-                is MarkdownInline.Code -> {
-                    val start = length
-                    withStyle(
-                        SpanStyle(fontFamily = FontFamily.Monospace, background = codeBackground),
-                    ) { append(inline.text) }
-                    addStringAnnotation("code", inline.text, start, length)
-                }
-                is MarkdownInline.Link -> {
-                    withLink(linkAnnotation(inline.url, linkColor)) { append(inline.text) }
-                }
-                is MarkdownInline.Image -> {
-                    withLink(linkAnnotation(inline.url, linkColor)) {
-                        append(inline.text.ifBlank { "[Image]" })
+        // Emphasis is rendered by recursing into its parsed children, so a link nested inside bold
+        // or italic (e.g. `**http://localhost:4200**`) keeps its link annotation - see
+        // MarkdownInline.Bold.
+        fun appendInlines(nodes: List<MarkdownInline>) {
+            nodes.forEach { inline ->
+                when (inline) {
+                    is MarkdownInline.Plain -> append(inline.text)
+                    is MarkdownInline.Bold ->
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { appendInlines(inline.inlines) }
+                    is MarkdownInline.Italic ->
+                        withStyle(SpanStyle(fontStyle = FontStyle.Italic)) { appendInlines(inline.inlines) }
+                    is MarkdownInline.Strikethrough ->
+                        withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) { appendInlines(inline.inlines) }
+                    is MarkdownInline.Code -> {
+                        val start = length
+                        withStyle(
+                            SpanStyle(fontFamily = FontFamily.Monospace, background = codeBackground),
+                        ) { append(inline.text) }
+                        addStringAnnotation("code", inline.text, start, length)
+                    }
+                    is MarkdownInline.Link -> {
+                        withLink(linkAnnotation(inline.url, linkColor)) { append(inline.text) }
+                    }
+                    is MarkdownInline.Image -> {
+                        withLink(linkAnnotation(inline.url, linkColor)) {
+                            append(inline.text.ifBlank { "[Image]" })
+                        }
                     }
                 }
             }
         }
+        appendInlines(inlines)
     }
 
 private val clockTimeFormat = SimpleDateFormat("HH:mm", Locale.US)
