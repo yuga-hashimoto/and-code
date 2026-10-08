@@ -133,13 +133,25 @@ class RuntimeCatalogRepository(
             runCatching { target.listProviders() }
                 .onSuccess { providers ->
                     if (registry.selected.value?.id != target.id) return@onSuccess
-                    mutableState.update { it.copy(providers = providers) }
-                    // The version keys the cache, and it is often still unknown here: the first
-                    // load runs before the runtime has finished starting, so its connect failed.
-                    val version =
-                        mutableState.value.health?.version
-                            ?: runCatching { target.health() }.getOrNull()?.version.orEmpty()
-                    if (version.isNotBlank()) providerCache?.write(target.id, version, providers)
+                    // A restarted local server can answer `/provider` with an empty `connected`
+                    // set before it has re-read credentials. Adopting that blanked the model list
+                    // the moment it was opened (issue #373); keep the list on screen instead. Like
+                    // [load], only the target's own providers are ever kept.
+                    val current = mutableState.value.providersFor(target)
+                    if (shouldReplaceProviderCatalog(current, providers)) {
+                        mutableState.update { it.copy(providers = providers) }
+                    }
+                    // Only a catalogue with a connected provider is worth remembering. An empty one
+                    // is exactly the restarting-server shape above, and caching it would make the
+                    // next launch - or the next load() - start from an empty list. (Not caching its
+                    // `all` either means provider settings fall back to the chat runtime's list only
+                    // while its own runtime is stopped with no providers connected.)
+                    if (providers.connected.isNotEmpty()) {
+                        val version =
+                            mutableState.value.health?.version
+                                ?: runCatching { target.health() }.getOrNull()?.version.orEmpty()
+                        if (version.isNotBlank()) providerCache?.write(target.id, version, providers)
+                    }
                 }
         }
     }
@@ -199,10 +211,26 @@ class RuntimeCatalogRepository(
                 }
 
             if (registry.selected.value?.id != target.id) return
-            connection.getOrNull()?.version?.let { version ->
-                catalog.providers.getOrNull()?.let { providers ->
-                    if (providerCache?.isStale(target.id, version, providers) != false) {
-                        providerCache?.write(target.id, version, providers)
+            // Only this runtime's own providers are ever kept: [previousProviders] is taken from the
+            // state only while it still belongs to [target], so a switch can never leave one
+            // runtime's models showing under another. A fresh catalogue with an empty `connected`
+            // set is a restarting server, not a real empty list, so it must not replace what is on
+            // screen (issue #373).
+            val previousProviders = mutableState.value.providersFor(target)
+            val storedProviders = catalog.providers.getOrNull()
+            val providersToUse =
+                if (storedProviders != null && shouldReplaceProviderCatalog(previousProviders, storedProviders)) {
+                    storedProviders
+                } else {
+                    previousProviders
+                }
+            // The cache never records an empty `connected` set: that is the restarting-server shape,
+            // and writing it would make the next load() read it straight back and adopt the empty
+            // list the guard above just refused.
+            if (storedProviders != null && storedProviders.connected.isNotEmpty()) {
+                connection.getOrNull()?.version?.let { version ->
+                    if (providerCache?.isStale(target.id, version, storedProviders) != false) {
+                        providerCache?.write(target.id, version, storedProviders)
                     }
                 }
             }
@@ -212,13 +240,7 @@ class RuntimeCatalogRepository(
                     runtime = target,
                     health = connection.getOrNull(),
                     sessions = catalog.sessions.getOrDefault(emptyList()),
-                    // Only this runtime's own providers: the fallback exists so a failed refresh
-                    // does not blank a list the user is looking at, never to borrow another
-                    // runtime's catalogue.
-                    providers =
-                        catalog.providers.getOrElse {
-                            mutableState.value.takeIf { it.runtime?.id == target.id }?.providers ?: ProviderCatalog()
-                        },
+                    providers = providersToUse,
                     agents = catalog.agents.getOrDefault(emptyList()),
                     workspaces = catalog.workspaces.getOrDefault(emptyList()),
                     isRefreshing = false,
@@ -249,3 +271,31 @@ class RuntimeCatalogRepository(
 }
 
 private fun Throwable?.safeMessage(fallback: String): String = this?.message?.takeIf { it.isNotBlank() } ?: fallback
+
+/**
+ * The providers on screen, but only while the state still belongs to [target]: another runtime's
+ * catalogue must never be treated as this one's, so its models cannot show under a runtime that
+ * has never heard of them.
+ */
+private fun RuntimeCatalogState.providersFor(target: RuntimeTarget): ProviderCatalog =
+    takeIf { runtime?.id == target.id }?.providers ?: ProviderCatalog()
+
+/**
+ * Whether a freshly fetched [fresh] catalogue may replace the [current] one for what the user sees.
+ *
+ * OpenCode's local server restarts under memory pressure and, until it has re-read its
+ * credentials, answers `/provider` with a populated `all` but an empty `connected` set. The picker
+ * only lists providers in `connected`, so adopting that transient response emptied the model list
+ * (issue #373). Keep the current list instead, and only adopt [fresh] when it carries at least one
+ * connected provider - or when there is nothing to lose because [current] has none either.
+ *
+ * The disk cache never stores an empty-`connected` catalogue either (see [load] and
+ * [refreshProvidersOnly]), so a later [load] cannot read that shape back and defeat this guard. A
+ * genuine disconnect is unaffected: OpenCode keeps reporting the provider as connected (#321), so
+ * the response cached there is non-empty, and the picker hides it through its own locally
+ * disconnected set.
+ */
+internal fun shouldReplaceProviderCatalog(
+    current: ProviderCatalog,
+    fresh: ProviderCatalog,
+): Boolean = fresh.connected.isNotEmpty() || current.connected.isEmpty()

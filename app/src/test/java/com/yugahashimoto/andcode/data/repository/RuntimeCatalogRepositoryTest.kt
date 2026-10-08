@@ -27,14 +27,20 @@ import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.Rule
 import org.junit.Test
+import org.junit.rules.TemporaryFolder
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class RuntimeCatalogRepositoryTest {
+    @get:Rule
+    val temporaryFolder = TemporaryFolder()
+
     @Test
     fun `loads selected runtime catalog and workspaces`() =
         runTest {
@@ -142,6 +148,129 @@ class RuntimeCatalogRepositoryTest {
             baseUrl = "https://$id.example.test",
         )
 
+    @Test
+    fun `a transiently empty connected set does not blank the model picker`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget("mac")
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = "mac"),
+                    localTarget = FakeTarget("local-android", RuntimeType.LOCAL),
+                    remoteFactory = { target },
+                )
+            val repository = RuntimeCatalogRepository(registry, TestScope(dispatcher))
+            advanceUntilIdle()
+            assertEquals(listOf("opencode"), repository.state.value.providers.connected)
+
+            // A restarted server answers /provider before it has re-read its credentials.
+            target.providersOverride =
+                ProviderCatalog(
+                    all = listOf(OpenCodeProvider(id = "opencode", name = "OpenCode Zen")),
+                    connected = emptyList(),
+                )
+            repository.refreshProvidersOnly()
+            advanceUntilIdle()
+
+            assertEquals(listOf("opencode"), repository.state.value.providers.connected)
+            assertTrue(repository.state.value.providers.all.any { it.id == "opencode" })
+        }
+
+    @Test
+    fun `a refresh that names a connected provider replaces the catalogue`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget("mac")
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = "mac"),
+                    localTarget = FakeTarget("local-android", RuntimeType.LOCAL),
+                    remoteFactory = { target },
+                )
+            val repository = RuntimeCatalogRepository(registry, TestScope(dispatcher))
+            advanceUntilIdle()
+
+            target.providersOverride =
+                ProviderCatalog(
+                    all = listOf(OpenCodeProvider(id = "other", name = "Other")),
+                    connected = listOf("other"),
+                )
+            repository.refreshProvidersOnly()
+            advanceUntilIdle()
+
+            assertEquals(listOf("other"), repository.state.value.providers.connected)
+        }
+
+    @Test
+    fun `only a catalogue with a connected provider replaces a usable one`() {
+        fun catalog(vararg connected: String) = ProviderCatalog(connected = connected.toList())
+
+        assertFalse(shouldReplaceProviderCatalog(catalog("opencode"), catalog()))
+        assertTrue(shouldReplaceProviderCatalog(catalog(), catalog()))
+        assertTrue(shouldReplaceProviderCatalog(catalog(), catalog("opencode")))
+        assertTrue(shouldReplaceProviderCatalog(catalog("opencode"), catalog("other")))
+    }
+
+    private fun cache() = ProviderCatalogCache(temporaryFolder.newFolder("cache"), Json { ignoreUnknownKeys = true })
+
+    private fun repositoryWithCache(
+        target: RuntimeTarget,
+        providerCache: ProviderCatalogCache,
+        scope: TestScope,
+    ): RuntimeCatalogRepository {
+        val registry =
+            RuntimeRegistry(
+                store = FakeStore(selectedRuntimeId = "mac"),
+                localTarget = FakeTarget("local-android", RuntimeType.LOCAL),
+                remoteFactory = { target },
+            )
+        return RuntimeCatalogRepository(registry, scope, providerCache = providerCache)
+    }
+
+    @Test
+    fun `a transiently empty refresh keeps the list and leaves the cache alone`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget("mac")
+            val repository = repositoryWithCache(target, cache(), TestScope(dispatcher))
+            advanceUntilIdle()
+            assertEquals(listOf("opencode"), repository.cachedProviders("mac")?.connected)
+
+            // The server restarted and answered /provider before re-reading credentials.
+            target.providersOverride = restartingServerCatalog()
+            repository.refreshProvidersOnly()
+            advanceUntilIdle()
+
+            assertEquals(listOf("opencode"), repository.state.value.providers.connected)
+            assertEquals(listOf("opencode"), repository.cachedProviders("mac")?.connected)
+        }
+
+    @Test
+    fun `repeated loads during a transient empty response keep the list`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget("mac")
+            val repository = repositoryWithCache(target, cache(), TestScope(dispatcher))
+            advanceUntilIdle()
+            target.providersOverride = restartingServerCatalog()
+
+            // A second load reads the cache back into the state first; if the cache had been allowed
+            // to record the empty response, that read would blank the list on this pass.
+            repository.refresh()
+            advanceUntilIdle()
+            repository.refresh()
+            advanceUntilIdle()
+
+            assertEquals(listOf("opencode"), repository.state.value.providers.connected)
+            assertEquals(listOf("opencode"), repository.cachedProviders("mac")?.connected)
+        }
+
+    private fun restartingServerCatalog() =
+        ProviderCatalog(
+            all = listOf(OpenCodeProvider(id = "opencode", name = "OpenCode Zen")),
+            connected = emptyList(),
+        )
+
     private class FakeStore(
         profiles: List<ConnectionProfile> = listOf(profileStatic("mac")),
         override var selectedRuntimeId: String? = null,
@@ -206,6 +335,9 @@ class RuntimeCatalogRepositoryTest {
         override val kind: BackendKind = if (type == RuntimeType.LOCAL) BackendKind.LOCAL else BackendKind.REMOTE
         override val state = MutableStateFlow<RuntimeState>(RuntimeState.Disconnected)
 
+        /** What [listProviders] returns, when a test needs to change the catalogue mid-run. */
+        var providersOverride: ProviderCatalog? = null
+
         override suspend fun connect(): Result<OpenCodeHealth> =
             connectError?.let(Result.Companion::failure)
                 ?: Result.success(OpenCodeHealth(true, version))
@@ -228,6 +360,7 @@ class RuntimeCatalogRepositoryTest {
 
         override suspend fun listProviders(): ProviderCatalog {
             providersError?.let { throw it }
+            providersOverride?.let { return it }
             return ProviderCatalog(
                 all =
                     listOf(
