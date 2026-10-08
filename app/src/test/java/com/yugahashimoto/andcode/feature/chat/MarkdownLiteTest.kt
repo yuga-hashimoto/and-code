@@ -71,8 +71,76 @@ class MarkdownLiteTest {
         assertEquals(
             listOf(
                 MarkdownInline.Plain("This is "),
-                MarkdownInline.Bold("important"),
+                MarkdownInline.Bold(listOf(MarkdownInline.Plain("important"))),
                 MarkdownInline.Plain(" text"),
+            ),
+            paragraph.inlines,
+        )
+    }
+
+    @Test
+    fun `a bare url inside bold stays a link`() {
+        val paragraph =
+            MarkdownLite.parse("Open **http://localhost:4200** now")
+                .single() as MarkdownBlock.Paragraph
+        assertEquals(
+            listOf(
+                MarkdownInline.Plain("Open "),
+                MarkdownInline.Bold(
+                    listOf(MarkdownInline.Link("http://localhost:4200", "http://localhost:4200")),
+                ),
+                MarkdownInline.Plain(" now"),
+            ),
+            paragraph.inlines,
+        )
+    }
+
+    @Test
+    fun `a url inside italic stays a link`() {
+        val paragraph =
+            MarkdownLite.parse("See *https://example.com* please")
+                .single() as MarkdownBlock.Paragraph
+        assertEquals(
+            listOf(
+                MarkdownInline.Plain("See "),
+                MarkdownInline.Italic(
+                    listOf(MarkdownInline.Link("https://example.com", "https://example.com")),
+                ),
+                MarkdownInline.Plain(" please"),
+            ),
+            paragraph.inlines,
+        )
+    }
+
+    @Test
+    fun `a url inside strikethrough stays a link`() {
+        val paragraph =
+            MarkdownLite.parse("~~https://example.com~~")
+                .single() as MarkdownBlock.Paragraph
+        assertEquals(
+            listOf(
+                MarkdownInline.Strikethrough(
+                    listOf(MarkdownInline.Link("https://example.com", "https://example.com")),
+                ),
+            ),
+            paragraph.inlines,
+        )
+    }
+
+    @Test
+    fun `emphasis keeps surrounding text while linking the url inside it`() {
+        val paragraph =
+            MarkdownLite.parse("**see https://example.com now**")
+                .single() as MarkdownBlock.Paragraph
+        assertEquals(
+            listOf(
+                MarkdownInline.Bold(
+                    listOf(
+                        MarkdownInline.Plain("see "),
+                        MarkdownInline.Link("https://example.com", "https://example.com"),
+                        MarkdownInline.Plain(" now"),
+                    ),
+                ),
             ),
             paragraph.inlines,
         )

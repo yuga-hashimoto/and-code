@@ -5,11 +5,22 @@ sealed interface MarkdownInline {
 
     data class Plain(override val text: String) : MarkdownInline
 
-    data class Bold(override val text: String) : MarkdownInline
+    /**
+     * Emphasis carries its own parsed children rather than a flat string so a link (or code) nested
+     * inside it - e.g. `**http://localhost:4200**` - is still recognized, and rendered clickable,
+     * instead of being swallowed as opaque bold text.
+     */
+    data class Bold(val inlines: List<MarkdownInline>) : MarkdownInline {
+        override val text: String get() = inlines.joinToString("") { it.text }
+    }
 
-    data class Italic(override val text: String) : MarkdownInline
+    data class Italic(val inlines: List<MarkdownInline>) : MarkdownInline {
+        override val text: String get() = inlines.joinToString("") { it.text }
+    }
 
-    data class Strikethrough(override val text: String) : MarkdownInline
+    data class Strikethrough(val inlines: List<MarkdownInline>) : MarkdownInline {
+        override val text: String get() = inlines.joinToString("") { it.text }
+    }
 
     data class Code(override val text: String) : MarkdownInline
 
@@ -163,11 +174,11 @@ object MarkdownLite {
             val bareUrl = match.groups[9]?.value
             when {
                 code != null -> result += MarkdownInline.Code(code)
-                bold != null -> result += MarkdownInline.Bold(bold)
-                strike != null -> result += MarkdownInline.Strikethrough(strike)
+                bold != null -> result += MarkdownInline.Bold(parseInline(bold))
+                strike != null -> result += MarkdownInline.Strikethrough(parseInline(strike))
                 imageAlt != null && imageUrl != null -> result += MarkdownInline.Image(imageAlt, imageUrl)
                 linkText != null && linkUrl != null -> result += MarkdownInline.Link(linkText, linkUrl)
-                italic != null -> result += MarkdownInline.Italic(italic)
+                italic != null -> result += MarkdownInline.Italic(parseInline(italic))
                 bareUrl != null -> {
                     val url = trimUrlTail(bareUrl)
                     result += MarkdownInline.Link(url, url)
