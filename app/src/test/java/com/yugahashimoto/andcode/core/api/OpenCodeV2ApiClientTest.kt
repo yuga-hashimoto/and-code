@@ -799,7 +799,7 @@ class OpenCodeV2ApiClientTest {
 
             val agents = client().agents()
 
-            assertEquals(listOf("build"), agents.map { it.name })
+            assertEquals(listOf("build", "orchestrator"), agents.map { it.name })
             assertEquals("primary", agents[0].mode)
         }
 
@@ -1139,6 +1139,7 @@ class OpenCodeV2ApiClientTest {
 
         val AGENT_LIST =
             """{"data":[{"id":"build","name":"Build","description":"The default agent.","mode":"primary","hidden":false,"permissions":[]},""" +
+                """{"id":"orchestrator","name":"Orchestrator","mode":"primary","hidden":null,"permissions":[]},""" +
                 """{"id":"compaction","name":"Compaction","description":"internal","mode":"primary","hidden":true,"permissions":[]}]}"""
 
         val INTEGRATION_LIST =

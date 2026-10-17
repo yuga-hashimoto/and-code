@@ -165,7 +165,12 @@ data class OpenCodeAgent(
     val description: String? = null,
     val mode: String? = null,
     val native: Boolean = false,
-    val hidden: Boolean = false,
+    /**
+     * Nullable on purpose: OpenCode sends `"hidden": null` for plugin agents (oh-my-opencode-slim's
+     * `orchestrator`, `fixer`, ...), and a non-null Boolean made the whole `GET /agent` list fail to
+     * decode, leaving the mode picker with nothing to offer. Only `true` hides an agent.
+     */
+    val hidden: Boolean? = null,
 )
 
 /**
@@ -178,7 +183,7 @@ data class OpenCodeAgent(
  * hard-coding `build`.
  */
 fun List<OpenCodeAgent>.selectablePrimaryAgents(): List<OpenCodeAgent> =
-    filter { (it.mode == null || it.mode == "primary" || it.mode == "all") && !it.hidden }
+    filter { (it.mode == null || it.mode == "primary" || it.mode == "all") && it.hidden != true }
 
 /** The server's default agent: the first selectable primary it lists, or null when it offers none. */
 fun List<OpenCodeAgent>.defaultAgentName(): String? = selectablePrimaryAgents().firstOrNull()?.name

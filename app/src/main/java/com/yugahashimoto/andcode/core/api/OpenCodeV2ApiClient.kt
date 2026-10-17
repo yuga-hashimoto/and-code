@@ -186,11 +186,12 @@ class OpenCodeV2ApiClient(
 
     /**
      * Internal V2 agents (compaction, title, summary) are reported as `mode: primary` with
-     * `hidden: true`; the app's agent model has no hidden flag yet, so they are dropped here to
-     * keep them out of the mode picker and settings.
+     * `hidden: true`. V2 does not copy the flag onto [OpenCodeAgent]; it drops those agents here so
+     * they stay out of the mode picker and settings. Only `true` hides: a missing or `null` flag
+     * (as plugin agents send it) is visible.
      */
     override suspend fun agents(): List<OpenCodeAgent> =
-        getData<List<V2Agent>>("api/agent").filterNot { it.hidden }.map { agent ->
+        getData<List<V2Agent>>("api/agent").filterNot { it.hidden == true }.map { agent ->
             OpenCodeAgent(
                 name = agent.id,
                 description = agent.description,
@@ -1565,7 +1566,8 @@ private data class V2Agent(
     val id: String,
     val description: String? = null,
     val mode: String? = null,
-    val hidden: Boolean = false,
+    /** Nullable: an explicit `null` must decode as visible rather than fail the whole list. */
+    val hidden: Boolean? = null,
 )
 
 @Serializable

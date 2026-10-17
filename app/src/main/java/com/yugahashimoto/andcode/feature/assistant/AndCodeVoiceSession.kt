@@ -517,7 +517,7 @@ private fun VoiceAssistantSurface(
     ) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("AndCode", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+                Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                 Text(stringResource(R.string.home_assistant), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             IconButton(onClick = onClose) {

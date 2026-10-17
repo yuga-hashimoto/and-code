@@ -3,7 +3,6 @@ package com.yugahashimoto.andcode.core.api
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
-import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OpenCodeAgentSelectionTest {
@@ -71,7 +70,28 @@ class OpenCodeAgentSelectionTest {
                 """[{"name":"title","mode":"primary","hidden":true,"native":true},{"name":"orchestrator","mode":"primary"}]""",
             )
 
-        assertTrue(agents[0].hidden)
+        assertEquals(true, agents[0].hidden)
         assertEquals(listOf("orchestrator"), agents.selectablePrimaryAgents().map { it.name })
+    }
+
+    @Test
+    fun `decodes plugin agents that send an explicit null hidden flag`() {
+        // Shape of OpenCode 1.19.3's GET /agent with oh-my-opencode-slim installed: plugin agents
+        // carry "hidden": null, which used to fail decoding of the whole list.
+        val agents =
+            OpenCodeApiClient.defaultJson.decodeFromString<List<OpenCodeAgent>>(
+                """
+                [
+                  {"name":"orchestrator","mode":"primary","native":false,"hidden":null,"variant":"high"},
+                  {"name":"build","description":"Default agent","mode":"primary","native":true},
+                  {"name":"compaction","mode":"primary","native":true,"hidden":true},
+                  {"name":"fixer","description":"Fast implementation","mode":"subagent","native":false,"hidden":null},
+                  {"name":"plan","description":"Plan mode","mode":"primary","native":true}
+                ]
+                """.trimIndent(),
+            )
+
+        assertEquals(listOf("orchestrator", "build", "plan"), agents.selectablePrimaryAgents().map { it.name })
+        assertEquals("orchestrator", agents.defaultAgentName())
     }
 }
