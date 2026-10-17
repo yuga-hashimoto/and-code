@@ -464,6 +464,8 @@
     <string name="chat_system_prompt_default">Prompt</string>
     <string name="chat_mode_build">Build</string>
     <string name="chat_mode_plan">Plan</string>
+    <string name="chat_agents_loading">Loading agents…</string>
+    <string name="chat_agents_load_failed">Couldn\'t load agents. Tap to retry.</string>
     <string name="chat_mode_auto_accept">Auto accept</string>
     <string name="chat_auto_accept_short">Auto</string>
     <string name="chat_token_speed">%1$s tok/s</string>

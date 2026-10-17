@@ -112,6 +112,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
@@ -176,6 +178,9 @@ fun ChatHomeScreen(
     onSelectRuntime: (String) -> Unit,
     onSelectModel: (String, String) -> Unit,
     onSelectAgent: (String) -> Unit,
+    /** Asks the runtime for its agents again; the mode chip calls it when its list is empty. */
+    onRefreshAgents: () -> Unit = {},
+    agentsLoading: Boolean = false,
     selectedVariant: String? = null,
     onSelectVariant: (String?) -> Unit = {},
     attachments: List<PromptAttachment> = emptyList(),
@@ -644,6 +649,8 @@ fun ChatHomeScreen(
                     agents = agents,
                     selectedAgentId = selectedAgentId,
                     onSelectAgent = onSelectAgent,
+                    onRefreshAgents = onRefreshAgents,
+                    agentsLoading = agentsLoading,
                     thinkingOptions =
                         providers
                             .firstOrNull { it.id == selectedProviderId }
@@ -1238,6 +1245,8 @@ private fun ChatComposer(
     agents: List<OpenCodeAgent>,
     selectedAgentId: String?,
     onSelectAgent: (String) -> Unit,
+    onRefreshAgents: () -> Unit,
+    agentsLoading: Boolean = false,
     thinkingOptions: List<String>,
     selectedVariant: String?,
     onSelectVariant: (String?) -> Unit,
@@ -1601,6 +1610,8 @@ private fun ChatComposer(
                     agents = agents,
                     selectedAgentId = selectedAgentId,
                     onSelect = onSelectAgent,
+                    onRefresh = onRefreshAgents,
+                    loading = agentsLoading,
                 )
                 // Auto-accept answers permission prompts, so it only means something on a runtime
                 // that asks for permission. Antigravity decides permissions per invocation from its
@@ -1869,6 +1880,8 @@ private fun ModeChip(
     agents: List<OpenCodeAgent>,
     selectedAgentId: String?,
     onSelect: (String) -> Unit,
+    onRefresh: () -> Unit = {},
+    loading: Boolean = false,
 ) {
     var expanded by remember { mutableStateOf(false) }
     // Every primary agent the server reports is offered, not just build/plan: plugins such as
@@ -1889,7 +1902,13 @@ private fun ModeChip(
             modifier =
                 Modifier
                     .widthIn(max = 92.dp)
-                    .clickable(onClick = { expanded = true }),
+                    .clickable(
+                        onClick = {
+                            expanded = true
+                            if (selectableAgents.isEmpty() && !loading) onRefresh()
+                        },
+                    )
+                    .testTag("chat-mode-chip"),
             shape = RoundedCornerShape(100.dp),
             color = MaterialTheme.colorScheme.surfaceVariant,
             contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -1899,11 +1918,20 @@ private fun ModeChip(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
-                Icon(
-                    Icons.Outlined.Shield,
-                    contentDescription = stringResource(R.string.cd_agent_mode),
-                    modifier = Modifier.size(14.dp),
-                )
+                if (loading && selectableAgents.isEmpty()) {
+                    val loadingDescription = stringResource(R.string.chat_agents_loading)
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(14.dp).semantics { contentDescription = loadingDescription },
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        strokeWidth = 1.5.dp,
+                    )
+                } else {
+                    Icon(
+                        Icons.Outlined.Shield,
+                        contentDescription = stringResource(R.string.cd_agent_mode),
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
                 Text(
                     label,
                     style = MaterialTheme.typography.labelMedium,
@@ -1918,6 +1946,20 @@ private fun ModeChip(
             }
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            if (selectableAgents.isEmpty()) {
+                DropdownMenuItem(
+                    text = {
+                        Text(
+                            stringResource(
+                                if (loading) R.string.chat_agents_loading else R.string.chat_agents_load_failed,
+                            ),
+                        )
+                    },
+                    onClick = onRefresh,
+                    enabled = !loading,
+                    modifier = if (loading) Modifier.testTag("chat-mode-loading") else Modifier,
+                )
+            }
             selectableAgents.forEach { agent ->
                 DropdownMenuItem(
                     text = { Text(agent.name) },

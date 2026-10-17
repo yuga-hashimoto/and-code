@@ -51,6 +51,8 @@ data class SettingsUiState(
     val availableProviders: List<OpenCodeProvider> = emptyList(),
     val connectedProviderIds: Set<String> = emptySet(),
     val agents: List<OpenCodeAgent> = emptyList(),
+    /** The selected runtime is still reading its agents; see [RuntimeCatalogState.agentsLoading]. */
+    val agentsLoading: Boolean = false,
     val providerId: String? = null,
     val modelId: String? = null,
     val agentId: String? = null,
@@ -217,6 +219,7 @@ class SettingsViewModel(
                 availableProviders = managed.all,
                 connectedProviderIds = (managed.connected.toSet() + oauth.locallyConnected) - oauth.locallyDisconnected,
                 agents = core.runtime.agents.selectablePrimaryAgents(),
+                agentsLoading = core.runtime.agentsLoading,
                 providerId = core.preferences.providerId,
                 modelId = core.preferences.modelId,
                 agentId = core.preferences.agentId,

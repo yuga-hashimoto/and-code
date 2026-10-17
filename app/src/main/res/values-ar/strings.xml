@@ -484,6 +484,8 @@
     <string name="chat_system_prompt_default">الموجّه</string>
     <string name="chat_mode_build">بناء</string>
     <string name="chat_mode_plan">تخطيط</string>
+    <string name="chat_agents_loading">جارٍ تحميل الوكلاء…</string>
+    <string name="chat_agents_load_failed">تعذّر تحميل الوكلاء. انقر لإعادة المحاولة.</string>
     <string name="chat_mode_auto_accept">قبول تلقائي</string>
     <string name="chat_auto_accept_short">تلقائي</string>
     <string name="chat_token_speed">%1$s tok/s</string>

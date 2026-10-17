@@ -476,6 +476,8 @@
     <string name="chat_system_prompt_default">プロンプト</string>
     <string name="chat_mode_build">ビルド</string>
     <string name="chat_mode_plan">計画</string>
+    <string name="chat_agents_loading">エージェントを読み込み中…</string>
+    <string name="chat_agents_load_failed">エージェントを読み込めませんでした。タップして再試行。</string>
     <string name="chat_mode_auto_accept">自動承認</string>
     <string name="chat_auto_accept_short">自動</string>
     <string name="chat_token_speed">%1$s tok/s</string>

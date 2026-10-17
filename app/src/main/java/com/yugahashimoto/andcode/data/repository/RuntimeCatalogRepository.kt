@@ -4,11 +4,13 @@ import com.yugahashimoto.andcode.core.api.OpenCodeAgent
 import com.yugahashimoto.andcode.core.api.OpenCodeHealth
 import com.yugahashimoto.andcode.core.api.OpenCodeSession
 import com.yugahashimoto.andcode.core.api.ProviderCatalog
+import com.yugahashimoto.andcode.core.api.selectablePrimaryAgents
 import com.yugahashimoto.andcode.runtime.LocalAgent
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +39,14 @@ data class RuntimeCatalogState(
     val workspaces: List<WorkspaceRef> = emptyList(),
     val isRefreshing: Boolean = false,
     val error: String? = null,
+    /** The line of [error] that is about agents, so a later successful agent read can drop it. */
+    val agentsError: String? = null,
+    /**
+     * True while the agent list is being read and none is on screen yet: a local OpenCode installing
+     * its plugins can take tens of seconds on its first `GET /agent`, and the mode chip shows this
+     * instead of looking dead.
+     */
+    val agentsLoading: Boolean = false,
 )
 
 class RuntimeCatalogRepository(
@@ -58,6 +68,13 @@ class RuntimeCatalogRepository(
 
     val state: StateFlow<RuntimeCatalogState> = mutableState.asStateFlow()
     private val refreshMutex = Mutex()
+
+    /**
+     * The one agent retry in flight and the runtime it is for, so repeated taps on an empty mode
+     * chip do not stack polls. Guarded by [agentRetryLock]: taps (main) and load (IO) both start it.
+     */
+    private var agentRetry: Pair<String, Job>? = null
+    private val agentRetryLock = Any()
 
     private val mutableAllSessions = MutableStateFlow<List<RuntimeSessionRef>>(emptyList())
 
@@ -165,9 +182,14 @@ class RuntimeCatalogRepository(
                 // as the fetch took — seconds, while a stopped runtime is retried — and OpenCode
                 // models appeared under Claude Code.
                 if (current.runtime?.id != target.id) {
-                    RuntimeCatalogState(runtime = target, isRefreshing = true)
+                    RuntimeCatalogState(runtime = target, isRefreshing = true, agentsLoading = true)
                 } else {
-                    current.copy(runtime = target, isRefreshing = true, error = null)
+                    current.copy(
+                        runtime = target,
+                        isRefreshing = true,
+                        error = null,
+                        agentsLoading = !current.agents.hasSelectableAgent(),
+                    )
                 }
             }
 
@@ -234,18 +256,111 @@ class RuntimeCatalogRepository(
                     }
                 }
             }
-            val errors = catalog.failures(messages)
-            mutableState.value =
+            // Like the providers above: a read that failed or offered no agent to pick must not blank
+            // a list this runtime already showed, or a flaky `GET /agent` empties a working picker.
+            val loadedAgents = catalog.agents.getOrNull()
+            // Read and written in one update: a background agent retry can land between this load's
+            // fetch and its write, and taking the list from before that would put an empty one back.
+            mutableState.update { current ->
+                val agentsToUse =
+                    if (loadedAgents.hasSelectableAgent()) {
+                        loadedAgents.orEmpty()
+                    } else {
+                        current.agentsFor(target).ifEmpty { loadedAgents.orEmpty() }
+                    }
+                val agentsFound = agentsToUse.hasSelectableAgent()
+                // A list kept on screen - from an earlier load or a retry that already succeeded -
+                // carries no failure of its own, so neither the chip nor the "Agents: ..." line in
+                // the catalogue error reports this read's failure.
+                val readFailure = catalog.agentsFailure(messages)
+                val agentsFailure = readFailure.takeUnless { agentsFound && !loadedAgents.hasSelectableAgent() }
+                val errors = catalog.failures(messages).filterNot { agentsFailure == null && it == readFailure }
                 RuntimeCatalogState(
                     runtime = target,
                     health = connection.getOrNull(),
                     sessions = catalog.sessions.getOrDefault(emptyList()),
                     providers = providersToUse,
-                    agents = catalog.agents.getOrDefault(emptyList()),
+                    agents = agentsToUse,
                     workspaces = catalog.workspaces.getOrDefault(emptyList()),
                     isRefreshing = false,
                     error = errors.takeIf { it.isNotEmpty() }?.joinToString("\n"),
+                    agentsError = agentsFailure,
+                    // Still loading when nothing selectable came back: the retry below takes over.
+                    agentsLoading = !agentsFound,
                 )
+            }
+        }
+        // Outside the lock: a local OpenCode installing its plugins can take tens of seconds per
+        // `GET /agent`, and the rest of the catalogue - and every other refresh - must not wait on it.
+        if (!mutableState.value.agentsFor(target).hasSelectableAgent()) refreshAgents()
+    }
+
+    /**
+     * The runtime's agents, retried a few times while the answer fails or offers nothing to pick.
+     *
+     * A local OpenCode with plugins (oh-my-opencode-slim, opencode-mem, ...) installs them on its
+     * first `GET /agent` after a start, which can take tens of seconds or fail outright. That one
+     * answer used to be final until something else refreshed the catalogue, so the agent chip kept
+     * showing "build" over an empty menu that nothing would ever refill.
+     */
+    private suspend fun loadAgents(target: RuntimeTarget): Result<List<OpenCodeAgent>> {
+        var result = runCatching { target.listAgents() }
+        repeat(AGENT_RETRIES) {
+            if (result.getOrNull().hasSelectableAgent() || registry.selected.value?.id != target.id) return result
+            delay(AGENT_RETRY_DELAY_MILLIS)
+            result = runCatching { target.listAgents() }
+        }
+        return result
+    }
+
+    /**
+     * Re-reads the agent list in the background until the runtime offers one to pick, for a load
+     * whose `GET /agent` failed or for a mode chip tapped while empty.
+     *
+     * Only one retry runs at a time. A runtime that never connected gets a full [refresh] instead,
+     * so the chip does not fill in agents over an otherwise empty, errored catalogue. The rest of the
+     * catalogue is left alone, and a failed retry keeps whatever agents are already on screen.
+     */
+    fun refreshAgents() {
+        val target = registry.selected.value ?: return
+        val current = mutableState.value
+        if (current.runtime?.id == target.id && current.health == null) {
+            // Not connected yet. A load still in flight will retry the agents itself once it
+            // connects; a load that gave up gets a full refresh, not a poll of a dead server.
+            if (!current.isRefreshing) {
+                // Disables the "tap to retry" item straight away, so repeated taps cannot queue one
+                // full reconnect each behind the refresh lock before the load gets to run.
+                mutableState.update { if (it.runtime?.id == target.id) it.copy(agentsLoading = true) else it }
+                refresh()
+            }
+            return
+        }
+        synchronized(agentRetryLock) {
+            val running = agentRetry
+            if (running != null && running.second.isActive) {
+                // Still polling this runtime: let it finish. A retry left over from the runtime the
+                // user switched away from would only give up, so it must not block this one's.
+                if (running.first == target.id) return
+                running.second.cancel()
+            }
+            mutableState.update {
+                if (it.runtime?.id == target.id && !it.agents.hasSelectableAgent()) it.copy(agentsLoading = true) else it
+            }
+            agentRetry =
+                target.id to
+                scope.launch {
+                    val list = loadAgents(target).getOrNull()?.takeIf { it.hasSelectableAgent() }
+                    if (registry.selected.value?.id != target.id) return@launch
+                    mutableState.update {
+                        when {
+                            it.runtime?.id != target.id -> it
+                            list != null -> it.withAgents(list)
+                            // A load still in flight for this runtime keeps the chip loading: it reads the
+                            // agents again itself, and a "tap to retry" now would only race it.
+                            else -> it.copy(agentsLoading = it.isRefreshing)
+                        }
+                    }
+                }
         }
     }
 
@@ -255,11 +370,20 @@ class RuntimeCatalogRepository(
         val agents: Result<List<OpenCodeAgent>>,
         val workspaces: Result<List<WorkspaceRef>>,
     ) {
+        /**
+         * One line, so [withAgents] can find it again in [RuntimeCatalogState.error]: decoding errors
+         * carry the JSON input on a second line, which a line-by-line removal would never match.
+         */
+        fun agentsFailure(messages: RuntimeCatalogMessages): String? =
+            agents.exceptionOrNull()?.let {
+                messages.agents(it.safeMessage(messages.connectionFailed).replace(Regex("\\s*\\n\\s*"), " "))
+            }
+
         fun failures(messages: RuntimeCatalogMessages): List<String> =
             listOfNotNull(
                 sessions.exceptionOrNull()?.let { messages.sessions(it.safeMessage(messages.connectionFailed)) },
                 providers.exceptionOrNull()?.let { messages.providers(it.safeMessage(messages.connectionFailed)) },
-                agents.exceptionOrNull()?.let { messages.agents(it.safeMessage(messages.connectionFailed)) },
+                agentsFailure(messages),
                 workspaces.exceptionOrNull()?.let { messages.workspaces(it.safeMessage(messages.connectionFailed)) },
             )
     }
@@ -267,6 +391,8 @@ class RuntimeCatalogRepository(
     private companion object {
         const val CONNECT_RETRIES = 6
         const val CONNECT_RETRY_DELAY_MILLIS = 2_500L
+        const val AGENT_RETRIES = 4
+        const val AGENT_RETRY_DELAY_MILLIS = 3_000L
     }
 }
 
@@ -299,3 +425,17 @@ internal fun shouldReplaceProviderCatalog(
     current: ProviderCatalog,
     fresh: ProviderCatalog,
 ): Boolean = fresh.connected.isNotEmpty() || current.connected.isEmpty()
+
+/** The agents on screen, but only while the state still belongs to [target]; see [providersFor]. */
+private fun RuntimeCatalogState.agentsFor(target: RuntimeTarget): List<OpenCodeAgent> =
+    if (runtime?.id == target.id) agents else emptyList()
+
+/** Whether this answer offers at least one agent the mode chip can show. */
+private fun List<OpenCodeAgent>?.hasSelectableAgent(): Boolean = this?.selectablePrimaryAgents()?.isNotEmpty() == true
+
+/** This state with [agents] in place, and the earlier agents failure removed from [error]. */
+private fun RuntimeCatalogState.withAgents(agents: List<OpenCodeAgent>): RuntimeCatalogState {
+    val remaining =
+        error?.lineSequence()?.filterNot { it == agentsError }?.joinToString("\n")?.takeIf { it.isNotBlank() }
+    return copy(agents = agents, error = remaining, agentsError = null, agentsLoading = false)
+}

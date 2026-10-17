@@ -271,6 +271,167 @@ class RuntimeCatalogRepositoryTest {
             connected = emptyList(),
         )
 
+    @Test
+    fun `agents that fail on the first read are retried until the runtime answers`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget("mac")
+            // A local OpenCode installing its plugins: the first GET /agent fails (with a two-line
+            // message, as a decoding error has), the next is empty.
+            target.agentAnswers.add { error("Unexpected JSON token\nJSON input: [{\"hidden\":null}]") }
+            target.agentAnswers.add { emptyList() }
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = "mac"),
+                    localTarget = FakeTarget("local-android", RuntimeType.LOCAL),
+                    remoteFactory = { target },
+                )
+            val repository = RuntimeCatalogRepository(registry = registry, scope = TestScope(dispatcher))
+
+            advanceUntilIdle()
+
+            // The load publishes after one read; the retry runs after it, outside the refresh lock.
+            assertEquals(listOf("build"), repository.state.value.agents.map { it.name })
+            assertEquals(3, target.agentCalls)
+            assertFalse(repository.state.value.isRefreshing)
+            // The load's "Agents: ..." failure no longer applies once the retry got them.
+            assertNull(repository.state.value.error)
+        }
+
+    @Test
+    fun `an agent retry for a runtime that never connected refreshes the whole catalogue`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget("mac", connectError = IllegalStateException("offline"))
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = "mac"),
+                    localTarget = FakeTarget("local-android", RuntimeType.LOCAL),
+                    remoteFactory = { target },
+                )
+            val repository = RuntimeCatalogRepository(registry = registry, scope = TestScope(dispatcher))
+            advanceUntilIdle()
+            assertNull(repository.state.value.health)
+            val callsBefore = target.agentCalls
+
+            repository.refreshAgents()
+            advanceUntilIdle()
+
+            // A full refresh retried the connection instead of asking a dead server for agents.
+            assertEquals(callsBefore, target.agentCalls)
+            assertEquals("offline", repository.state.value.error)
+        }
+
+    @Test
+    fun `refreshing agents fills an empty picker without touching the rest of the catalogue`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget("mac")
+            // The load's own read plus its background retry (1 + 5 reads) all fail.
+            repeat(6) { target.agentAnswers.add { error("plugin load failed") } }
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = "mac"),
+                    localTarget = FakeTarget("local-android", RuntimeType.LOCAL),
+                    remoteFactory = { target },
+                )
+            val repository = RuntimeCatalogRepository(registry = registry, scope = TestScope(dispatcher))
+            advanceUntilIdle()
+            assertTrue(repository.state.value.agents.isEmpty())
+            assertEquals(6, target.agentCalls)
+            val sessionsBefore = repository.state.value.sessions
+
+            repository.refreshAgents()
+            advanceUntilIdle()
+
+            assertEquals(listOf("build"), repository.state.value.agents.map { it.name })
+            assertEquals(sessionsBefore, repository.state.value.sessions)
+        }
+
+    @Test
+    fun `a refresh whose agent read fails keeps the agents already on screen`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget("mac")
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = "mac"),
+                    localTarget = FakeTarget("local-android", RuntimeType.LOCAL),
+                    remoteFactory = { target },
+                )
+            val repository = RuntimeCatalogRepository(registry = registry, scope = TestScope(dispatcher))
+            advanceUntilIdle()
+            assertEquals(listOf("build"), repository.state.value.agents.map { it.name })
+
+            // Every read of the next refresh fails, retries included.
+            repeat(10) { target.agentAnswers.add { error("plugin load failed") } }
+            repository.refresh()
+            advanceUntilIdle()
+
+            assertEquals(listOf("build"), repository.state.value.agents.map { it.name })
+            // The kept list is not this read's: no agents failure on the chip or in the catalogue error.
+            assertNull(repository.state.value.agentsError)
+            assertNull(repository.state.value.error)
+        }
+
+    @Test
+    fun `repeated agent refreshes run a single retry at a time`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget("mac")
+            // The load and its background retry give up empty-handed (1 + 5 failed reads).
+            repeat(6) { target.agentAnswers.add { error("plugin load failed") } }
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = "mac"),
+                    localTarget = FakeTarget("local-android", RuntimeType.LOCAL),
+                    remoteFactory = { target },
+                )
+            val repository = RuntimeCatalogRepository(registry = registry, scope = TestScope(dispatcher))
+            advanceUntilIdle()
+            val callsBefore = target.agentCalls
+
+            assertTrue(repository.state.value.agents.isEmpty())
+
+            repeat(5) { repository.refreshAgents() }
+            advanceUntilIdle()
+
+            assertEquals(listOf("build"), repository.state.value.agents.map { it.name })
+            assertEquals(callsBefore + 1, target.agentCalls)
+        }
+
+    @Test
+    fun `agents read as loading until they arrive, and stop loading once retries give up`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget("mac")
+            // The load's read and the whole background retry (1 + 5 reads) fail.
+            repeat(6) { target.agentAnswers.add { error("plugin load failed") } }
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = "mac"),
+                    localTarget = FakeTarget("local-android", RuntimeType.LOCAL),
+                    remoteFactory = { target },
+                )
+            val repository = RuntimeCatalogRepository(registry = registry, scope = TestScope(dispatcher))
+
+            // The load's own read has failed and published; the background retry is still to come,
+            // so the chip has nothing to pick yet and reads as loading.
+            testScheduler.runCurrent()
+            assertTrue(repository.state.value.agentsLoading)
+
+            advanceUntilIdle()
+            assertTrue(repository.state.value.agents.isEmpty())
+            assertFalse(repository.state.value.agentsLoading)
+
+            // A tap on the empty chip marks it loading straight away, before the retry has run.
+            repository.refreshAgents()
+            assertTrue(repository.state.value.agentsLoading)
+            advanceUntilIdle()
+            assertEquals(listOf("build"), repository.state.value.agents.map { it.name })
+            assertFalse(repository.state.value.agentsLoading)
+        }
+
     private class FakeStore(
         profiles: List<ConnectionProfile> = listOf(profileStatic("mac")),
         override var selectedRuntimeId: String? = null,
@@ -375,7 +536,14 @@ class RuntimeCatalogRepositoryTest {
             )
         }
 
-        override suspend fun listAgents(): List<OpenCodeAgent> = listOf(OpenCodeAgent("build", mode = "primary"))
+        /** Answers for successive [listAgents] calls; once used up, the default single `build`. */
+        val agentAnswers = ArrayDeque<() -> List<OpenCodeAgent>>()
+        var agentCalls = 0
+
+        override suspend fun listAgents(): List<OpenCodeAgent> {
+            agentCalls++
+            return agentAnswers.removeFirstOrNull()?.invoke() ?: listOf(OpenCodeAgent("build", mode = "primary"))
+        }
 
         override suspend fun listWorkspaces(): List<WorkspaceRef> =
             listOf(

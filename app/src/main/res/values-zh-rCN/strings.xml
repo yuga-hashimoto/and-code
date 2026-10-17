@@ -474,6 +474,8 @@
     <string name="chat_system_prompt_default">提示词</string>
     <string name="chat_mode_build">构建</string>
     <string name="chat_mode_plan">计划</string>
+    <string name="chat_agents_loading">正在加载智能体…</string>
+    <string name="chat_agents_load_failed">无法加载智能体，点按重试。</string>
     <string name="chat_mode_auto_accept">自动接受</string>
     <string name="chat_auto_accept_short">自动</string>
     <string name="chat_token_speed">%1$s tok/s</string>

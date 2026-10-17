@@ -478,6 +478,8 @@
     <string name="chat_system_prompt_default">Prompt</string>
     <string name="chat_mode_build">Construir</string>
     <string name="chat_mode_plan">Planificar</string>
+    <string name="chat_agents_loading">Cargando agentes…</string>
+    <string name="chat_agents_load_failed">No se pudieron cargar los agentes. Toca para reintentar.</string>
     <string name="chat_mode_auto_accept">Aceptación automática</string>
     <string name="chat_auto_accept_short">Auto</string>
     <string name="chat_token_speed">%1$s tok/s</string>

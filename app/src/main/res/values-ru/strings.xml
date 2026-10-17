@@ -480,6 +480,8 @@
     <string name="chat_system_prompt_default">Промпт</string>
     <string name="chat_mode_build">Сборка</string>
     <string name="chat_mode_plan">План</string>
+    <string name="chat_agents_loading">Загрузка агентов…</string>
+    <string name="chat_agents_load_failed">Не удалось загрузить агентов. Нажмите, чтобы повторить.</string>
     <string name="chat_mode_auto_accept">Автоприём</string>
     <string name="chat_auto_accept_short">Авто</string>
     <string name="chat_token_speed">%1$s tok/s</string>
