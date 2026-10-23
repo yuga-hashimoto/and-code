@@ -217,6 +217,14 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
                 .apply()
         }
 
+    var localAiModelPath: String?
+        get() = preferences.getString(KEY_LOCAL_AI_MODEL_PATH, null)
+        set(value) {
+            preferences.edit()
+                .putString(KEY_LOCAL_AI_MODEL_PATH, value)
+                .apply()
+        }
+
     var customProviders: List<com.yugahashimoto.andcode.runtime.local.CustomProviderDefinition>
         get() =
             com.yugahashimoto.andcode.runtime.local.CustomProviderStore.decodeList(
@@ -578,6 +586,7 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         private const val KEY_PROVIDER_API_KEYS = "provider_api_keys"
         private const val KEY_MANAGED_PROVIDER_API_KEY_IDS = "managed_provider_api_key_ids"
         private const val KEY_CUSTOM_PROVIDERS = "custom_providers"
+        private const val KEY_LOCAL_AI_MODEL_PATH = "local_ai_model_path"
         private const val KEY_SYNCED_CUSTOM_PROVIDER_IDS = "synced_custom_provider_ids"
         private const val KEY_ASSISTANT_RUNTIME_ID = "assistant_runtime_id"
         private const val KEY_ASSISTANT_WORKSPACE_PATH = "assistant_workspace_path"

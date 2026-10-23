@@ -1,6 +1,8 @@
 package com.yugahashimoto.andcode.ui.navigation
 
 import android.content.Context
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -24,6 +26,8 @@ import com.yugahashimoto.andcode.feature.settings.CodexAgentSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.CodexSignInActions
 import com.yugahashimoto.andcode.feature.settings.CodexSignInViewModel
 import com.yugahashimoto.andcode.feature.settings.GitHubSettingsScreen
+import com.yugahashimoto.andcode.feature.settings.LocalAiSettingsScreen
+import com.yugahashimoto.andcode.feature.settings.LocalAiSettingsViewModel
 import com.yugahashimoto.andcode.feature.settings.ModelVisibilityScreen
 import com.yugahashimoto.andcode.feature.settings.OpenCodeAgentSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.OpenCodeAgentSettingsViewModel
@@ -283,6 +287,7 @@ fun NavGraphBuilder.settingsNavGraph(
             onOpenClaudeCode = { navController.navigate(ROUTE_SETTINGS_AGENT_CLAUDE) },
             onOpenAntigravity = { navController.navigate(ROUTE_SETTINGS_AGENT_ANTIGRAVITY) },
             onOpenCodex = { navController.navigate(ROUTE_SETTINGS_AGENT_CODEX) },
+            onOpenLocalAi = { navController.navigate(ROUTE_SETTINGS_LOCAL_AI) },
             onBack = { navController.popBackStack() },
         )
     }
@@ -462,6 +467,37 @@ fun NavGraphBuilder.settingsNavGraph(
             onSubmitCustomProvider = settingsViewModel::submitCustomProvider,
             onDismissCustomProviderDialog = settingsViewModel::dismissCustomProviderDialog,
             onRemoveCustomProvider = settingsViewModel::removeCustomProvider,
+            onBack = { navController.popBackStack() },
+        )
+    }
+
+    composable(ROUTE_SETTINGS_LOCAL_AI) {
+        val app = context.applicationContext as com.yugahashimoto.andcode.AndCodeApplication
+        val localAiViewModel: LocalAiSettingsViewModel =
+            androidx.lifecycle.viewmodel.compose.viewModel(
+                key = "settings-local-ai",
+                factory =
+                    com.yugahashimoto.andcode.ui.ViewModelFactory {
+                        LocalAiSettingsViewModel(
+                            scanner = app.localAiModelScanner,
+                            controller = app.localAiController,
+                            settings = app.settings,
+                            modelsDir = java.io.File(app.getExternalFilesDir(null), "local-ai-models"),
+                        )
+                    },
+            )
+        val localAiState by localAiViewModel.state.collectAsState()
+        val importLauncher =
+            rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
+                localAiViewModel.importModels(uris, context.contentResolver)
+            }
+        LocalAiSettingsScreen(
+            state = localAiState,
+            onSelect = localAiViewModel::select,
+            onRefresh = localAiViewModel::refreshModels,
+            onImport = { importLauncher.launch(arrayOf("*/*")) },
+            onStart = localAiViewModel::start,
+            onStop = localAiViewModel::stop,
             onBack = { navController.popBackStack() },
         )
     }

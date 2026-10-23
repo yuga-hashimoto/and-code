@@ -17,3 +17,5 @@ __pycache__/
 .cxx/
 captures/
 docs/superpowers/
+local.properties.bak
+app/src/main/assets/llama-oc.tar.gz
