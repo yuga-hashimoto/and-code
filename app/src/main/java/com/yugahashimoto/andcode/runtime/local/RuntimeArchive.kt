@@ -63,7 +63,7 @@ object RuntimeArchive {
         }
     }
 
-    private fun extractTar(
+    internal fun extractTar(
         input: InputStream,
         destination: File,
     ) {

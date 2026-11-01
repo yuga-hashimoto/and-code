@@ -19,6 +19,7 @@ import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Psychology
+import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.SystemUpdate
@@ -79,6 +80,7 @@ fun AgentSettingsScreen(
     onOpenClaudeCode: () -> Unit,
     onOpenAntigravity: () -> Unit,
     onOpenCodex: () -> Unit,
+    onOpenLocalAi: () -> Unit = {},
     onBack: () -> Unit,
 ) {
     AgentSettingsScaffold(title = stringResource(R.string.settings_agents_row), onBack = onBack) {
@@ -90,6 +92,12 @@ fun AgentSettingsScreen(
             AgentRow(LocalAgent.ANTIGRAVITY, onOpenAntigravity)
             SettingsDivider()
             AgentRow(LocalAgent.CODEX, onOpenCodex)
+            SettingsDivider()
+            SettingsRow(
+                icon = Icons.Filled.SmartToy,
+                title = stringResource(R.string.settings_local_ai_row),
+                onClick = onOpenLocalAi,
+            )
         }
     }
 }
