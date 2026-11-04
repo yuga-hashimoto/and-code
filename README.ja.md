@@ -11,7 +11,9 @@
 
 AndCodeはAIコーディングエージェントをスマートフォンで使えるようにするネイティブAndroid GUIアプリです。[OpenCode](https://github.com/sst/opencode)、[Claude Code](https://github.com/anthropics/claude-code)、[Google Antigravity](https://github.com/google-antigravity/antigravity-cli)、[OpenAI Codex](https://github.com/openai/codex)とタッチ操作中心のインターフェースで対話できます — 端末エミュレータもSSHもPCも、オンデバイス実行には一切不要です。PRootによるオンデバイスランタイムか、PC/Mac/Linux上の既存OpenCodeサーバーへのリモート接続で動作します。
 
-[Releases](https://github.com/yuga-hashimoto/and-code/releases/latest) · [English README](README.md)
+[Releases](https://github.com/yuga-hashimoto/and-code/releases/latest)
+
+[English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (Brasil)](README.pt-BR.md) | [Русский](README.ru.md) | [العربية](README.ar.md)
 
 > [!IMPORTANT]
 > AndCodeは、利用者自身のAndroid端末上で対応する第三者製コマンドラインツールをインストールまたは起動する、独立したローカルファーストGUIです。AndCode自体がClaude、Google Antigravity、OpenAI Codex、OpenCodeなどのAIサービス、サブスクリプション、モデル利用権またはアカウント利用権を提供するものではありません。認証、モデルアクセス、推論およびサービスとの通信は、各公式CLIまたは利用者が設定したプロバイダーによって処理されます。AndCodeはOpenCode、Anthropic、GoogleまたはOpenAIと提携、承認、後援または公式サポート関係にありません。詳細は[法的情報・第三者ソフトウェア](#法的情報第三者ソフトウェア)を参照してください。
@@ -68,7 +70,7 @@ AndCodeはAIコーディングエージェントをスマートフォンで使�
 | [Google Antigravity](https://github.com/google-antigravity/antigravity-cli) | ✓ | — | ベータ |
 | [OpenAI Codex](https://github.com/openai/codex) | ✓ | — | ベータ |
 
-オンデバイスエージェントはPRoot経由でLinux環境内で実行されます。OpenCode、Claude Code、CodexはAlpine Linuxを使用し、Google Antigravityは公式`agy`バイナリのglibc互換性のためDebian Bookworm rootfsを導入します。
+オンデバイスエージェントはPRoot経由でLinux環境内で実行されます。OpenCode、Claude Code、CodexはAlpine Linuxを使用し、Google AntigravityはAlpineと並んで、公式`agy`バイナリのglibc互換性のためDebian Bookworm rootfsも導入します。
 
 ## 主な機能
 
@@ -76,9 +78,9 @@ AndCodeはAIコーディングエージェントをスマートフォンで使�
 - **オンデバイスランタイム** — Alpine Linux、Git、bash、curl、ripgrep、コーディングエージェントをPRootで自動セットアップ
 - **リポジトリ・ワークスペース** — デバイス上でGitリポジトリを開き、ファイルツリーを閲覧し、シンタックスハイライト付きでファイルを表示
 - **端末内ファイル** — 全ファイルアクセスを許可すると、端末内のファイル（`/sdcard`、SDカード、USBドライブ）をフォルダ選択画面から閲覧でき、エージェントからも参照可能。アプリ領域へコピーせず、その場で開きます
-- **Gitサポート** — ステージング、差分表示、コミット、ブランチ管理をGUIで実行
+- **Gitサポート** — GUIでステータスの閲覧と差分の確認ができます。その他のGit操作には組み込みランタイムのターミナルを使用してください
 - **差分ビューア** — 適用前にコード変更をインラインで確認
-- **組み込みターミナル** — オンデバイスランタイムへの本格的なPTYターミナルアクセス
+- **組み込みターミナル** — オンデバイスランタイム内の対話型シェル（本物のPTY）：出力のストリーミング、標準入力、Ctrl+C、色表示に対応し、元のワークスペースで開きます。ここで起動した開発サーバー（Vite、`python -m http.server` など）はチップとして表示され、アプリ内ブラウザでページを開けます。`vim` などの全画面プログラムはまだ未対応です
 - **プルリクエストバッジ** — チャットで作成したPRを入力欄の上に固定表示。差分行数と状態（ドラフト／オープン／コンフリクト／マージ済み／クローズ）が一目でわかり、タップでGitHubを開きます
 - **ツール承認** — 危険なツール操作の許可・拒否
 - **セッション管理** — 新規作成、再開、名前変更、削除

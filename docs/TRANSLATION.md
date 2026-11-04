@@ -1,5 +1,35 @@
 # Translation Guide
 
+## README Translations
+
+The README is translated into every language the app UI supports. English
+[`README.md`](../README.md) is the source of truth; when a section changes there, update the
+matching section in each translation in the same pull request.
+
+| File | Language |
+|------|----------|
+| [`README.md`](../README.md) | English (source) |
+| [`README.ja.md`](../README.ja.md) | Japanese |
+| [`README.zh-CN.md`](../README.zh-CN.md) | Chinese (Simplified) |
+| [`README.es.md`](../README.es.md) | Spanish |
+| [`README.fr.md`](../README.fr.md) | French |
+| [`README.pt-BR.md`](../README.pt-BR.md) | Portuguese (Brazil) |
+| [`README.ru.md`](../README.ru.md) | Russian |
+| [`README.ar.md`](../README.ar.md) | Arabic |
+
+Keep the language switcher line near the top of every README identical, and keep relative links
+(e.g. `docs/CI.md`, `LICENSE`) unchanged so they resolve from the repository root. Headings may be
+translated, but update the table-of-contents anchors to match. Code blocks, commands, URLs, version
+numbers, and third-party product names stay as-is.
+
+### Adding a README language
+
+1. Copy `README.md` to `README.<lang>.md`, using a BCP 47 tag that matches the app locale (for
+   example `README.zh-CN.md` for `values-zh-rCN/` and `README.pt-BR.md` for `values-pt-rBR/`).
+2. Translate the prose, keeping structure, links, commands, and legal wording intact.
+3. Add the language to the switcher line in **every** existing README.
+4. Add the file to the table above.
+
 ## Contributing via Weblate
 
 The easiest way to contribute translations is through our [Weblate instance](https://hosted.weblate.org/projects/and-code/).
