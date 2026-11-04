@@ -11,7 +11,9 @@
 
 AndCodeはAIコーディングエージェントをスマートフォンで使えるようにするネイティブAndroid GUIアプリです。[OpenCode](https://github.com/sst/opencode)、[Claude Code](https://github.com/anthropics/claude-code)、[Google Antigravity](https://github.com/google-antigravity/antigravity-cli)、[OpenAI Codex](https://github.com/openai/codex)とタッチ操作中心のインターフェースで対話できます — 端末エミュレータもSSHもPCも、オンデバイス実行には一切不要です。PRootによるオンデバイスランタイムか、PC/Mac/Linux上の既存OpenCodeサーバーへのリモート接続で動作します。
 
-[Releases](https://github.com/yuga-hashimoto/and-code/releases/latest) · [English README](README.md)
+[Releases](https://github.com/yuga-hashimoto/and-code/releases/latest)
+
+[English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (Brasil)](README.pt-BR.md) | [Русский](README.ru.md) | [العربية](README.ar.md)
 
 > [!IMPORTANT]
 > AndCodeは、利用者自身のAndroid端末上で対応する第三者製コマンドラインツールをインストールまたは起動する、独立したローカルファーストGUIです。AndCode自体がClaude、Google Antigravity、OpenAI Codex、OpenCodeなどのAIサービス、サブスクリプション、モデル利用権またはアカウント利用権を提供するものではありません。認証、モデルアクセス、推論およびサービスとの通信は、各公式CLIまたは利用者が設定したプロバイダーによって処理されます。AndCodeはOpenCode、Anthropic、GoogleまたはOpenAIと提携、承認、後援または公式サポート関係にありません。詳細は[法的情報・第三者ソフトウェア](#法的情報第三者ソフトウェア)を参照してください。
