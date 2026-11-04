@@ -80,7 +80,7 @@ Les agents embarqués s'exécutent dans un environnement Linux via PRoot. OpenCo
 - **Fichiers de l'appareil** — Accordez l'accès à tous les fichiers et tout le téléphone (`/sdcard`, cartes SD, clés USB) devient navigable dans le sélecteur de dossier et accessible à l'agent, ouvert sur place plutôt que copié dans l'application
 - **Prise en charge de Git** — Consultez l'état et révisez les diffs depuis l'interface ; utilisez le terminal du runtime intégré pour les autres opérations Git
 - **Visualiseur de diffs** — Révisez les modifications de code en ligne avant de les accepter
-- **Terminal intégré** — Exécutez des commandes shell limitées dans le runtime embarqué
+- **Terminal intégré** — Un shell interactif (vrai PTY) dans le runtime embarqué : sortie diffusée en continu, entrée standard, Ctrl+C, couleurs, et il s'ouvre dans l'espace de travail d'où vous venez. Les serveurs de développement lancés dedans (Vite, `python -m http.server`, …) apparaissent sous forme de puces qui ouvrent la page dans le navigateur intégré. Les programmes plein écran comme `vim` ne sont pas encore pris en charge
 - **Badges de pull request** — Les pull requests ouvertes dans une conversation restent épinglées au-dessus du compositeur avec la taille du diff et leur état (brouillon, ouverte, conflit, fusionnée, fermée) ; touchez pour les ouvrir sur GitHub
 - **Approbation des outils** — Approuvez ou refusez les opérations dangereuses des outils
 - **Gestion des sessions** — Créez, reprenez, renommez et supprimez des sessions

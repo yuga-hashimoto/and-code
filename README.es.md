@@ -80,7 +80,7 @@ Los agentes en el dispositivo se ejecutan dentro de un entorno Linux mediante PR
 - **Archivos del dispositivo** — Concede acceso a todos los archivos y todo el teléfono (`/sdcard`, tarjetas SD, unidades USB) será navegable en el selector de carpetas y accesible para el agente, abierto en su sitio en lugar de copiarse a la app
 - **Compatibilidad con Git** — Consulta el estado y revisa los diffs desde la GUI; usa la terminal del runtime integrada para otras operaciones de Git
 - **Visor de diffs** — Revisa los cambios de código en línea antes de aceptarlos
-- **Terminal integrada** — Ejecuta comandos de shell acotados dentro del runtime del dispositivo
+- **Terminal integrada** — Un shell interactivo (PTY real) dentro del runtime del dispositivo: salida en streaming, entrada estándar, Ctrl+C, colores, y se abre en el espacio de trabajo desde el que viniste. Los servidores de desarrollo iniciados en ella (Vite, `python -m http.server`, …) aparecen como chips que abren la página en el navegador integrado. Los programas de pantalla completa como `vim` aún no son compatibles
 - **Distintivos de pull request** — Las pull requests abiertas en un chat permanecen fijadas sobre el compositor con el tamaño del diff y su estado (borrador, abierta, conflicto, fusionada, cerrada); toca para abrirlas en GitHub
 - **Aprobación de herramientas** — Aprueba o rechaza operaciones peligrosas de las herramientas
 - **Gestión de sesiones** — Crea, reanuda, renombra y elimina sesiones

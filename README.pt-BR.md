@@ -80,7 +80,7 @@ Os agentes no dispositivo são executados em um ambiente Linux via PRoot. OpenCo
 - **Arquivos do dispositivo** — Conceda acesso a todos os arquivos e o celular inteiro (`/sdcard`, cartões SD, unidades USB) fica navegável no seletor de pastas e acessível ao agente, aberto no local em vez de copiado para o aplicativo
 - **Suporte a Git** — Veja o status e revise diffs pela interface; use o terminal do runtime integrado para outras operações Git
 - **Visualizador de diffs** — Revise alterações de código em linha antes de aceitar
-- **Terminal integrado** — Execute comandos de shell limitados dentro do runtime no dispositivo
+- **Terminal integrado** — Um shell interativo (PTY real) dentro do runtime no dispositivo: saída em streaming, entrada padrão, Ctrl+C, cores, e ele abre no workspace de onde você veio. Servidores de desenvolvimento iniciados nele (Vite, `python -m http.server`, …) aparecem como chips que abrem a página no navegador integrado. Programas de tela cheia como `vim` ainda não são suportados
 - **Selos de pull request** — Pull requests abertas em uma conversa ficam fixadas acima do compositor com o tamanho do diff e o estado (rascunho, aberta, conflito, mesclada, fechada); toque para abri-las no GitHub
 - **Aprovação de ferramentas** — Aprove ou rejeite operações perigosas das ferramentas
 - **Gerenciamento de sessões** — Crie, retome, renomeie e exclua sessões

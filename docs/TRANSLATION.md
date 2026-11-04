@@ -24,7 +24,8 @@ numbers, and third-party product names stay as-is.
 
 ### Adding a README language
 
-1. Copy `README.md` to `README.<lang>.md` (use the same locale code as `values-<lang>/`).
+1. Copy `README.md` to `README.<lang>.md`, using a BCP 47 tag that matches the app locale (for
+   example `README.zh-CN.md` for `values-zh-rCN/` and `README.pt-BR.md` for `values-pt-rBR/`).
 2. Translate the prose, keeping structure, links, commands, and legal wording intact.
 3. Add the language to the switcher line in **every** existing README.
 4. Add the file to the table above.
