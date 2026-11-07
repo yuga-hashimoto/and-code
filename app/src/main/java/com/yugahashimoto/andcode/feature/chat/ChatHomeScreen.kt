@@ -633,7 +633,6 @@ fun ChatHomeScreen(
                         Icon(Icons.Default.ArrowDownward, contentDescription = stringResource(R.string.cd_scroll_to_bottom))
                     }
                 }
-
             }
 
             SubagentsTrack(subagents = subagents, onSubagentClick = onSubagentClick)
