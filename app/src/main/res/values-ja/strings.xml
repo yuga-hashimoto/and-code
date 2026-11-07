@@ -1231,6 +1231,7 @@
     <string name="chat_preview_close">プレビューを閉じる</string>
     <string name="chat_preview_link">プレビュー</string>
     <string name="chat_preview_unavailable">このデバイスのWebViewを起動できなかったため、プレビューを利用できません。</string>
+    <string name="chat_preview_minimize">プレビューを最小化</string>
     <string name="setup_step_development_tools">開発ツール</string>
     <string name="setup_development_tools_description">既定では実行に必要なものだけをインストールします。完全な開発ツールチェーンも選択できます。</string>
     <string name="setup_required_tools_description">Linux、選択したエージェント、Git、および AndCode が使用するサポートツールです。これらは常にインストールされます。</string>

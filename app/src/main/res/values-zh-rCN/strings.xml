@@ -1211,6 +1211,7 @@
     <string name="chat_preview_close">关闭预览</string>
     <string name="chat_preview_link">预览</string>
     <string name="chat_preview_unavailable">此设备的 WebView 无法启动，因此预览不可用。</string>
+    <string name="chat_preview_minimize">最小化预览</string>
     <string name="setup_step_development_tools">开发工具</string>
     <string name="setup_development_tools_description">默认只安装运行所需组件，也可以一并安装完整开发工具链。</string>
     <string name="setup_required_tools_description">Linux、所选智能体、Git 以及 AndCode 功能依赖的支持工具，将始终安装。</string>

@@ -155,6 +155,8 @@ import com.yugahashimoto.andcode.core.diagnostics.StallDiagnosis
 import com.yugahashimoto.andcode.core.diagnostics.StallReason
 import com.yugahashimoto.andcode.core.diagnostics.explain
 import com.yugahashimoto.andcode.core.diagnostics.supportingDetail
+import com.yugahashimoto.andcode.feature.browser.PreviewTarget
+import com.yugahashimoto.andcode.feature.browser.PreviewUiState
 import com.yugahashimoto.andcode.feature.workspace.GitHubAutoAttachChips
 import com.yugahashimoto.andcode.feature.workspace.GitHubReference
 import com.yugahashimoto.andcode.runtime.PermissionResponse
@@ -169,6 +171,7 @@ import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
+import java.io.File
 
 /** What the long-press action sheet offers for one message: its id, its text to copy, and whether "Edit & resend" applies. */
 private data class MessageActionTarget(
@@ -269,12 +272,18 @@ fun ChatHomeScreen(
     onReturnToParentSession: () -> Unit = {},
     githubRefs: List<GitHubReference> = emptyList(),
     onOpenUrl: (String) -> Unit = {},
-    /** URL of the loopback page pinned as a live preview above the composer, or null. */
-    previewUrl: String? = null,
-    /** Shows a loopback URL found in the conversation as the pinned preview. */
-    onPreviewRequested: (String) -> Unit = {},
-    /** Hands the pinned preview's URL to the full-screen guest browser. */
-    onExpandPreview: (String) -> Unit = {},
+    /** Where the preview is: gone, the full card, or collapsed to a floating button. */
+    previewState: PreviewUiState = PreviewUiState.None,
+    /** Reopenable targets: the last one, a detected static site, and loopback links in the chat. */
+    previewTargets: List<PreviewTarget> = emptyList(),
+    /** False while backgrounded, so the preview pauses and stops reloading. */
+    isForeground: Boolean = true,
+    /** Host-side workspace directory watched for live reload; null on remote runtimes. */
+    previewWorkspaceDir: File? = null,
+    onPreviewRequested: (PreviewTarget) -> Unit = {},
+    onPreviewMinimize: () -> Unit = {},
+    onPreviewRestore: () -> Unit = {},
+    onExpandPreview: (PreviewTarget) -> Unit = {},
     onClosePreview: () -> Unit = {},
     onImageAttachment: (Bitmap) -> Unit = {},
     /** Fetches and opens the diff dialog for a tapped [ChatPart.Patch] card. */
@@ -549,7 +558,7 @@ fun ChatHomeScreen(
                                         entry,
                                         onOpenActivity = { activityGroupId = it },
                                         onImageClick = { selectedImage = it },
-                                        onPreviewRequested = onPreviewRequested,
+                                        onPreviewRequested = { url -> onPreviewRequested(PreviewTarget.Url(url)) },
                                         onOpenProviderSettings = onOpenProviderSettings,
                                     )
                                 }
@@ -624,6 +633,13 @@ fun ChatHomeScreen(
                         Icon(Icons.Default.ArrowDownward, contentDescription = stringResource(R.string.cd_scroll_to_bottom))
                     }
                 }
+
+                (previewState as? PreviewUiState.Collapsed)?.let {
+                    FloatingPreviewButton(
+                        onClick = onPreviewRestore,
+                        modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
+                    )
+                }
             }
 
             SubagentsTrack(subagents = subagents, onSubagentClick = onSubagentClick)
@@ -644,17 +660,28 @@ fun ChatHomeScreen(
                 )
             }
 
-            if (previewUrl != null) {
-                // Key on the URL so a new preview replaces the whole WebView instead of leaving the
-                // old page in a view whose factory only ran once.
-                key(previewUrl) {
-                    ChatPreviewCard(
-                        url = previewUrl,
-                        onExpand = onExpandPreview,
-                        onClose = onClosePreview,
-                        modifier = Modifier.padding(bottom = 6.dp),
-                    )
-                }
+            when (val preview = previewState) {
+                is PreviewUiState.Active ->
+                    key(preview.target.key) {
+                        ChatPreviewCard(
+                            target = preview.target,
+                            isForeground = isForeground,
+                            workspaceDir = previewWorkspaceDir,
+                            onMinimize = onPreviewMinimize,
+                            onExpand = onExpandPreview,
+                            onClose = onClosePreview,
+                            modifier = Modifier.padding(bottom = 6.dp),
+                        )
+                    }
+                PreviewUiState.None ->
+                    if (previewTargets.isNotEmpty()) {
+                        PreviewReopenBar(
+                            targets = previewTargets,
+                            onSelect = onPreviewRequested,
+                            modifier = Modifier.padding(bottom = 6.dp),
+                        )
+                    }
+                is PreviewUiState.Collapsed -> Unit
             }
 
             if (!runtimeNotReady) {

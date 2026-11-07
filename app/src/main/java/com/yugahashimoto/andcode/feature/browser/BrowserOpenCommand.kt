@@ -16,6 +16,24 @@ sealed interface BrowserCommand {
     data class Preview(val url: String) : BrowserCommand
 }
 
+/**
+ * Resolves the active guest workspace to the same host folder its PRoot process sees, or null when
+ * the workspace is remote or the runtime is not local.
+ */
+internal fun activeWorkspaceHostDirectory(
+    workspacePath: String?,
+    agent: LocalAgent?,
+    runtimeDirectory: File,
+    deviceStorage: DeviceStorage.Mounts,
+): File? {
+    if (workspacePath == null || agent == null) return null
+    val rootfs =
+        File(runtimeDirectory, "environment/antigravity-rootfs")
+            .takeIf { agent == LocalAgent.ANTIGRAVITY && it.isDirectory }
+            ?: File(runtimeDirectory, "environment/rootfs")
+    return WorkspaceFolders.hostDirectory(rootfs, File(runtimeDirectory, "workspace"), workspacePath, deviceStorage)
+}
+
 /** Resolves the active guest workspace to the same host folder its PRoot process sees. */
 internal fun consumeBrowserOpenCommand(
     workspacePath: String?,
@@ -26,13 +44,7 @@ internal fun consumeBrowserOpenCommand(
     // A remote workspace can share a path with a local one, but its commands are not on this phone.
     if (workspacePath == null || agent == null) return null
     return runCatching {
-        val rootfs =
-            File(runtimeDirectory, "environment/antigravity-rootfs")
-                .takeIf { agent == LocalAgent.ANTIGRAVITY && it.isDirectory }
-                ?: File(runtimeDirectory, "environment/rootfs")
-        val workspace =
-            WorkspaceFolders.hostDirectory(rootfs, File(runtimeDirectory, "workspace"), workspacePath, deviceStorage)
-                ?: return null
+        val workspace = activeWorkspaceHostDirectory(workspacePath, agent, runtimeDirectory, deviceStorage) ?: return null
         val commandFile = File(workspace, ".and-code/browser-command.json")
         if (!commandFile.isFile) return null
         val command = JSONObject(commandFile.readText())

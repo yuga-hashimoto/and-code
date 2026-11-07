@@ -1,10 +1,13 @@
 package com.yugahashimoto.andcode.feature.browser
 
 import android.annotation.SuppressLint
+import android.net.Uri
 import android.util.Log
 import android.view.View
 import android.view.ViewGroup
 import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.compose.runtime.Composable
@@ -33,7 +36,8 @@ fun GuestWebContent(
     url: String,
     modifier: Modifier = Modifier,
     enableDebugging: Boolean = BuildConfig.DEBUG,
-    onWebViewCreated: (WebView) -> Unit = {},
+    onWebViewCreated: (WebView?) -> Unit = {},
+    interceptRequest: ((Uri) -> WebResourceResponse?)? = null,
     onProgress: (Int) -> Unit = {},
     onNavigationStateChange: (url: String, canGoBack: Boolean, canGoForward: Boolean) -> Unit = { _, _, _ -> },
     onUnavailable: (Throwable) -> Unit = {},
@@ -78,6 +82,7 @@ fun GuestWebContent(
                         onNavigationStateChange = { pageUrl, canGoBack, canGoForward ->
                             currentOnStateChange(pageUrl, canGoBack, canGoForward)
                         },
+                        interceptRequest = interceptRequest,
                     )
                     webView = this
                     currentOnCreated(this)
@@ -93,6 +98,7 @@ fun GuestWebContent(
                 stopLoading()
                 destroy()
             }
+            currentOnCreated(null)
             webView = null
         }
     }
@@ -109,6 +115,7 @@ internal fun normalizeGuestUrl(raw: String): String {
 private fun WebView.configure(
     onProgress: (Int) -> Unit,
     onNavigationStateChange: (url: String, canGoBack: Boolean, canGoForward: Boolean) -> Unit,
+    interceptRequest: ((Uri) -> WebResourceResponse?)? = null,
 ) {
     // Guest pages (dev servers, dashboards, tool UIs) are interactive web apps that need JS.
     settings.javaScriptEnabled = true
@@ -124,6 +131,11 @@ private fun WebView.configure(
         }
     webViewClient =
         object : WebViewClient() {
+            override fun shouldInterceptRequest(
+                view: WebView,
+                request: WebResourceRequest,
+            ): WebResourceResponse? = interceptRequest?.invoke(request.url) ?: super.shouldInterceptRequest(view, request)
+
             override fun onPageFinished(
                 view: WebView?,
                 url: String?,

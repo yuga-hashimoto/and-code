@@ -1217,6 +1217,7 @@
     <string name="chat_preview_close">Fermer l\'aperçu</string>
     <string name="chat_preview_link">Aperçu</string>
     <string name="chat_preview_unavailable">Le WebView de cet appareil n\'a pas pu démarrer, l\'aperçu est donc indisponible.</string>
+    <string name="chat_preview_minimize">Réduire l\'aperçu</string>
     <string name="setup_step_development_tools">Outils de développement</string>
     <string name="setup_development_tools_description">Installe uniquement le nécessaire par défaut, ou incluez la chaîne complète d’outils.</string>
     <string name="setup_required_tools_description">Linux, les agents sélectionnés, Git et les outils requis par AndCode. Ils sont toujours installés.</string>

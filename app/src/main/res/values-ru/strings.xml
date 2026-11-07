@@ -1220,6 +1220,7 @@
     <string name="chat_preview_close">Закрыть просмотр</string>
     <string name="chat_preview_link">Просмотр</string>
     <string name="chat_preview_unavailable">WebView на этом устройстве не удалось запустить, поэтому просмотр недоступен.</string>
+    <string name="chat_preview_minimize">Свернуть просмотр</string>
     <string name="setup_step_development_tools">Инструменты разработки</string>
     <string name="setup_development_tools_description">По умолчанию устанавливаются только необходимые компоненты. При желании можно добавить полный набор инструментов.</string>
     <string name="setup_required_tools_description">Linux, выбранные агенты, Git и вспомогательные инструменты AndCode. Они устанавливаются всегда.</string>
