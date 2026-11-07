@@ -1,0 +1,5 @@
+- Copy button on code blocks copies just the command or snippet.
+- Terminal lists dev servers started in the shell; tap a chip to open it in the in-app browser.
+- Guest browser explains when the system WebView cannot start instead of crashing.
+- Code viewer shows very long (minified) lines unstyled instead of freezing; search still works.
+- Fixes: launch crash on unusable Keystore, local-runtime start freeze, missed foreground-service starts, OOM on large images.
