@@ -634,12 +634,6 @@ fun ChatHomeScreen(
                     }
                 }
 
-                (previewState as? PreviewUiState.Collapsed)?.let {
-                    FloatingPreviewButton(
-                        onClick = onPreviewRestore,
-                        modifier = Modifier.align(Alignment.TopEnd).padding(12.dp),
-                    )
-                }
             }
 
             SubagentsTrack(subagents = subagents, onSubagentClick = onSubagentClick)
@@ -681,7 +675,15 @@ fun ChatHomeScreen(
                             modifier = Modifier.padding(bottom = 6.dp),
                         )
                     }
-                is PreviewUiState.Collapsed -> Unit
+                is PreviewUiState.Collapsed ->
+                    // Sits directly above the message field, bottom-right, where it is easy to reach
+                    // and clearly visible against the composer.
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(bottom = 6.dp),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        FloatingPreviewButton(onClick = onPreviewRestore)
+                    }
             }
 
             if (!runtimeNotReady) {
