@@ -239,6 +239,21 @@ private fun PreviewBody(
     }
 }
 
+/** Opens a loopback link found in an assistant message in the pinned preview. */
+@Composable
+fun PreviewLinkChip(
+    url: String,
+    onClick: (String) -> Unit,
+) {
+    AssistChip(
+        onClick = { onClick(url) },
+        label = { Text(stringResource(R.string.chat_preview_link)) },
+        leadingIcon = {
+            Icon(Icons.Default.Language, contentDescription = null, modifier = Modifier.size(18.dp))
+        },
+    )
+}
+
 /** Compact floating button shown after Minimize; tapping it restores the live preview. */
 @Composable
 fun FloatingPreviewButton(

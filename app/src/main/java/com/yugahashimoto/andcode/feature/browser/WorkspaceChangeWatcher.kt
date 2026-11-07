@@ -11,15 +11,52 @@ private const val MAX_FILES = 4000
 
 private val WEB_EXTENSIONS =
     setOf(
-        "html", "htm", "css", "js", "mjs", "cjs", "jsx", "ts", "tsx", "vue", "svelte", "json",
-        "svg", "png", "jpg", "jpeg", "gif", "webp", "avif", "ico", "woff", "woff2", "ttf", "otf",
-        "wasm", "map", "xml", "txt",
+        "html",
+        "htm",
+        "css",
+        "js",
+        "mjs",
+        "cjs",
+        "jsx",
+        "ts",
+        "tsx",
+        "vue",
+        "svelte",
+        "json",
+        "svg",
+        "png",
+        "jpg",
+        "jpeg",
+        "gif",
+        "webp",
+        "avif",
+        "ico",
+        "woff",
+        "woff2",
+        "ttf",
+        "otf",
+        "wasm",
+        "map",
+        "xml",
+        "txt",
     )
 
 private val WATCH_EXCLUDED_DIRS =
     setOf(
-        "node_modules", ".git", "build", "dist", ".gradle", ".idea", ".next", ".nuxt", "target",
-        "__pycache__", ".venv", "venv", "coverage", "out",
+        "node_modules",
+        ".git",
+        "build",
+        "dist",
+        ".gradle",
+        ".idea",
+        ".next",
+        ".nuxt",
+        "target",
+        "__pycache__",
+        ".venv",
+        "venv",
+        "coverage",
+        "out",
     )
 
 /**
