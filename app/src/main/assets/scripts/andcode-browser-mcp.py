@@ -211,6 +211,13 @@ def tool_show(args: dict) -> str:
     return f"requested the app to open {url}"
 
 
+def tool_preview(args: dict) -> str:
+    url = args["url"]
+    COMMAND_FILE.parent.mkdir(parents=True, exist_ok=True)
+    COMMAND_FILE.write_text(json.dumps({"action": "preview", "url": url}), encoding="utf-8")
+    return f"requested the app to show {url} as an inline preview"
+
+
 def tool_status(args: dict) -> str:
     name = _find_devtools_socket()
     if name is None:
@@ -292,6 +299,20 @@ TOOLS = [
         },
     },
     {
+        "name": "browser_preview",
+        "description": (
+            "Show a loopback dev server (localhost / 127.0.0.1) as a live, interactive preview "
+            "pinned inside the AndCode chat instead of the full-screen Guest Browser. Prefer this "
+            "for localhost pages the user should watch while chatting; use browser_show for "
+            "anything else. Only http(s) loopback URLs are accepted."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {"url": {"type": "string"}},
+            "required": ["url"],
+        },
+    },
+    {
         "name": "browser_status",
         "description": "Report CDP connectivity to the Guest Browser WebView and the current pages.",
         "inputSchema": {"type": "object", "properties": {}},
@@ -340,6 +361,7 @@ TOOLS = [
 
 HANDLERS = {
     "browser_show": tool_show,
+    "browser_preview": tool_preview,
     "browser_status": tool_status,
     "browser_navigate": tool_navigate,
     "browser_click": tool_click,

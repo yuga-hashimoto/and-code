@@ -79,6 +79,7 @@ import com.yugahashimoto.andcode.feature.assistant.SpeechResult
 import com.yugahashimoto.andcode.feature.assistant.SpeechTranscriptAccumulator
 import com.yugahashimoto.andcode.feature.assistant.VoiceDictationOutcome
 import com.yugahashimoto.andcode.feature.assistant.VoiceDictationPolicy
+import com.yugahashimoto.andcode.feature.browser.BrowserCommand
 import com.yugahashimoto.andcode.feature.browser.GuestBrowserCommandWatcher
 import com.yugahashimoto.andcode.feature.chat.ChatHomeScreen
 import com.yugahashimoto.andcode.feature.chat.ChatViewModel
@@ -194,6 +195,8 @@ fun AndCodeApp(
     var notificationsEnabled by remember { mutableStateOf(true) }
     var showCloneDialog by remember { mutableStateOf(false) }
     var showDiagnostics by remember { mutableStateOf(false) }
+    // A loopback page pinned as a live preview above the chat composer; null when closed.
+    var previewUrl by remember { mutableStateOf<String?>(null) }
 
     val selectedRuntime by app.runtimeRegistry.selected.collectAsState()
     val runtimeTargets by app.runtimeRegistry.targets.collectAsState()
@@ -712,8 +715,12 @@ fun AndCodeApp(
         agent = selectedRuntime?.agent,
         runtimeDirectory = java.io.File(context.filesDir, "runtime"),
         foreground = app.appForeground.foreground,
-        onOpenUrl = { url ->
-            navController.navigate(guestBrowserRoute(url)) { launchSingleTop = true }
+        onCommand = { command ->
+            when (command) {
+                is BrowserCommand.Open ->
+                    navController.navigate(guestBrowserRoute(command.url)) { launchSingleTop = true }
+                is BrowserCommand.Preview -> previewUrl = command.url
+            }
         },
     )
 
@@ -1249,6 +1256,12 @@ fun AndCodeApp(
                             onOpenUrl = { url ->
                                 UrlLauncher.openUrl(context, url)
                             },
+                            previewUrl = previewUrl,
+                            onPreviewRequested = { previewUrl = it },
+                            onExpandPreview = { url ->
+                                navController.navigate(guestBrowserRoute(url)) { launchSingleTop = true }
+                            },
+                            onClosePreview = { previewUrl = null },
                             onOpenPatchDiff = chatViewModel::openPatchDiff,
                             onDismissPatchDiff = chatViewModel::dismissPatchDiff,
                             onLoadDraft = { sessionId -> chatViewModel.loadDraft(sessionId)?.text },

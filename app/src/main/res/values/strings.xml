@@ -1232,6 +1232,10 @@
     <string name="guest_browser_forward">Forward</string>
     <string name="guest_browser_reload">Reload</string>
     <string name="guest_browser_webview_unavailable">The Guest Browser cannot start because the WebView on this device failed to load. Updating or re-enabling Android System WebView may fix this.</string>
+    <string name="chat_preview_expand">Open in Guest Browser</string>
+    <string name="chat_preview_close">Close preview</string>
+    <string name="chat_preview_link">Preview</string>
+    <string name="chat_preview_unavailable">The WebView on this device could not start, so the preview is unavailable.</string>
     <string name="setup_step_development_tools">Development tools</string>
     <string name="setup_development_tools_description">Install only the runtime by default, or include the complete development toolchain.</string>
     <string name="setup_required_tools_description">Linux, the selected agents, Git, and the support tools used by AndCode. These are always installed.</string>
