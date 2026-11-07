@@ -2,6 +2,7 @@ package com.yugahashimoto.andcode.feature.chat
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -12,15 +13,18 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.absolutePadding
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.Security
@@ -30,6 +34,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -38,11 +43,13 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -435,24 +442,7 @@ private fun MarkdownText(
                     }
                     flushInlines()
                 }
-                is MarkdownBlock.CodeBlock ->
-                    Surface(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(10.dp),
-                        color = MaterialTheme.colorScheme.surface,
-                        contentColor = MaterialTheme.colorScheme.onSurface,
-                    ) {
-                        Text(
-                            text = block.code,
-                            modifier =
-                                Modifier
-                                    .horizontalScroll(rememberScrollState())
-                                    .padding(10.dp),
-                            fontFamily = FontFamily.Monospace,
-                            // Code is always laid out LTR, even in RTL app locales (issue #341).
-                            style = MaterialTheme.typography.bodySmall.copy(textDirection = TextDirection.Ltr),
-                        )
-                    }
+                is MarkdownBlock.CodeBlock -> CodeBlockView(block.code)
                 is MarkdownBlock.BulletList ->
                     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                         block.items.forEach { item ->
@@ -538,6 +528,49 @@ private fun MarkdownText(
                     HorizontalDivider(
                         color = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f),
                     )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CodeBlockView(code: String) {
+    val clipboard = LocalClipboardManager.current
+    val context = LocalContext.current
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+    ) {
+        Box {
+            Text(
+                text = code,
+                modifier =
+                    Modifier
+                        .absolutePadding(top = 10.dp, right = 52.dp, bottom = 10.dp)
+                        .horizontalScroll(rememberScrollState())
+                        .absolutePadding(left = 10.dp),
+                fontFamily = FontFamily.Monospace,
+                // Code is always laid out LTR, even in RTL app locales (issue #341).
+                style = MaterialTheme.typography.bodySmall.copy(textDirection = TextDirection.Ltr),
+            )
+            IconButton(
+                onClick = {
+                    clipboard.setText(AnnotatedString(code))
+                    Toast.makeText(context, R.string.chat_code_copied, Toast.LENGTH_SHORT).show()
+                },
+                modifier =
+                    Modifier
+                        .align(AbsoluteAlignment.TopRight)
+                        .testTag("chat-code-block-copy"),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ContentCopy,
+                    contentDescription = stringResource(R.string.chat_copy_code),
+                    modifier = Modifier.size(18.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
         }
     }

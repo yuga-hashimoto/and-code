@@ -857,6 +857,8 @@
     <string name="chat_error_zen_free_tier_title">Бесплатные модели OpenCode требуют входа в Zen</string>
     <string name="chat_error_zen_free_tier_body">OpenCode ограничивает бесплатные модели официальным рабочим столом и CLI, если вы не войдёте в OpenCode Zen. Подключите OpenCode в Настройки → Провайдеры или используйте другого провайдера.</string>
     <string name="chat_error_zen_free_tier_action">Открыть провайдеры</string>
+    <string name="chat_copy_code">Скопировать код</string>
+    <string name="chat_code_copied">Код скопирован</string>
 
     <!-- Connection dialog -->
     <string name="connection_test_success">OpenCode %1$s</string>

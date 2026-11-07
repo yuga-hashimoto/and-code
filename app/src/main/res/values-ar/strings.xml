@@ -863,6 +863,8 @@
     <string name="chat_error_zen_free_tier_title">نماذج OpenCode المجانية تحتاج إلى تسجيل الدخول إلى Zen</string>
     <string name="chat_error_zen_free_tier_body">يقيّد OpenCode نماذجه المجانية على سطح المكتب وواجهة الأوامر الرسمية ما لم تسجّل الدخول إلى OpenCode Zen. وصّل OpenCode من الإعدادات ← الموفرون، أو استخدم موفرًا آخر.</string>
     <string name="chat_error_zen_free_tier_action">فتح الموفرين</string>
+    <string name="chat_copy_code">نسخ الكود</string>
+    <string name="chat_code_copied">تم نسخ الكود</string>
 
     <!-- Connection dialog -->
     <string name="connection_test_success">OpenCode %1$s</string>
