@@ -28,7 +28,7 @@ class StaticAssetResolverTest {
     @Test
     fun `serves the root document and typed assets`() {
         assertEquals(File(root, "index.html").canonicalFile, resolver.resolve("")?.file)
-        assertEquals("text/html", resolver.resolve("/").mimeType)
+        assertEquals("text/html", resolver.resolve("/")?.mimeType)
         assertEquals("application/javascript", resolver.resolve("/assets/app.js")?.mimeType)
         assertEquals("image/svg+xml", resolver.resolve("/logo.svg")?.mimeType)
     }
