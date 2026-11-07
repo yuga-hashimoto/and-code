@@ -96,6 +96,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -268,6 +269,13 @@ fun ChatHomeScreen(
     onReturnToParentSession: () -> Unit = {},
     githubRefs: List<GitHubReference> = emptyList(),
     onOpenUrl: (String) -> Unit = {},
+    /** URL of the loopback page pinned as a live preview above the composer, or null. */
+    previewUrl: String? = null,
+    /** Shows a loopback URL found in the conversation as the pinned preview. */
+    onPreviewRequested: (String) -> Unit = {},
+    /** Hands the pinned preview's URL to the full-screen guest browser. */
+    onExpandPreview: (String) -> Unit = {},
+    onClosePreview: () -> Unit = {},
     onImageAttachment: (Bitmap) -> Unit = {},
     /** Fetches and opens the diff dialog for a tapped [ChatPart.Patch] card. */
     onOpenPatchDiff: (ChatPart.Patch) -> Unit = {},
@@ -541,6 +549,7 @@ fun ChatHomeScreen(
                                         entry,
                                         onOpenActivity = { activityGroupId = it },
                                         onImageClick = { selectedImage = it },
+                                        onPreviewRequested = onPreviewRequested,
                                         onOpenProviderSettings = onOpenProviderSettings,
                                     )
                                 }
@@ -633,6 +642,19 @@ fun ChatHomeScreen(
                     todos = activeTodos,
                     onDismiss = { onDismissTodoBar(latestTodoEntry.id) },
                 )
+            }
+
+            if (previewUrl != null) {
+                // Key on the URL so a new preview replaces the whole WebView instead of leaving the
+                // old page in a view whose factory only ran once.
+                key(previewUrl) {
+                    ChatPreviewCard(
+                        url = previewUrl,
+                        onExpand = onExpandPreview,
+                        onClose = onClosePreview,
+                        modifier = Modifier.padding(bottom = 6.dp),
+                    )
+                }
             }
 
             if (!runtimeNotReady) {

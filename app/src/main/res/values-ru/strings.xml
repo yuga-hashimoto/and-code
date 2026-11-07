@@ -1216,6 +1216,10 @@
     <string name="guest_browser_forward">Вперёд</string>
     <string name="guest_browser_reload">Обновить</string>
     <string name="guest_browser_webview_unavailable">Гостевой браузер не запускается: на этом устройстве не удалось загрузить WebView. Обновление или повторное включение Android System WebView может помочь.</string>
+    <string name="chat_preview_expand">Открыть в гостевом браузере</string>
+    <string name="chat_preview_close">Закрыть просмотр</string>
+    <string name="chat_preview_link">Просмотр</string>
+    <string name="chat_preview_unavailable">WebView на этом устройстве не удалось запустить, поэтому просмотр недоступен.</string>
     <string name="setup_step_development_tools">Инструменты разработки</string>
     <string name="setup_development_tools_description">По умолчанию устанавливаются только необходимые компоненты. При желании можно добавить полный набор инструментов.</string>
     <string name="setup_required_tools_description">Linux, выбранные агенты, Git и вспомогательные инструменты AndCode. Они устанавливаются всегда.</string>

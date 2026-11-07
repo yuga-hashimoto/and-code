@@ -31,7 +31,7 @@ class BrowserCommandWatcherTest {
         listOf(LocalAgent.OPEN_CODE, LocalAgent.CLAUDE_CODE, LocalAgent.CODEX).forEach { agent ->
             val file = command("environment/rootfs/root/project")
 
-            assertEquals("https://www.google.com/", consume("/root/project", agent))
+            assertEquals(BrowserCommand.Open("https://www.google.com/"), consume("/root/project", agent))
             assertFalse(file.exists())
             assertNull(consume("/root/project", agent))
         }
@@ -42,7 +42,7 @@ class BrowserCommandWatcherTest {
         val file = command("workspace/team/project")
         val decoy = command("environment/rootfs/workspace/team/project", "https://example.com/decoy")
 
-        assertEquals("https://www.google.com/", consume("/workspace/team/project"))
+        assertEquals(BrowserCommand.Open("https://www.google.com/"), consume("/workspace/team/project"))
         assertFalse(file.exists())
         assertTrue(decoy.exists())
     }
@@ -52,7 +52,7 @@ class BrowserCommandWatcherTest {
         val file = command("environment/antigravity-rootfs/root/project")
         val alpine = command("environment/rootfs/root/project", "https://example.com/alpine")
 
-        assertEquals("https://www.google.com/", consume("/root/project", LocalAgent.ANTIGRAVITY))
+        assertEquals(BrowserCommand.Open("https://www.google.com/"), consume("/root/project", LocalAgent.ANTIGRAVITY))
         assertFalse(file.exists())
         assertTrue(alpine.exists())
     }
@@ -61,7 +61,7 @@ class BrowserCommandWatcherTest {
     fun `Antigravity falls back to the shared rootfs when Debian is absent`() {
         val file = command("environment/rootfs/root/project")
 
-        assertEquals("https://www.google.com/", consume("/root/project", LocalAgent.ANTIGRAVITY))
+        assertEquals(BrowserCommand.Open("https://www.google.com/"), consume("/root/project", LocalAgent.ANTIGRAVITY))
         assertFalse(file.exists())
     }
 
@@ -71,7 +71,7 @@ class BrowserCommandWatcherTest {
         val file = writeCommand(File(shared, "Download/project"))
         val mounts = DeviceStorage.Mounts(sharedStorage = shared)
 
-        assertEquals("https://www.google.com/", consume("/sdcard/Download/project", mounts = mounts))
+        assertEquals(BrowserCommand.Open("https://www.google.com/"), consume("/sdcard/Download/project", mounts = mounts))
         assertFalse(file.exists())
     }
 
@@ -106,8 +106,24 @@ class BrowserCommandWatcherTest {
         assertTrue(file.exists())
 
         file.writeText("{\"action\":\"open\",\"url\":\"http://127.0.0.1:8080/\"}")
-        assertEquals("http://127.0.0.1:8080/", consume("/workspace/project"))
+        assertEquals(BrowserCommand.Open("http://127.0.0.1:8080/"), consume("/workspace/project"))
         assertFalse(file.exists())
+    }
+
+    @Test
+    fun `preview commands pin a loopback page inside the chat`() {
+        val file = command("workspace/project", "http://127.0.0.1:5173/", action = "preview")
+
+        assertEquals(BrowserCommand.Preview("http://127.0.0.1:5173/"), consume("/workspace/project"))
+        assertFalse(file.exists())
+    }
+
+    @Test
+    fun `preview commands reject pages that are not on loopback`() {
+        val file = command("workspace/project", "https://example.com/", action = "preview")
+
+        assertNull(consume("/workspace/project"))
+        assertTrue(file.exists())
     }
 
     @Test
@@ -119,6 +135,7 @@ class BrowserCommandWatcherTest {
             "{\"action\":\"open\",\"url\":\"file:///root/private\"}",
             "{\"action\":\"open\",\"url\":\"https://\"}",
             "{\"action\":\"open\",\"url\":\"\"}",
+            "{\"action\":\"preview\",\"url\":\"file:///root/private\"}",
         ).forEach { text ->
             file.writeText(text)
             assertNull(consume("/workspace/project"))
@@ -143,8 +160,8 @@ class BrowserCommandWatcherTest {
     fun `watcher opens a pending command only while the app is in the foreground`() =
         runTest {
             val foreground = MutableStateFlow(false)
-            val opened = mutableListOf<String>()
-            var pending: String? = "https://www.google.com/"
+            val opened = mutableListOf<BrowserCommand>()
+            var pending: BrowserCommand? = BrowserCommand.Open("https://www.google.com/")
             val scope = TestScope(StandardTestDispatcher(testScheduler))
             try {
                 scope.launch {
@@ -152,17 +169,17 @@ class BrowserCommandWatcherTest {
                         active = foreground,
                         intervalMillis = 1_000L,
                         poll = { pending.also { pending = null } },
-                        onOpenUrl = { opened += it },
+                        onCommand = { opened += it },
                     )
                 }
                 advanceTimeBy(60_000L)
                 runCurrent()
-                assertEquals(emptyList<String>(), opened)
+                assertEquals(emptyList<BrowserCommand>(), opened)
 
                 foreground.value = true
                 runCurrent()
 
-                assertEquals(listOf("https://www.google.com/"), opened)
+                assertEquals(listOf<BrowserCommand>(BrowserCommand.Open("https://www.google.com/")), opened)
             } finally {
                 scope.cancel()
             }
@@ -172,19 +189,21 @@ class BrowserCommandWatcherTest {
         path: String?,
         agent: LocalAgent? = LocalAgent.CODEX,
         mounts: DeviceStorage.Mounts = DeviceStorage.Mounts.None,
-    ): String? = consumeBrowserOpenCommand(path, agent, runtimeDirectory, mounts)
+    ): BrowserCommand? = consumeBrowserOpenCommand(path, agent, runtimeDirectory, mounts)
 
     private fun command(
         relativeDirectory: String,
         url: String = "https://www.google.com/",
-    ): File = writeCommand(File(runtimeDirectory, relativeDirectory), url)
+        action: String = "open",
+    ): File = writeCommand(File(runtimeDirectory, relativeDirectory), url, action)
 
     private fun writeCommand(
         directory: File,
         url: String = "https://www.google.com/",
+        action: String = "open",
     ): File =
         File(directory, ".and-code/browser-command.json").apply {
             parentFile!!.mkdirs()
-            writeText("{\"action\":\"open\",\"url\":\"$url\"}")
+            writeText("{\"action\":\"$action\",\"url\":\"$url\"}")
         }
 }
