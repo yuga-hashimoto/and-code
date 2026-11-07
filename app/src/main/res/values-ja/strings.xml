@@ -860,6 +860,8 @@
     <string name="chat_error_zen_free_tier_title">OpenCodeの無料モデルはZenへのログインが必要です</string>
     <string name="chat_error_zen_free_tier_body">OpenCodeの無料モデルは、公式のデスクトップ/CLI以外ではZenにサインインしないと使えません。設定 → プロバイダでOpenCodeに接続するか、別のプロバイダを使ってください。</string>
     <string name="chat_error_zen_free_tier_action">プロバイダを開く</string>
+    <string name="chat_copy_code">コードをコピー</string>
+    <string name="chat_code_copied">コードをコピーしました</string>
 
     <!-- Connection dialog -->
     <string name="connection_test_success">OpenCode %1$s</string>

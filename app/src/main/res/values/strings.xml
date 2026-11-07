@@ -851,6 +851,8 @@
     <string name="chat_error_zen_free_tier_title">OpenCode free models need a Zen login</string>
     <string name="chat_error_zen_free_tier_body">OpenCode limits its free models to the official desktop and CLI unless you sign in to OpenCode Zen. Connect OpenCode in Settings → Providers, or use another provider.</string>
     <string name="chat_error_zen_free_tier_action">Open providers</string>
+    <string name="chat_copy_code">Copy code</string>
+    <string name="chat_code_copied">Code copied</string>
 
     <!-- Connection dialog -->
     <string name="connection_test_success">OpenCode %1$s</string>
