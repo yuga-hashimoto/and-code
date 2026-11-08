@@ -769,7 +769,7 @@ fun AndCodeApp(
         agent = selectedRuntime?.agent,
         runtimeDirectory = java.io.File(context.filesDir, "runtime"),
         foreground = app.appForeground.foreground,
-        allowRemotePreview = { app.settings.guestBrowserAgentControlEnabled },
+        allowRemotePreview = { preferences.guestBrowserAgentControlEnabled },
         onCommand = { command ->
             when (command) {
                 is BrowserCommand.Open ->
@@ -1322,7 +1322,7 @@ fun AndCodeApp(
                             previewTargets = sessionPreviewTargets,
                             isForeground = appForeground,
                             previewWorkspaceDir = previewWorkspaceDir,
-                            agentControlEnabled = app.settings.guestBrowserAgentControlEnabled,
+                            agentControlEnabled = preferences.guestBrowserAgentControlEnabled,
                             onPreviewRequested = { target -> showPreview(target) },
                             onPreviewMinimize = {
                                 (previewState as? PreviewUiState.Active)?.let {

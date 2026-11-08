@@ -78,11 +78,13 @@ internal fun consumeBrowserCommand(
     // A remote workspace can share a path with a local one, but its commands are not on this phone.
     if (workspacePath == null || agent == null) return null
     return runCatching {
+        // Misses are the common case (polled once a second), so they return instead of throwing:
+        // `runCatching` is inline and a non-local return leaves no exception behind.
         val workspace =
             activeWorkspaceHostDirectory(workspacePath, agent, runtimeDirectory, deviceStorage)
-                ?: error("workspace is not mounted")
+                ?: return null
         val commandFile = File(workspace, BROWSER_COMMAND_FILE)
-        check(commandFile.isFile) { "no browser command" }
+        if (!commandFile.isFile) return null
         val command = JSONObject(commandFile.readText())
         val url = command.optString("url")
         // An `open`/`preview` must name a real web page, never a javascript:/file: URL that would
@@ -93,7 +95,10 @@ internal fun consumeBrowserCommand(
                 "open" -> BrowserCommand.Open(url).takeIf { isWebUrl(url) }
                 "preview" ->
                     BrowserCommand.Preview(url).takeIf {
-                        isWebUrl(url) && (allowRemotePreview || isLoopbackPreviewUrl(url))
+                        // Loopback pages are the feature's normal case; a public page is only ever
+                        // embedded after the opt-in, and only over https so it cannot be tampered
+                        // with on the way in.
+                        isLoopbackPreviewUrl(url) || (allowRemotePreview && isHttpsUrl(url))
                     }
                 "handoff" -> BrowserCommand.Handoff(File(workspace, BROWSER_STATUS_FILE)).takeIf { url.isBlank() }
                 else -> null
@@ -115,4 +120,9 @@ internal fun consumeBrowserCommand(
 private fun isWebUrl(url: String): Boolean {
     val uri = URI(url)
     return uri.scheme?.lowercase() in setOf("http", "https") && !uri.host.isNullOrBlank()
+}
+
+private fun isHttpsUrl(url: String): Boolean {
+    val uri = URI(url)
+    return uri.scheme?.lowercase() == "https" && !uri.host.isNullOrBlank()
 }

@@ -138,6 +138,14 @@ class BrowserCommandWatcherTest {
     }
 
     @Test
+    fun `public previews must be https even with the opt-in`() {
+        val file = command("workspace/project", "http://example.com/", action = "preview")
+
+        assertNull(consume("/workspace/project", allowRemotePreview = true))
+        assertTrue(file.exists())
+    }
+
+    @Test
     fun `handoff waits on the current page and records that it is waiting`() {
         val file = command("workspace/project", url = "", action = "handoff")
 

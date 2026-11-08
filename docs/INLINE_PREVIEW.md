@@ -11,7 +11,7 @@ a page is never embedded in a conversation automatically.
 | State | What runs | How it looks |
 | --- | --- | --- |
 | `Active` | One WebView + live reload | Full card above the composer |
-| `Collapsed` | Nothing (WebView destroyed, watcher paused) | Floating **Preview** button, top-right |
+| `Collapsed` | Nothing (WebView destroyed, watcher paused) | Floating **Preview** button above the composer |
 | `None` | Nothing | A **Preview** chip above the composer if a target is known |
 
 - **Minimize** tears the WebView down and leaves the floating button (cheap when not watching).
