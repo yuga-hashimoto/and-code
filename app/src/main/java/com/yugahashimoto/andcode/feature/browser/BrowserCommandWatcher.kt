@@ -16,9 +16,9 @@ private const val POLL_INTERVAL_MILLIS = 1000L
 
 /**
  * Watches the active workspace for a browser command written by the in-guest agent
- * (`.and-code/browser-command.json`). An `open` command names a page to show so the user can watch
- * and join in; a `handoff` command asks the user to take over (typically to sign in) and pauses the
- * agent until they hand the browser back.
+ * (`.and-code/browser-command.json`). An `open` command fills the guest browser, a `preview`
+ * command pins the page inside the conversation, and a `handoff` command asks the user to take
+ * over (typically to sign in) and pauses the agent until they hand the browser back.
  *
  * Only polls while [foreground] is `true`: opening a browser nobody is looking at achieves nothing,
  * and a composition outlives the activity being stopped, so without the gate this read the disk
@@ -28,6 +28,9 @@ private const val POLL_INTERVAL_MILLIS = 1000L
  * [foreground] keys the effect, so it must be a reference that stays the same across recompositions
  * (the app's own `StateFlow` is); a flow built inline would restart the watcher, and its immediate
  * first poll, on every recomposition.
+ *
+ * [allowRemotePreview] is read at poll time (the opt-in can change while the app runs) and lets an
+ * explicit agent `preview` of a public page into the conversation.
  */
 @Composable
 fun GuestBrowserCommandWatcher(
@@ -35,19 +38,27 @@ fun GuestBrowserCommandWatcher(
     agent: LocalAgent?,
     runtimeDirectory: File,
     foreground: Flow<Boolean>,
+    allowRemotePreview: () -> Boolean = { false },
     onCommand: (BrowserCommand) -> Unit,
 ) {
-    val deliver by rememberUpdatedState(onCommand)
+    val currentOnCommand by rememberUpdatedState(onCommand)
+    val currentAllowRemotePreview by rememberUpdatedState(allowRemotePreview)
     LaunchedEffect(workspacePath, agent, runtimeDirectory, foreground) {
         if (workspacePath == null || agent == null) return@LaunchedEffect
         watchBrowserCommands(
             active = foreground,
             poll = {
                 withContext(Dispatchers.IO) {
-                    consumeBrowserCommand(workspacePath, agent, runtimeDirectory, DeviceStorage.mounts())
+                    consumeBrowserCommand(
+                        workspacePath = workspacePath,
+                        agent = agent,
+                        runtimeDirectory = runtimeDirectory,
+                        deviceStorage = DeviceStorage.mounts(),
+                        allowRemotePreview = currentAllowRemotePreview(),
+                    )
                 }
             },
-            onCommand = { command -> deliver(command) },
+            onCommand = { command -> currentOnCommand(command) },
         )
     }
 }

@@ -245,6 +245,12 @@ def tool_show(args: dict) -> str:
     return f"requested the app to open {url}"
 
 
+def tool_preview(args: dict) -> str:
+    url = _require_web_url(args["url"])
+    _write_command({"action": "preview", "url": url})
+    return f"requested the app to show {url} as an inline preview"
+
+
 def tool_handoff(args: dict) -> str:
     """Hand the open page to the user and block until they hand it back.
 
@@ -294,6 +300,73 @@ def tool_navigate(args: dict) -> str:
         page.call("Page.navigate", url=url)
         return f"navigated to {url}"
     finally:
+        page.close()
+
+
+def _find_file_input(
+    page: "_PageSession",
+    selector: str,
+) -> str | None:
+    page.call("DOM.enable")
+    result = page.call(
+        "Runtime.evaluate",
+        expression=f"(() => document.querySelector({json.dumps(selector)}))()",
+        returnByValue=False,
+        objectGroup="upload",
+    )
+    obj = result.get("result", {})
+    if "objectId" not in obj or obj.get("subtype") in ("null", "undefined"):
+        return None
+    return obj["objectId"]
+
+
+def tool_upload(args: dict) -> str:
+    """Attach a file from device storage to the page's file input without the Android picker.
+
+    The WebView process reads the file itself, so the path must be one it can open: device storage
+    under /sdcard or /storage. Best effort: only an input reachable from document.querySelector is
+    found; pass click_selector for a picker the site creates lazily. The file chooser dialog is
+    intercepted so clicking such a button does not open the native Android chooser.
+    """
+    path = os.path.realpath(os.path.expanduser(args["path"]))
+    if not os.path.isfile(path):
+        raise CdpError(f"no such file: {path}")
+    roots = ("/sdcard", "/storage")
+    if not any(path == root or path.startswith(root + os.sep) for root in roots):
+        raise CdpError("attaching is limited to device storage under /sdcard or /storage")
+    selector = args.get("selector") or "input[type=file]"
+    click_selector = args.get("click_selector")
+    page = _session().open_page_session()
+    try:
+        try:
+            page.call("Page.setInterceptFileChooserDialog", enabled=True)
+        except CdpError:
+            pass
+        object_id = _find_file_input(page, selector)
+        if object_id is None and click_selector:
+            page.call(
+                "Runtime.evaluate",
+                expression=(
+                    f"(() => {{ const el = document.querySelector({json.dumps(click_selector)}); "
+                    "if (el) el.click(); return !!el; })()"
+                ),
+                returnByValue=True,
+                userGesture=True,
+            )
+            time.sleep(0.5)
+            object_id = _find_file_input(page, selector)
+        if object_id is None:
+            raise CdpError(
+                "no file input found: pass the site's button as click_selector, or click the "
+                "upload button yourself and retry with a selector that matches the hidden input"
+            )
+        page.call("DOM.setFileInputFiles", files=[path], objectId=object_id)
+        return f"attached {os.path.basename(path)} to {selector}"
+    finally:
+        try:
+            page.call("Page.setInterceptFileChooserDialog", enabled=False)
+        except CdpError:
+            pass
         page.close()
 
 
@@ -366,8 +439,22 @@ TOOLS = [
     {
         "name": "browser_show",
         "description": (
-            "Open the AndCode in-app Guest Browser at the given URL so the user can watch and "
-            "operate the page. Call this before other browser_* tools."
+            "Open the AndCode in-app Guest Browser full-screen at the given URL so the user can "
+            "watch and operate the page. Use browser_preview instead when the page should stay "
+            "pinned inside the chat. Call this before other browser_* tools."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {"url": {"type": "string"}},
+            "required": ["url"],
+        },
+    },
+    {
+        "name": "browser_preview",
+        "description": (
+            "Show a page as a live, interactive preview pinned inside the AndCode chat. Loopback "
+            "URLs (localhost / 127.0.0.1) are always allowed; a public https URL is allowed only "
+            "when the user has enabled 'Let the agent control the Guest Browser' in Settings."
         ),
         "inputSchema": {
             "type": "object",
@@ -430,6 +517,33 @@ TOOLS = [
         },
     },
     {
+        "name": "browser_upload",
+        "description": (
+            "Attach a file from device storage (/sdcard or /storage) to the page's file input, "
+            "bypassing the Android file picker. Best effort: only an input reachable from "
+            "document.querySelector is found; pass click_selector to open the site's upload button "
+            "when the input is created lazily."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "path": {
+                    "type": "string",
+                    "description": "Absolute device-storage path, e.g. /sdcard/DCIM/Camera/photo.jpg",
+                },
+                "selector": {
+                    "type": "string",
+                    "description": "CSS selector for the file input (default input[type=file]).",
+                },
+                "click_selector": {
+                    "type": "string",
+                    "description": "Optional CSS selector for the button that reveals the file input.",
+                },
+            },
+            "required": ["path"],
+        },
+    },
+    {
         "name": "browser_screenshot",
         "description": "Capture the Guest Browser page as PNG and return the saved path.",
         "inputSchema": {
@@ -446,11 +560,13 @@ TOOLS = [
 
 HANDLERS = {
     "browser_show": tool_show,
+    "browser_preview": tool_preview,
     "browser_handoff": tool_handoff,
     "browser_status": tool_status,
     "browser_navigate": tool_navigate,
     "browser_click": tool_click,
     "browser_type": tool_type,
+    "browser_upload": tool_upload,
     "browser_screenshot": tool_screenshot,
     "browser_info": tool_info,
 }

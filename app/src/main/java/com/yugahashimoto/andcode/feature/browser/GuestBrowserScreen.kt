@@ -1,12 +1,6 @@
 package com.yugahashimoto.andcode.feature.browser
 
-import android.annotation.SuppressLint
-import android.util.Log
-import android.view.View
-import android.view.ViewGroup
-import android.webkit.WebChromeClient
 import android.webkit.WebView
-import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -43,10 +37,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.yugahashimoto.andcode.R
-
-private const val TAG = "GuestBrowser"
 
 /** In-app browser for pages served inside the guest runtime (e.g. http://127.0.0.1:PORT/). */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -95,7 +86,7 @@ fun GuestBrowserScreen(
                 GuestBrowserUrlBar(
                     urlInput = urlInput,
                     onUrlChange = { urlInput = it },
-                    onGo = { webView?.loadUrl(normalizeUrl(urlInput)) },
+                    onGo = { webView?.loadUrl(normalizeGuestUrl(urlInput)) },
                 )
             }
             if (progress in 1..99) {
@@ -104,52 +95,18 @@ fun GuestBrowserScreen(
             if (webViewUnavailable) {
                 WebViewUnavailableNotice(modifier = Modifier.weight(1f).fillMaxWidth())
             } else {
-                AndroidView(
-                    // WebView can draw its background outside its measured bounds, covering the URL
-                    // field even while that field still accepts focus and keyboard input.
+                GuestWebContent(
+                    url = initialUrl,
                     modifier = Modifier.weight(1f).clipToBounds(),
-                    factory = { context ->
-                        // Only starting the system WebView provider can fail for reasons the app cannot
-                        // fix; everything after it runs on a WebView that exists, so a failure there is
-                        // a real bug and must not leave a half-built view behind.
-                        val created =
-                            viewOrNull(
-                                create = {
-                                    // Lets the in-guest agent drive this WebView over CDP so a page can
-                                    // be shown to and operated by human and agent at the same time.
-                                    // That socket is a cross-process surface, so it only exists after
-                                    // the user opts in (Settings -> Guest Browser). Off by default,
-                                    // and turning it off takes effect the next time this opens.
-                                    WebView.setWebContentsDebuggingEnabled(agentControlEnabled)
-                                    WebView(context)
-                                },
-                                onFailure = { error -> Log.w(TAG, "The system WebView could not start", error) },
-                            )
-                        if (created == null) {
-                            webViewUnavailable = true
-                            View(context)
-                        } else {
-                            created.apply {
-                                layoutParams =
-                                    ViewGroup.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                    )
-                                configure(
-                                    onProgress = { progress = it },
-                                    onNavigationStateChange = { url, back, forward ->
-                                        urlInput = url
-                                        canGoBack = back
-                                        canGoForward = forward
-                                    },
-                                )
-                                webView = this
-                                if (initialUrl.isNotBlank()) {
-                                    loadUrl(normalizeUrl(initialUrl))
-                                }
-                            }
-                        }
+                    agentControlEnabled = agentControlEnabled,
+                    onWebViewCreated = { webView = it },
+                    onProgress = { progress = it },
+                    onNavigationStateChange = { url, back, forward ->
+                        urlInput = url
+                        canGoBack = back
+                        canGoForward = forward
                     },
+                    onUnavailable = { webViewUnavailable = true },
                 )
             }
         }
@@ -174,7 +131,7 @@ private fun WebViewUnavailableNotice(modifier: Modifier = Modifier) {
  * user can sign in (or do any other step only they can do) and then give control back in one tap.
  */
 @Composable
-private fun GuestBrowserHandoffBanner(
+internal fun GuestBrowserHandoffBanner(
     onHandBack: () -> Unit,
     onDismiss: () -> Unit,
 ) {
@@ -264,43 +221,4 @@ private fun GuestBrowserUrlBar(
             Text(stringResource(R.string.guest_browser_go))
         }
     }
-}
-
-private fun normalizeUrl(raw: String): String {
-    val trimmed = raw.trim()
-    val candidate = if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) trimmed else "http://$trimmed"
-    return candidate.takeIf { android.net.Uri.parse(it).scheme in setOf("http", "https") } ?: "http://127.0.0.1"
-}
-
-@SuppressLint("SetJavaScriptEnabled")
-private fun WebView.configure(
-    onProgress: (Int) -> Unit,
-    onNavigationStateChange: (url: String, canGoBack: Boolean, canGoForward: Boolean) -> Unit,
-) {
-    // Guest pages (dev servers, dashboards, tool UIs) are interactive web apps that need JS.
-    settings.javaScriptEnabled = true
-    settings.domStorageEnabled = true
-    webChromeClient =
-        object : WebChromeClient() {
-            override fun onProgressChanged(
-                view: WebView?,
-                newProgress: Int,
-            ) {
-                onProgress(newProgress)
-            }
-        }
-    webViewClient =
-        object : WebViewClient() {
-            override fun onPageFinished(
-                view: WebView?,
-                url: String?,
-            ) {
-                onProgress(100)
-                onNavigationStateChange(
-                    url.orEmpty(),
-                    view?.canGoBack() == true,
-                    view?.canGoForward() == true,
-                )
-            }
-        }
 }

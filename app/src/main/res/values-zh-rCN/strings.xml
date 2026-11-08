@@ -1213,6 +1213,11 @@
     <string name="guest_browser_agent_control_title">允许智能体控制访客浏览器</string>
     <string name="guest_browser_agent_control_subtitle">将浏览器开放给应用内智能体，让它代你点击和输入。仅在把任务交给它时开启。</string>
     <string name="guest_browser_webview_unavailable">无法启动访客浏览器，因为此设备上的 WebView 加载失败。更新或重新启用 Android System WebView 可能会解决此问题。</string>
+    <string name="chat_preview_expand">在访客浏览器中打开</string>
+    <string name="chat_preview_close">关闭预览</string>
+    <string name="chat_preview_link">预览</string>
+    <string name="chat_preview_unavailable">此设备的 WebView 无法启动，因此预览不可用。</string>
+    <string name="chat_preview_minimize">最小化预览</string>
     <string name="setup_step_development_tools">开发工具</string>
     <string name="setup_development_tools_description">默认只安装运行所需组件，也可以一并安装完整开发工具链。</string>
     <string name="setup_required_tools_description">Linux、所选智能体、Git 以及 AndCode 功能依赖的支持工具，将始终安装。</string>

@@ -1228,6 +1228,11 @@
     <string name="guest_browser_agent_control_title">السماح للوكيل بالتحكم في المتصفح الضيف</string>
     <string name="guest_browser_agent_control_subtitle">يتيح للوكيل داخل التطبيق التحكم في المتصفح والنقر والكتابة نيابةً عنك. اتركه متوقفًا إلا عند تسليمه مهمة.</string>
     <string name="guest_browser_webview_unavailable">يتعذّر تشغيل المتصفح الضيف لأن WebView لم يُحمَّل على هذا الجهاز. قد يحل تحديث Android System WebView أو إعادة تفعيله المشكلة.</string>
+    <string name="chat_preview_expand">فتح في متصفح الضيف</string>
+    <string name="chat_preview_close">إغلاق المعاينة</string>
+    <string name="chat_preview_link">معاينة</string>
+    <string name="chat_preview_unavailable">تعذر بدء WebView على هذا الجهاز، لذا المعاينة غير متاحة.</string>
+    <string name="chat_preview_minimize">تصغير المعاينة</string>
     <string name="setup_step_development_tools">أدوات التطوير</string>
     <string name="setup_development_tools_description">يتم تثبيت مكونات التشغيل الضرورية فقط افتراضيًا، ويمكنك إضافة مجموعة أدوات التطوير الكاملة.</string>
     <string name="setup_required_tools_description">سيتم دائمًا تثبيت Linux والوكلاء المحددين وGit وأدوات الدعم التي يستخدمها AndCode.</string>

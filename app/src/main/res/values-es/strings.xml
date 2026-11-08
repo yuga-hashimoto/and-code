@@ -1219,6 +1219,11 @@
     <string name="guest_browser_agent_control_title">Permitir que el agente controle el navegador invitado</string>
     <string name="guest_browser_agent_control_subtitle">Expone el navegador al agente de la app para que pueda hacer clic y escribir por ti. Déjalo desactivado salvo que le encargues una tarea.</string>
     <string name="guest_browser_webview_unavailable">El navegador invitado no puede iniciarse porque WebView no se pudo cargar en este dispositivo. Actualizar o volver a activar Android System WebView puede solucionarlo.</string>
+    <string name="chat_preview_expand">Abrir en el navegador invitado</string>
+    <string name="chat_preview_close">Cerrar la vista previa</string>
+    <string name="chat_preview_link">Vista previa</string>
+    <string name="chat_preview_unavailable">El WebView de este dispositivo no pudo iniciarse, así que la vista previa no está disponible.</string>
+    <string name="chat_preview_minimize">Minimizar la vista previa</string>
     <string name="setup_step_development_tools">Herramientas de desarrollo</string>
     <string name="setup_development_tools_description">De forma predeterminada solo se instala lo necesario para ejecutar el entorno, o puedes incluir toda la cadena de desarrollo.</string>
     <string name="setup_required_tools_description">Linux, los agentes seleccionados, Git y las herramientas de soporte que usa AndCode. Siempre se instalan.</string>
