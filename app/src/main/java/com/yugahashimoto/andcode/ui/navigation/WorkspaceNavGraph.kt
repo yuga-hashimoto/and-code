@@ -213,6 +213,9 @@ fun NavGraphBuilder.workspaceNavGraph(
         // auth. Leave the URL bar empty for the user to fill in instead of loading a 401.
         GuestBrowserScreen(
             initialUrl = requestedUrl.orEmpty(),
+            // Read when the screen is opened: the devtools socket appears with the WebView, so the
+            // setting has to be on before this point. Turning it off takes effect next time.
+            agentControlEnabled = app.settings.guestBrowserAgentControlEnabled,
             onBack = { navController.popBackStack() },
         )
     }

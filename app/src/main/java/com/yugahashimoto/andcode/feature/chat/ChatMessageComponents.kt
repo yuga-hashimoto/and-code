@@ -71,6 +71,7 @@ import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.ProvideSafeUriHandler
 import com.yugahashimoto.andcode.core.api.PermissionRequest
+import com.yugahashimoto.andcode.feature.browser.isLoopbackPreviewUrl
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.ui.theme.LocalThemeColors
 import java.io.File
@@ -174,10 +175,11 @@ fun TimelineEntryRow(
     onOpenActivity: (String) -> Unit = {},
     onImageClick: (ChatImageSource) -> Unit = {},
     onOpenProviderSettings: (() -> Unit)? = null,
+    onPreviewRequested: (String) -> Unit = {},
 ) {
     when (entry) {
         is TimelineEntry.UserMessage -> MessageBubble(entry.message, onImageClick)
-        is TimelineEntry.Body -> MarkdownText(entry.part.text, onImageClick = onImageClick)
+        is TimelineEntry.Body -> MarkdownText(entry.part.text, onImageClick = onImageClick, onPreviewRequested = onPreviewRequested)
         is TimelineEntry.Image -> ImagePartView(entry.part, onImageClick)
         is TimelineEntry.Error -> ErrorPartCard(entry.part, onOpenProviderSettings)
         is TimelineEntry.Activity ->
@@ -394,6 +396,7 @@ private fun LinkedText(
 private fun MarkdownText(
     text: String,
     onImageClick: (ChatImageSource) -> Unit = {},
+    onPreviewRequested: (String) -> Unit = {},
 ) {
     val blocks = remember(text) { MarkdownLite.parse(text) }
     val codeInlineBackground = MaterialTheme.colorScheme.surfaceVariant
@@ -432,6 +435,10 @@ private fun MarkdownText(
                             currentInlines.clear()
                         }
                     }
+                    val previewUrl =
+                        block.inlines.firstNotNullOfOrNull { inline ->
+                            (inline as? MarkdownInline.Link)?.url?.takeIf(::isLoopbackPreviewUrl)
+                        }
                     block.inlines.forEach { inline ->
                         if (inline is MarkdownInline.Image) {
                             flushInlines()
@@ -441,6 +448,9 @@ private fun MarkdownText(
                         }
                     }
                     flushInlines()
+                    if (previewUrl != null) {
+                        PreviewLinkChip(previewUrl, onPreviewRequested)
+                    }
                 }
                 is MarkdownBlock.CodeBlock -> CodeBlockView(block.code)
                 is MarkdownBlock.BulletList ->

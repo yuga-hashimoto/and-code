@@ -81,6 +81,8 @@ fun SettingsScreenV2(
     onOpenGitHubSettings: () -> Unit = {},
     onOpenLocalRuntime: () -> Unit,
     onOpenGuestBrowser: () -> Unit = {},
+    guestBrowserAgentControlEnabled: Boolean = false,
+    onToggleGuestBrowserAgentControl: (Boolean) -> Unit = {},
     onOpenRemoteConnection: () -> Unit,
     onOpenWorkspaces: () -> Unit,
     onOpenDiagnostics: () -> Unit,
@@ -320,6 +322,13 @@ fun SettingsScreenV2(
                     icon = Icons.Default.OpenInBrowser,
                     title = stringResource(R.string.guest_browser_row),
                     onClick = onOpenGuestBrowser,
+                )
+                SettingsToggleRow(
+                    icon = Icons.Default.BugReport,
+                    title = stringResource(R.string.guest_browser_agent_control_title),
+                    subtitle = stringResource(R.string.guest_browser_agent_control_subtitle),
+                    checked = guestBrowserAgentControlEnabled,
+                    onCheckedChange = onToggleGuestBrowserAgentControl,
                 )
                 SettingsDivider()
                 SettingsRow(
