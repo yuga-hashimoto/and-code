@@ -26,7 +26,9 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,7 +44,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import com.yugahashimoto.andcode.BuildConfig
 import com.yugahashimoto.andcode.R
 
 private const val TAG = "GuestBrowser"
@@ -53,6 +54,7 @@ private const val TAG = "GuestBrowser"
 fun GuestBrowserScreen(
     initialUrl: String,
     onBack: () -> Unit,
+    agentControlEnabled: Boolean = false,
 ) {
     var urlInput by rememberSaveable { mutableStateOf(initialUrl) }
     var progress by remember { mutableIntStateOf(0) }
@@ -83,6 +85,12 @@ fun GuestBrowserScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
+            if (BrowserHandoff.active != null) {
+                GuestBrowserHandoffBanner(
+                    onHandBack = BrowserHandoff::handBack,
+                    onDismiss = BrowserHandoff::dismiss,
+                )
+            }
             if (!webViewUnavailable) {
                 GuestBrowserUrlBar(
                     urlInput = urlInput,
@@ -107,10 +115,12 @@ fun GuestBrowserScreen(
                         val created =
                             viewOrNull(
                                 create = {
-                                    // Lets the in-guest agent drive this WebView over CDP (the devtools abstract
-                                    // socket is reachable from the guest, which shares the app's UID), so a page
-                                    // can be shown to the user and operated by human and agent at the same time.
-                                    WebView.setWebContentsDebuggingEnabled(BuildConfig.DEBUG)
+                                    // Lets the in-guest agent drive this WebView over CDP so a page can
+                                    // be shown to and operated by human and agent at the same time.
+                                    // That socket is a cross-process surface, so it only exists after
+                                    // the user opts in (Settings -> Guest Browser). Off by default,
+                                    // and turning it off takes effect the next time this opens.
+                                    WebView.setWebContentsDebuggingEnabled(agentControlEnabled)
                                     WebView(context)
                                 },
                                 onFailure = { error -> Log.w(TAG, "The system WebView could not start", error) },
@@ -156,6 +166,40 @@ private fun WebViewUnavailableNotice(modifier: Modifier = Modifier) {
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
+    }
+}
+
+/**
+ * Shown while the agent has handed the page to the user. The page stays live underneath, so the
+ * user can sign in (or do any other step only they can do) and then give control back in one tap.
+ */
+@Composable
+private fun GuestBrowserHandoffBanner(
+    onHandBack: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.guest_browser_handoff_title),
+                    style = MaterialTheme.typography.titleSmall,
+                )
+                Text(
+                    text = stringResource(R.string.guest_browser_handoff_body),
+                    style = MaterialTheme.typography.bodySmall,
+                )
+            }
+            TextButton(onClick = onDismiss) {
+                Text(stringResource(R.string.guest_browser_handoff_cancel))
+            }
+            Button(onClick = onHandBack, modifier = Modifier.padding(start = 8.dp)) {
+                Text(stringResource(R.string.guest_browser_handoff_done))
+            }
+        }
     }
 }
 

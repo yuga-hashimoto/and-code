@@ -79,6 +79,8 @@ import com.yugahashimoto.andcode.feature.assistant.SpeechResult
 import com.yugahashimoto.andcode.feature.assistant.SpeechTranscriptAccumulator
 import com.yugahashimoto.andcode.feature.assistant.VoiceDictationOutcome
 import com.yugahashimoto.andcode.feature.assistant.VoiceDictationPolicy
+import com.yugahashimoto.andcode.feature.browser.BrowserAction
+import com.yugahashimoto.andcode.feature.browser.BrowserHandoff
 import com.yugahashimoto.andcode.feature.browser.GuestBrowserCommandWatcher
 import com.yugahashimoto.andcode.feature.chat.ChatHomeScreen
 import com.yugahashimoto.andcode.feature.chat.ChatViewModel
@@ -705,15 +707,25 @@ fun AndCodeApp(
         navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
     }
 
-    // Lets the in-guest agent pop the guest browser open for the user by dropping a command
-    // file into the active workspace (see GuestBrowserCommandWatcher).
+    // Lets the in-guest agent pop the guest browser open for the user, or hand it over and wait,
+    // by dropping a command file into the active workspace (see GuestBrowserCommandWatcher).
     GuestBrowserCommandWatcher(
         workspacePath = chatState.sessionDirectory ?: chatState.selectedWorkspacePath,
         agent = selectedRuntime?.agent,
         runtimeDirectory = java.io.File(context.filesDir, "runtime"),
         foreground = app.appForeground.foreground,
-        onOpenUrl = { url ->
-            navController.navigate(guestBrowserRoute(url)) { launchSingleTop = true }
+        onCommand = { command ->
+            when (command.action) {
+                BrowserAction.OPEN ->
+                    navController.navigate(guestBrowserRoute(command.url)) { launchSingleTop = true }
+                BrowserAction.HANDOFF -> {
+                    // The watcher has already recorded `awaiting_user`. A handoff never navigates:
+                    // `launchSingleTop` would reuse the same entry and the WebView only loads its
+                    // first URL, so a "navigate" here would be a no-op at best and a reload of the
+                    // sign-in the user just completed at worst.
+                    BrowserHandoff.begin(command.statusFile)
+                }
+            }
         },
     )
 

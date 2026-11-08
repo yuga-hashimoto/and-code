@@ -1231,6 +1231,12 @@
     <string name="guest_browser_back">Back</string>
     <string name="guest_browser_forward">Forward</string>
     <string name="guest_browser_reload">Reload</string>
+    <string name="guest_browser_handoff_title">You have control</string>
+    <string name="guest_browser_handoff_body">Finish the step the agent cannot do here (such as signing in), then hand the browser back.</string>
+    <string name="guest_browser_handoff_done">Hand back to agent</string>
+    <string name="guest_browser_handoff_cancel">Cancel</string>
+    <string name="guest_browser_agent_control_title">Let the agent control the Guest Browser</string>
+    <string name="guest_browser_agent_control_subtitle">Exposes the browser to the in-app agent so it can click and type for you. Leave off unless you are handing it a task.</string>
     <string name="guest_browser_webview_unavailable">The Guest Browser cannot start because the WebView on this device failed to load. Updating or re-enabling Android System WebView may fix this.</string>
     <string name="setup_step_development_tools">Development tools</string>
     <string name="setup_development_tools_description">Install only the runtime by default, or include the complete development toolchain.</string>

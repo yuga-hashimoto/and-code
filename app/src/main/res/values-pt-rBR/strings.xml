@@ -1212,6 +1212,12 @@
     <string name="guest_browser_back">Voltar</string>
     <string name="guest_browser_forward">Avançar</string>
     <string name="guest_browser_reload">Recarregar</string>
+    <string name="guest_browser_handoff_title">Você está no controle</string>
+    <string name="guest_browser_handoff_body">Conclua aqui a etapa que o agente não pode fazer (como entrar), depois devolva o navegador ao agente.</string>
+    <string name="guest_browser_handoff_done">Devolver ao agente</string>
+    <string name="guest_browser_handoff_cancel">Cancelar</string>
+    <string name="guest_browser_agent_control_title">Permitir que o agente controle o navegador convidado</string>
+    <string name="guest_browser_agent_control_subtitle">Expõe o navegador ao agente do app para que ele possa clicar e digitar por você. Deixe desligado a menos que esteja entregando uma tarefa.</string>
     <string name="guest_browser_webview_unavailable">O navegador convidado não pode ser iniciado porque o WebView não foi carregado neste dispositivo. Atualizar ou reativar o Android System WebView pode resolver o problema.</string>
     <string name="setup_step_development_tools">Ferramentas de desenvolvimento</string>
     <string name="setup_development_tools_description">Por padrão, instale apenas o necessário para executar, ou inclua a cadeia completa de desenvolvimento.</string>
