@@ -84,6 +84,8 @@ fun NavGraphBuilder.settingsNavGraph(
             onOpenGitHubSettings = { navController.navigate(ROUTE_SETTINGS_GITHUB) },
             onOpenLocalRuntime = { navController.navigate(LOCAL_RUNTIME_MANAGEMENT_ROUTE) },
             onOpenGuestBrowser = { navController.navigate(ROUTE_GUEST_BROWSER) },
+            guestBrowserAgentControlEnabled = preferences().guestBrowserAgentControlEnabled,
+            onToggleGuestBrowserAgentControl = appPreferences::setGuestBrowserAgentControlEnabled,
             onOpenRemoteConnection = { navController.navigate(ROUTE_REMOTE_CONNECTION) },
             onOpenWorkspaces = { navController.navigate(ROUTE_WORKSPACES) },
             onOpenDiagnostics = onShowDiagnostics,

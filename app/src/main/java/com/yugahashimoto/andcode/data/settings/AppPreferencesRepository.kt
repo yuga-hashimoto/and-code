@@ -52,6 +52,7 @@ data class AppPreferences(
     val language: String = "system",
     val liveTranscriptEnabled: Boolean = false,
     val analyticsEnabled: Boolean = false,
+    val guestBrowserAgentControlEnabled: Boolean = false,
     val localRuntimeIdleStopEnabled: Boolean = true,
     val autoArchiveStaleEnabled: Boolean = false,
     val autoArchiveStaleDays: Int = 30,
@@ -103,6 +104,7 @@ class AppPreferencesRepository(
                 language = settings.language,
                 liveTranscriptEnabled = settings.liveTranscriptEnabled,
                 analyticsEnabled = settings.analyticsEnabled,
+                guestBrowserAgentControlEnabled = settings.guestBrowserAgentControlEnabled,
                 localRuntimeIdleStopEnabled = settings.localRuntimeIdleStopEnabled,
                 autoArchiveStaleEnabled = settings.autoArchiveStaleEnabled,
                 autoArchiveStaleDays = settings.autoArchiveStaleDays,
@@ -345,6 +347,11 @@ class AppPreferencesRepository(
         com.yugahashimoto.andcode.core.diagnostics.AnalyticsReporter.setEnabled(enabled)
         com.yugahashimoto.andcode.core.diagnostics.CrashReporter.setEnabled(enabled)
         mutableState.update { it.copy(analyticsEnabled = enabled) }
+    }
+
+    fun setGuestBrowserAgentControlEnabled(enabled: Boolean) {
+        settings.guestBrowserAgentControlEnabled = enabled
+        mutableState.update { it.copy(guestBrowserAgentControlEnabled = enabled) }
     }
 
     fun setLocalRuntimeIdleStopEnabled(enabled: Boolean) {

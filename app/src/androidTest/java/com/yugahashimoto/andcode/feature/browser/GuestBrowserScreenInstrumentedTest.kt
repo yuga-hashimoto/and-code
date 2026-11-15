@@ -20,9 +20,12 @@ import androidx.test.platform.app.InstrumentationRegistry
 import com.yugahashimoto.andcode.R
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import java.io.File
 
 @RunWith(AndroidJUnit4::class)
 class GuestBrowserScreenInstrumentedTest {
@@ -37,6 +40,30 @@ class GuestBrowserScreenInstrumentedTest {
     @Test
     fun webViewDoesNotPaintOverTheAddressBarInDarkTheme() {
         checkAddressBar(dark = true)
+    }
+
+    @Test
+    fun handoffBannerHandsControlBack() {
+        val context = InstrumentationRegistry.getInstrumentation().targetContext
+        val statusFile = File(context.cacheDir, "handoff-${System.nanoTime()}.json")
+        try {
+            BrowserHandoff.begin(statusFile)
+            composeRule.setContent {
+                MaterialTheme {
+                    GuestBrowserScreen(initialUrl = "", onBack = {})
+                }
+            }
+
+            val done = context.getString(R.string.guest_browser_handoff_done)
+            composeRule.onNodeWithText(done).assertIsDisplayed().performClick()
+            composeRule.waitForIdle()
+
+            assertNull(BrowserHandoff.active)
+            assertTrue(statusFile.readText().contains("\"state\":\"agent\""))
+        } finally {
+            BrowserHandoff.dismiss()
+            statusFile.delete()
+        }
     }
 
     private fun checkAddressBar(dark: Boolean) {

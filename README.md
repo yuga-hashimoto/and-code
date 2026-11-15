@@ -81,6 +81,8 @@ On-device agents run inside a Linux environment via PRoot. OpenCode, Claude Code
 - **Git support** — Browse status and review diffs from the GUI; use the embedded runtime terminal for other Git operations
 - **Diff viewer** — Review code changes inline before accepting
 - **Embedded terminal** — An interactive shell (real PTY) inside the on-device runtime: streamed output, stdin, Ctrl+C, colours, and it opens in the workspace you came from. Dev servers started in it (Vite, `python -m http.server`, …) show up as chips that open the page in the in-app browser. Full-screen programs such as `vim` are not supported yet
+- **Inline live preview** — A loopback dev server or a static site from the workspace can be pinned inside the conversation as a live, interactive card (requested by the agent's `browser_preview` tool or a localhost link). It auto-reloads as files change, can be minimized to a floating button or cancelled, and expands to the full-screen Guest Browser. A public page can be previewed only after the agent-control opt-in
+- **Agent-driven browser** — Turn on **Let the agent control the Guest Browser** and the agent can operate the same browser for you: open or preview a page, hand it to you to sign in (`browser_handoff`), and attach a photo from `/sdcard` (`browser_upload`). Password fields are refused, and control is off by default
 - **Pull request badges** — Pull requests opened in a chat stay pinned above the composer with their diff size and state (draft, open, conflict, merged, closed); tap to open them on GitHub
 - **Tool approvals** — Approve or reject dangerous tool operations
 - **Session management** — Create, resume, rename, and delete sessions

@@ -449,6 +449,17 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         set(value) = preferences.edit().putBoolean(KEY_ANALYTICS_ENABLED, value).apply()
 
     /**
+     * Lets the in-guest agent drive the Guest Browser by exposing its WebView devtools socket.
+     *
+     * Opt-in: the socket is a powerful cross-process surface, and the whole point of the feature is
+     * that the user signs in with their own credentials in that browser. It stays closed until the
+     * user explicitly asks the agent to operate a page for them.
+     */
+    var guestBrowserAgentControlEnabled: Boolean
+        get() = preferences.getBoolean(KEY_GUEST_BROWSER_AGENT_CONTROL, false)
+        set(value) = preferences.edit().putBoolean(KEY_GUEST_BROWSER_AGENT_CONTROL, value).apply()
+
+    /**
      * Stopping an idle runtime is opt-out, not opt-in: it is what stops the wake lock loop from
      * draining the battery of anyone who never touches this setting.
      */
@@ -583,6 +594,7 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         private const val KEY_LANGUAGE = "language"
         private const val KEY_LIVE_TRANSCRIPT_ENABLED = "live_transcript_enabled"
         private const val KEY_ANALYTICS_ENABLED = "analytics_enabled"
+        private const val KEY_GUEST_BROWSER_AGENT_CONTROL = "guest_browser_agent_control"
         private const val KEY_LOCAL_RUNTIME_IDLE_STOP_ENABLED = "local_runtime_idle_stop_enabled"
         private const val KEY_LOCAL_RUNTIME_STOPPED_BY_USER = "local_runtime_stopped_by_user"
         private const val KEY_COLLAPSED_SIDEBAR_SECTIONS = "collapsed_sidebar_sections"
