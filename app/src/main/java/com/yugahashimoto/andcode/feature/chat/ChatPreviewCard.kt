@@ -10,9 +10,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FullscreenExit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.OpenInFull
@@ -74,8 +76,7 @@ fun ChatPreviewCard(
 ) {
     var fullscreen by remember(target) { mutableStateOf(false) }
     var webView by remember(target) { mutableStateOf<WebView?>(null) }
-    var progress by remember(target) { mutableIntStateOf(0) }
-    var unavailable by remember(target) { mutableStateOf(false) }
+    var currentUrl by remember(target) { mutableStateOf(initialPreviewUrl(target)) }
 
     val reloadRoot =
         when (target) {
@@ -94,6 +95,7 @@ fun ChatPreviewCard(
     }
 
     val onCreated: (WebView?) -> Unit = { webView = it }
+    val onDisposed: (WebView) -> Unit = { disposed -> if (webView === disposed) webView = null }
 
     if (fullscreen) {
         Dialog(
@@ -101,9 +103,10 @@ fun ChatPreviewCard(
             properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
         ) {
             Surface(modifier = Modifier.fillMaxSize().testTag("chat-preview-card")) {
-                Column {
+                Column(modifier = Modifier.fillMaxSize().systemBarsPadding()) {
                     PreviewToolbar(
                         target = target,
+                        isFullscreen = true,
                         onMinimize = null,
                         onExpand = { fullscreen = false },
                         onReload = { webView?.reload() },
@@ -112,13 +115,12 @@ fun ChatPreviewCard(
                     PreviewHandoffBanner()
                     PreviewBody(
                         target = target,
+                        url = currentUrl,
                         modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds(),
-                        progress = progress,
-                        unavailable = unavailable,
-                        onProgress = { progress = it },
-                        onUnavailable = { unavailable = true },
-                        onWebViewCreated = onCreated,
                         agentControlEnabled = agentControlEnabled,
+                        onNavigationUrlChange = { currentUrl = it },
+                        onWebViewCreated = onCreated,
+                        onWebViewDisposed = onDisposed,
                     )
                 }
             }
@@ -132,11 +134,12 @@ fun ChatPreviewCard(
             Column {
                 PreviewToolbar(
                     target = target,
+                    isFullscreen = false,
                     onMinimize = onMinimize,
                     onExpand = {
                         when (target) {
                             is PreviewTarget.Static -> fullscreen = true
-                            is PreviewTarget.Url -> onExpand(target)
+                            is PreviewTarget.Url -> onExpand(PreviewTarget.Url(currentUrl))
                         }
                     },
                     onReload = { webView?.reload() },
@@ -145,18 +148,23 @@ fun ChatPreviewCard(
                 PreviewHandoffBanner()
                 PreviewBody(
                     target = target,
+                    url = currentUrl,
                     modifier = Modifier.fillMaxWidth().height(280.dp).clipToBounds(),
-                    progress = progress,
-                    unavailable = unavailable,
-                    onProgress = { progress = it },
-                    onUnavailable = { unavailable = true },
-                    onWebViewCreated = onCreated,
                     agentControlEnabled = agentControlEnabled,
+                    onNavigationUrlChange = { currentUrl = it },
+                    onWebViewCreated = onCreated,
+                    onWebViewDisposed = onDisposed,
                 )
             }
         }
     }
 }
+
+private fun initialPreviewUrl(target: PreviewTarget): String =
+    when (target) {
+        is PreviewTarget.Url -> target.url
+        is PreviewTarget.Static -> staticPreviewUrl(target.entry)
+    }
 
 /**
  * Shows the same handoff controls as the full-screen guest browser, so the user can take over and
@@ -175,6 +183,7 @@ private fun PreviewHandoffBanner() {
 @Composable
 private fun PreviewToolbar(
     target: PreviewTarget,
+    isFullscreen: Boolean,
     onMinimize: (() -> Unit)?,
     onExpand: (() -> Unit)?,
     onReload: () -> Unit,
@@ -204,7 +213,13 @@ private fun PreviewToolbar(
         }
         if (onExpand != null) {
             IconButton(onClick = onExpand) {
-                Icon(Icons.Default.OpenInFull, contentDescription = stringResource(R.string.chat_preview_expand))
+                Icon(
+                    if (isFullscreen) Icons.Default.FullscreenExit else Icons.Default.OpenInFull,
+                    contentDescription =
+                        stringResource(
+                            if (isFullscreen) R.string.chat_preview_minimize else R.string.chat_preview_expand,
+                        ),
+                )
             }
         }
         IconButton(onClick = onReload) {
@@ -219,14 +234,16 @@ private fun PreviewToolbar(
 @Composable
 private fun PreviewBody(
     target: PreviewTarget,
+    url: String,
     modifier: Modifier,
-    progress: Int,
-    unavailable: Boolean,
-    onProgress: (Int) -> Unit,
-    onUnavailable: () -> Unit,
+    agentControlEnabled: Boolean,
+    onNavigationUrlChange: (String) -> Unit,
     onWebViewCreated: (WebView?) -> Unit,
-    agentControlEnabled: Boolean = false,
+    onWebViewDisposed: (WebView) -> Unit,
 ) {
+    var progress by remember(target) { mutableIntStateOf(0) }
+    var unavailable by remember(target) { mutableStateOf(false) }
+
     if (unavailable) {
         Text(
             text = stringResource(R.string.chat_preview_unavailable),
@@ -239,29 +256,23 @@ private fun PreviewBody(
     if (progress in 1..99) {
         LinearProgressIndicator(progress = { progress / 100f }, modifier = Modifier.fillMaxWidth())
     }
-    when (target) {
-        is PreviewTarget.Url ->
-            GuestWebContent(
-                url = target.url,
-                modifier = modifier,
-                agentControlEnabled = agentControlEnabled,
-                onWebViewCreated = onWebViewCreated,
-                onProgress = onProgress,
-                onUnavailable = { onUnavailable() },
-            )
-        is PreviewTarget.Static -> {
-            val interceptor = remember(target) { StaticAssetInterceptor(File(target.rootDir)) }
-            GuestWebContent(
-                url = staticPreviewUrl(target.entry),
-                modifier = modifier,
-                agentControlEnabled = agentControlEnabled,
-                onWebViewCreated = onWebViewCreated,
-                interceptRequest = interceptor::intercept,
-                onProgress = onProgress,
-                onUnavailable = { onUnavailable() },
-            )
+    val interceptor =
+        remember(target) {
+            (target as? PreviewTarget.Static)?.let { StaticAssetInterceptor(File(it.rootDir), it.entry) }
         }
-    }
+    GuestWebContent(
+        url = url,
+        modifier = modifier,
+        agentControlEnabled = agentControlEnabled,
+        onWebViewCreated = onWebViewCreated,
+        onWebViewDisposed = onWebViewDisposed,
+        interceptRequest = interceptor?.let { it::intercept },
+        onProgress = { progress = it },
+        onNavigationStateChange = { pageUrl, _, _ ->
+            if (pageUrl.isNotBlank()) onNavigationUrlChange(pageUrl)
+        },
+        onUnavailable = { unavailable = true },
+    )
 }
 
 /** Opens a loopback link found in an assistant message in the pinned preview. */

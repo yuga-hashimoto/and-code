@@ -39,6 +39,7 @@ fun GuestWebContent(
     modifier: Modifier = Modifier,
     agentControlEnabled: Boolean = false,
     onWebViewCreated: (WebView?) -> Unit = {},
+    onWebViewDisposed: ((WebView) -> Unit)? = null,
     interceptRequest: ((Uri) -> WebResourceResponse?)? = null,
     onProgress: (Int) -> Unit = {},
     onNavigationStateChange: (url: String, canGoBack: Boolean, canGoForward: Boolean) -> Unit = { _, _, _ -> },
@@ -46,6 +47,7 @@ fun GuestWebContent(
 ) {
     var webView by remember { mutableStateOf<WebView?>(null) }
     val currentOnCreated by rememberUpdatedState(onWebViewCreated)
+    val currentOnDisposed by rememberUpdatedState(onWebViewDisposed)
     val currentOnProgress by rememberUpdatedState(onProgress)
     val currentOnStateChange by rememberUpdatedState(onNavigationStateChange)
     val currentOnUnavailable by rememberUpdatedState(onUnavailable)
@@ -92,16 +94,27 @@ fun GuestWebContent(
                 }
             }
         },
+        update = { view ->
+            if (view is WebView) {
+                WebView.setWebContentsDebuggingEnabled(agentControlEnabled)
+            }
+        },
     )
 
     DisposableEffect(Unit) {
         onDispose {
-            webView?.apply {
+            val disposed = webView
+            disposed?.apply {
                 stopLoading()
                 destroy()
             }
-            currentOnCreated(null)
             webView = null
+            val customDispose = currentOnDisposed
+            if (disposed != null && customDispose != null) {
+                customDispose(disposed)
+            } else {
+                currentOnCreated(null)
+            }
         }
     }
 }

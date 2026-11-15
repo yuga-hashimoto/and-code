@@ -19,10 +19,14 @@ fun staticPreviewUrl(entry: String): String {
 }
 
 /** Serves static preview files to the WebView and lets every other host reach the network. */
-class StaticAssetInterceptor(rootDir: File) {
-    private val resolver = StaticAssetResolver(rootDir)
+class StaticAssetInterceptor(
+    rootDir: File,
+    entry: String = "index.html",
+) {
+    private val resolver = StaticAssetResolver(rootDir, entry)
 
     fun intercept(uri: Uri): WebResourceResponse? {
+        if (!uri.scheme.equals("https", ignoreCase = true)) return null
         if (!uri.host.equals(STATIC_PREVIEW_HOST, ignoreCase = true)) return null
         val asset = resolver.resolve(uri.path.orEmpty()) ?: return notFound()
         return WebResourceResponse(
@@ -47,23 +51,45 @@ class StaticAssetInterceptor(rootDir: File) {
 }
 
 /** Pure path resolution, kept apart from WebView types so it can be unit-tested on the JVM. */
-internal class StaticAssetResolver(private val rootDir: File) {
+internal class StaticAssetResolver(
+    private val rootDir: File,
+    private val entry: String = "index.html",
+) {
     fun resolve(path: String): ResolvedAsset? {
         val root = rootDir.canonicalFile
         if (!root.isDirectory) return null
+        val entrySubdir = entry.substringBeforeLast('/', missingDelimiterValue = "").trim('/')
+        val entryBase =
+            if (entrySubdir.isEmpty()) {
+                root
+            } else {
+                File(root, entrySubdir).canonicalFile.takeIf { it.isDirectory && it.toPath().startsWith(root.toPath()) } ?: root
+            }
+        val resolved =
+            resolveUnder(root, root, path)
+                ?: entryBase.takeIf { it != root }?.let { resolveUnder(root, it, path) }
+                ?: return null
+        return ResolvedAsset(resolved, mimeTypeFor(resolved.name))
+    }
+
+    private fun resolveUnder(
+        boundaryRoot: File,
+        baseDir: File,
+        path: String,
+    ): File? {
         val decoded = path.trimStart('/').ifBlank { "index.html" }
-        val direct = File(root, decoded).canonicalFile
-        val asset =
+        val direct = File(baseDir, decoded).canonicalFile
+        if (!direct.toPath().startsWith(boundaryRoot.toPath())) return null
+        val candidate =
             when {
                 direct.isFile -> direct
                 File(direct, "index.html").isFile -> File(direct, "index.html").canonicalFile
                 // Single-page apps route client-side: an extensionless path that is not a file
-                // falls back to the root document instead of 404-ing.
-                direct.extension.isBlank() -> File(root, "index.html").canonicalFile.takeIf { it.isFile }
+                // falls back to the entry directory's index instead of 404-ing.
+                direct.extension.isBlank() -> File(baseDir, "index.html").canonicalFile.takeIf { it.isFile }
                 else -> null
             } ?: return null
-        if (!asset.toPath().startsWith(root.toPath())) return null
-        return ResolvedAsset(asset, mimeTypeFor(asset.name))
+        return candidate.takeIf { it.toPath().startsWith(boundaryRoot.toPath()) }
     }
 }
 

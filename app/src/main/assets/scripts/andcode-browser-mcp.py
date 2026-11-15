@@ -182,12 +182,15 @@ class CdpSession:
 class _PageSession:
     def __init__(self, ws: _UnixWs):
         self.ws = ws
+        self._next_id = 0
 
     def call(self, method: str, **params) -> dict:
-        self.ws.send_text(json.dumps({"id": 1, "method": method, "params": params}))
+        self._next_id += 1
+        req_id = self._next_id
+        self.ws.send_text(json.dumps({"id": req_id, "method": method, "params": params}))
         while True:
             msg = json.loads(self.ws.recv_text())
-            if msg.get("id") == 1:
+            if msg.get("id") == req_id:
                 if "error" in msg:
                     raise CdpError(f"{method}: {msg['error']}")
                 return msg.get("result", {})
@@ -393,7 +396,8 @@ def tool_type(args: dict) -> str:
             "Runtime.evaluate",
             expression=(
                 "(() => { const el = document.activeElement; "
-                "return !!el && (el.type === 'password' || el.autocomplete === 'current-password'); })()"
+                "return !!el && (el.type === 'password' || "
+                "el.autocomplete === 'current-password' || el.autocomplete === 'new-password'); })()"
             ),
             returnByValue=True,
         )

@@ -397,6 +397,7 @@ fun AndCodeApp(
         // Switching chats closes the old chat's preview, but the first composition must not clear a
         // preview the agent may have just requested before the session id settled.
         if (previewSessionInitialized) {
+            BrowserHandoff.dismiss()
             previewState = PreviewUiState.None
             lastPreviewTarget = null
         }
@@ -406,6 +407,12 @@ fun AndCodeApp(
     fun showPreview(target: PreviewTarget) {
         lastPreviewTarget = target
         previewState = PreviewUiState.Active(target)
+    }
+
+    fun collapseActivePreview() {
+        (previewState as? PreviewUiState.Active)?.let {
+            previewState = PreviewUiState.Collapsed(it.target)
+        }
     }
 
     val speechManager = remember { SpeechRecognizerManager(context.applicationContext) }
@@ -772,8 +779,12 @@ fun AndCodeApp(
         allowRemotePreview = { preferences.guestBrowserAgentControlEnabled },
         onCommand = { command ->
             when (command) {
-                is BrowserCommand.Open ->
+                is BrowserCommand.Open -> {
+                    // Tear down any inline preview WebView before opening the full-screen browser
+                    // so only one WebView target is alive for CDP at a time.
+                    collapseActivePreview()
                     navController.navigate(guestBrowserRoute(command.url)) { launchSingleTop = true }
+                }
                 is BrowserCommand.Preview -> showPreview(PreviewTarget.Url(command.url))
                 is BrowserCommand.Handoff -> {
                     // The watcher has already recorded `awaiting_user`. A handoff never navigates:
@@ -1324,11 +1335,7 @@ fun AndCodeApp(
                             previewWorkspaceDir = previewWorkspaceDir,
                             agentControlEnabled = preferences.guestBrowserAgentControlEnabled,
                             onPreviewRequested = { target -> showPreview(target) },
-                            onPreviewMinimize = {
-                                (previewState as? PreviewUiState.Active)?.let {
-                                    previewState = PreviewUiState.Collapsed(it.target)
-                                }
-                            },
+                            onPreviewMinimize = ::collapseActivePreview,
                             onPreviewRestore = {
                                 (previewState as? PreviewUiState.Collapsed)?.let {
                                     previewState = PreviewUiState.Active(it.target)
@@ -1336,12 +1343,17 @@ fun AndCodeApp(
                             },
                             onExpandPreview = { target ->
                                 when (target) {
-                                    is PreviewTarget.Url ->
+                                    is PreviewTarget.Url -> {
+                                        collapseActivePreview()
                                         navController.navigate(guestBrowserRoute(target.url)) { launchSingleTop = true }
+                                    }
                                     is PreviewTarget.Static -> Unit
                                 }
                             },
-                            onClosePreview = { previewState = PreviewUiState.None },
+                            onClosePreview = {
+                                BrowserHandoff.dismiss()
+                                previewState = PreviewUiState.None
+                            },
                             onOpenPatchDiff = chatViewModel::openPatchDiff,
                             onDismissPatchDiff = chatViewModel::dismissPatchDiff,
                             onLoadDraft = { sessionId -> chatViewModel.loadDraft(sessionId)?.text },
