@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Last updated: 2026-08-11_
+_Last updated: 2026-11-21_
 
 This document describes what AndCode stores, what it sends off-device, and to whom. It describes
 the app as implemented in this repository, not aspirational behavior — where something is handled
@@ -24,11 +24,11 @@ you and the AI provider you configure.
 - **Session/chat history, schedules, and workspace metadata** are stored locally in the app's own
   storage (SQLite/local catalog) so sessions survive an app restart. Schedule definitions and run
   history are stored in Keystore-backed `EncryptedSharedPreferences`.
-- **Claude Code and Antigravity credentials are not stored by AndCode at all.** Each official CLI
-  manages its own OAuth/token storage inside the on-device Linux (Alpine) or Debian rootfs it runs
-  in — for example, Antigravity's guest token lives at `root/.gemini/antigravity-cli/antigravity-oauth-token`
-  inside its rootfs, and Claude Code keeps its own credential store the same way it would on a
-  desktop Linux machine. AndCode does not read, copy, or mirror the contents of these files into
+- **Claude Code, Codex, and Antigravity credentials are not stored by AndCode at all.** Each
+  official CLI manages its own OAuth/token storage inside the on-device Linux (Alpine) or Debian
+  rootfs it runs in — for example, Antigravity's guest token lives at `root/.gemini/antigravity-cli/antigravity-oauth-token`
+  inside its rootfs, and Claude Code and Codex (under `/root/.codex`) keep their own credential
+  stores the same way they would on a desktop Linux machine. AndCode does not read, copy, or mirror the contents of these files into
   Android app preferences, and does not transmit them anywhere. See
   [docs/AUTHENTICATION_AND_DATA_FLOW.md](docs/AUTHENTICATION_AND_DATA_FLOW.md) for the full flow.
 
@@ -59,8 +59,8 @@ you and the AI provider you configure.
 When you send a prompt, the resulting request — including the prompt text, relevant file contents,
 and tool output the agent needs — is sent directly from the on-device CLI (or, for remote OpenCode,
 from your PC's OpenCode server) to whichever AI provider you have configured (for example,
-Anthropic for Claude Code, Google for Antigravity, or the model provider you connected inside
-OpenCode). AndCode does not intercept, log, or relay this traffic through a server it operates.
+Anthropic for Claude Code, OpenAI for Codex, Google for Antigravity, or the model provider you
+connected inside OpenCode). AndCode does not intercept, log, or relay this traffic through a server it operates.
 Each provider's own privacy policy and terms of service apply to that traffic — see
 [THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md).
 
@@ -162,8 +162,8 @@ agent/provider a manual chat message would; nothing about scheduling itself chan
 
 ## 9. Deleting your data
 
-- **Sign out** of Claude Code or Antigravity from their respective agent settings screens to remove
-  their locally stored credentials (this deletes the token file inside that CLI's own rootfs).
+- **Sign out** of Claude Code, Codex, or Antigravity from their respective agent settings screens to
+  remove their locally stored credentials (this deletes the token file inside that CLI's own rootfs).
 - **Disconnect** a provider or GitHub from **Settings → Providers** / **Settings → GitHub** to
   remove the stored API key/token from `EncryptedSharedPreferences`.
 - **Delete a local runtime** from **Settings → Local runtime** to remove the on-device Linux/Debian
@@ -178,7 +178,39 @@ Any AI provider, MCP server, GitHub, or optional voice provider you connect to A
 separate service governed by its own privacy policy and terms. See
 [THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md) for the current list and what each one receives.
 
-## 11. Contact
+## 11. Agent release downloads and update checks
+
+To install an agent CLI and keep it current, AndCode looks up and downloads releases from the public
+sources that publish them. These requests are separate from the prompt traffic in §3 and carry none
+of it:
+
+- **OpenCode and Antigravity:** AndCode's HTTP client asks GitHub's API (`api.github.com`) for the
+  latest release of `anomalyco/opencode` and `google-antigravity/antigravity-cli`, then downloads
+  the release asset GitHub names and checks it against the SHA-256 digest GitHub reports. GitHub
+  may redirect that download to its own asset-storage hosts.
+- **Codex:** AndCode's HTTP client asks the npm registry (`registry.npmjs.org`) for the latest
+  `@openai/codex` version and that platform's package, then downloads the tarball URL the registry
+  reports and checks it against the SHA-512 integrity string the registry records.
+- **Claude Code:** the `wget` and `apk` tools inside the on-device sandbox download Anthropic's
+  signing key, package index and package from `downloads.claude.ai`; the same `apk update` also
+  refreshes the Alpine package repositories (`dl-cdn.alpinelinux.org`) the sandbox is set up with.
+
+What is sent: an unauthenticated HTTPS request with `User-Agent: AndCode` (for the lookups AndCode's
+own HTTP client makes; the sandbox tools send their own) and the standard HTTP headers. No prompt,
+code, file, workspace path, account identifier, or credential is included — in particular, the GitHub
+token you may have connected in **Settings → GitHub** is not attached. As with any HTTPS request,
+the destination's operator sees your IP address and the time of the request. None of these requests
+go to a server AndCode operates.
+
+When: only when you install or update the agent in question, plus — for OpenCode — when you open
+**Settings → Agents → OpenCode** or tap its update check, and when the local runtime starts on a
+version older than the one bundled with the app. AndCode does not poll for releases in the
+background. See
+[Release and update lookups](docs/AUTHENTICATION_AND_DATA_FLOW.md#release-and-update-lookups) for
+the exact destinations and checks, and [THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md) for each
+service's terms.
+
+## 12. Contact
 
 This project is maintained on GitHub at
 [yuga-hashimoto/and-code](https://github.com/yuga-hashimoto/and-code). Open an issue there with

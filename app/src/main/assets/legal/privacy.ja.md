@@ -1,6 +1,6 @@
 # プライバシーポリシー
 
-_最終更新日: 2026-08-02_
+_最終更新日: 2026-11-21_
 
 この文書は、AndCodeが何を保存し、何を端末外へ送信し、それが誰宛てなのかを説明します。理想像ではなく、このリポジトリに実装されているとおりのアプリの挙動を記載しています。処理が第三者の公式CLIによって完結し、AndCode自身は関与しない場合は、その旨を明示します。
 
@@ -11,7 +11,7 @@ AndCodeは独立したローカルファーストのAndroidアプリです。**A
 - **アプリの設定**（テーマ、言語、フォントサイズ、選択中のモデル／エージェント、UIの切替、権限モードの選択など）は、端末内のアプリ設定／`SharedPreferences`に保存されます。
 - **リモートOpenCodeサーバーの接続プロファイル**（名前、URL、ユーザー名、パスワード、LAN/TLSオプション）や、その他の機密設定（プロバイダーAPIキー、GitHubトークン、TTSプロバイダーAPIキー）は、`SecureSettingsRepository`内で、Android Keystoreに裏付けられた`EncryptedSharedPreferences`（`AES256_GCM`／`AES256_SIV`）を使って保存されます。これらの値は、入力された用途で特定の接続やAPI呼び出しに使用される場合を除き、端末外へ出ることはありません（例：OpenCodeの接続パスワードは、認証先のOpenCodeサーバーにのみ送信され、GitHubトークンはGitHubのAPIにのみ送信されます）。
 - **セッション／チャット履歴、スケジュール、ワークスペースのメタデータ**は、アプリ再起動後もセッションが失われないよう、アプリ自身のローカルストレージ（SQLite／ローカルカタログ）に保存されます。
-- **Claude CodeとAntigravityの資格情報は、AndCodeにはまったく保存されません。** 各公式CLIは、それぞれが実行される端末内Linux（Alpine）またはDebian rootfs内で、独自のOAuth／トークン保存領域を管理します。たとえばAntigravityのゲストトークンはrootfs内の`root/.gemini/antigravity-cli/antigravity-oauth-token`に置かれ、Claude CodeはデスクトップLinux上と同様の方式で独自の資格情報保存領域を保持します。AndCodeはこれらのファイルの内容を読み取ったり、コピーしたり、Androidのアプリ設定へミラーしたりすることはなく、どこへも送信しません。詳細な流れは[docs/AUTHENTICATION_AND_DATA_FLOW.md](docs/AUTHENTICATION_AND_DATA_FLOW.md)を参照してください。
+- **Claude Code、Codex、Antigravityの資格情報は、AndCodeにはまったく保存されません。** 各公式CLIは、それぞれが実行される端末内Linux（Alpine）またはDebian rootfs内で、独自のOAuth／トークン保存領域を管理します。たとえばAntigravityのゲストトークンはrootfs内の`root/.gemini/antigravity-cli/antigravity-oauth-token`に置かれ、Claude CodeとCodex（`/root/.codex`配下）は、デスクトップLinux上と同様の方式で独自の資格情報保存領域を保持します。AndCodeはこれらのファイルの内容を読み取ったり、コピーしたり、Androidのアプリ設定へミラーしたりすることはなく、どこへも送信しません。詳細な流れは[docs/AUTHENTICATION_AND_DATA_FLOW.md](docs/AUTHENTICATION_AND_DATA_FLOW.md)を参照してください。
 
 ## 2. APIキー、接続パスワード、GitHubトークン
 
@@ -21,7 +21,7 @@ AndCodeは独立したローカルファーストのAndroidアプリです。**A
 
 ## 3. 利用者が設定したAIサービスへ送信されるデータ
 
-プロンプトを送信すると、プロンプト本文、関連するファイル内容、エージェントに必要なツール出力を含むリクエストが、端末内のCLI（リモートOpenCodeの場合はPC上のOpenCodeサーバー）から、利用者が設定したAIサービス（例：Claude CodeであればAnthropic、AntigravityであればGoogle、あるいはOpenCode内で接続したモデルプロバイダー）へ直接送信されます。AndCodeはこの通信を、自身が運用するサーバーを経由して傍受・記録・中継することはありません。この通信には各プロバイダー自身のプライバシーポリシーおよび利用規約が適用されます。詳細は[THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md)を参照してください。
+プロンプトを送信すると、プロンプト本文、関連するファイル内容、エージェントに必要なツール出力を含むリクエストが、端末内のCLI（リモートOpenCodeの場合はPC上のOpenCodeサーバー）から、利用者が設定したAIサービス（例：Claude CodeであればAnthropic、CodexであればOpenAI、AntigravityであればGoogle、あるいはOpenCode内で接続したモデルプロバイダー）へ直接送信されます。AndCodeはこの通信を、自身が運用するサーバーを経由して傍受・記録・中継することはありません。この通信には各プロバイダー自身のプライバシーポリシーおよび利用規約が適用されます。詳細は[THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md)を参照してください。
 
 ## 4. 設定したMCPサーバーおよび音声サービス
 
@@ -59,7 +59,7 @@ Crashlyticsのデータは、GoogleおよびFirebase自身のプライバシー�
 
 ## 9. 保存データの削除方法
 
-- **サインアウト**：それぞれのエージェント設定画面からClaude CodeまたはAntigravityをサインアウトすると、端末内に保存された資格情報が削除されます（該当CLI自身のrootfs内のトークンファイルが削除されます）。
+- **サインアウト**：それぞれのエージェント設定画面からClaude Code、Codex、Antigravityをサインアウトすると、端末内に保存された資格情報が削除されます（該当CLI自身のrootfs内のトークンファイルが削除されます）。
 - **切断**：**設定 → プロバイダー** / **設定 → GitHub**からプロバイダーまたはGitHubを切断すると、`EncryptedSharedPreferences`に保存されたAPIキー／トークンが削除されます。
 - **ローカルランタイムの削除**：**設定 → ローカルランタイム**から削除すると、端末内のLinux／Debian rootfsと、その中にインストールされたすべてのもの（エージェントの資格情報やインストール済みパッケージを含む）が削除されます。
 - **アプリのアンインストール**：暗号化された設定、キャッシュされたセッション／スケジュール、端末内ランタイムのディレクトリを含む、アプリ内のローカルストレージがすべて削除されます。ただし、AnthropicやGoogle、GitHubなどの利用者自身のアカウントや、各第三者サービス側が保持するデータには影響しません。
@@ -68,6 +68,34 @@ Crashlyticsのデータは、GoogleおよびFirebase自身のプライバシー�
 
 AndCodeに接続するAIサービス、MCPサーバー、GitHub、または任意で設定する音声プロバイダーは、それぞれ独自のプライバシーポリシーおよび利用規約に従う別個のサービスです。現在の一覧と各サービスが受け取る情報については、[THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md)を参照してください。
 
-## 11. お問い合わせ
+## 11. エージェントのリリースのダウンロードと更新確認
+
+エージェントCLIをインストールして最新の状態に保つため、AndCodeは、リリースを公開している公開ソースへ問い合わせ、
+ダウンロードを行います。これらのリクエストは§3のプロンプト通信とは別のものであり、その内容は一切含みません。
+
+- **OpenCodeとAntigravity:** AndCodeのHTTPクライアントが、GitHubのAPI（`api.github.com`）へ`anomalyco/opencode`と
+  `google-antigravity/antigravity-cli`の最新リリースを問い合わせ、GitHubが示すリリースアセットをダウンロードし、
+  GitHubが報告するSHA-256ダイジェストと照合します。GitHubは、そのダウンロードを自社のアセット保存先ホストへ
+  リダイレクトする場合があります。
+- **Codex:** AndCodeのHTTPクライアントが、npmレジストリ（`registry.npmjs.org`）へ最新の`@openai/codex`バージョンと
+  そのプラットフォーム用パッケージを問い合わせ、レジストリが報告するtarballのURLをダウンロードし、
+  レジストリが記録するSHA-512 integrity文字列と照合します。
+- **Claude Code:** 端末内サンドボックス内の`wget`と`apk`が、`downloads.claude.ai`からAnthropicの署名鍵、
+  パッケージインデックス、パッケージをダウンロードします。同じ`apk update`により、サンドボックスに設定されている
+  Alpineパッケージリポジトリ（`dl-cdn.alpinelinux.org`）も更新されます。
+
+送信される内容: 認証なしのHTTPSリクエストで、AndCode自身のHTTPクライアントが行う問い合わせでは`User-Agent: AndCode`
+（サンドボックス内のツールは各ツール固有のものを送信します）と標準的なHTTPヘッダーが付きます。プロンプト、コード、
+ファイル、ワークスペースのパス、アカウント識別子、資格情報は含まれません。特に、**設定 → GitHub**で接続している可能性のある
+GitHubトークンは付与されません。あらゆるHTTPSリクエストと同様に、接続先の運営者には利用者のIPアドレスとリクエストの時刻が見えます。
+これらのリクエストは、AndCodeが運用するサーバーには一切送られません。
+
+実行されるタイミング: 該当するエージェントをインストールまたは更新するときのみです。OpenCodeについては、これに加えて
+**設定 → エージェント → OpenCode**を開いたとき、更新確認をタップしたとき、およびローカルランタイムがアプリに同梱されている
+バージョンより古いバージョンで起動するときにも実行されます。AndCodeがバックグラウンドでリリースを定期的に確認することはありません。
+正確な接続先と確認内容は[リリースと更新の問い合わせ](docs/AUTHENTICATION_AND_DATA_FLOW.md#release-and-update-lookups)を、
+各サービスの規約は[THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md)を参照してください。
+
+## 12. お問い合わせ
 
 このプロジェクトはGitHub上の[yuga-hashimoto/and-code](https://github.com/yuga-hashimoto/and-code)で保守されています。プライバシーに関する質問や、このリポジトリのコードに関するデータ削除のご依頼は、こちらでIssueを立ててください。

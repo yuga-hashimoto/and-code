@@ -12,11 +12,20 @@ that implement each flow, not from how the feature is expected to behave.
   pinned per architecture in
   [`app/src/main/assets/local-runtime-manifest.json`](../app/src/main/assets/local-runtime-manifest.json)
   (`openCodeUrl`, `sha256`).
+- **Update lookup:** newer releases are found by `LocalRuntimeReleaseClient`, which asks GitHub's
+  `https://api.github.com/repos/anomalyco/opencode/releases/latest` for the newest release. That
+  request is made when you open **Settings → Agents → OpenCode** (and again each time a start,
+  stop, restart, update or rollback started from that screen finishes), when you tap its update
+  check, and when the local runtime starts with an installed version older than the one bundled in
+  this app build. The update archive is the asset
+  GitHub names in that response, downloaded over HTTPS and installed only if it matches the
+  SHA-256 digest GitHub reports for it. See [Release and update lookups](#release-and-update-lookups).
 - **Install location:** extracted into the app's private on-device Alpine rootfs by
   `LocalRuntimeInstaller`/`LocalOpenCodeBackend`, after SHA-256 verification.
 - **Launch:** started as a local HTTP server bound to `127.0.0.1:4097` inside the Alpine PRoot
   sandbox (`LocalOpenCodeBackend`); AndCode talks to it over `OpenCodeApiClient` like any OpenCode
-  client would. For **remote OpenCode**, AndCode instead connects to an OpenCode server you already
+  client would. `OPENCODE_DISABLE_AUTOUPDATE=true` is set so version updates stay app-controlled
+  instead of OpenCode updating itself. For **remote OpenCode**, AndCode instead connects to an OpenCode server you already
   run on your own PC/Mac/Linux (`RemoteOpenCodeBackend`), given a URL/username/password you supply.
 - **Authentication:** OpenCode's own provider authentication (for example, an Anthropic or OpenAI
   API key, or a provider's own OAuth flow) is handled by the OpenCode server itself. AndCode's
@@ -58,10 +67,22 @@ that implement each flow, not from how the feature is expected to behave.
 - **Binary source:** the official Claude Code package repository at
   `https://downloads.claude.ai/claude-code/apk/latest`, verified against Anthropic's signing key
   (`https://downloads.claude.ai/keys/claude-code.rsa.pub`) — see `ClaudeCodeInstaller`.
+- **Release lookups:** there is no version lookup in AndCode's own code for this agent. Installing
+  or updating Claude Code (**Settings → Agents → Claude Code**, the setup guide, or a runtime
+  install that includes it) runs `wget` and `apk` inside the PRoot sandbox: `wget` downloads the
+  signing key (on every update, not only at install), and `apk update` / `apk add` read the package
+  index and download the package from `https://downloads.claude.ai/claude-code/apk/latest`. Because
+  `apk update` refreshes every repository the sandbox has configured, the Alpine package
+  repositories the sandbox is set up with (`dl-cdn.alpinelinux.org`) are contacted in the same
+  step, and a first install also fetches `util-linux` and `jq` from them. These requests come from
+  the sandbox's own tools, not from AndCode's HTTP client, so they carry those tools' own
+  `User-Agent`, not `AndCode`. See [Release and update lookups](#release-and-update-lookups).
 - **Install location:** installed inside the on-device Alpine Linux rootfs (the same rootfs OpenCode
   uses), via `apk add`.
 - **Launch:** run as a child process inside the PRoot sandbox by `ClaudeSandboxLauncher`, with a PTY
   when interactive input/output is needed (for example, during sign-in).
+  `CLAUDE_CODE_DISABLE_AUTOUPDATER=1` is set so version updates stay app-controlled instead of the
+  CLI updating itself.
 - **Authentication start:** `ClaudeAuthCoordinator.begin()` launches the official CLI with
   `claude auth login` — the same command you would run in a terminal. AndCode does not implement its
   own OAuth client for Claude.
@@ -89,11 +110,15 @@ that implement each flow, not from how the feature is expected to behave.
 ## Google Antigravity
 
 - **Binary source:** the official `agy` CLI release archive, downloaded from
-  `https://github.com/google-antigravity/antigravity-cli/releases/download/<version>/agy_cli_linux_<arch>.tar.gz`,
+  `https://github.com/google-antigravity/antigravity-cli/releases/download/<version>/agy_cli_linux_<arch>.tar.gz`.
   The newest release is resolved at install/update time from GitHub's
-  `https://api.github.com/repos/google-antigravity/antigravity-cli/releases/latest`; the SHA-256 digest
-  GitHub reports for the asset is checked by `VerifiedRuntimeDownloader`. If that lookup fails, the
-  release pinned in `AntigravityManifest` (with hashes compiled into the app) is used instead.
+  `https://api.github.com/repos/google-antigravity/antigravity-cli/releases/latest`
+  (`AntigravityReleaseClient`); the SHA-256 digest GitHub reports for the asset is checked by
+  `VerifiedRuntimeDownloader`. If that lookup fails, the release pinned in `AntigravityManifest`
+  (with hashes compiled into the app) is used instead. The lookup is made only when Antigravity is
+  installed or updated (**Settings → Agents → Antigravity**, the setup guide, or a runtime install
+  that includes it) — there is no background check. See
+  [Release and update lookups](#release-and-update-lookups).
 - **Install location:** extracted into a dedicated **Debian Bookworm** rootfs at
   `usr/local/bin/agy` (Antigravity needs glibc, unlike OpenCode/Claude Code's Alpine/musl
   environment) — see `AntigravityInstaller`, `DebianRootfsInstaller`.
@@ -130,14 +155,90 @@ that implement each flow, not from how the feature is expected to behave.
   described above) — logout is confirmed by removing the credential file, not by re-querying the CLI.
 - **AndCode-owned server:** none.
 
-## Common properties across all three agents
+## OpenAI Codex
+
+- **Binary source:** the official `@openai/codex` package from the public npm registry. Codex has
+  no Alpine package and no GitHub release, so `CodexReleaseClient` makes two lookups against
+  `https://registry.npmjs.org/`: `@openai/codex/latest` (the newest version), then
+  `@openai/codex/<version>-linux-arm64` or `@openai/codex/<version>-linux-x64` (that platform's
+  tarball URL and its SHA-512 `integrity` string). `CodexInstaller` downloads the tarball from the
+  URL the registry reports (HTTPS required; in practice `registry.npmjs.org/@openai/codex/-/…`),
+  checks it against that SHA-512 integrity, and extracts only the `codex` and
+  `codex-code-mode-host` binaries. The lookups are made only when Codex is installed or
+  reinstalled (**Settings → Agents → Codex**, the setup guide, or a runtime install that includes
+  it) — there is no background check. See [Release and update lookups](#release-and-update-lookups).
+- **Install location:** `usr/local/bin` inside the on-device Alpine rootfs — the same rootfs
+  OpenCode and Claude Code use (Codex's native binary targets musl, so no second rootfs is needed);
+  see `CodexInstaller`.
+- **Launch:** `codex app-server` runs as one long-lived child process inside the PRoot sandbox
+  (`CodexSandboxLauncher`, `CodexRuntime`) with `CODEX_HOME=/root/.codex`; AndCode talks to it over
+  JSON-RPC 2.0 on stdio (`CodexJsonRpcClient`). Unlike OpenCode, Claude Code and Antigravity,
+  AndCode sets no flag to switch off Codex's own update behavior; whatever network access the Codex
+  CLI makes by itself is the CLI's own and not something AndCode relays or controls.
+- **Authentication start:** the same provider dialog OpenCode uses offers two methods
+  (`CodexTarget.providerAuthMethods`). **ChatGPT account:** `account/login/start` returns a sign-in
+  URL, which AndCode opens in the Android browser; the browser then lands on a callback Codex
+  itself serves on `localhost:1455`, and completion arrives as an `account/login/completed`
+  notification — nothing has to be pasted back. **API key:** the key you type is written to the
+  stdin of `codex login --with-api-key`.
+- **Where the credential is stored:** inside Codex's own credential store under `CODEX_HOME`
+  (`/root/.codex`) in the on-device Alpine rootfs, written by the CLI itself. AndCode's code does
+  not read, parse, or copy it. An API key typed into the dialog lives only in that dialog's
+  in-memory state until it is handed to `codex login`; it is not saved to
+  `EncryptedSharedPreferences`.
+- **What AndCode reads:** the JSON-RPC stream (threads, turns, items, the model list, approval
+  requests), and the result of `account/read` only to tell whether an account is signed in.
+- **What AndCode does not read:** the credential file's contents, or the token exchange itself
+  (that happens entirely inside the `codex` process).
+- **Prompt/response data flow:** prompts and the file/tool context they need go from the `codex`
+  process directly to OpenAI (or whichever provider the Codex CLI itself is configured for), and
+  responses stream back to AndCode's chat UI over the same process's stdout. No AndCode-operated
+  server sits in between.
+- **Logout:** `logout()` runs `codex logout` inside the runtime — the official CLI's own sign-out,
+  which removes the CLI's local credential.
+- **AndCode-owned server:** none.
+
+## Release and update lookups
+
+AndCode's own HTTP client (not the agent CLIs) asks the sources below which release to install, and
+downloads it. Each row names the code that does it; the agent sections above say when.
+
+| Agent | Destination | What is requested | Verified against |
+|---|---|---|---|
+| OpenCode | `api.github.com` | `GET /repos/anomalyco/opencode/releases/latest` (`LocalRuntimeReleaseClient`), then the release asset GitHub names (served from `github.com`) | SHA-256 digest GitHub reports for the asset |
+| Antigravity | `api.github.com` | `GET /repos/google-antigravity/antigravity-cli/releases/latest` (`AntigravityReleaseClient`), then the release asset GitHub names (served from `github.com`) | SHA-256 digest GitHub reports for the asset; falls back to the build's pinned release and compiled-in hashes if the lookup fails |
+| Codex | `registry.npmjs.org` | `GET /@openai/codex/latest`, `GET /@openai/codex/<version>-linux-<arch>` (`CodexReleaseClient`), then the tarball URL the registry reports | SHA-512 `integrity` the registry records |
+| Claude Code | `downloads.claude.ai` (and the sandbox's Alpine package repositories) | `wget` of `keys/claude-code.rsa.pub`, then `apk update` / `apk add` against `claude-code/apk/latest` — run by the sandbox's own tools, not AndCode's HTTP client | Anthropic's APK signing key |
+
+For the requests AndCode's own HTTP client makes (OpenCode, Antigravity and Codex):
+
+- **What is sent:** an unauthenticated HTTPS `GET` with `User-Agent: AndCode` (plus GitHub's
+  `Accept: application/vnd.github+json` media type for the two GitHub lookups) and the standard
+  headers HTTP libraries add. There is no `Authorization` header — the GitHub token used for pull
+  requests (**Settings → GitHub**) is not attached to them, even when it is connected — and no
+  prompt, code, workspace path, account identifier, or credential.
+- **What the destination can see:** as with any HTTPS request, the operator of the server (GitHub,
+  npm, Anthropic) sees your IP address and the time of the request, and that a client calling itself
+  `AndCode` asked for that release. The `apk`/`wget` requests made for Claude Code show those tools'
+  own `User-Agent` instead.
+- **Redirects:** GitHub release downloads (`github.com/<owner>/<repo>/releases/download/…`) may be
+  redirected by GitHub to its own asset-storage hosts, which GitHub operates.
+- **Failure behavior:** Antigravity falls back to its pinned release when its lookup fails. For
+  OpenCode and Codex a failed lookup is reported as a failed check or install; no other
+  destination is tried.
+- **No AndCode server:** none of these requests go to a server AndCode operates.
+- **When:** only on the actions the agent sections describe (there is no periodic background job)
+  — except the OpenCode check, which also runs on opening **Settings → Agents → OpenCode** and when
+  the local runtime starts on a version older than the one bundled with the app.
+
+## Common properties across all four agents
 
 - AndCode does not run its own authentication server, token-issuing service, or API proxy for any
-  of the three agents. Every browser hand-off is a plain Android `Intent.ACTION_VIEW`; every code
+  of the four agents. Every browser hand-off is a plain Android `Intent.ACTION_VIEW`; every code
   submission writes into the *existing* CLI process's own stdin/PTY.
-- OAuth tokens for Claude Code and Antigravity never leave the rootfs they were written into. They
-  are not copied into Android `SharedPreferences`/`EncryptedSharedPreferences`, not sent to a
-  server, and not shared between agents (an Antigravity credential cannot be reused to authenticate
-  Claude Code or OpenCode, and vice versa).
+- OAuth tokens for Claude Code, Codex and Antigravity never leave the rootfs they were written
+  into. They are not copied into Android `SharedPreferences`/`EncryptedSharedPreferences`, not sent
+  to a server, and not shared between agents (an Antigravity credential cannot be reused to
+  authenticate Claude Code, Codex or OpenCode, and vice versa).
 - Full authorization URLs (which can carry a `code`/`state` query parameter) are not written to
   persistent logs; see `SecretRedaction.redactUrlQuery` and `AntigravityAuthParser.redact`.
