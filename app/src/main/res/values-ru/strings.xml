@@ -1024,7 +1024,7 @@
     <string name="setup_agents_description">Выберите агентов программирования для установки на это устройство. Все они работают в одной среде Linux, остальных можно добавить позже.</string>
     <string name="setup_agent_claude_code_desc">Войдите в аккаунт Claude через браузер. Загрузка около 80 МБ.</string>
     <string name="setup_agent_opencode_desc">Войдите с собственным API-ключом поставщика моделей. Загрузка около 120 МБ.</string>
-    <string name="setup_agent_antigravity_desc">Войдите в аккаунт Google через браузер. Загрузка около 50 МБ.</string>
+    <string name="setup_agent_antigravity_desc">Войдите в аккаунт Google через браузер. Загрузка около 100 МБ.</string>
     <string name="setup_agents_required">Выберите хотя бы одного агента, чтобы продолжить.</string>
     <string name="setup_step_sign_in">Вход</string>
     <string name="setup_sign_in_description">Подключите учётные записи для ваших агентов.</string>

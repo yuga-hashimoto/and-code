@@ -1027,7 +1027,7 @@
     <string name="setup_agents_description">この端末に導入するコーディングエージェントを選んでください。いずれも同じLinux環境で動作し、後から追加もできます。</string>
     <string name="setup_agent_claude_code_desc">Claudeアカウントにブラウザでサインインします。約80MBをダウンロードします。</string>
     <string name="setup_agent_opencode_desc">モデルプロバイダーのAPIキーでサインインします。約120MBをダウンロードします。</string>
-    <string name="setup_agent_antigravity_desc">Googleアカウントにブラウザでサインインします。約50MBをダウンロードします。</string>
+    <string name="setup_agent_antigravity_desc">Googleアカウントにブラウザでサインインします。約100MBをダウンロードします。</string>
     <string name="setup_agents_required">続けるには少なくとも1つ選んでください。</string>
     <string name="setup_step_sign_in">サインイン</string>
     <string name="setup_sign_in_description">エージェントが使用するアカウントを接続します。</string>

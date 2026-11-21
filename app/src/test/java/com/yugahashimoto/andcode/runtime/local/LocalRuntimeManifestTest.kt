@@ -70,6 +70,8 @@ class LocalRuntimeManifestTest {
         manifest.validate()
 
         assertEquals("1.19.6", manifest.openCodeVersion)
+        assertTrue(manifest.architecture("arm64-v8a").openCodeUrl.endsWith("/opencode-linux-arm64-musl.tar.gz"))
+        assertTrue(manifest.architecture("x86_64").openCodeUrl.endsWith("/opencode-linux-x64-musl.tar.gz"))
         manifest.architectures.forEach { (abi, architecture) ->
             assertTrue(
                 "$abi openCodeUrl must contain /v${manifest.openCodeVersion}/: ${architecture.openCodeUrl}",

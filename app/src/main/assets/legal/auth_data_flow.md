@@ -90,7 +90,10 @@ that implement each flow, not from how the feature is expected to behave.
 
 - **Binary source:** the official `agy` CLI release archive, downloaded from
   `https://github.com/google-antigravity/antigravity-cli/releases/download/<version>/agy_cli_linux_<arch>.tar.gz`,
-  pinned in `AntigravityManifest` with a SHA-256 hash checked by `VerifiedRuntimeDownloader`.
+  The newest release is resolved at install/update time from GitHub's
+  `https://api.github.com/repos/google-antigravity/antigravity-cli/releases/latest`; the SHA-256 digest
+  GitHub reports for the asset is checked by `VerifiedRuntimeDownloader`. If that lookup fails, the
+  release pinned in `AntigravityManifest` (with hashes compiled into the app) is used instead.
 - **Install location:** extracted into a dedicated **Debian Bookworm** rootfs at
   `usr/local/bin/agy` (Antigravity needs glibc, unlike OpenCode/Claude Code's Alpine/musl
   environment) — see `AntigravityInstaller`, `DebianRootfsInstaller`.

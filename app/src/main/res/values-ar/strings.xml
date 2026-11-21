@@ -1030,7 +1030,7 @@
     <string name="setup_agents_description">اختر وكلاء البرمجة المراد تثبيتهم على هذا الجهاز. جميعهم يعملون في بيئة Linux نفسها، ويمكنك إضافة الباقي لاحقًا.</string>
     <string name="setup_agent_claude_code_desc">سجّل الدخول بحساب Claude عبر المتصفح. يتم تنزيل حوالي 80 ميغابايت.</string>
     <string name="setup_agent_opencode_desc">سجّل الدخول بمفتاح واجهة مزوّد النماذج الخاص بك. يتم تنزيل حوالي 120 ميغابايت.</string>
-    <string name="setup_agent_antigravity_desc">سجّل الدخول بحساب Google عبر المتصفح. يتم تنزيل حوالي 50 ميغابايت.</string>
+    <string name="setup_agent_antigravity_desc">سجّل الدخول بحساب Google عبر المتصفح. يتم تنزيل حوالي 100 ميغابايت.</string>
     <string name="setup_agents_required">اختر وكيلًا واحدًا على الأقل للمتابعة.</string>
     <string name="setup_step_sign_in">تسجيل الدخول</string>
     <string name="setup_sign_in_description">اربط الحسابات التي سيستخدمها وكلاؤك.</string>

@@ -30,7 +30,7 @@ class AntigravityManifestTest {
         assertEquals(AntigravityManifest.x64, AntigravityManifest.assetFor("amd64"))
     }
 
-    @Test fun `the free space gate covers the peak update footprint`() {
+    @Test fun `the free space gate is at least 800 MB`() {
         assertTrue(AntigravityManifest.MIN_FREE_BYTES >= 800L * 1024L * 1024L)
     }
 

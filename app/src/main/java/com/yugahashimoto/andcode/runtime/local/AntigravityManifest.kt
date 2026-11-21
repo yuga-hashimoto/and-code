@@ -14,8 +14,9 @@ object AntigravityManifest {
     const val VERSION = "1.5.13"
     const val BINARY_NAME = "agy"
 
-    // Peak update use is the ~92 MB archive + ~225 MB extracted binary + ~225 MB `agy.new` copy
-    // + ~225 MB `agy.rollback`, about 770 MB; 800 MB leaves headroom.
+    // Extra disk use at the peak of an install or update is the ~92-100 MB archive + the ~225 MB
+    // extracted binary + the ~225 MB `agy.new` copy, about 550 MB. Backing up the previous binary is
+    // a rename inside the same directory and needs no new space. 800 MB is that peak plus headroom.
     const val MIN_FREE_BYTES = 800L * 1024L * 1024L
     private const val BASE = "https://github.com/google-antigravity/antigravity-cli/releases/download/1.5.13/"
 

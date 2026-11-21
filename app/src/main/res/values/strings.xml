@@ -1018,7 +1018,7 @@
     <string name="setup_agents_description">Pick the coding agents to install on this device. They all run in the same Linux environment, and you can add the others later.</string>
     <string name="setup_agent_claude_code_desc">Sign in with your Claude account in the browser. Downloads about 80 MB.</string>
     <string name="setup_agent_opencode_desc">Sign in with your own model provider API key. Downloads about 120 MB.</string>
-    <string name="setup_agent_antigravity_desc">Sign in with your Google account in the browser. Downloads about 50 MB.</string>
+    <string name="setup_agent_antigravity_desc">Sign in with your Google account in the browser. Downloads about 100 MB.</string>
     <string name="setup_agents_required">Select at least one agent to continue.</string>
     <string name="setup_step_sign_in">Sign in</string>
     <string name="setup_sign_in_description">Connect the accounts your agents will use.</string>
