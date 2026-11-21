@@ -1021,7 +1021,7 @@
     <string name="setup_agents_description">Elija los agentes de programación que instalar en este dispositivo. Todos se ejecutan en el mismo entorno Linux y puede añadir los demás más adelante.</string>
     <string name="setup_agent_claude_code_desc">Inicie sesión con su cuenta de Claude en el navegador. Descarga unos 80 MB.</string>
     <string name="setup_agent_opencode_desc">Inicie sesión con su propia clave de API de proveedor de modelos. Descarga unos 120 MB.</string>
-    <string name="setup_agent_antigravity_desc">Inicie sesión con su cuenta de Google en el navegador. Descarga unos 50 MB.</string>
+    <string name="setup_agent_antigravity_desc">Inicie sesión con su cuenta de Google en el navegador. Descarga unos 100 MB.</string>
     <string name="setup_agents_required">Seleccione al menos un agente para continuar.</string>
     <string name="setup_step_sign_in">Iniciar sesión</string>
     <string name="setup_sign_in_description">Conecte las cuentas que usarán sus agentes.</string>

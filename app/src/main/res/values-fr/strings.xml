@@ -1021,7 +1021,7 @@
     <string name="setup_agents_description">Choisissez les agents de codage à installer sur cet appareil. Ils s’exécutent tous dans le même environnement Linux et vous pourrez ajouter les autres plus tard.</string>
     <string name="setup_agent_claude_code_desc">Connectez-vous avec votre compte Claude dans le navigateur. Télécharge environ 80 Mo.</string>
     <string name="setup_agent_opencode_desc">Connectez-vous avec votre propre clé d’API de fournisseur de modèles. Télécharge environ 120 Mo.</string>
-    <string name="setup_agent_antigravity_desc">Connectez-vous avec votre compte Google dans le navigateur. Télécharge environ 50 Mo.</string>
+    <string name="setup_agent_antigravity_desc">Connectez-vous avec votre compte Google dans le navigateur. Télécharge environ 100 Mo.</string>
     <string name="setup_agents_required">Sélectionnez au moins un agent pour continuer.</string>
     <string name="setup_step_sign_in">Connexion</string>
     <string name="setup_sign_in_description">Connectez les comptes qu’utiliseront vos agents.</string>

@@ -145,7 +145,7 @@ suspend fun resolveAntigravityRelease(
  *
  * An unknown current version (no marker yet, so what the guest runs is guesswork) always installs:
  * that is also how a garbage or unreadable marker gets repaired. Equal or older versions skip the
- * ~50 MB download — including the case where the lookup degraded to this build's pin while the
+ * ~90 MB download — including the case where the lookup degraded to this build's pin while the
  * guest already runs something newer, which must not become a silent downgrade.
  */
 internal fun shouldReplaceInstalledAntigravity(

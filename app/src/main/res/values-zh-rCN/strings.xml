@@ -1015,7 +1015,7 @@
     <string name="setup_agents_description">选择要安装在此设备上的编码智能体。它们都运行在同一个 Linux 环境中，之后也可以再添加其他的。</string>
     <string name="setup_agent_claude_code_desc">在浏览器中使用 Claude 账号登录。下载约 80 MB。</string>
     <string name="setup_agent_opencode_desc">使用你自己的模型提供方 API 密钥登录。下载约 120 MB。</string>
-    <string name="setup_agent_antigravity_desc">在浏览器中使用 Google 账号登录。下载约 50 MB。</string>
+    <string name="setup_agent_antigravity_desc">在浏览器中使用 Google 账号登录。下载约 100 MB。</string>
     <string name="setup_agents_required">请至少选择一个智能体以继续。</string>
     <string name="setup_step_sign_in">登录</string>
     <string name="setup_sign_in_description">连接智能体将使用的账号。</string>

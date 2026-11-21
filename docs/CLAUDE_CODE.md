@@ -131,6 +131,17 @@ Success is confirmed against `claude auth status`, not inferred from the exit co
 The app never creates, stores or handles OAuth tokens itself — credentials stay in Claude Code's own
 store under `/root` inside the sandbox.
 
+## Compatibility check against Claude Code 2.1.311
+
+Checked against the real `claude 2.1.311`, not a live signed-in run:
+
+- Every flag the app passes exists in `claude --help`: `--print`, `--input-format`, `--output-format`, `--verbose`, `--include-partial-messages`, `--permission-mode`, `--session-id`, `--resume`, `--append-system-prompt`, `--tools`, `--model`, `--effort`; `claude auth login|status|logout` also exist.
+- 2.1.285 / 2.1.302 changed the default permission mode. The app is unaffected because it always passes an explicit `--permission-mode`.
+- 2.1.268 made `PermissionRequest` hooks fire in `--print` mode — the mode the app uses.
+- 2.1.300 / 2.1.323 / 2.1.328 tightened `updatedInput` validation (unknown keys dropped, invalid input denies the call).
+
+**Not verified:** whether the `updatedInput` the app returns still reaches the tool. `ClaudePermissionBridge.answerQuestion` writes a `StoredResponse` with `decision = "allow"` and `updatedInput = {"questions": <the original questions array>, "answers": {<question>: <answer>}}` (the same map is also written in a separate `answers` field); since 2.1.300 Claude validates that input like its own tool input, so a live signed-in run is needed to confirm the answers still arrive.
+
 ## History and Events
 
 Session metadata and normalized Claude messages are stored in the app-private runtime directory.

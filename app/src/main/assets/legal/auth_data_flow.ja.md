@@ -40,8 +40,10 @@
 ## Google Antigravity
 
 - **バイナリの取得元:** 公式`agy` CLIリリースアーカイブ。取得元は
-  `https://github.com/google-antigravity/antigravity-cli/releases/download/<version>/agy_cli_linux_<arch>.tar.gz`で、
-  `AntigravityManifest`内でSHA-256ハッシュにより固定され、`VerifiedRuntimeDownloader`によって検証されます。
+  `https://github.com/google-antigravity/antigravity-cli/releases/download/<version>/agy_cli_linux_<arch>.tar.gz`です。
+  最新リリースはインストール／更新時にGitHubの
+  `https://api.github.com/repos/google-antigravity/antigravity-cli/releases/latest`から解決され、GitHubが報告するアセットのSHA-256ダイジェストを`VerifiedRuntimeDownloader`が検証します。
+  この問い合わせが失敗した場合は、アプリ内にハッシュを組み込んだ`AntigravityManifest`で固定されたリリースを代わりに使用します。
 - **インストール場所:** 専用の**Debian Bookworm** rootfs内の`usr/local/bin/agy`へ展開されます（AntigravityはOpenCode／Claude CodeのAlpine／musl環境とは異なり、glibcを必要とするため）。詳細は`AntigravityInstaller`、`DebianRootfsInstaller`を参照。
 - **起動方法:** `AntigravitySandboxLauncher`により、Debian PRootサンドボックス内のPTY子プロセスとして実行されます。`AGY_CLI_DISABLE_AUTO_UPDATE=1`が設定されており、バージョン更新はCLI自身に任せず、アプリ側で制御されます。
 - **認証開始方法:** `AntigravityAuthCoordinator.start()`が、公式`agy`バイナリを引数なしで起動し（ドキュメント化された初回実行フロー）、ログイン方式選択のTUIを待ち、あらかじめ選択されている「Google OAuth」を確定するためEnterを送信します。これも端末で`agy`を自ら実行した場合に選ぶのと同じ操作です。
