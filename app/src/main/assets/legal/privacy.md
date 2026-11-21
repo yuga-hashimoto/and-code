@@ -187,7 +187,9 @@ of it:
 - **OpenCode and Antigravity:** AndCode's HTTP client asks GitHub's API (`api.github.com`) for the
   latest release of `anomalyco/opencode` and `google-antigravity/antigravity-cli`, then downloads
   the release asset GitHub names and checks it against the SHA-256 digest GitHub reports. GitHub
-  may redirect that download to its own asset-storage hosts.
+  may redirect that download to its own asset-storage hosts (for example
+  `release-assets.githubusercontent.com`). OpenCode's first install and reinstall download the
+  release pinned in the app from `github.com` without a lookup.
 - **Codex:** AndCode's HTTP client asks the npm registry (`registry.npmjs.org`) for the latest
   `@openai/codex` version and that platform's package, then downloads the tarball URL the registry
   reports and checks it against the SHA-512 integrity string the registry records.
@@ -195,17 +197,19 @@ of it:
   signing key, package index and package from `downloads.claude.ai`; the same `apk update` also
   refreshes the Alpine package repositories (`dl-cdn.alpinelinux.org`) the sandbox is set up with.
 
-What is sent: an unauthenticated HTTPS request with `User-Agent: AndCode` (for the lookups AndCode's
-own HTTP client makes; the sandbox tools send their own) and the standard HTTP headers. No prompt,
-code, file, workspace path, account identifier, or credential is included — in particular, the GitHub
-token you may have connected in **Settings → GitHub** is not attached. As with any HTTPS request,
-the destination's operator sees your IP address and the time of the request. None of these requests
-go to a server AndCode operates.
+What is sent: unauthenticated HTTPS requests. The lookups AndCode's own HTTP client makes, and the
+Codex download, carry `User-Agent: AndCode`; the OpenCode and Antigravity archive downloads use the
+HTTP library's default `User-Agent`, and the sandbox tools send their own. No prompt, code, file,
+workspace path, account identifier, or credential is included — in particular, the GitHub token you
+may have connected in **Settings → GitHub** is not attached. As with any HTTPS request, the
+destination's operator sees your IP address, the time of the request, and which release was
+requested. None of these requests go to a server AndCode operates.
 
-When: only when you install or update the agent in question, plus — for OpenCode — when you open
-**Settings → Agents → OpenCode** or tap its update check, and when the local runtime starts on a
-version older than the one bundled with the app. AndCode does not poll for releases in the
-background. See
+When: when you install or update the agent in question, plus — for OpenCode — when you open
+**Settings → Agents → OpenCode** or tap its update check, and when the app automatically restarts
+an out-of-date local runtime (after a crash, a service restore or the watchdog), which can happen
+without you opening the screen and then also updates OpenCode to the release it finds. There is no
+periodic job that polls for releases. See
 [Release and update lookups](docs/AUTHENTICATION_AND_DATA_FLOW.md#release-and-update-lookups) for
 the exact destinations and checks, and [THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md) for each
 service's terms.

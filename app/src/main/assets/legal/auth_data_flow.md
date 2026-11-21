@@ -14,10 +14,12 @@ that implement each flow, not from how the feature is expected to behave.
   (`openCodeUrl`, `sha256`).
 - **Update lookup:** newer releases are found by `LocalRuntimeReleaseClient`, which asks GitHub's
   `https://api.github.com/repos/anomalyco/opencode/releases/latest` for the newest release. That
-  request is made when you open **Settings → Agents → OpenCode** (and again each time a start,
-  stop, restart, update or rollback started from that screen finishes), when you tap its update
-  check, and when the local runtime starts with an installed version older than the one bundled in
-  this app build. The update archive is the asset
+  request is made when you open **Settings → Agents → OpenCode** (and again each time a runtime
+  install, start, update or rollback finishes while that screen is open), when you tap its update
+  check, and when the app restarts the local runtime on its own — after a crash, a service restore
+  or the watchdog, not a manual Start — while the installed version is older than the one bundled
+  in this app build (for example right after an app update). In that last case the lookup, and the
+  update to the release it finds, run without you opening the screen. The update archive is the asset
   GitHub names in that response, downloaded over HTTPS and installed only if it matches the
   SHA-256 digest GitHub reports for it. See [Release and update lookups](#release-and-update-lookups).
 - **Install location:** extracted into the app's private on-device Alpine rootfs by
@@ -157,9 +159,9 @@ that implement each flow, not from how the feature is expected to behave.
 
 ## OpenAI Codex
 
-- **Binary source:** the official `@openai/codex` package from the public npm registry. Codex has
-  no Alpine package and no GitHub release, so `CodexReleaseClient` makes two lookups against
-  `https://registry.npmjs.org/`: `@openai/codex/latest` (the newest version), then
+- **Binary source:** the official `@openai/codex` package from the public npm registry. AndCode
+  installs Codex from npm rather than from an Alpine package or a GitHub release, so
+  `CodexReleaseClient` makes two lookups against `https://registry.npmjs.org/`: `@openai/codex/latest` (the newest version), then
   `@openai/codex/<version>-linux-arm64` or `@openai/codex/<version>-linux-x64` (that platform's
   tarball URL and its SHA-512 `integrity` string). `CodexInstaller` downloads the tarball from the
   URL the registry reports (HTTPS required; in practice `registry.npmjs.org/@openai/codex/-/…`),
@@ -200,8 +202,9 @@ that implement each flow, not from how the feature is expected to behave.
 
 ## Release and update lookups
 
-AndCode's own HTTP client (not the agent CLIs) asks the sources below which release to install, and
-downloads it. Each row names the code that does it; the agent sections above say when.
+AndCode — not the agent CLIs — asks the sources below which release to install, and downloads it.
+It does so with its own HTTP client, except for Claude Code, whose install runs `wget` and `apk`
+inside the sandbox. Each row names the code that does it; the agent sections above say when.
 
 | Agent | Destination | What is requested | Verified against |
 |---|---|---|---|
@@ -212,24 +215,32 @@ downloads it. Each row names the code that does it; the agent sections above say
 
 For the requests AndCode's own HTTP client makes (OpenCode, Antigravity and Codex):
 
-- **What is sent:** an unauthenticated HTTPS `GET` with `User-Agent: AndCode` (plus GitHub's
-  `Accept: application/vnd.github+json` media type for the two GitHub lookups) and the standard
-  headers HTTP libraries add. There is no `Authorization` header — the GitHub token used for pull
-  requests (**Settings → GitHub**) is not attached to them, even when it is connected — and no
-  prompt, code, workspace path, account identifier, or credential.
+- **What is sent:** unauthenticated HTTPS `GET`s. The lookups carry `User-Agent: AndCode` (plus
+  GitHub's `Accept: application/vnd.github+json` media type for the two GitHub lookups) and the
+  standard headers HTTP libraries add, and so does the Codex tarball download. The OpenCode and
+  Antigravity archive downloads are plain requests with the HTTP library's default `User-Agent`
+  (`okhttp/…`) and, only when an interrupted download is resumed, a `Range` header. None of them
+  has an `Authorization` header — the GitHub token used for pull requests (**Settings → GitHub**)
+  is not attached to them, even when it is connected — and none includes a prompt, code, workspace
+  path, account identifier, or credential.
 - **What the destination can see:** as with any HTTPS request, the operator of the server (GitHub,
-  npm, Anthropic) sees your IP address and the time of the request, and that a client calling itself
-  `AndCode` asked for that release. The `apk`/`wget` requests made for Claude Code show those tools'
-  own `User-Agent` instead.
+  npm, Anthropic) sees your IP address, the time of the request, and which release was requested.
+  The lookups identify the client as `AndCode`; the GitHub archive downloads identify it only as
+  the HTTP library; the `apk`/`wget` requests made for Claude Code show those tools' own
+  `User-Agent`.
 - **Redirects:** GitHub release downloads (`github.com/<owner>/<repo>/releases/download/…`) may be
-  redirected by GitHub to its own asset-storage hosts, which GitHub operates.
+  redirected by GitHub to its own asset-storage hosts (for example
+  `release-assets.githubusercontent.com`), which GitHub operates.
 - **Failure behavior:** Antigravity falls back to its pinned release when its lookup fails. For
   OpenCode and Codex a failed lookup is reported as a failed check or install; no other
   destination is tried.
 - **No AndCode server:** none of these requests go to a server AndCode operates.
-- **When:** only on the actions the agent sections describe (there is no periodic background job)
-  — except the OpenCode check, which also runs on opening **Settings → Agents → OpenCode** and when
-  the local runtime starts on a version older than the one bundled with the app.
+- **When:** only on the actions the agent sections describe; there is no periodic polling job. The
+  OpenCode check is the one that can run unattended: besides opening **Settings → Agents →
+  OpenCode** and tapping its update check, it also runs when the app automatically restarts an
+  out-of-date local runtime (after a crash, a service restore or the watchdog), as the OpenCode
+  section describes. OpenCode's first install and reinstall fetch the release archive pinned in the
+  app (see the OpenCode section) from `github.com` without a lookup.
 
 ## Common properties across all four agents
 
