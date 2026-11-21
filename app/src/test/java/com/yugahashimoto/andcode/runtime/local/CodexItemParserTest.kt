@@ -2,6 +2,7 @@ package com.yugahashimoto.andcode.runtime.local
 
 import com.yugahashimoto.andcode.core.api.OpenCodeEvent
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.Assert.assertEquals
@@ -282,6 +283,59 @@ class CodexItemParserTest {
         val part = parsed.messages.single().parts.single()
         assertEquals("tool", part.type)
         assertEquals("webSearch", part.tool)
+    }
+
+    @Test
+    fun `the remaining ThreadItem types fall through to a generic tool part`() {
+        val types =
+            listOf(
+                "collabAgentToolCall",
+                "contextCompaction",
+                "dynamicToolCall",
+                "enteredReviewMode",
+                "exitedReviewMode",
+                "functionCallOutput",
+                "hookPrompt",
+                "imageView",
+                "sleep",
+                "subAgentActivity",
+                "webSearch",
+            )
+        types.forEachIndexed { index, type ->
+            listOf("item/started", "item/completed").forEach { method ->
+                val parsed =
+                    parse(
+                        "t1",
+                        method,
+                        """{"item":{"id":"item-$index","type":"$type"},"threadId":"t1","turnId":"turn-1","completedAtMs":1}""",
+                    )
+
+                val part = parsed.messages.single().parts.single()
+                assertEquals("$type ($method) must surface as a tool part", "tool", part.type)
+                assertEquals("$type ($method) must carry its type as the tool name", type, part.tool)
+                assertEquals(
+                    "$type ($method) must carry the raw item",
+                    type,
+                    (part.state?.get("input") as JsonObject)["type"]?.jsonPrimitive?.content,
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `a handled item type still maps to its dedicated part`() {
+        val part =
+            parse(
+                "t1",
+                "item/completed",
+                """
+                {"item":{"type":"reasoning","id":"r-1","summary":[{"type":"summary_text","text":"think"}]},
+                 "threadId":"t1","turnId":"turn-1","completedAtMs":1}
+                """.trimIndent(),
+            ).messages.single().parts.single()
+
+        assertEquals("reasoning", part.type)
+        assertEquals("think", part.text)
     }
 
     @Test

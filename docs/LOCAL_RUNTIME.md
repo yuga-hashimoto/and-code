@@ -12,7 +12,7 @@ OpenCode本体はフォークしない。アプリ専用ストレージ内へLin
 
 - arm64-v8a・x86_64向けPRootランナー
 - Alpine Linux 3.24.1 minirootfsのダウンロード
-- OpenCode 1.18.3公式muslバイナリのダウンロード
+- OpenCode 1.19.6公式muslバイナリのダウンロード
 - URL・サイズ・SHA-256を固定したランタイムマニフェスト
 - 一時領域への展開と、成功後だけ本番環境へ切り替えるインストール
 - Alpine内へのGit、Bash、curl、OpenSSH client、CA証明書、ripgrep、libstdc++導入
@@ -45,6 +45,8 @@ SSEによるリアルタイム応答
 公式GitHub Release確認（1.18.3を最新版として判定）
 アプリ専用ストレージ上の更新・ロールバックInstrumentation Test
 ```
+
+現在のマニフェストはOpenCode 1.19.6を固定している。API互換性は1.18.5からのOpenAPI差分で確認済みだが、実機での再確認はまだ行っていない。
 
 ## ディレクトリ構成
 

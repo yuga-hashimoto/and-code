@@ -200,8 +200,8 @@ npx qrcode "opencode://connect?name=Mac%20mini&url=http%3A%2F%2F192.168.1.10%3A4
 固定版本（可通过应用发布更新，无需更改智能体；见 [`local-runtime-manifest.json`](app/src/main/assets/local-runtime-manifest.json)）：
 
 - Alpine Linux 3.24.1
-- OpenCode 1.18.5
-- Google Antigravity CLI 1.1.7（Debian Bookworm rootfs）
+- OpenCode 1.19.6
+- Google Antigravity CLI 1.5.13（Debian Bookworm rootfs）
 - 架构：arm64-v8a、x86_64
 
 ## 交接（对话中途切换运行时）

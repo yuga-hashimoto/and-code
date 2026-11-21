@@ -1,8 +1,11 @@
 package com.yugahashimoto.andcode.runtime.local
 
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
 
 class LocalRuntimeManifestTest {
     private val architecture =
@@ -45,6 +48,33 @@ class LocalRuntimeManifestTest {
 
         assertThrows(IllegalArgumentException::class.java) {
             invalid.validate("arm64-v8a")
+        }
+    }
+
+    private fun repositoryRoot(): File {
+        var directory = File(".").canonicalFile
+        repeat(8) {
+            if (File(directory, "settings.gradle.kts").exists()) return directory
+            directory = directory.parentFile ?: return@repeat
+        }
+        error("Could not locate repository root from ${File(".").canonicalPath}")
+    }
+
+    @Test
+    fun `the bundled manifest pins the expected OpenCode release and URLs`() {
+        val manifestFile = repositoryRoot().resolve("app/src/main/assets/local-runtime-manifest.json")
+        val manifest =
+            Json { ignoreUnknownKeys = true }
+                .decodeFromString<LocalRuntimeManifest>(manifestFile.readText())
+
+        manifest.validate()
+
+        assertEquals("1.19.6", manifest.openCodeVersion)
+        manifest.architectures.forEach { (abi, architecture) ->
+            assertTrue(
+                "$abi openCodeUrl must contain /v${manifest.openCodeVersion}/: ${architecture.openCodeUrl}",
+                architecture.openCodeUrl.contains("/v${manifest.openCodeVersion}/"),
+            )
         }
     }
 }

@@ -1,6 +1,6 @@
 # Antigravity local runtime
 
-The Android app provisions the official Google Antigravity CLI release in the shared Alpine/PRoot environment. Release 1.1.7 is pinned in `AntigravityManifest` and every archive is downloaded through `VerifiedRuntimeDownloader` and SHA-256 checked before activation.
+The Android app provisions the official Google Antigravity CLI in the shared Alpine/PRoot environment. Install and update resolve Google's newest release from GitHub's `latest` API; every archive is downloaded through `VerifiedRuntimeDownloader` and SHA-256 checked before activation. `AntigravityManifest` (pinned at 1.5.13) is the offline fallback and the version assumed for a sandbox with no version marker.
 
 ## Versions and updates
 
@@ -13,17 +13,15 @@ pinned: the card claimed a version the guest was not running. A sandbox provisio
 builds has no marker and still falls back to the pinned version, since nothing recorded what it
 installed.
 
-Antigravity comes from a version pinned in the app rather than a package repository, so the update
-check needs no network: the card compares the marker against `AntigravityManifest.VERSION` and offers
-`AntigravityController.update` when they differ. That update goes through
-`LocalRuntimeInstaller.updateAntigravity`, which re-verifies the release and swaps the single binary
-in place — a full reinstall would rebuild the whole environment directory to replace one file. The
-outcome is reported as `Updated(from, to)` or `AlreadyLatest(version)` so an update that changed
-nothing is distinguishable from one that did.
+Antigravity is resolved dynamically rather than installed from a package repository: `LocalRuntimeInstaller.install` (provisioning) and `LocalRuntimeInstaller.updateAntigravity` (the update card) both call `resolveAntigravityRelease`, which asks `AntigravityReleaseClient` for GitHub's `latest` release and accepts an asset only when GitHub reports a `sha256:` digest, an HTTPS download URL and a positive size. When that lookup fails — offline, rate-limited, or a payload without a usable digest — it degrades to the compiled-in `AntigravityManifest` pin, verified against hashes in this build. The resolved release is downloaded and the single `agy` binary is swapped in place, so an update does not rebuild the environment directory to replace one file. `shouldReplaceInstalledAntigravity` skips the download when the resolved release is not newer than the marker; an unknown marker always installs. The outcome is reported as `Updated(from, to)` or `AlreadyLatest(version)` so an update that changed nothing is distinguishable from one that did.
 
 The Termux fork is reference material only. Its native-Termux wrapper and patched binaries are not bundled or used. The runtime uses Alpine `gcompat`, `util-linux`, and CA certificates; an ABI/loader failure is reported as unsupported instead of silently installing an unofficial binary.
 
 OAuth is a remote PTY flow. The browser URL and one-time code are passed to the PTY, while credentials remain in `/root/.gemini` inside the Linux rootfs and are never copied into Android preferences. `AGY_CLI_DISABLE_AUTO_UPDATE=1` is set so updates remain verified and app-controlled.
+
+## Compatibility with 1.5.x
+
+The flags the app passes (`--print`, `--output-format`, `--conversation`, `--mode plan|accept-edits`, `--dangerously-skip-permissions`, `--model`, `--effort`) were checked against the real `agy 1.5.10 --help`, and all exist. 1.5.7 changed the default Agent Mode to Auto, but every invocation passes an explicit mode, so the app is unaffected. 1.5.0 made headless `-p` runs without `--print-timeout` wait for background tasks; the app does not pass `--print-timeout`, so this is a watch item only. The archives roughly doubled (92 MB arm64 / 100 MB x64, ~225 MB unpacked), so the installer's free-space gate was raised to 800 MB: peak use during an update is archive + extracted binary + `agy.new` + `agy.rollback`, about 770 MB. The glibc assets are kept deliberately; the new `*_musl` builds are not used because the runtime is Debian Bookworm. Not yet device-validated for 1.5.x: install, sign-in, a smoke prompt, and the permission flow.
 
 ## Why the sign-in URL needs an explicit PTY window size
 

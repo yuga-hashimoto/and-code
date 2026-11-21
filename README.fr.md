@@ -200,8 +200,8 @@ Le processus de configuration (lancé depuis Espaces de travail) :
 Versions épinglées (mises à jour via les releases de l'application sans changer d'agent ; voir [`local-runtime-manifest.json`](app/src/main/assets/local-runtime-manifest.json)) :
 
 - Alpine Linux 3.24.1
-- OpenCode 1.18.5
-- Google Antigravity CLI 1.1.7 (rootfs Debian Bookworm)
+- OpenCode 1.19.6
+- Google Antigravity CLI 1.5.13 (rootfs Debian Bookworm)
 - Architectures : arm64-v8a, x86_64
 
 ## Bascule à chaud (changement de runtime en cours de conversation)

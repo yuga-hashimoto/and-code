@@ -202,8 +202,8 @@ The setup process (triggered from Workspaces):
 Pinned versions (updatable via app releases without agent changes; see [`local-runtime-manifest.json`](app/src/main/assets/local-runtime-manifest.json)):
 
 - Alpine Linux 3.24.1
-- OpenCode 1.18.5
-- Google Antigravity CLI 1.1.7 (Debian Bookworm rootfs)
+- OpenCode 1.19.6
+- Google Antigravity CLI 1.5.13 (Debian Bookworm rootfs)
 - Architectures: arm64-v8a, x86_64
 
 ## Handoff (Runtime Switching Mid-Conversation)

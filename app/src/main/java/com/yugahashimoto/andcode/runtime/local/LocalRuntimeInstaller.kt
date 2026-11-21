@@ -346,7 +346,7 @@ class LocalRuntimeInstaller(
      * The release is resolved at update time — GitHub's `latest`, with this build's pin only as the
      * fallback when the lookup fails — so users no longer wait for an app release to receive new
      * Antigravity versions. When the guest already runs the resolved release (or something newer,
-     * which a pin-degraded lookup can report) the ~50 MB download is skipped. Going through
+     * which a pin-degraded lookup can report) the ~90 MB download is skipped. Going through
      * [install] for any of this would provision a whole new environment directory to replace one
      * file; [AntigravityInstaller] swaps `agy` in place instead, leaving the Debian rootfs and
      * every agent's credentials untouched.

@@ -29,7 +29,7 @@ class AntigravityInstaller(
     ): String =
         withContext(Dispatchers.IO) {
             require(runtimeDirectory.usableSpace >= AntigravityManifest.MIN_FREE_BYTES) {
-                "Antigravity needs at least 300 MB free space (available ${runtimeDirectory.usableSpace} bytes)"
+                insufficientSpaceMessage(runtimeDirectory.usableSpace)
             }
             val asset = release.asset
             // Versioned cache name: a stale archive of a different release must never be mistaken
@@ -73,6 +73,12 @@ class AntigravityInstaller(
         }
 
     companion object {
+        /** Derives the gate stated in the message from [AntigravityManifest.MIN_FREE_BYTES] so they cannot drift. */
+        internal fun insufficientSpaceMessage(availableBytes: Long): String {
+            val minimumMegabytes = AntigravityManifest.MIN_FREE_BYTES / (1024L * 1024L)
+            return "Antigravity needs at least $minimumMegabytes MB free space (available $availableBytes bytes)"
+        }
+
         /**
          * Records which release is in the guest, because the binary cannot be asked cheaply.
          *
