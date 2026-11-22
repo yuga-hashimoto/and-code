@@ -1,0 +1,4 @@
+- Chat shows a live inline preview of dev servers running on localhost, with reload and restart controls.
+- The guest browser can be handed to you and back.
+- Bundled OpenCode updated to 1.19.6.
+- Lower memory use: a very large tool output is no longer kept in full in the saved chat history, which makes out-of-memory crashes (#424) less likely; an oversized saved history is trimmed when it loads.

@@ -34,10 +34,21 @@ internal class AntigravityMessageStore(
                 file.inputStream().buffered().use { json.decodeFromStream<Map<String, List<OpenCodeMessage>>>(it) }
             }.mapCatching { decoded ->
                 decoded.forEach { (sessionId, sessionMessages) ->
-                    messages[sessionId] = sessionMessages.toMutableList()
+                    // A history written before tool output was bounded can hold megabytes per
+                    // tool call; bound it as it loads.
+                    messages[sessionId] =
+                        sessionMessages
+                            .map { message ->
+                                message.withBoundedToolOutput().also { if (it !== message) dirty = true }
+                            }.toMutableList()
                 }
             }.onFailure { Log.w(TAG, "Could not read the Antigravity history", it) }
                 .isSuccess
+        // Shrink the file now rather than at the next turn boundary: someone who only reads their
+        // history would otherwise decode the full oversized file on every launch. Only a history
+        // that loaded completely is rewritten: a partial load must keep reaching flush's
+        // unreadable-file backup path rather than replacing the file with what little loaded.
+        if (dirty && loaded) flush()
     }
 
     @Synchronized
@@ -48,7 +59,7 @@ internal class AntigravityMessageStore(
         sessionId: String,
         message: OpenCodeMessage,
     ) {
-        messages.getOrPut(sessionId) { mutableListOf() } += message
+        messages.getOrPut(sessionId) { mutableListOf() } += message.withBoundedToolOutput()
         dirty = true
     }
 
