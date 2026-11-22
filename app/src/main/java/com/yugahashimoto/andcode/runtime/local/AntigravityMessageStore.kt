@@ -45,8 +45,10 @@ internal class AntigravityMessageStore(
             }.onFailure { Log.w(TAG, "Could not read the Antigravity history", it) }
                 .isSuccess
         // Shrink the file now rather than at the next turn boundary: someone who only reads their
-        // history would otherwise decode the full oversized file on every launch.
-        if (dirty) flush()
+        // history would otherwise decode the full oversized file on every launch. Only a history
+        // that loaded completely is rewritten: a partial load must keep reaching flush's
+        // unreadable-file backup path rather than replacing the file with what little loaded.
+        if (dirty && loaded) flush()
     }
 
     @Synchronized

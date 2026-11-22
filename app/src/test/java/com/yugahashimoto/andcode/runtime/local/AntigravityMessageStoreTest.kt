@@ -91,6 +91,24 @@ class AntigravityMessageStoreTest {
         directory.deleteRecursively()
     }
 
+    /** Loading a history with nothing to trim must not rewrite the file on every launch. */
+    @Test
+    fun `a history with nothing to trim is not rewritten on load`() {
+        val directory = java.nio.file.Files.createTempDirectory("antigravity-message-store").toFile()
+        val file = File(directory, "antigravity-messages.json")
+        val first = AntigravityMessageStore(file, json)
+        first.append("s1", messageWithOutput("m1", "short"))
+        first.flush()
+        val before = file.readText()
+        assertTrue(file.setLastModified(1_000_000_000_000L))
+
+        AntigravityMessageStore(file, json)
+
+        assertEquals(1_000_000_000_000L, file.lastModified())
+        assertEquals(before, file.readText())
+        directory.deleteRecursively()
+    }
+
     private fun messageWithOutput(
         id: String,
         output: String,

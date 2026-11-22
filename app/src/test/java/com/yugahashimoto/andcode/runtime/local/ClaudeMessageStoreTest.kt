@@ -123,6 +123,25 @@ class ClaudeMessageStoreTest {
         directory.deleteRecursively()
     }
 
+    /** Loading a history with nothing to trim must not rewrite the file on every launch. */
+    @Test
+    fun `a history with nothing to trim is not rewritten on load`() {
+        val directory = java.nio.file.Files.createTempDirectory("claude-message-store").toFile()
+        val file = File(directory, "messages.json")
+        val json = Json { encodeDefaults = true }
+        val first = ClaudeMessageStore(file, json)
+        first.upsert("s1", messageWithOutput("m1", "short"))
+        first.flush()
+        val before = file.readText()
+        assertTrue(file.setLastModified(1_000_000_000_000L))
+
+        ClaudeMessageStore(file, json)
+
+        assertEquals(1_000_000_000_000L, file.lastModified())
+        assertEquals(before, file.readText())
+        directory.deleteRecursively()
+    }
+
     /** Streaming re-stores a message under the same id on every update; each version is bounded. */
     @Test
     fun `upsert bounds a message that replaces an earlier version of the same id`() {
