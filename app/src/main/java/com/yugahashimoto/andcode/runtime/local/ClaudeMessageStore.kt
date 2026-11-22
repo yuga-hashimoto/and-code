@@ -34,7 +34,14 @@ class ClaudeMessageStore(
         runCatching {
             file.inputStream().buffered().use { json.decodeFromStream<Map<String, List<OpenCodeMessage>>>(it) }
         }.getOrNull()?.forEach { (sessionId, sessionMessages) ->
-            messages[sessionId] = sessionMessages.toMutableList()
+            // A history written before tool output was bounded can hold megabytes per tool call.
+            // Bounding it as it loads shrinks what stays in the heap, and marking the store dirty
+            // lets the next flush shrink the file too.
+            messages[sessionId] =
+                sessionMessages
+                    .map { message ->
+                        message.withBoundedToolOutput().also { if (it !== message) dirty = true }
+                    }.toMutableList()
         }
     }
 
@@ -81,15 +88,19 @@ class ClaudeMessageStore(
         return updated.toList()
     }
 
-    /** Adds [message], replacing any earlier version of the same message id. */
+    /**
+     * Adds [message], replacing any earlier version of the same message id. Tool output is kept
+     * only up to [MAX_STORED_TOOL_OUTPUT_CHARS]; the chat never shows more than its tail.
+     */
     @Synchronized
     fun upsert(
         sessionId: String,
         message: OpenCodeMessage,
     ) {
+        val stored = message.withBoundedToolOutput()
         val sessionMessages = messages.getOrPut(sessionId) { mutableListOf() }
-        val existing = sessionMessages.indexOfFirst { it.info.id == message.info.id }
-        if (existing >= 0) sessionMessages[existing] = message else sessionMessages += message
+        val existing = sessionMessages.indexOfFirst { it.info.id == stored.info.id }
+        if (existing >= 0) sessionMessages[existing] = stored else sessionMessages += stored
         dirty = true
     }
 

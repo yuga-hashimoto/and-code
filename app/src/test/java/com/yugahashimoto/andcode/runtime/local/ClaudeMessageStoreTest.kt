@@ -3,9 +3,11 @@ package com.yugahashimoto.andcode.runtime.local
 import com.yugahashimoto.andcode.core.api.OpenCodeMessage
 import com.yugahashimoto.andcode.core.api.OpenCodeMessageInfo
 import com.yugahashimoto.andcode.core.api.OpenCodePart
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
 
@@ -79,4 +81,65 @@ class ClaudeMessageStoreTest {
         assertEquals(listOf("m1", "m2"), ClaudeMessageStore(file, json).list("s1").map { it.info.id })
         directory.deleteRecursively()
     }
+
+    /** A huge tool output must not stay in the heap, or on disk, in full (#424). */
+    @Test
+    fun `upsert keeps only the bounded tail of a huge tool output`() {
+        val directory = java.nio.file.Files.createTempDirectory("claude-message-store").toFile()
+        val file = File(directory, "messages.json")
+        val json = Json { encodeDefaults = true }
+        val store = ClaudeMessageStore(file, json)
+
+        store.upsert("s1", messageWithOutput("m1", "a".repeat(MAX_STORED_TOOL_OUTPUT_CHARS * 5) + "END"))
+        store.flush()
+
+        val kept = outputOf(store.list("s1").single())
+        assertEquals(MAX_STORED_TOOL_OUTPUT_CHARS, kept.length)
+        assertTrue(kept.endsWith("END"))
+        assertEquals(kept, outputOf(ClaudeMessageStore(file, json).list("s1").single()))
+        assertTrue(file.length() < MAX_STORED_TOOL_OUTPUT_CHARS * 2L)
+        directory.deleteRecursively()
+    }
+
+    /** A history written before the bound existed is shrunk as it loads and rewritten on flush. */
+    @Test
+    fun `an oversized history on disk is bounded on load and rewritten smaller`() {
+        val directory = java.nio.file.Files.createTempDirectory("claude-message-store").toFile()
+        val file = File(directory, "messages.json")
+        val json = Json { encodeDefaults = true }
+        file.writeText(
+            json.encodeToString(
+                mapOf("s1" to listOf(messageWithOutput("m1", "b".repeat(MAX_STORED_TOOL_OUTPUT_CHARS * 20) + "END"))),
+            ),
+        )
+        val bloatedSize = file.length()
+
+        val store = ClaudeMessageStore(file, json)
+        assertEquals(MAX_STORED_TOOL_OUTPUT_CHARS, outputOf(store.list("s1").single()).length)
+
+        store.flush()
+        assertTrue(file.length() < bloatedSize / 10)
+        assertTrue(outputOf(ClaudeMessageStore(file, json).list("s1").single()).endsWith("END"))
+        directory.deleteRecursively()
+    }
+
+    private fun messageWithOutput(
+        id: String,
+        output: String,
+    ) = OpenCodeMessage(
+        info = OpenCodeMessageInfo(id, "s1", "assistant"),
+        parts =
+            listOf(
+                OpenCodePart(
+                    id = "$id-tool",
+                    sessionId = "s1",
+                    messageId = id,
+                    type = "tool",
+                    tool = "Bash",
+                    state = mapOf("status" to JsonPrimitive("completed"), "output" to JsonPrimitive(output)),
+                ),
+            ),
+    )
+
+    private fun outputOf(message: OpenCodeMessage): String = (message.parts.single().state?.get("output") as JsonPrimitive).content
 }

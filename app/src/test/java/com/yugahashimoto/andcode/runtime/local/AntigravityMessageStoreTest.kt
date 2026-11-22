@@ -2,7 +2,10 @@ package com.yugahashimoto.andcode.runtime.local
 
 import com.yugahashimoto.andcode.core.api.OpenCodeMessage
 import com.yugahashimoto.andcode.core.api.OpenCodeMessageInfo
+import com.yugahashimoto.andcode.core.api.OpenCodePart
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -60,6 +63,53 @@ class AntigravityMessageStoreTest {
         assertEquals(listOf("m1"), AntigravityMessageStore(file, json).list("s1").map { it.info.id })
         directory.deleteRecursively()
     }
+
+    /** A huge tool output must not stay in the heap, or on disk, in full (#424). */
+    @Test
+    fun `a huge tool output is bounded when appended and when an old history loads`() {
+        val directory = java.nio.file.Files.createTempDirectory("antigravity-message-store").toFile()
+        val file = File(directory, "antigravity-messages.json")
+        val store = AntigravityMessageStore(file, json)
+        store.append("s1", messageWithOutput("m1", "a".repeat(MAX_STORED_TOOL_OUTPUT_CHARS * 5) + "END"))
+        store.flush()
+
+        assertEquals(MAX_STORED_TOOL_OUTPUT_CHARS, outputOf(store.list("s1").single()).length)
+        assertTrue(file.length() < MAX_STORED_TOOL_OUTPUT_CHARS * 2L)
+
+        // A history written before the bound existed shrinks as it loads, and on the next flush.
+        file.writeText(
+            json.encodeToString(
+                mapOf("s1" to listOf(messageWithOutput("m2", "b".repeat(MAX_STORED_TOOL_OUTPUT_CHARS * 20) + "END"))),
+            ),
+        )
+        val bloatedSize = file.length()
+        val reloaded = AntigravityMessageStore(file, json)
+        assertEquals(MAX_STORED_TOOL_OUTPUT_CHARS, outputOf(reloaded.list("s1").single()).length)
+        reloaded.flush()
+        assertTrue(file.length() < bloatedSize / 10)
+        assertTrue(outputOf(AntigravityMessageStore(file, json).list("s1").single()).endsWith("END"))
+        directory.deleteRecursively()
+    }
+
+    private fun messageWithOutput(
+        id: String,
+        output: String,
+    ) = OpenCodeMessage(
+        info = OpenCodeMessageInfo(id, "s1", "assistant"),
+        parts =
+            listOf(
+                OpenCodePart(
+                    id = "$id-tool",
+                    sessionId = "s1",
+                    messageId = id,
+                    type = "tool",
+                    tool = "run_command",
+                    state = mapOf("status" to JsonPrimitive("completed"), "output" to JsonPrimitive(output)),
+                ),
+            ),
+    )
+
+    private fun outputOf(message: OpenCodeMessage): String = (message.parts.single().state?.get("output") as JsonPrimitive).content
 
     private fun message(
         id: String,
