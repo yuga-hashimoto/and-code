@@ -35,7 +35,7 @@ internal class AntigravityMessageStore(
             }.mapCatching { decoded ->
                 decoded.forEach { (sessionId, sessionMessages) ->
                     // A history written before tool output was bounded can hold megabytes per
-                    // tool call; bound it as it loads, and let the next flush shrink the file.
+                    // tool call; bound it as it loads.
                     messages[sessionId] =
                         sessionMessages
                             .map { message ->
@@ -44,6 +44,9 @@ internal class AntigravityMessageStore(
                 }
             }.onFailure { Log.w(TAG, "Could not read the Antigravity history", it) }
                 .isSuccess
+        // Shrink the file now rather than at the next turn boundary: someone who only reads their
+        // history would otherwise decode the full oversized file on every launch.
+        if (dirty) flush()
     }
 
     @Synchronized

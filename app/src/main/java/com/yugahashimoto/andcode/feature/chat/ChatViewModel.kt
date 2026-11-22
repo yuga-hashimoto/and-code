@@ -233,7 +233,7 @@ data class PendingQuestionUi(
     }
 }
 
-private const val MAX_TOOL_OUTPUT_CHARS = 4000
+internal const val MAX_TOOL_OUTPUT_CHARS = 4000
 internal const val RESPONSE_POLL_INTERVAL_MS = 3000L
 private const val RESPONSE_POLL_TIMEOUT_MS = 120_000L
 internal const val TRANSIENT_RECOVERY_DELAY_MS = 5000L

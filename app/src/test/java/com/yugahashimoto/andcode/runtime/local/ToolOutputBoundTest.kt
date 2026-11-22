@@ -4,8 +4,10 @@ import com.yugahashimoto.andcode.core.api.OpenCodeMessage
 import com.yugahashimoto.andcode.core.api.OpenCodeMessageInfo
 import com.yugahashimoto.andcode.core.api.OpenCodePart
 import com.yugahashimoto.andcode.feature.chat.ChatPart
+import com.yugahashimoto.andcode.feature.chat.MAX_TOOL_OUTPUT_CHARS
 import com.yugahashimoto.andcode.feature.chat.toChatPart
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.junit.Assert.assertEquals
@@ -77,6 +79,49 @@ class ToolOutputBoundTest {
         assertEquals(small, keptSmall.parts.single().state?.get("output"))
         assertNull(droppedLarge.parts.single().state?.get("output"))
         assertEquals(JsonPrimitive("completed"), droppedLarge.parts.single().state?.get("status"))
+    }
+
+    @Test
+    fun `a structured result of exactly the bound is kept`() {
+        // The object's one key counts towards the budget along with its text.
+        val key = "content"
+        val atBound = JsonObject(mapOf(key to JsonPrimitive("z".repeat(1_000 - key.length))))
+        val overBound = JsonObject(mapOf(key to JsonPrimitive("z".repeat(1_000 - key.length + 1))))
+
+        assertEquals(
+            atBound,
+            message(toolPart("t1", atBound)).withBoundedToolOutput(maxChars = 1_000).parts.single().state?.get("output"),
+        )
+        assertNull(
+            message(toolPart("t2", overBound)).withBoundedToolOutput(maxChars = 1_000).parts.single().state?.get("output"),
+        )
+    }
+
+    @Test
+    fun `dropping a structured result leaves the chat showing what it showed before`() {
+        val large = JsonObject(mapOf("content" to JsonArray(listOf(JsonPrimitive("z".repeat(50_000))))))
+        val original = toolPart("t1", large)
+        val bounded = message(original).withBoundedToolOutput().parts.single()
+
+        val before = original.toChatPart("m1") as ChatPart.Tool
+        val after = bounded.toChatPart("m1") as ChatPart.Tool
+
+        assertNull(before.output)
+        assertEquals(before, after)
+    }
+
+    @Test
+    fun `non-string primitives are left alone`() {
+        val message = message(toolPart("t1", JsonPrimitive(12345)), toolPart("t2", JsonNull))
+
+        assertSame(message, message.withBoundedToolOutput(maxChars = 1))
+    }
+
+    @Test
+    fun `the stored bound stays above the limit the chat displays`() {
+        // The chat decides whether to say "output truncated" from the stored length, so a bound at
+        // or below its display limit would hide that a tool printed more.
+        assertTrue(MAX_STORED_TOOL_OUTPUT_CHARS > MAX_TOOL_OUTPUT_CHARS)
     }
 
     @Test

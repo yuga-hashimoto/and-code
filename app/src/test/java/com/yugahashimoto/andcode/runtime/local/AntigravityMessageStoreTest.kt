@@ -76,7 +76,7 @@ class AntigravityMessageStoreTest {
         assertEquals(MAX_STORED_TOOL_OUTPUT_CHARS, outputOf(store.list("s1").single()).length)
         assertTrue(file.length() < MAX_STORED_TOOL_OUTPUT_CHARS * 2L)
 
-        // A history written before the bound existed shrinks as it loads, and on the next flush.
+        // A history written before the bound existed shrinks as it loads, on disk too.
         file.writeText(
             json.encodeToString(
                 mapOf("s1" to listOf(messageWithOutput("m2", "b".repeat(MAX_STORED_TOOL_OUTPUT_CHARS * 20) + "END"))),
@@ -85,7 +85,7 @@ class AntigravityMessageStoreTest {
         val bloatedSize = file.length()
         val reloaded = AntigravityMessageStore(file, json)
         assertEquals(MAX_STORED_TOOL_OUTPUT_CHARS, outputOf(reloaded.list("s1").single()).length)
-        reloaded.flush()
+        // Nothing has flushed yet: loading alone must already have shrunk the file.
         assertTrue(file.length() < bloatedSize / 10)
         assertTrue(outputOf(AntigravityMessageStore(file, json).list("s1").single()).endsWith("END"))
         directory.deleteRecursively()

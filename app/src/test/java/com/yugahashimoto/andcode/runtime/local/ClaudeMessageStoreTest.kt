@@ -101,7 +101,7 @@ class ClaudeMessageStoreTest {
         directory.deleteRecursively()
     }
 
-    /** A history written before the bound existed is shrunk as it loads and rewritten on flush. */
+    /** A history written before the bound existed is shrunk as it loads, on disk too. */
     @Test
     fun `an oversized history on disk is bounded on load and rewritten smaller`() {
         val directory = java.nio.file.Files.createTempDirectory("claude-message-store").toFile()
@@ -115,11 +115,26 @@ class ClaudeMessageStoreTest {
         val bloatedSize = file.length()
 
         val store = ClaudeMessageStore(file, json)
-        assertEquals(MAX_STORED_TOOL_OUTPUT_CHARS, outputOf(store.list("s1").single()).length)
 
-        store.flush()
+        assertEquals(MAX_STORED_TOOL_OUTPUT_CHARS, outputOf(store.list("s1").single()).length)
+        // Nothing has flushed yet: loading alone must already have shrunk the file.
         assertTrue(file.length() < bloatedSize / 10)
         assertTrue(outputOf(ClaudeMessageStore(file, json).list("s1").single()).endsWith("END"))
+        directory.deleteRecursively()
+    }
+
+    /** Streaming re-stores a message under the same id on every update; each version is bounded. */
+    @Test
+    fun `upsert bounds a message that replaces an earlier version of the same id`() {
+        val directory = java.nio.file.Files.createTempDirectory("claude-message-store").toFile()
+        val store = ClaudeMessageStore(File(directory, "messages.json"), Json { encodeDefaults = true })
+
+        store.upsert("s1", messageWithOutput("m1", "short"))
+        store.upsert("s1", messageWithOutput("m1", "c".repeat(MAX_STORED_TOOL_OUTPUT_CHARS * 3) + "END"))
+
+        val kept = outputOf(store.list("s1").single())
+        assertEquals(MAX_STORED_TOOL_OUTPUT_CHARS, kept.length)
+        assertTrue(kept.endsWith("END"))
         directory.deleteRecursively()
     }
 

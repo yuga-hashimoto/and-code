@@ -35,14 +35,16 @@ class ClaudeMessageStore(
             file.inputStream().buffered().use { json.decodeFromStream<Map<String, List<OpenCodeMessage>>>(it) }
         }.getOrNull()?.forEach { (sessionId, sessionMessages) ->
             // A history written before tool output was bounded can hold megabytes per tool call.
-            // Bounding it as it loads shrinks what stays in the heap, and marking the store dirty
-            // lets the next flush shrink the file too.
+            // Bounding it as it loads shrinks what stays in the heap.
             messages[sessionId] =
                 sessionMessages
                     .map { message ->
                         message.withBoundedToolOutput().also { if (it !== message) dirty = true }
                     }.toMutableList()
         }
+        // Shrink the file now rather than at the next turn boundary: someone who only reads their
+        // history would otherwise decode the full oversized file on every launch.
+        if (dirty) flush()
     }
 
     @Synchronized
