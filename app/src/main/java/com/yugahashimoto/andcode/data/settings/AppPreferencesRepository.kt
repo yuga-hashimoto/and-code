@@ -35,6 +35,7 @@ data class AppPreferences(
     val wakeWordModelLanguage: String? = null,
     val autoAcceptPermissions: Boolean = false,
     val favoriteModelKeys: Set<String> = emptySet(),
+    val pinnedSessionIds: Set<String> = emptySet(),
     val recentModelKeys: List<String> = emptyList(),
     val hiddenModelKeys: Set<String> = emptySet(),
     val theme: String = "dark",
@@ -88,6 +89,7 @@ class AppPreferencesRepository(
                 wakeWordModelLanguage = settings.wakeWordModelLanguage,
                 autoAcceptPermissions = settings.autoAcceptPermissions,
                 favoriteModelKeys = settings.favoriteModelKeys,
+                pinnedSessionIds = settings.pinnedSessionIds,
                 recentModelKeys = settings.recentModelKeys,
                 hiddenModelKeys = settings.hiddenModelKeys,
                 theme = settings.theme,
@@ -264,6 +266,15 @@ class AppPreferencesRepository(
         val updated = if (key in current) current - key else current + key
         settings.favoriteModelKeys = updated
         mutableState.update { it.copy(favoriteModelKeys = updated) }
+    }
+
+    fun setSessionsPinned(
+        ids: Set<String>,
+        pin: Boolean,
+    ) {
+        val updated = pinnedAfter(mutableState.value.pinnedSessionIds, ids, pin)
+        settings.pinnedSessionIds = updated
+        mutableState.update { it.copy(pinnedSessionIds = updated) }
     }
 
     fun toggleModelVisibility(

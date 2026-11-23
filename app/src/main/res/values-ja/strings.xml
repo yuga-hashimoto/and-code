@@ -456,6 +456,15 @@
     <string name="drawer_pinned">ピン留め</string>
     <string name="drawer_pinned_sample_1">重要な会話</string>
     <string name="drawer_pinned_sample_2">プロジェクトのメモ</string>
+    <string name="drawer_search_hint">チャットを検索</string>
+    <string name="drawer_search_clear">検索をクリア</string>
+    <string name="drawer_search_no_results">一致するチャットなし</string>
+    <string name="drawer_pin_session">ピン留め</string>
+    <string name="drawer_unpin_session">ピン留めを解除</string>
+    <string name="drawer_chat_deleted">チャットを削除しました</string>
+    <string name="drawer_chat_archived">チャットをアーカイブしました</string>
+    <string name="drawer_undo">元に戻す</string>
+    <string name="drawer_rename_failed">チャット名を変更できませんでした</string>
     <string name="drawer_features">機能</string>
     <string name="drawer_plan_label">無料プラン</string>
     <string name="drawer_user_email_placeholder">user@example.com</string>

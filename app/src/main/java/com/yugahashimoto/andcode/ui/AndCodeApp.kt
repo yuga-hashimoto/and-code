@@ -6,11 +6,13 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -31,6 +33,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,6 +49,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -110,7 +117,6 @@ import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.runtime.local.GitCloneResult
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeOperationResult
-import com.yugahashimoto.andcode.ui.components.SessionStatus
 import com.yugahashimoto.andcode.ui.navigation.ClaudeSettingsActions
 import com.yugahashimoto.andcode.ui.navigation.DRAWER_ROOT_ROUTES
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_ANDROID_SETUP
@@ -132,6 +138,7 @@ import com.yugahashimoto.andcode.ui.navigation.settingsNavGraph
 import com.yugahashimoto.andcode.ui.navigation.workspaceNavGraph
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
 import com.yugahashimoto.andcode.ui.theme.AppTheme
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
@@ -178,6 +185,12 @@ private fun relativeTimeLabel(
     }
 }
 
+private val CollapsedSectionsSaver =
+    Saver<Set<String>, ArrayList<String>>(
+        save = { ArrayList(it) },
+        restore = { it.toSet() },
+    )
+
 @Composable
 fun AndCodeApp(
     onOpenAssistantSettings: () -> Unit,
@@ -219,7 +232,9 @@ fun AndCodeApp(
         )
     val codexSignInDialog by codexSignInViewModel.dialog.collectAsState()
 
-    var collapsedSections by remember { mutableStateOf(setOf<String>()) }
+    var collapsedSections by rememberSaveable(stateSaver = CollapsedSectionsSaver) {
+        mutableStateOf(setOf<String>())
+    }
 
     val workspaceViewModel: WorkspaceViewModel =
         viewModel(
@@ -820,32 +835,78 @@ fun AndCodeApp(
             }.getOrNull().orEmpty()
         }
 
+    val snackbarHostState = remember { SnackbarHostState() }
+    val removals =
+        remember(snackbarHostState) {
+            DrawerRemovals(
+                scope = voiceScope,
+                offerUndo = { kind ->
+                    // Ending an older offer first makes it commit immediately; offers never overlap.
+                    snackbarHostState.currentSnackbarData?.dismiss()
+                    val message =
+                        context.getString(
+                            if (kind == RemovalKind.DELETE) R.string.drawer_chat_deleted else R.string.drawer_chat_archived,
+                        )
+                    val result =
+                        snackbarHostState.showSnackbar(
+                            message = message,
+                            actionLabel = context.getString(R.string.drawer_undo),
+                            duration = SnackbarDuration.Short,
+                        )
+                    result == SnackbarResult.ActionPerformed
+                },
+                commit = { id, kind ->
+                    val targets = app.runtimeRegistry.targets.value
+                    val results =
+                        coroutineScope {
+                            targets.map { target ->
+                                async {
+                                    runCatching {
+                                        when (kind) {
+                                            RemovalKind.DELETE -> target.deleteSession(id)
+                                            RemovalKind.ARCHIVE -> target.archiveSession(id)
+                                        }
+                                    }
+                                }
+                            }.awaitAll()
+                        }
+                    // One runtime owning the chat is enough; only surface a failure when every
+                    // target failed.
+                    if (results.isNotEmpty() && results.all { it.isFailure }) {
+                        throw results.firstNotNullOfOrNull { it.exceptionOrNull() }
+                            ?: IllegalStateException("session removal failed")
+                    }
+                    app.catalogRepository.refreshSessionsOnly()
+                    app.preferences.setSessionsPinned(setOf(id), false)
+                },
+                onCommitFailed = { _, _, _ ->
+                    voiceScope.launch {
+                        snackbarHostState.showSnackbar(context.getString(R.string.error_opencode_operation))
+                    }
+                },
+            )
+        }
+    val pendingRemovals by removals.pending.collectAsState()
+
     // Every runtime's chats, not just the selected one's: switching agent used to look like the
     // history had been wiped. Each row carries the runtime that owns it so opening one can switch.
     val allSessions by app.catalogRepository.allSessions.collectAsState()
     val recentSessions =
-        remember(allSessions, activityState.activeSessionIds, activityState.completedSessionIds) {
-            allSessions
-                .filter { it.session.parentId == null }
-                .take(25).map { ref ->
-                    val session = ref.session
-                    DrawerRecentSession(
-                        id = session.id,
-                        title = session.title.ifBlank { session.slug ?: session.id },
-                        relativeTime = relativeTimeLabel(context, session.time.updated ?: session.time.created),
-                        directory = session.directory,
-                        isActive = session.id in activityState.activeSessionIds,
-                        hasUnread = session.id in activityState.completedSessionIds,
-                        status =
-                            when {
-                                session.id in activityState.activeSessionIds -> SessionStatus.RUNNING
-                                session.id in activityState.completedSessionIds -> SessionStatus.COMPLETED_UNREAD
-                                else -> SessionStatus.IDLE
-                            },
-                        runtimeId = ref.runtimeId,
-                        agent = ref.agent,
-                    )
-                }
+        remember(
+            allSessions,
+            activityState.activeSessionIds,
+            activityState.completedSessionIds,
+            preferences.pinnedSessionIds,
+            pendingRemovals,
+        ) {
+            drawerRecentSessions(
+                allSessions = allSessions,
+                activeSessionIds = activityState.activeSessionIds,
+                completedSessionIds = activityState.completedSessionIds,
+                pinnedSessionIds = preferences.pinnedSessionIds,
+                pendingRemoval = pendingRemovals,
+                timeLabel = { relativeTimeLabel(context, it) },
+            )
         }
 
     // Local agents that are actually provisioned. A target reports Unavailable while its agent is
@@ -932,617 +993,631 @@ fun AndCodeApp(
         appTheme = AppTheme.fromKey(preferences.theme),
         uiFontSize = preferences.uiFontSize,
     ) {
-        ModalNavigationDrawer(
-            modifier =
-                if (drawerGesturesEnabled) {
-                    Modifier.onlyAllowDrawerEdgeSwipe(drawerIsOpen = drawerState.isOpen)
-                } else {
-                    Modifier
-                },
-            drawerState = drawerState,
-            gesturesEnabled = drawerGesturesEnabled,
-            drawerContent = {
-                ModalDrawerSheet {
-                    AppDrawerContent(
-                        recentSessions = recentSessions,
-                        workspaces = workspaceState.workspaces,
-                        selectedWorkspacePath = chatState.selectedWorkspacePath,
-                        onNewChat = {
-                            closeDrawer()
-                            pendingSession = null
-                            chatViewModel.newSession()
-                            chatViewModel.selectWorkspace(null)
-                            navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
-                        },
-                        onSelectProject = { workspace ->
-                            closeDrawer()
-                            pendingSession = null
-                            chatViewModel.newSession()
-                            chatViewModel.selectWorkspace(workspace.path)
-                            navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
-                        },
-                        agents = drawerAgents,
-                        selectedRuntimeId = selectedRuntime?.id,
-                        onSelectAgent = { agent ->
-                            closeDrawer()
-                            if (agent.runtimeId != selectedRuntime?.id) {
-                                app.runtimeRegistry.select(agent.runtimeId)
-                                pendingSession = null
-                            }
-                            navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
-                        },
-                        onOpenSession = { id, title, runtimeId ->
-                            closeDrawer()
-                            // The list spans every agent, so the chat may belong to one that is not
-                            // selected; opening it has to move to its runtime first.
-                            openSessionInChat(id, title, runtimeId)
-                        },
-                        onNavigate = { route ->
-                            closeDrawer()
-                            navController.navigate(route) { launchSingleTop = true }
-                        },
-                        onDeleteSession = { sessionId ->
-                            voiceScope.launch {
-                                val targets = app.runtimeRegistry.targets.value
-                                coroutineScope {
-                                    targets.map { target ->
-                                        async { runCatching { target.deleteSession(sessionId) } }
-                                    }.awaitAll()
-                                }
-                                app.catalogRepository.refreshSessionsOnly()
-                            }
-                        },
-                        onArchiveSession = { sessionId ->
-                            voiceScope.launch {
-                                val targets = app.runtimeRegistry.targets.value
-                                coroutineScope {
-                                    targets.map { target ->
-                                        async { runCatching { target.archiveSession(sessionId) } }
-                                    }.awaitAll()
-                                }
-                                app.catalogRepository.refreshSessionsOnly()
-                            }
-                        },
-                        onBatchDelete = { sessionIds ->
-                            voiceScope.launch {
-                                val targets = app.runtimeRegistry.targets.value
-                                coroutineScope {
-                                    sessionIds.flatMap { id ->
-                                        targets.map { target ->
-                                            async { runCatching { target.deleteSession(id) } }
-                                        }
-                                    }.awaitAll()
-                                }
-                                app.catalogRepository.refreshSessionsOnly()
-                            }
-                        },
-                        onBatchArchive = { sessionIds ->
-                            voiceScope.launch {
-                                val targets = app.runtimeRegistry.targets.value
-                                coroutineScope {
-                                    sessionIds.flatMap { id ->
-                                        targets.map { target ->
-                                            async { runCatching { target.archiveSession(id) } }
-                                        }
-                                    }.awaitAll()
-                                }
-                                app.catalogRepository.refreshSessionsOnly()
-                            }
-                        },
-                        collapsedSections = collapsedSections,
-                        onToggleSection = { section ->
-                            collapsedSections =
-                                if (section in collapsedSections) {
-                                    collapsedSections - section
-                                } else {
-                                    collapsedSections + section
-                                }
-                        },
-                    )
-                }
-            },
-        ) {
-            // ModalNavigationDrawer's content slot is transparent, so without an explicit
-            // background here every screen shows the window's static (dark) windowBackground
-            // instead of the selected theme's surface - most visible switching to Light.
-            Surface(
-                modifier = Modifier.fillMaxSize(),
-                color = MaterialTheme.colorScheme.background,
-            ) {
-                NavHost(
-                    navController = navController,
-                    startDestination = startDestination,
-                ) {
-                    composable(ROUTE_ONBOARDING) {
-                        OnboardingChoiceScreen(
-                            onSelectAndroid = { navController.navigate(ROUTE_ANDROID_SETUP) },
-                            onSelectRemote = { navController.navigate(ROUTE_REMOTE_CONNECTION) },
-                        )
-                    }
-
-                    composable(ROUTE_ANDROID_SETUP) {
-                        val localRuntimeStatus by app.localRuntimeManager.state.collectAsState()
-                        val localRuntimeLastOperation by app.localRuntimeManager.lastOperation.collectAsState()
-                        AndroidSetupScreen(
-                            runtimeStatus = localRuntimeStatus,
-                            claude = workspaceState.claude,
-                            antigravity = antigravityState,
-                            fullDevelopmentToolsInstalled = app.localRuntimeManager.fullDevelopmentToolsInstalled(),
-                            fullDevelopmentToolsInstallFailed =
-                                (localRuntimeLastOperation as? LocalRuntimeOperationResult.Failed)?.operation ==
-                                    "development-tools-install",
-                            onStartSetup = { agents, installFullDevelopmentTools ->
-                                // Ticking Claude Code or Antigravity next to OpenCode used to install
-                                // neither of them: the two branches below were guarded on OpenCode
-                                // *not* being selected, and the OpenCode path never received the
-                                // selection at all, so it provisioned OpenCode alone. One install now
-                                // carries the whole selection, which is what LocalRuntimeInstaller
-                                // already knew how to do - and it must stay one install, because a
-                                // second one would race it for the same staging directory.
-                                if (com.yugahashimoto.andcode.runtime.LocalAgent.OPEN_CODE in agents) {
-                                    workspaceViewModel.setupLocalRuntime(agents, installFullDevelopmentTools)
-                                } else if (com.yugahashimoto.andcode.runtime.LocalAgent.ANTIGRAVITY in agents) {
-                                    app.antigravityController.install(agents, installFullDevelopmentTools)
-                                } else if (com.yugahashimoto.andcode.runtime.LocalAgent.CODEX in agents) {
-                                    // No OpenCode to carry the install: Codex's own install provisions
-                                    // the shared environment and every other selected agent with it.
-                                    app.codexController.install(agents, installFullDevelopmentTools)
-                                } else if (com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE in agents) {
-                                    workspaceViewModel.installClaudeCode(installFullDevelopmentTools)
-                                }
-                            },
-                            onSelectClaudePermissionMode = { mode ->
-                                workspaceViewModel.setClaudePermissionMode(mode, chatState.sessionId)
-                            },
-                            onBeginClaudeSignIn = workspaceViewModel::beginClaudeSignIn,
-                            onSubmitClaudeSignInCode = workspaceViewModel::submitClaudeSignInCode,
-                            onCancelClaudeSignIn = workspaceViewModel::cancelClaudeSignIn,
-                            onSignOutClaude = workspaceViewModel::signOutClaude,
-                            onBeginAntigravitySignIn = app.antigravityController::beginAuth,
-                            onSubmitAntigravitySignInCode = app.antigravityController::submitAuthCode,
-                            onCancelAntigravitySignIn = app.antigravityController::cancelAuth,
-                            onSignOutAntigravity = app.antigravityController::logout,
-                            codex = codexState,
-                            codexSignInDialog = codexSignInDialog,
-                            codexSignIn =
-                                CodexSignInActions(
-                                    onOpen = codexSignInViewModel::open,
-                                    onSelectMethod = codexSignInViewModel::selectMethod,
-                                    onApiKeyChange = codexSignInViewModel::updateApiKey,
-                                    onSubmit = codexSignInViewModel::submit,
-                                    onDismiss = codexSignInViewModel::dismiss,
-                                    onLaunchBrowser = { url -> UrlLauncher.openUrl(context, url) },
-                                ),
-                            onSignOutCodex = app.codexController::signOut,
-                            onRefreshCodexState = app.codexController::refresh,
-                            onSelectAntigravityPermissionMode = { mode ->
-                                app.antigravityController.setPermissionMode(mode, chatState.sessionId)
-                            },
-                            onOpenUrl = { url ->
-                                UrlLauncher.openUrl(context, url)
-                            },
-                            settingsState = settingsState,
-                            onOpenProviderAuth = settingsViewModel::openProviderAuth,
-                            onSelectProviderAuthMethod = settingsViewModel::selectProviderAuthMethod,
-                            onProviderAuthInput = settingsViewModel::updateProviderAuthInput,
-                            onProviderApiKey = settingsViewModel::updateProviderApiKey,
-                            onSubmitProviderAuth = settingsViewModel::submitProviderAuth,
-                            onCompleteProviderOAuth = settingsViewModel::completeProviderOAuth,
-                            onDisconnectProvider = settingsViewModel::disconnectProvider,
-                            onDismissProviderAuth = settingsViewModel::dismissProviderAuth,
-                            onRefreshProviderAuth = settingsViewModel::refreshProviderAuth,
-                            onRefreshCatalog = app.catalogRepository::refreshProvidersOnly,
-                            onRefreshClaudeState = workspaceViewModel::refreshClaudeCode,
-                            onRefreshAntigravityState = app.antigravityController::refresh,
-                            onConnectGitHub = { settingsViewModel.beginGitHubDeviceFlow() },
-                            onOpenGitHubVerification = { url ->
-                                UrlLauncher.openUrl(context, url)
-                            },
-                            onDisconnectGitHub = settingsViewModel::disconnectGitHub,
-                            onBack = { navController.popBackStack() },
-                            onFinish = completeOnboardingAndGoToChat,
-                        )
-                    }
-
-                    composable(ROUTE_CHAT) {
-                        // Keyed on the runtime too: a deep link that also switches the runtime must run
-                        // against the view model of the new runtime, not the previous one's. While no
-                        // runtime is selected yet (cold start) the chat backend does not exist and
-                        // openSession would silently no-op — wait for one instead of dropping the request.
-                        LaunchedEffect(pendingSession, selectedRuntime?.id) {
-                            val pending = pendingSession ?: return@LaunchedEffect
-                            if (selectedRuntime == null) return@LaunchedEffect
-                            chatViewModel.openSession(pending.first, pending.second)
-                            pendingSession = null
-                        }
-                        LaunchedEffect(pendingHandoffPrompt, selectedRuntime?.id, handoffReady) {
-                            val pending = pendingHandoffPrompt
-                            if (pending != null && handoffReady && selectedRuntime?.id == pending.first) {
-                                chatViewModel.sendMessage(pending.second)
-                                pendingHandoffPrompt = null
-                                handoffReady = false
-                            }
-                        }
-                        // A pull request is usually merged or closed on GitHub, not from here, so the
-                        // badges are refreshed while the chat is on screen. The repository decides what
-                        // is actually stale, so this only costs a request when something can change.
-                        // repeatOnLifecycle stops the loop the instant the app leaves STARTED (backed
-                        // out to another app, screen off) and restarts it fresh on return, rather than
-                        // polling GitHub for badges nobody can see.
-                        if (chatState.pullRequests.isNotEmpty()) {
-                            val lifecycleOwner = LocalLifecycleOwner.current
-                            LaunchedEffect(lifecycleOwner) {
-                                lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                                    while (true) {
-                                        delay(PULL_REQUEST_REFRESH_INTERVAL_MS)
-                                        chatViewModel.refreshPullRequests()
-                                    }
-                                }
-                            }
-                        }
-                        ChatHomeScreen(
-                            state = chatState,
-                            providers = settingsState.providers,
-                            agents = settingsState.agents,
-                            agentsLoading = settingsState.agentsLoading,
-                            selectedProviderId = chatState.selectedProviderId ?: fallbackProviderId,
-                            selectedModelId = chatState.selectedModelId ?: fallbackModelId,
-                            selectedAgentId = chatState.selectedAgentId ?: settingsState.agentId,
-                            runtimeTargets = runtimeTargets,
-                            selectedRuntimeId = selectedRuntime?.id,
-                            claudePermissionMode =
-                                workspaceState.claude
-                                    .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
-                                    ?.permissionMode,
-                            supportsPermissions = selectedRuntime?.capabilities?.permissions != false,
-                            onSelectClaudePermissionMode = { mode ->
-                                workspaceViewModel.setClaudePermissionMode(mode, chatState.sessionId)
-                            },
-                            // Only Claude Code can carry one: its CLI takes --append-system-prompt,
-                            // while agy has no equivalent flag, so the chip stays off elsewhere
-                            // rather than offering a control that would do nothing.
-                            systemPromptPresets =
-                                workspaceState.claude
-                                    .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
-                                    ?.systemPromptPresets
-                                    .orEmpty(),
-                            // The open chat's own preset, not the default new chats get: a session
-                            // keeps what it was created with, so naming the default here would show
-                            // a preset the send path is not going to use. Resolved off state rather
-                            // than by asking the backend, so a switch moves the chip on the tap
-                            // instead of on whatever recomposes next. A chat with no session yet
-                            // answers from its own draft, which is where its choice lives until the
-                            // first message creates the session to record it on.
-                            selectedSystemPromptId =
-                                workspaceState.claude
-                                    .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
-                                    ?.let { claude ->
-                                        // Presence of the draft decides, not its id: choosing None
-                                        // for this chat is a draft whose id is null, and an elvis
-                                        // here would read that as "no draft" and show the default
-                                        // while the first turn sent no prompt at all.
-                                        val draft = chatState.draftSystemPrompt
-                                        if (draft != null) draft.id else claude.systemPromptIdFor(chatState.sessionId)
-                                    },
-                            onSelectSystemPrompt = chatViewModel::selectSystemPrompt,
-                            // The mode settings shows, so the chip is not left naming whatever agent id
-                            // another runtime last remembered - see AntigravityTarget.listAgents.
-                            antigravityPermissionMode =
-                                antigravityState
-                                    .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.ANTIGRAVITY }
-                                    ?.permissionMode,
-                            onSelectAntigravityPermissionMode = { mode ->
-                                app.antigravityController.setPermissionMode(mode, chatState.sessionId)
-                            },
-                            onModelPickerClosed = { handoffReady = true },
-                            onSelectRuntime = { id ->
-                                if (id != selectedRuntime?.id) {
-                                    if (chatState.messages.isNotEmpty()) {
-                                        onHandoff(id)
-                                    } else {
-                                        app.runtimeRegistry.select(id)
-                                    }
-                                }
-                            },
-                            onOpenProviderSettings = {
-                                // OpenCode's provider list cannot connect Codex: its sign-in lives on
-                                // Codex's own settings screen.
-                                val codexSelected = selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CODEX
-                                navController.navigate(if (codexSelected) ROUTE_SETTINGS_AGENT_CODEX else ROUTE_SETTINGS_PROVIDERS)
-                            },
-                            onSelectModel = settingsViewModel::selectModel,
-                            onSelectAgent = settingsViewModel::selectAgent,
-                            onRefreshAgents = app.catalogRepository::refreshAgents,
-                            selectedVariant = chatState.selectedVariant,
-                            onSelectVariant = chatViewModel::selectVariant,
-                            onToggleFastMode = chatViewModel::setFastMode,
-                            onAttach = { attachmentLauncher.launch("*/*") },
-                            onRemoveAttachment = chatViewModel::removeAttachment,
-                            onImageAttachment = { bitmap ->
-                                voiceScope.launch {
-                                    runCatching {
-                                        withContext(Dispatchers.IO) {
-                                            com.yugahashimoto.andcode.runtime.local.AttachmentImporter(context).import(bitmap)
-                                        }
-                                    }.onSuccess { attachment ->
-                                        chatViewModel.addImageAttachment(attachment, bitmap)
-                                    }
-                                }
-                            },
-                            favoriteModelKeys = settingsState.favoriteModelKeys,
-                            recentModelKeys = settingsState.recentModelKeys,
-                            hiddenModelKeys =
-                                settingsState.hiddenModelKeys.takeIf {
-                                    selectedRuntime?.capabilities?.providerModelList == true
-                                }.orEmpty(),
-                            onToggleFavorite = settingsViewModel::toggleFavoriteModel,
-                            onSelectQuestionAnswer = chatViewModel::selectQuestionAnswer,
-                            onSubmitQuestion = chatViewModel::submitQuestion,
-                            onCancelQuestion = chatViewModel::cancelQuestion,
-                            onDismissQuestion = chatViewModel::dismissQuestion,
-                            onDismissTodoBar = chatViewModel::dismissTodoBar,
-                            onDismissPullRequest = chatViewModel::dismissPullRequest,
-                            autoAcceptPermissions = settingsState.autoAcceptPermissions,
-                            onToggleAutoAccept = settingsViewModel::setAutoAcceptPermissions,
-                            enterToSend = preferences.enterToSend,
-                            autoExpandReasoning = preferences.autoExpandReasoning,
-                            onSendMessage = chatViewModel::sendMessage,
-                            canEditMessages = selectedRuntime?.capabilities?.editMessages == true,
-                            onEditLastMessage = chatViewModel::editLastUserMessage,
-                            onEditDraftConsumed = chatViewModel::consumeEditDraft,
-                            onPermission = chatViewModel::respondToPermission,
-                            onAbort = chatViewModel::abort,
-                            onRecheckStall = chatViewModel::checkForStall,
-                            onMic = requestVoiceInput,
+        Box(modifier = Modifier.fillMaxSize()) {
+            ModalNavigationDrawer(
+                modifier =
+                    if (drawerGesturesEnabled) {
+                        Modifier.onlyAllowDrawerEdgeSwipe(drawerIsOpen = drawerState.isOpen)
+                    } else {
+                        Modifier
+                    },
+                drawerState = drawerState,
+                gesturesEnabled = drawerGesturesEnabled,
+                drawerContent = {
+                    ModalDrawerSheet {
+                        AppDrawerContent(
+                            recentSessions = recentSessions,
+                            workspaces = workspaceState.workspaces,
+                            selectedWorkspacePath = chatState.selectedWorkspacePath,
                             onNewChat = {
+                                closeDrawer()
                                 pendingSession = null
                                 chatViewModel.newSession()
+                                chatViewModel.selectWorkspace(null)
+                                navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
                             },
-                            onOpenLocalSetup = {
-                                navController.navigate(ROUTE_ANDROID_SETUP) { launchSingleTop = true }
-                            },
-                            onOpenRemoteSetup = {
-                                navController.navigate(ROUTE_REMOTE_CONNECTION) { launchSingleTop = true }
-                            },
-                            onRefreshCatalog = app.catalogRepository::refreshProvidersOnly,
-                            onOpenDrawer = {
-                                app.catalogRepository.refreshSessionsOnly()
-                                openDrawer()
-                            },
-                            subagents = subagentInfos,
-                            onSubagentClick = { childSessionId ->
-                                val childSession = activityState.sessions.firstOrNull { it.id == childSessionId }
-                                app.activityRepository.markSessionRead(childSessionId)
-                                // The chat this was opened from is the way back, so open the child
-                                // directly instead of routing through pendingSession, which would drop
-                                // the parent.
+                            onSelectProject = { workspace ->
+                                closeDrawer()
                                 pendingSession = null
-                                chatViewModel.openSubagentSession(
-                                    childSessionId,
-                                    childSession?.title ?: childSessionId,
-                                )
+                                chatViewModel.newSession()
+                                chatViewModel.selectWorkspace(workspace.path)
+                                navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
                             },
-                            onReturnToParentSession = {
-                                pendingSession = null
-                                chatViewModel.openParentSession()
-                            },
-                            onOpenUrl = { url ->
-                                UrlLauncher.openUrl(context, url)
-                            },
-                            previewState = previewState,
-                            previewTargets = sessionPreviewTargets,
-                            isForeground = appForeground,
-                            previewWorkspaceDir = previewWorkspaceDir,
-                            agentControlEnabled = preferences.guestBrowserAgentControlEnabled,
-                            onPreviewRequested = { target -> showPreview(target) },
-                            onPreviewMinimize = ::collapseActivePreview,
-                            onPreviewRestore = {
-                                (previewState as? PreviewUiState.Collapsed)?.let {
-                                    previewState = PreviewUiState.Active(it.target)
+                            agents = drawerAgents,
+                            selectedRuntimeId = selectedRuntime?.id,
+                            onSelectAgent = { agent ->
+                                closeDrawer()
+                                if (agent.runtimeId != selectedRuntime?.id) {
+                                    app.runtimeRegistry.select(agent.runtimeId)
+                                    pendingSession = null
                                 }
+                                navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
                             },
-                            onExpandPreview = { target ->
-                                when (target) {
-                                    is PreviewTarget.Url -> {
-                                        collapseActivePreview()
-                                        navController.navigate(guestBrowserRoute(target.url)) { launchSingleTop = true }
+                            onOpenSession = { id, title, runtimeId ->
+                                closeDrawer()
+                                // The list spans every agent, so the chat may belong to one that is not
+                                // selected; opening it has to move to its runtime first.
+                                openSessionInChat(id, title, runtimeId)
+                            },
+                            onNavigate = { route ->
+                                closeDrawer()
+                                navController.navigate(route) { launchSingleTop = true }
+                            },
+                            onDeleteSession = { sessionId -> removals.remove(sessionId, RemovalKind.DELETE) },
+                            onArchiveSession = { sessionId -> removals.remove(sessionId, RemovalKind.ARCHIVE) },
+                            onRenameSession = { sessionId, runtimeId, _, title ->
+                                voiceScope.launch {
+                                    val targets = app.runtimeRegistry.targets.value
+                                    val candidates =
+                                        if (runtimeId == null) {
+                                            targets
+                                        } else {
+                                            targets.filter { it.id == runtimeId }
+                                        }
+                                    val renamed =
+                                        candidates.any { target ->
+                                            try {
+                                                target.renameSession(sessionId, title)
+                                                true
+                                            } catch (cancellation: CancellationException) {
+                                                throw cancellation
+                                            } catch (_: Exception) {
+                                                false
+                                            }
+                                        }
+                                    if (renamed) {
+                                        app.catalogRepository.refreshSessionsOnly()
+                                    } else {
+                                        snackbarHostState.showSnackbar(context.getString(R.string.drawer_rename_failed))
                                     }
-                                    is PreviewTarget.Static -> Unit
                                 }
                             },
-                            onClosePreview = {
-                                BrowserHandoff.dismiss()
-                                previewState = PreviewUiState.None
+                            onBatchDelete = { sessionIds ->
+                                voiceScope.launch {
+                                    val targets = app.runtimeRegistry.targets.value
+                                    coroutineScope {
+                                        sessionIds.flatMap { id ->
+                                            targets.map { target ->
+                                                async { runCatching { target.deleteSession(id) } }
+                                            }
+                                        }.awaitAll()
+                                    }
+                                    app.catalogRepository.refreshSessionsOnly()
+                                }
                             },
-                            onOpenPatchDiff = chatViewModel::openPatchDiff,
-                            onDismissPatchDiff = chatViewModel::dismissPatchDiff,
-                            onLoadDraft = { sessionId -> chatViewModel.loadDraft(sessionId)?.text },
-                            onSaveDraft = { sessionId, text -> chatViewModel.saveDraft(sessionId, text) },
+                            onBatchArchive = { sessionIds ->
+                                voiceScope.launch {
+                                    val targets = app.runtimeRegistry.targets.value
+                                    coroutineScope {
+                                        sessionIds.flatMap { id ->
+                                            targets.map { target ->
+                                                async { runCatching { target.archiveSession(id) } }
+                                            }
+                                        }.awaitAll()
+                                    }
+                                    app.catalogRepository.refreshSessionsOnly()
+                                }
+                            },
+                            collapsedSections = collapsedSections,
+                            onToggleSection = { section ->
+                                collapsedSections = toggledSection(collapsedSections, section)
+                            },
+                            onSetPinned = { ids, pin -> app.preferences.setSessionsPinned(ids, pin) },
+                            drawerOpen = drawerState.isOpen,
                         )
                     }
-
-                    settingsNavGraph(
+                },
+            ) {
+                // ModalNavigationDrawer's content slot is transparent, so without an explicit
+                // background here every screen shows the window's static (dark) windowBackground
+                // instead of the selected theme's surface - most visible switching to Light.
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background,
+                ) {
+                    NavHost(
                         navController = navController,
-                        settingsViewModel = settingsViewModel,
-                        notificationsEnabled = { notificationsEnabled },
-                        onToggleNotifications = { enabled ->
-                            notificationsEnabled = enabled
-                            if (enabled && android.os.Build.VERSION.SDK_INT >= 33) {
-                                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-                            }
-                        },
-                        appVersion = appVersion,
-                        onOpenDrawer = { openDrawer() },
-                        onOpenAssistantSettings = onOpenAssistantSettings,
-                        assistantActive = { assistantActive },
-                        runtimeTargets = { runtimeTargets },
-                        workspaces = { workspaceState.workspaces },
-                        onShowDiagnostics = { showDiagnostics = true },
-                        preferences = { preferences },
-                        appPreferences = app.preferences,
-                        runtimeRegistry = app.runtimeRegistry,
-                        context = context,
-                        hasMicrophonePermission = { hasMicrophonePermission() },
-                        claude = { workspaceState.claude },
-                        claudeActions =
-                            ClaudeSettingsActions(
-                                onInstall = workspaceViewModel::installClaudeCode,
-                                onUpdate = workspaceViewModel::updateClaudeCode,
-                                onSelectPermissionMode = { mode ->
+                        startDestination = startDestination,
+                    ) {
+                        composable(ROUTE_ONBOARDING) {
+                            OnboardingChoiceScreen(
+                                onSelectAndroid = { navController.navigate(ROUTE_ANDROID_SETUP) },
+                                onSelectRemote = { navController.navigate(ROUTE_REMOTE_CONNECTION) },
+                            )
+                        }
+
+                        composable(ROUTE_ANDROID_SETUP) {
+                            val localRuntimeStatus by app.localRuntimeManager.state.collectAsState()
+                            val localRuntimeLastOperation by app.localRuntimeManager.lastOperation.collectAsState()
+                            AndroidSetupScreen(
+                                runtimeStatus = localRuntimeStatus,
+                                claude = workspaceState.claude,
+                                antigravity = antigravityState,
+                                fullDevelopmentToolsInstalled = app.localRuntimeManager.fullDevelopmentToolsInstalled(),
+                                fullDevelopmentToolsInstallFailed =
+                                    (localRuntimeLastOperation as? LocalRuntimeOperationResult.Failed)?.operation ==
+                                        "development-tools-install",
+                                onStartSetup = { agents, installFullDevelopmentTools ->
+                                    // Ticking Claude Code or Antigravity next to OpenCode used to install
+                                    // neither of them: the two branches below were guarded on OpenCode
+                                    // *not* being selected, and the OpenCode path never received the
+                                    // selection at all, so it provisioned OpenCode alone. One install now
+                                    // carries the whole selection, which is what LocalRuntimeInstaller
+                                    // already knew how to do - and it must stay one install, because a
+                                    // second one would race it for the same staging directory.
+                                    if (com.yugahashimoto.andcode.runtime.LocalAgent.OPEN_CODE in agents) {
+                                        workspaceViewModel.setupLocalRuntime(agents, installFullDevelopmentTools)
+                                    } else if (com.yugahashimoto.andcode.runtime.LocalAgent.ANTIGRAVITY in agents) {
+                                        app.antigravityController.install(agents, installFullDevelopmentTools)
+                                    } else if (com.yugahashimoto.andcode.runtime.LocalAgent.CODEX in agents) {
+                                        // No OpenCode to carry the install: Codex's own install provisions
+                                        // the shared environment and every other selected agent with it.
+                                        app.codexController.install(agents, installFullDevelopmentTools)
+                                    } else if (com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE in agents) {
+                                        workspaceViewModel.installClaudeCode(installFullDevelopmentTools)
+                                    }
+                                },
+                                onSelectClaudePermissionMode = { mode ->
                                     workspaceViewModel.setClaudePermissionMode(mode, chatState.sessionId)
                                 },
-                                onSignIn = workspaceViewModel::beginClaudeSignIn,
-                                onSubmitCode = workspaceViewModel::submitClaudeSignInCode,
-                                onCancelSignIn = workspaceViewModel::cancelClaudeSignIn,
-                                onSignOut = workspaceViewModel::signOutClaude,
-                                // The settings screen edits the default new chats get, so it
-                                // passes no session: handing it the open chat's id would also
-                                // rewrite that chat's own snapshot as a side effect. Per-chat
-                                // switching lives on the composer chip above, which passes the
-                                // session on purpose.
-                                onSelectSystemPrompt = { presetId ->
-                                    workspaceViewModel.selectClaudeSystemPrompt(presetId)
-                                },
-                                onSaveSystemPromptPreset = { name, prompt, id ->
-                                    workspaceViewModel.saveClaudeSystemPromptPreset(name, prompt, id)
-                                },
-                                onDeleteSystemPromptPreset = workspaceViewModel::deleteClaudeSystemPromptPreset,
-                            ),
-                        antigravity = { antigravityState },
-                        antigravityActions =
-                            com.yugahashimoto.andcode.ui.navigation.AntigravitySettingsActions(
-                                onInstall = app.antigravityController::install,
-                                onUpdate = app.antigravityController::update,
-                                onSelectPermissionMode = { mode ->
+                                onBeginClaudeSignIn = workspaceViewModel::beginClaudeSignIn,
+                                onSubmitClaudeSignInCode = workspaceViewModel::submitClaudeSignInCode,
+                                onCancelClaudeSignIn = workspaceViewModel::cancelClaudeSignIn,
+                                onSignOutClaude = workspaceViewModel::signOutClaude,
+                                onBeginAntigravitySignIn = app.antigravityController::beginAuth,
+                                onSubmitAntigravitySignInCode = app.antigravityController::submitAuthCode,
+                                onCancelAntigravitySignIn = app.antigravityController::cancelAuth,
+                                onSignOutAntigravity = app.antigravityController::logout,
+                                codex = codexState,
+                                codexSignInDialog = codexSignInDialog,
+                                codexSignIn =
+                                    CodexSignInActions(
+                                        onOpen = codexSignInViewModel::open,
+                                        onSelectMethod = codexSignInViewModel::selectMethod,
+                                        onApiKeyChange = codexSignInViewModel::updateApiKey,
+                                        onSubmit = codexSignInViewModel::submit,
+                                        onDismiss = codexSignInViewModel::dismiss,
+                                        onLaunchBrowser = { url -> UrlLauncher.openUrl(context, url) },
+                                    ),
+                                onSignOutCodex = app.codexController::signOut,
+                                onRefreshCodexState = app.codexController::refresh,
+                                onSelectAntigravityPermissionMode = { mode ->
                                     app.antigravityController.setPermissionMode(mode, chatState.sessionId)
                                 },
-                                onSignIn = app.antigravityController::beginAuth,
-                                onSubmitCode = app.antigravityController::submitAuthCode,
-                                onCancelSignIn = app.antigravityController::cancelAuth,
-                                onSignOut = app.antigravityController::logout,
-                            ),
-                        onRequestWakeWordPermission = {
-                            startWakeWordAfterPermission = true
-                            microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                        },
-                    )
-
-                    composable(ROUTE_SCHEDULES) {
-                        ScheduleListScreen(
-                            schedules = schedules,
-                            runs = scheduleRuns,
-                            runtimeTargets = runtimeTargets,
-                            nextFireAt = app.scheduleManager::nextFireAt,
-                            onOpenDrawer = { openDrawer() },
-                            onNewSchedule = { navController.navigate(ROUTE_SCHEDULE_EDIT) { launchSingleTop = true } },
-                            onOpenSchedule = { scheduleId ->
-                                navController.navigate(scheduleDetailRoute(scheduleId)) { launchSingleTop = true }
-                            },
-                            onEdit = { scheduleId ->
-                                navController.navigate(scheduleEditRoute(scheduleId)) { launchSingleTop = true }
-                            },
-                            onRunNow = { scheduleId ->
-                                scheduleViewModel.runNow(scheduleId)
-                                android.widget.Toast.makeText(
-                                    context,
-                                    R.string.schedule_run_now_started,
-                                    android.widget.Toast.LENGTH_SHORT,
-                                ).show()
-                            },
-                            onDelete = scheduleViewModel::delete,
-                            onToggleEnabled = scheduleViewModel::setEnabled,
-                            exactAlarmsAllowed = app.scheduleManager::exactAlarmsAllowed,
-                            // Alarms armed while the permission was missing are inexact; granting it
-                            // only takes effect once they are re-armed.
-                            onExactAlarmsGranted = app.scheduleManager::rescheduleAll,
-                        )
-                    }
-
-                    composable(
-                        route = SCHEDULE_DETAIL_ROUTE_PATTERN,
-                        arguments = listOf(navArgument("scheduleId") { type = NavType.StringType }),
-                    ) { backStackEntry ->
-                        val scheduleId = decodeRouteArg(backStackEntry.arguments?.getString("scheduleId").orEmpty())
-                        val schedule = schedules.firstOrNull { it.id == scheduleId }
-                        if (schedule == null) {
-                            // Deleted while on screen; drop back to the list.
-                            LaunchedEffect(Unit) { navController.popBackStack() }
-                        } else {
-                            ScheduleRunsScreen(
-                                schedule = schedule,
-                                runs = scheduleRuns.filter { it.scheduleId == scheduleId },
-                                titleForSession = { sessionId ->
-                                    allSessions
-                                        .firstOrNull { it.session.id == sessionId }
-                                        ?.session?.title?.ifBlank { null }
+                                onOpenUrl = { url ->
+                                    UrlLauncher.openUrl(context, url)
                                 },
+                                settingsState = settingsState,
+                                onOpenProviderAuth = settingsViewModel::openProviderAuth,
+                                onSelectProviderAuthMethod = settingsViewModel::selectProviderAuthMethod,
+                                onProviderAuthInput = settingsViewModel::updateProviderAuthInput,
+                                onProviderApiKey = settingsViewModel::updateProviderApiKey,
+                                onSubmitProviderAuth = settingsViewModel::submitProviderAuth,
+                                onCompleteProviderOAuth = settingsViewModel::completeProviderOAuth,
+                                onDisconnectProvider = settingsViewModel::disconnectProvider,
+                                onDismissProviderAuth = settingsViewModel::dismissProviderAuth,
+                                onRefreshProviderAuth = settingsViewModel::refreshProviderAuth,
+                                onRefreshCatalog = app.catalogRepository::refreshProvidersOnly,
+                                onRefreshClaudeState = workspaceViewModel::refreshClaudeCode,
+                                onRefreshAntigravityState = app.antigravityController::refresh,
+                                onConnectGitHub = { settingsViewModel.beginGitHubDeviceFlow() },
+                                onOpenGitHubVerification = { url ->
+                                    UrlLauncher.openUrl(context, url)
+                                },
+                                onDisconnectGitHub = settingsViewModel::disconnectGitHub,
                                 onBack = { navController.popBackStack() },
-                                onEdit = { id -> navController.navigate(scheduleEditRoute(id)) { launchSingleTop = true } },
-                                onRunNow = { id ->
-                                    scheduleViewModel.runNow(id)
+                                onFinish = completeOnboardingAndGoToChat,
+                            )
+                        }
+
+                        composable(ROUTE_CHAT) {
+                            // Keyed on the runtime too: a deep link that also switches the runtime must run
+                            // against the view model of the new runtime, not the previous one's. While no
+                            // runtime is selected yet (cold start) the chat backend does not exist and
+                            // openSession would silently no-op — wait for one instead of dropping the request.
+                            LaunchedEffect(pendingSession, selectedRuntime?.id) {
+                                val pending = pendingSession ?: return@LaunchedEffect
+                                if (selectedRuntime == null) return@LaunchedEffect
+                                chatViewModel.openSession(pending.first, pending.second)
+                                pendingSession = null
+                            }
+                            LaunchedEffect(pendingHandoffPrompt, selectedRuntime?.id, handoffReady) {
+                                val pending = pendingHandoffPrompt
+                                if (pending != null && handoffReady && selectedRuntime?.id == pending.first) {
+                                    chatViewModel.sendMessage(pending.second)
+                                    pendingHandoffPrompt = null
+                                    handoffReady = false
+                                }
+                            }
+                            // A pull request is usually merged or closed on GitHub, not from here, so the
+                            // badges are refreshed while the chat is on screen. The repository decides what
+                            // is actually stale, so this only costs a request when something can change.
+                            // repeatOnLifecycle stops the loop the instant the app leaves STARTED (backed
+                            // out to another app, screen off) and restarts it fresh on return, rather than
+                            // polling GitHub for badges nobody can see.
+                            if (chatState.pullRequests.isNotEmpty()) {
+                                val lifecycleOwner = LocalLifecycleOwner.current
+                                LaunchedEffect(lifecycleOwner) {
+                                    lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                                        while (true) {
+                                            delay(PULL_REQUEST_REFRESH_INTERVAL_MS)
+                                            chatViewModel.refreshPullRequests()
+                                        }
+                                    }
+                                }
+                            }
+                            ChatHomeScreen(
+                                state = chatState,
+                                providers = settingsState.providers,
+                                agents = settingsState.agents,
+                                agentsLoading = settingsState.agentsLoading,
+                                selectedProviderId = chatState.selectedProviderId ?: fallbackProviderId,
+                                selectedModelId = chatState.selectedModelId ?: fallbackModelId,
+                                selectedAgentId = chatState.selectedAgentId ?: settingsState.agentId,
+                                runtimeTargets = runtimeTargets,
+                                selectedRuntimeId = selectedRuntime?.id,
+                                claudePermissionMode =
+                                    workspaceState.claude
+                                        .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
+                                        ?.permissionMode,
+                                supportsPermissions = selectedRuntime?.capabilities?.permissions != false,
+                                onSelectClaudePermissionMode = { mode ->
+                                    workspaceViewModel.setClaudePermissionMode(mode, chatState.sessionId)
+                                },
+                                // Only Claude Code can carry one: its CLI takes --append-system-prompt,
+                                // while agy has no equivalent flag, so the chip stays off elsewhere
+                                // rather than offering a control that would do nothing.
+                                systemPromptPresets =
+                                    workspaceState.claude
+                                        .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
+                                        ?.systemPromptPresets
+                                        .orEmpty(),
+                                // The open chat's own preset, not the default new chats get: a session
+                                // keeps what it was created with, so naming the default here would show
+                                // a preset the send path is not going to use. Resolved off state rather
+                                // than by asking the backend, so a switch moves the chip on the tap
+                                // instead of on whatever recomposes next. A chat with no session yet
+                                // answers from its own draft, which is where its choice lives until the
+                                // first message creates the session to record it on.
+                                selectedSystemPromptId =
+                                    workspaceState.claude
+                                        .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CLAUDE_CODE }
+                                        ?.let { claude ->
+                                            // Presence of the draft decides, not its id: choosing None
+                                            // for this chat is a draft whose id is null, and an elvis
+                                            // here would read that as "no draft" and show the default
+                                            // while the first turn sent no prompt at all.
+                                            val draft = chatState.draftSystemPrompt
+                                            if (draft != null) draft.id else claude.systemPromptIdFor(chatState.sessionId)
+                                        },
+                                onSelectSystemPrompt = chatViewModel::selectSystemPrompt,
+                                // The mode settings shows, so the chip is not left naming whatever agent id
+                                // another runtime last remembered - see AntigravityTarget.listAgents.
+                                antigravityPermissionMode =
+                                    antigravityState
+                                        .takeIf { selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.ANTIGRAVITY }
+                                        ?.permissionMode,
+                                onSelectAntigravityPermissionMode = { mode ->
+                                    app.antigravityController.setPermissionMode(mode, chatState.sessionId)
+                                },
+                                onModelPickerClosed = { handoffReady = true },
+                                onSelectRuntime = { id ->
+                                    if (id != selectedRuntime?.id) {
+                                        if (chatState.messages.isNotEmpty()) {
+                                            onHandoff(id)
+                                        } else {
+                                            app.runtimeRegistry.select(id)
+                                        }
+                                    }
+                                },
+                                onOpenProviderSettings = {
+                                    // OpenCode's provider list cannot connect Codex: its sign-in lives on
+                                    // Codex's own settings screen.
+                                    val codexSelected = selectedRuntime?.agent == com.yugahashimoto.andcode.runtime.LocalAgent.CODEX
+                                    navController.navigate(if (codexSelected) ROUTE_SETTINGS_AGENT_CODEX else ROUTE_SETTINGS_PROVIDERS)
+                                },
+                                onSelectModel = settingsViewModel::selectModel,
+                                onSelectAgent = settingsViewModel::selectAgent,
+                                onRefreshAgents = app.catalogRepository::refreshAgents,
+                                selectedVariant = chatState.selectedVariant,
+                                onSelectVariant = chatViewModel::selectVariant,
+                                onToggleFastMode = chatViewModel::setFastMode,
+                                onAttach = { attachmentLauncher.launch("*/*") },
+                                onRemoveAttachment = chatViewModel::removeAttachment,
+                                onImageAttachment = { bitmap ->
+                                    voiceScope.launch {
+                                        runCatching {
+                                            withContext(Dispatchers.IO) {
+                                                com.yugahashimoto.andcode.runtime.local.AttachmentImporter(context).import(bitmap)
+                                            }
+                                        }.onSuccess { attachment ->
+                                            chatViewModel.addImageAttachment(attachment, bitmap)
+                                        }
+                                    }
+                                },
+                                favoriteModelKeys = settingsState.favoriteModelKeys,
+                                recentModelKeys = settingsState.recentModelKeys,
+                                hiddenModelKeys =
+                                    settingsState.hiddenModelKeys.takeIf {
+                                        selectedRuntime?.capabilities?.providerModelList == true
+                                    }.orEmpty(),
+                                onToggleFavorite = settingsViewModel::toggleFavoriteModel,
+                                onSelectQuestionAnswer = chatViewModel::selectQuestionAnswer,
+                                onSubmitQuestion = chatViewModel::submitQuestion,
+                                onCancelQuestion = chatViewModel::cancelQuestion,
+                                onDismissQuestion = chatViewModel::dismissQuestion,
+                                onDismissTodoBar = chatViewModel::dismissTodoBar,
+                                onDismissPullRequest = chatViewModel::dismissPullRequest,
+                                autoAcceptPermissions = settingsState.autoAcceptPermissions,
+                                onToggleAutoAccept = settingsViewModel::setAutoAcceptPermissions,
+                                enterToSend = preferences.enterToSend,
+                                autoExpandReasoning = preferences.autoExpandReasoning,
+                                onSendMessage = chatViewModel::sendMessage,
+                                canEditMessages = selectedRuntime?.capabilities?.editMessages == true,
+                                onEditLastMessage = chatViewModel::editLastUserMessage,
+                                onEditDraftConsumed = chatViewModel::consumeEditDraft,
+                                onPermission = chatViewModel::respondToPermission,
+                                onAbort = chatViewModel::abort,
+                                onRecheckStall = chatViewModel::checkForStall,
+                                onMic = requestVoiceInput,
+                                onNewChat = {
+                                    pendingSession = null
+                                    chatViewModel.newSession()
+                                },
+                                onOpenLocalSetup = {
+                                    navController.navigate(ROUTE_ANDROID_SETUP) { launchSingleTop = true }
+                                },
+                                onOpenRemoteSetup = {
+                                    navController.navigate(ROUTE_REMOTE_CONNECTION) { launchSingleTop = true }
+                                },
+                                onRefreshCatalog = app.catalogRepository::refreshProvidersOnly,
+                                onOpenDrawer = {
+                                    app.catalogRepository.refreshSessionsOnly()
+                                    openDrawer()
+                                },
+                                subagents = subagentInfos,
+                                onSubagentClick = { childSessionId ->
+                                    val childSession = activityState.sessions.firstOrNull { it.id == childSessionId }
+                                    app.activityRepository.markSessionRead(childSessionId)
+                                    // The chat this was opened from is the way back, so open the child
+                                    // directly instead of routing through pendingSession, which would drop
+                                    // the parent.
+                                    pendingSession = null
+                                    chatViewModel.openSubagentSession(
+                                        childSessionId,
+                                        childSession?.title ?: childSessionId,
+                                    )
+                                },
+                                onReturnToParentSession = {
+                                    pendingSession = null
+                                    chatViewModel.openParentSession()
+                                },
+                                onOpenUrl = { url ->
+                                    UrlLauncher.openUrl(context, url)
+                                },
+                                previewState = previewState,
+                                previewTargets = sessionPreviewTargets,
+                                isForeground = appForeground,
+                                previewWorkspaceDir = previewWorkspaceDir,
+                                agentControlEnabled = preferences.guestBrowserAgentControlEnabled,
+                                onPreviewRequested = { target -> showPreview(target) },
+                                onPreviewMinimize = ::collapseActivePreview,
+                                onPreviewRestore = {
+                                    (previewState as? PreviewUiState.Collapsed)?.let {
+                                        previewState = PreviewUiState.Active(it.target)
+                                    }
+                                },
+                                onExpandPreview = { target ->
+                                    when (target) {
+                                        is PreviewTarget.Url -> {
+                                            collapseActivePreview()
+                                            navController.navigate(guestBrowserRoute(target.url)) { launchSingleTop = true }
+                                        }
+                                        is PreviewTarget.Static -> Unit
+                                    }
+                                },
+                                onClosePreview = {
+                                    BrowserHandoff.dismiss()
+                                    previewState = PreviewUiState.None
+                                },
+                                onOpenPatchDiff = chatViewModel::openPatchDiff,
+                                onDismissPatchDiff = chatViewModel::dismissPatchDiff,
+                                onLoadDraft = { sessionId -> chatViewModel.loadDraft(sessionId)?.text },
+                                onSaveDraft = { sessionId, text -> chatViewModel.saveDraft(sessionId, text) },
+                            )
+                        }
+
+                        settingsNavGraph(
+                            navController = navController,
+                            settingsViewModel = settingsViewModel,
+                            notificationsEnabled = { notificationsEnabled },
+                            onToggleNotifications = { enabled ->
+                                notificationsEnabled = enabled
+                                if (enabled && android.os.Build.VERSION.SDK_INT >= 33) {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
+                            },
+                            appVersion = appVersion,
+                            onOpenDrawer = { openDrawer() },
+                            onOpenAssistantSettings = onOpenAssistantSettings,
+                            assistantActive = { assistantActive },
+                            runtimeTargets = { runtimeTargets },
+                            workspaces = { workspaceState.workspaces },
+                            onShowDiagnostics = { showDiagnostics = true },
+                            preferences = { preferences },
+                            appPreferences = app.preferences,
+                            runtimeRegistry = app.runtimeRegistry,
+                            context = context,
+                            hasMicrophonePermission = { hasMicrophonePermission() },
+                            claude = { workspaceState.claude },
+                            claudeActions =
+                                ClaudeSettingsActions(
+                                    onInstall = workspaceViewModel::installClaudeCode,
+                                    onUpdate = workspaceViewModel::updateClaudeCode,
+                                    onSelectPermissionMode = { mode ->
+                                        workspaceViewModel.setClaudePermissionMode(mode, chatState.sessionId)
+                                    },
+                                    onSignIn = workspaceViewModel::beginClaudeSignIn,
+                                    onSubmitCode = workspaceViewModel::submitClaudeSignInCode,
+                                    onCancelSignIn = workspaceViewModel::cancelClaudeSignIn,
+                                    onSignOut = workspaceViewModel::signOutClaude,
+                                    // The settings screen edits the default new chats get, so it
+                                    // passes no session: handing it the open chat's id would also
+                                    // rewrite that chat's own snapshot as a side effect. Per-chat
+                                    // switching lives on the composer chip above, which passes the
+                                    // session on purpose.
+                                    onSelectSystemPrompt = { presetId ->
+                                        workspaceViewModel.selectClaudeSystemPrompt(presetId)
+                                    },
+                                    onSaveSystemPromptPreset = { name, prompt, id ->
+                                        workspaceViewModel.saveClaudeSystemPromptPreset(name, prompt, id)
+                                    },
+                                    onDeleteSystemPromptPreset = workspaceViewModel::deleteClaudeSystemPromptPreset,
+                                ),
+                            antigravity = { antigravityState },
+                            antigravityActions =
+                                com.yugahashimoto.andcode.ui.navigation.AntigravitySettingsActions(
+                                    onInstall = app.antigravityController::install,
+                                    onUpdate = app.antigravityController::update,
+                                    onSelectPermissionMode = { mode ->
+                                        app.antigravityController.setPermissionMode(mode, chatState.sessionId)
+                                    },
+                                    onSignIn = app.antigravityController::beginAuth,
+                                    onSubmitCode = app.antigravityController::submitAuthCode,
+                                    onCancelSignIn = app.antigravityController::cancelAuth,
+                                    onSignOut = app.antigravityController::logout,
+                                ),
+                            onRequestWakeWordPermission = {
+                                startWakeWordAfterPermission = true
+                                microphonePermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                            },
+                        )
+
+                        composable(ROUTE_SCHEDULES) {
+                            ScheduleListScreen(
+                                schedules = schedules,
+                                runs = scheduleRuns,
+                                runtimeTargets = runtimeTargets,
+                                nextFireAt = app.scheduleManager::nextFireAt,
+                                onOpenDrawer = { openDrawer() },
+                                onNewSchedule = { navController.navigate(ROUTE_SCHEDULE_EDIT) { launchSingleTop = true } },
+                                onOpenSchedule = { scheduleId ->
+                                    navController.navigate(scheduleDetailRoute(scheduleId)) { launchSingleTop = true }
+                                },
+                                onEdit = { scheduleId ->
+                                    navController.navigate(scheduleEditRoute(scheduleId)) { launchSingleTop = true }
+                                },
+                                onRunNow = { scheduleId ->
+                                    scheduleViewModel.runNow(scheduleId)
                                     android.widget.Toast.makeText(
                                         context,
                                         R.string.schedule_run_now_started,
                                         android.widget.Toast.LENGTH_SHORT,
                                     ).show()
                                 },
-                                onOpenSession = { run ->
-                                    openSessionInChat(run.sessionId, schedule.displayName, run.runtimeId)
-                                },
+                                onDelete = scheduleViewModel::delete,
+                                onToggleEnabled = scheduleViewModel::setEnabled,
+                                exactAlarmsAllowed = app.scheduleManager::exactAlarmsAllowed,
+                                // Alarms armed while the permission was missing are inexact; granting it
+                                // only takes effect once they are re-armed.
+                                onExactAlarmsGranted = app.scheduleManager::rescheduleAll,
                             )
                         }
-                    }
 
-                    composable(
-                        route = SCHEDULE_EDIT_ROUTE_PATTERN,
-                        arguments =
-                            listOf(
-                                navArgument(SCHEDULE_EDIT_ARG_ID) {
-                                    type = NavType.StringType
-                                    nullable = true
-                                    defaultValue = null
+                        composable(
+                            route = SCHEDULE_DETAIL_ROUTE_PATTERN,
+                            arguments = listOf(navArgument("scheduleId") { type = NavType.StringType }),
+                        ) { backStackEntry ->
+                            val scheduleId = decodeRouteArg(backStackEntry.arguments?.getString("scheduleId").orEmpty())
+                            val schedule = schedules.firstOrNull { it.id == scheduleId }
+                            if (schedule == null) {
+                                // Deleted while on screen; drop back to the list.
+                                LaunchedEffect(Unit) { navController.popBackStack() }
+                            } else {
+                                ScheduleRunsScreen(
+                                    schedule = schedule,
+                                    runs = scheduleRuns.filter { it.scheduleId == scheduleId },
+                                    titleForSession = { sessionId ->
+                                        allSessions
+                                            .firstOrNull { it.session.id == sessionId }
+                                            ?.session?.title?.ifBlank { null }
+                                    },
+                                    onBack = { navController.popBackStack() },
+                                    onEdit = { id -> navController.navigate(scheduleEditRoute(id)) { launchSingleTop = true } },
+                                    onRunNow = { id ->
+                                        scheduleViewModel.runNow(id)
+                                        android.widget.Toast.makeText(
+                                            context,
+                                            R.string.schedule_run_now_started,
+                                            android.widget.Toast.LENGTH_SHORT,
+                                        ).show()
+                                    },
+                                    onOpenSession = { run ->
+                                        openSessionInChat(run.sessionId, schedule.displayName, run.runtimeId)
+                                    },
+                                )
+                            }
+                        }
+
+                        composable(
+                            route = SCHEDULE_EDIT_ROUTE_PATTERN,
+                            arguments =
+                                listOf(
+                                    navArgument(SCHEDULE_EDIT_ARG_ID) {
+                                        type = NavType.StringType
+                                        nullable = true
+                                        defaultValue = null
+                                    },
+                                ),
+                        ) { backStackEntry ->
+                            val scheduleId =
+                                backStackEntry.arguments?.getString(SCHEDULE_EDIT_ARG_ID)
+                                    ?.takeIf(String::isNotBlank)
+                                    ?.let(::decodeRouteArg)
+                            ScheduleEditorScreen(
+                                existing = scheduleId?.let { id -> schedules.firstOrNull { it.id == id } },
+                                runtimeTargets = runtimeTargets,
+                                providers = settingsState.providers,
+                                workspaces = workspaceState.workspaces,
+                                selectedRuntimeId = selectedRuntime?.id,
+                                favoriteModelKeys = settingsState.favoriteModelKeys,
+                                recentModelKeys = settingsState.recentModelKeys,
+                                hiddenModelKeys = settingsState.hiddenModelKeys,
+                                onToggleFavorite = settingsViewModel::toggleFavoriteModel,
+                                onSave = { built ->
+                                    if (scheduleId != null) {
+                                        scheduleViewModel.update(built)
+                                    } else {
+                                        scheduleViewModel.create(built)
+                                    }
+                                    navController.popBackStack()
                                 },
-                            ),
-                    ) { backStackEntry ->
-                        val scheduleId =
-                            backStackEntry.arguments?.getString(SCHEDULE_EDIT_ARG_ID)
-                                ?.takeIf(String::isNotBlank)
-                                ?.let(::decodeRouteArg)
-                        ScheduleEditorScreen(
-                            existing = scheduleId?.let { id -> schedules.firstOrNull { it.id == id } },
-                            runtimeTargets = runtimeTargets,
-                            providers = settingsState.providers,
-                            workspaces = workspaceState.workspaces,
-                            selectedRuntimeId = selectedRuntime?.id,
-                            favoriteModelKeys = settingsState.favoriteModelKeys,
-                            recentModelKeys = settingsState.recentModelKeys,
-                            hiddenModelKeys = settingsState.hiddenModelKeys,
-                            onToggleFavorite = settingsViewModel::toggleFavoriteModel,
-                            onSave = { built ->
-                                if (scheduleId != null) {
-                                    scheduleViewModel.update(built)
-                                } else {
-                                    scheduleViewModel.create(built)
-                                }
-                                navController.popBackStack()
-                            },
-                            onBack = { navController.popBackStack() },
+                                onBack = { navController.popBackStack() },
+                            )
+                        }
+
+                        workspaceNavGraph(
+                            navController = navController,
+                            workspaceViewModel = workspaceViewModel,
+                            selectedWorkspace = { selectedWorkspace },
+                            onSelectWorkspace = { selectedWorkspace = it },
+                            selectedRuntime = { selectedRuntime },
+                            app = app,
+                            onImportFolder = { workspaceImportLauncher.launch(null) },
+                            onShowCloneDialog = { showCloneDialog = true },
+                            completeOnboardingAndGoToChat = completeOnboardingAndGoToChat,
                         )
                     }
-
-                    workspaceNavGraph(
-                        navController = navController,
-                        workspaceViewModel = workspaceViewModel,
-                        selectedWorkspace = { selectedWorkspace },
-                        onSelectWorkspace = { selectedWorkspace = it },
-                        selectedRuntime = { selectedRuntime },
-                        app = app,
-                        onImportFolder = { workspaceImportLauncher.launch(null) },
-                        onShowCloneDialog = { showCloneDialog = true },
-                        completeOnboardingAndGoToChat = completeOnboardingAndGoToChat,
-                    )
                 }
             }
+            SnackbarHost(
+                hostState = snackbarHostState,
+                modifier =
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .navigationBarsPadding()
+                        .padding(16.dp),
+            )
         }
 
         if (showCloneDialog) {

@@ -461,6 +461,15 @@
     <string name="drawer_pinned">Закреплённые</string>
     <string name="drawer_pinned_sample_1">Важный разговор</string>
     <string name="drawer_pinned_sample_2">Заметки проекта</string>
+    <string name="drawer_search_hint">Поиск чатов</string>
+    <string name="drawer_search_clear">Очистить поиск</string>
+    <string name="drawer_search_no_results">Нет подходящих чатов</string>
+    <string name="drawer_pin_session">Закрепить</string>
+    <string name="drawer_unpin_session">Открепить</string>
+    <string name="drawer_chat_deleted">Чат удалён</string>
+    <string name="drawer_chat_archived">Чат архивирован</string>
+    <string name="drawer_undo">Отменить</string>
+    <string name="drawer_rename_failed">Не удалось переименовать чат</string>
     <string name="drawer_features">Функции</string>
     <string name="drawer_plan_label">Бесплатный план</string>
     <string name="drawer_user_email_placeholder">user@example.com</string>

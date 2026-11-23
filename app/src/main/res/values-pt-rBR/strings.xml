@@ -459,6 +459,15 @@
     <string name="drawer_pinned">Fixado</string>
     <string name="drawer_pinned_sample_1">Conversa importante</string>
     <string name="drawer_pinned_sample_2">Notas do projeto</string>
+    <string name="drawer_search_hint">Pesquisar chats</string>
+    <string name="drawer_search_clear">Limpar pesquisa</string>
+    <string name="drawer_search_no_results">Nenhum chat corresponde</string>
+    <string name="drawer_pin_session">Fixar</string>
+    <string name="drawer_unpin_session">Desafixar</string>
+    <string name="drawer_chat_deleted">Chat excluído</string>
+    <string name="drawer_chat_archived">Chat arquivado</string>
+    <string name="drawer_undo">Desfazer</string>
+    <string name="drawer_rename_failed">Não foi possível renomear o chat</string>
     <string name="drawer_features">Recursos</string>
     <string name="drawer_plan_label">Plano gratuito</string>
     <string name="drawer_user_email_placeholder">user@example.com</string>

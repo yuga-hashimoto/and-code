@@ -459,6 +459,15 @@
     <string name="drawer_pinned">Épinglé</string>
     <string name="drawer_pinned_sample_1">Conversation importante</string>
     <string name="drawer_pinned_sample_2">Notes de projet</string>
+    <string name="drawer_search_hint">Rechercher des discussions</string>
+    <string name="drawer_search_clear">Effacer la recherche</string>
+    <string name="drawer_search_no_results">Aucune discussion correspondante</string>
+    <string name="drawer_pin_session">Épingler</string>
+    <string name="drawer_unpin_session">Désépingler</string>
+    <string name="drawer_chat_deleted">Discussion supprimée</string>
+    <string name="drawer_chat_archived">Discussion archivée</string>
+    <string name="drawer_undo">Annuler</string>
+    <string name="drawer_rename_failed">Impossible de renommer la discussion</string>
     <string name="drawer_features">Fonctionnalités</string>
     <string name="drawer_plan_label">Plan gratuit</string>
     <string name="drawer_user_email_placeholder">user@example.com</string>

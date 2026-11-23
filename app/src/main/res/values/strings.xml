@@ -444,6 +444,15 @@
     <string name="drawer_pinned">Pinned</string>
     <string name="drawer_pinned_sample_1">Important conversation</string>
     <string name="drawer_pinned_sample_2">Project notes</string>
+    <string name="drawer_search_hint">Search chats</string>
+    <string name="drawer_search_clear">Clear search</string>
+    <string name="drawer_search_no_results">No chats match</string>
+    <string name="drawer_pin_session">Pin</string>
+    <string name="drawer_unpin_session">Unpin</string>
+    <string name="drawer_chat_deleted">Chat deleted</string>
+    <string name="drawer_chat_archived">Chat archived</string>
+    <string name="drawer_undo">Undo</string>
+    <string name="drawer_rename_failed">Couldn\'t rename the chat</string>
     <string name="drawer_features">Features</string>
     <string name="drawer_plan_label">Free plan</string>
     <string name="drawer_user_email_placeholder">user@example.com</string>

@@ -455,6 +455,15 @@
     <string name="drawer_pinned">已固定</string>
     <string name="drawer_pinned_sample_1">重要对话</string>
     <string name="drawer_pinned_sample_2">项目笔记</string>
+    <string name="drawer_search_hint">搜索聊天</string>
+    <string name="drawer_search_clear">清除搜索</string>
+    <string name="drawer_search_no_results">没有匹配的聊天</string>
+    <string name="drawer_pin_session">固定</string>
+    <string name="drawer_unpin_session">取消固定</string>
+    <string name="drawer_chat_deleted">聊天已删除</string>
+    <string name="drawer_chat_archived">聊天已归档</string>
+    <string name="drawer_undo">撤销</string>
+    <string name="drawer_rename_failed">无法重命名聊天</string>
     <string name="drawer_features">功能</string>
     <string name="drawer_plan_label">免费方案</string>
     <string name="drawer_user_email_placeholder">user@example.com</string>

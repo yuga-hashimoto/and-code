@@ -465,6 +465,15 @@
     <string name="drawer_pinned">مثبت</string>
     <string name="drawer_pinned_sample_1">محادثة مهمة</string>
     <string name="drawer_pinned_sample_2">ملاحظات المشروع</string>
+    <string name="drawer_search_hint">البحث في الدردشات</string>
+    <string name="drawer_search_clear">مسح البحث</string>
+    <string name="drawer_search_no_results">لا توجد دردشات مطابقة</string>
+    <string name="drawer_pin_session">تثبيت</string>
+    <string name="drawer_unpin_session">إلغاء التثبيت</string>
+    <string name="drawer_chat_deleted">تم حذف الدردشة</string>
+    <string name="drawer_chat_archived">تمت أرشفة الدردشة</string>
+    <string name="drawer_undo">تراجع</string>
+    <string name="drawer_rename_failed">تعذّرت إعادة تسمية الدردشة</string>
     <string name="drawer_features">الميزات</string>
     <string name="drawer_plan_label">الخطة المجانية</string>
     <string name="drawer_user_email_placeholder">user@example.com</string>
