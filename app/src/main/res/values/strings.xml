@@ -1270,4 +1270,14 @@
     <string name="file_edit_error_changed_on_disk">The file was changed by something else since you opened it, so your edits were not saved. Copy your text, close the editor, and open the file again.</string>
     <string name="file_edit_error_write_failed">Could not save the file.</string>
     <string name="file_edit_error_generic">Could not edit the file.</string>
+    <string name="side_panel_tools_title">Tools</string>
+    <string name="side_panel_close">Close tools</string>
+    <string name="side_panel_preview_not_running">Server is not running</string>
+    <string name="side_panel_terminal_title">Terminal</string>
+    <string name="guest_browser_control_user">You have control</string>
+    <string name="guest_browser_control_agent_active">Agent is operating</string>
+    <string name="guest_browser_control_shared_idle">Shared with agent</string>
+    <string name="guest_browser_control_take_over">Take over</string>
+    <string name="guest_browser_control_manual_only">Manual control only</string>
+    <string name="guest_browser_control_enable_agent">Allow agent</string>
 </resources>

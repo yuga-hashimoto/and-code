@@ -11,8 +11,12 @@ internal const val BROWSER_COMMAND_FILE = ".and-code/browser-command.json"
 internal const val BROWSER_STATUS_FILE = ".and-code/browser-status.json"
 
 internal const val BROWSER_STATUS_AWAITING_USER = "awaiting_user"
+internal const val BROWSER_STATUS_USER = "user"
 internal const val BROWSER_STATUS_AGENT = "agent"
 internal const val BROWSER_STATUS_DISMISSED = "dismissed"
+
+/** Path to the workspace status file shared by the app and the in-guest browser MCP server. */
+internal fun browserStatusFile(workspaceDir: File): File = File(workspaceDir, BROWSER_STATUS_FILE)
 
 /** A command dropped by the in-guest agent into `.and-code/browser-command.json`. */
 sealed interface BrowserCommand {
@@ -41,6 +45,13 @@ internal fun writeBrowserStatus(
         file.writeText(JSONObject().put("state", state).toString())
     }
 }
+
+/** Reads the current handoff/control state recorded in [file], or null if missing or unreadable. */
+internal fun readBrowserStatus(file: File): String? =
+    runCatching {
+        if (!file.isFile) return null
+        JSONObject(file.readText()).optString("state").takeIf { it.isNotBlank() }
+    }.getOrNull()
 
 /**
  * Resolves the active guest workspace to the same host folder its PRoot process sees, or null when

@@ -1245,4 +1245,14 @@
     <string name="file_edit_error_changed_on_disk">自你打开此文件后，它已被其他程序修改，因此你的修改未保存。请复制你的文本，关闭编辑器，然后重新打开该文件。</string>
     <string name="file_edit_error_write_failed">无法保存文件。</string>
     <string name="file_edit_error_generic">无法编辑文件。</string>
+    <string name="side_panel_tools_title">工具</string>
+    <string name="side_panel_close">关闭工具</string>
+    <string name="side_panel_preview_not_running">服务器未运行</string>
+    <string name="side_panel_terminal_title">终端</string>
+    <string name="guest_browser_control_user">由你控制</string>
+    <string name="guest_browser_control_agent_active">智能体正在操作</string>
+    <string name="guest_browser_control_shared_idle">与智能体共享</string>
+    <string name="guest_browser_control_take_over">接管操作</string>
+    <string name="guest_browser_control_manual_only">仅手动操作</string>
+    <string name="guest_browser_control_enable_agent">允许智能体</string>
 </resources>

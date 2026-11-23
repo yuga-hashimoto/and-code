@@ -215,6 +215,7 @@ fun NavGraphBuilder.workspaceNavGraph(
         GuestBrowserScreen(
             initialUrl = requestedUrl.orEmpty(),
             agentControlEnabled = preferences.guestBrowserAgentControlEnabled,
+            onEnableAgentControl = { app.preferences.setGuestBrowserAgentControlEnabled(true) },
             onBack = { navController.popBackStack() },
         )
     }

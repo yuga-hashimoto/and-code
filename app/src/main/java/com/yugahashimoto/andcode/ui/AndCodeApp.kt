@@ -40,6 +40,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -86,12 +87,15 @@ import com.yugahashimoto.andcode.feature.browser.GuestBrowserCommandWatcher
 import com.yugahashimoto.andcode.feature.browser.PreviewTarget
 import com.yugahashimoto.andcode.feature.browser.PreviewUiState
 import com.yugahashimoto.andcode.feature.browser.activeWorkspaceHostDirectory
-import com.yugahashimoto.andcode.feature.browser.findPreviewEntry
+import com.yugahashimoto.andcode.feature.browser.browserStatusFile
 import com.yugahashimoto.andcode.feature.chat.ChatHomeScreen
 import com.yugahashimoto.andcode.feature.chat.ChatViewModel
+import com.yugahashimoto.andcode.feature.chat.SessionToolsActions
+import com.yugahashimoto.andcode.feature.chat.SessionToolsUiState
 import com.yugahashimoto.andcode.feature.chat.SubagentInfo
 import com.yugahashimoto.andcode.feature.chat.buildHandoffPrompt
 import com.yugahashimoto.andcode.feature.chat.loopbackPreviewTargets
+import com.yugahashimoto.andcode.feature.chat.runningSessionPreviewTargets
 import com.yugahashimoto.andcode.feature.onboarding.AndroidSetupScreen
 import com.yugahashimoto.andcode.feature.onboarding.OnboardingChoiceScreen
 import com.yugahashimoto.andcode.feature.schedule.ScheduleEditorScreen
@@ -106,10 +110,12 @@ import com.yugahashimoto.andcode.feature.settings.SettingsViewModel
 import com.yugahashimoto.andcode.feature.wakeword.WakeWordService
 import com.yugahashimoto.andcode.feature.wakeword.WakeWordSettingsPolicy
 import com.yugahashimoto.andcode.feature.workspace.WorkspaceViewModel
+import com.yugahashimoto.andcode.runtime.BackendKind
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.runtime.local.GitCloneResult
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeOperationResult
+import com.yugahashimoto.andcode.runtime.local.LoopbackDevServerProbe
 import com.yugahashimoto.andcode.ui.components.SessionStatus
 import com.yugahashimoto.andcode.ui.navigation.ClaudeSettingsActions
 import com.yugahashimoto.andcode.ui.navigation.DRAWER_ROOT_ROUTES
@@ -121,14 +127,17 @@ import com.yugahashimoto.andcode.ui.navigation.ROUTE_SCHEDULES
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_SCHEDULE_EDIT
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_SETTINGS_AGENT_CODEX
 import com.yugahashimoto.andcode.ui.navigation.ROUTE_SETTINGS_PROVIDERS
+import com.yugahashimoto.andcode.ui.navigation.ROUTE_WORKSPACES
 import com.yugahashimoto.andcode.ui.navigation.SCHEDULE_DETAIL_ROUTE_PATTERN
 import com.yugahashimoto.andcode.ui.navigation.SCHEDULE_EDIT_ARG_ID
 import com.yugahashimoto.andcode.ui.navigation.SCHEDULE_EDIT_ROUTE_PATTERN
+import com.yugahashimoto.andcode.ui.navigation.WORKSPACE_DETAIL_ROUTE
 import com.yugahashimoto.andcode.ui.navigation.decodeRouteArg
 import com.yugahashimoto.andcode.ui.navigation.guestBrowserRoute
 import com.yugahashimoto.andcode.ui.navigation.scheduleDetailRoute
 import com.yugahashimoto.andcode.ui.navigation.scheduleEditRoute
 import com.yugahashimoto.andcode.ui.navigation.settingsNavGraph
+import com.yugahashimoto.andcode.ui.navigation.terminalRoute
 import com.yugahashimoto.andcode.ui.navigation.workspaceNavGraph
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
 import com.yugahashimoto.andcode.ui.theme.AppTheme
@@ -375,23 +384,37 @@ fun AndCodeApp(
                 deviceStorage = DeviceStorage.mounts(),
             )
         }
-    var staticPreviewTarget by remember { mutableStateOf<PreviewTarget.Static?>(null) }
-    LaunchedEffect(previewWorkspaceDir) {
-        staticPreviewTarget =
-            withContext(Dispatchers.IO) {
-                previewWorkspaceDir?.let { directory ->
-                    findPreviewEntry(directory)?.let { entry -> PreviewTarget.Static(directory.path, entry) }
-                }
-            }
-    }
     val sessionPreviewTargets =
-        remember(chatState.sessionId, chatState.messages, lastPreviewTarget, staticPreviewTarget) {
+        remember(chatState.sessionId, chatState.messages, lastPreviewTarget) {
             buildList {
                 lastPreviewTarget?.let(::add)
-                staticPreviewTarget?.let(::add)
                 addAll(loopbackPreviewTargets(chatState.messages))
             }.distinctBy { target -> target.key }
         }
+    val devServerProbe = remember { LoopbackDevServerProbe() }
+    var runningPreviewTargets by remember { mutableStateOf<List<PreviewTarget.Url>>(emptyList()) }
+    var previewProbeNonce by remember { mutableIntStateOf(0) }
+    LaunchedEffect(sessionPreviewTargets, selectedRuntime?.kind, appForeground, previewProbeNonce) {
+        if (selectedRuntime?.kind != BackendKind.LOCAL || sessionPreviewTargets.isEmpty()) {
+            runningPreviewTargets = emptyList()
+            return@LaunchedEffect
+        }
+        if (!appForeground) return@LaunchedEffect
+        runningPreviewTargets =
+            runningSessionPreviewTargets(sessionPreviewTargets, devServerProbe::isListening)
+    }
+    LaunchedEffect(previewWorkspaceDir) {
+        val statusFile = previewWorkspaceDir?.let(::browserStatusFile)
+        BrowserHandoff.bindWorkspaceStatusFile(statusFile)
+        if (statusFile != null) {
+            withContext(Dispatchers.IO) {
+                BrowserHandoff.clearStaleUserTakeover(statusFile)
+            }
+        }
+    }
+    LaunchedEffect(chatState.isRunning) {
+        BrowserHandoff.updateAgentWorking(chatState.isRunning)
+    }
     var previewSessionInitialized by remember { mutableStateOf(false) }
     LaunchedEffect(chatState.sessionId) {
         // Switching chats closes the old chat's preview, but the first composition must not clear a
@@ -400,6 +423,7 @@ fun AndCodeApp(
             BrowserHandoff.dismiss()
             previewState = PreviewUiState.None
             lastPreviewTarget = null
+            runningPreviewTargets = emptyList()
         }
         previewSessionInitialized = true
     }
@@ -1330,10 +1354,11 @@ fun AndCodeApp(
                                 UrlLauncher.openUrl(context, url)
                             },
                             previewState = previewState,
-                            previewTargets = sessionPreviewTargets,
+                            previewTargets = runningPreviewTargets,
                             isForeground = appForeground,
                             previewWorkspaceDir = previewWorkspaceDir,
                             agentControlEnabled = preferences.guestBrowserAgentControlEnabled,
+                            onEnableAgentControl = { app.preferences.setGuestBrowserAgentControlEnabled(true) },
                             onPreviewRequested = { target -> showPreview(target) },
                             onPreviewMinimize = ::collapseActivePreview,
                             onPreviewRestore = {
@@ -1354,6 +1379,43 @@ fun AndCodeApp(
                                 BrowserHandoff.dismiss()
                                 previewState = PreviewUiState.None
                             },
+                            sessionTools =
+                                SessionToolsUiState(
+                                    runningPreviewTargets = runningPreviewTargets,
+                                    workspaceLabel = chatState.sessionDirectory ?: chatState.selectedWorkspacePath,
+                                    isLocalRuntime = selectedRuntime?.kind == BackendKind.LOCAL,
+                                ),
+                            sessionToolsActions =
+                                SessionToolsActions(
+                                    onOpenPreview = { target -> showPreview(target) },
+                                    onOpenFiles = {
+                                        val activePath = chatState.sessionDirectory ?: chatState.selectedWorkspacePath
+                                        val matched =
+                                            activePath?.let { path ->
+                                                workspaceState.workspaces.firstOrNull { it.path == path }
+                                                    ?: WorkspaceRef(
+                                                        id = path,
+                                                        name = path.trimEnd('/').substringAfterLast('/').ifBlank { path },
+                                                        path = path,
+                                                    )
+                                            }
+                                        if (matched != null) {
+                                            selectedWorkspace = matched
+                                            navController.navigate(WORKSPACE_DETAIL_ROUTE) { launchSingleTop = true }
+                                        } else {
+                                            navController.navigate(ROUTE_WORKSPACES) { launchSingleTop = true }
+                                        }
+                                    },
+                                    onOpenBrowser = {
+                                        collapseActivePreview()
+                                        navController.navigate(guestBrowserRoute("")) { launchSingleTop = true }
+                                    },
+                                    onOpenTerminal = {
+                                        val activePath = chatState.sessionDirectory ?: chatState.selectedWorkspacePath
+                                        navController.navigate(terminalRoute(activePath)) { launchSingleTop = true }
+                                    },
+                                    onRefreshPreviewAvailability = { previewProbeNonce += 1 },
+                                ),
                             onOpenPatchDiff = chatViewModel::openPatchDiff,
                             onDismissPatchDiff = chatViewModel::dismissPatchDiff,
                             onLoadDraft = { sessionId -> chatViewModel.loadDraft(sessionId)?.text },
