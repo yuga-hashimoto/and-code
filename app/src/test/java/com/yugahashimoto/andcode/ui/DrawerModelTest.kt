@@ -4,11 +4,17 @@ import com.yugahashimoto.andcode.core.api.OpenCodeSession
 import com.yugahashimoto.andcode.core.api.OpenCodeTime
 import com.yugahashimoto.andcode.data.repository.RuntimeSessionRef
 import com.yugahashimoto.andcode.ui.components.SessionStatus
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class DrawerModelTest {
     @Test
     fun `builder drops subagent sessions and pending removals`() {
@@ -158,6 +164,107 @@ class DrawerModelTest {
         val collapsed = toggledSection(emptySet(), "pinned")
         assertEquals(setOf("pinned"), collapsed)
         assertEquals(emptySet<String>(), toggledSection(collapsed, "pinned"))
+    }
+
+    @Test
+    fun `awaitSessionGone returns immediately when the id is absent`() =
+        runTest {
+            val sessions = MutableStateFlow(listOf(ref("other")))
+
+            awaitSessionGone(sessions, "chat")
+
+            assertEquals(0L, testScheduler.currentTime)
+        }
+
+    @Test
+    fun `awaitSessionGone waits for a list without the id`() =
+        runTest {
+            val sessions = MutableStateFlow(listOf(ref("chat")))
+            val job = launch { awaitSessionGone(sessions, "chat") }
+            runCurrent()
+            assertFalse(job.isCompleted)
+
+            sessions.value = listOf(ref("other"))
+            runCurrent()
+
+            assertTrue(job.isCompleted)
+            assertEquals(0L, testScheduler.currentTime)
+        }
+
+    @Test
+    fun `awaitSessionGone returns after the timeout when the id never disappears`() =
+        runTest {
+            val sessions = MutableStateFlow(listOf(ref("chat")))
+            val started = testScheduler.currentTime
+
+            awaitSessionGone(sessions, "chat", timeoutMillis = 1_000L)
+
+            assertEquals(1_000L, testScheduler.currentTime - started)
+        }
+
+    @Test
+    fun `browsable sessions cap unpinned chats but keep pinned ones beyond the cap`() {
+        val sessions =
+            (1..30).map { index ->
+                session(
+                    id = "chat-$index",
+                    title = "chat-$index",
+                    directory = null,
+                    isPinned = index == 28 || index == 30,
+                )
+            }
+
+        val browsable = browsableSessions(sessions)
+
+        assertEquals(
+            (1..25).map { "chat-$it" } + listOf("chat-28", "chat-30"),
+            browsable.map { it.id },
+        )
+    }
+
+    @Test
+    fun `builder can keep every chat when the browse cap is disabled`() {
+        val sessions = (1..30).map { ref("chat-$it") }
+
+        val built =
+            drawerRecentSessions(
+                allSessions = sessions,
+                activeSessionIds = emptySet(),
+                completedSessionIds = emptySet(),
+                pinnedSessionIds = emptySet(),
+                pendingRemoval = emptySet(),
+                maxUnpinned = Int.MAX_VALUE,
+                timeLabel = { it.toString() },
+            )
+
+        assertEquals(30, built.size)
+    }
+
+    @Test
+    fun `selection keeps only chats visible under the query`() {
+        val sessions =
+            listOf(
+                session("one", "Fix auth", null),
+                session("two", "Update docs", null),
+            )
+
+        assertEquals(
+            setOf("one"),
+            retainVisibleSelection(setOf("one", "two"), sessions, "fix"),
+        )
+        assertEquals(
+            emptySet<String>(),
+            retainVisibleSelection(setOf("one"), sessions, "missing"),
+        )
+    }
+
+    @Test
+    fun `blank query keeps the whole selection`() {
+        val sessions = listOf(session("one", "Alpha", null))
+        val selected = setOf("one", "older")
+
+        assertEquals(selected, retainVisibleSelection(selected, sessions, ""))
+        assertEquals(selected, retainVisibleSelection(selected, sessions, "   "))
     }
 
     private fun session(

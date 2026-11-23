@@ -24,6 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -53,8 +55,8 @@ fun AppDrawerContent(
     onSelectAgent: (DrawerAgent) -> Unit = {},
     onDeleteSession: (String) -> Unit = {},
     onArchiveSession: (String) -> Unit = {},
-    onRenameSession: (sessionId: String, runtimeId: String?, directory: String?, title: String) -> Unit =
-        { _, _, _, _ -> },
+    onRenameSession: (sessionId: String, runtimeId: String?, title: String) -> Unit =
+        { _, _, _ -> },
     onBatchDelete: (Set<String>) -> Unit = {},
     onBatchArchive: (Set<String>) -> Unit = {},
     onSetPinned: (Set<String>, Boolean) -> Unit = { _, _ -> },
@@ -69,6 +71,8 @@ fun AppDrawerContent(
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val selectionMode = selectedSessionIds.isNotEmpty()
     val selectionAllPinned = allSelectedPinned(selectedSessionIds, recentSessions)
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     // A stale search or selection surviving a close is a trap: the next open looks empty or
     // unexpectedly armed for multi-select.
@@ -78,6 +82,8 @@ fun AppDrawerContent(
             selectedSessionIds = emptySet()
             showDeleteConfirm = false
             renameTarget = null
+            focusManager.clearFocus()
+            keyboardController?.hide()
         }
     }
 
@@ -144,7 +150,16 @@ fun AppDrawerContent(
                 )
 
                 if (recentSessions.isNotEmpty()) {
-                    DrawerSearchField(query = searchQuery, onQueryChange = { searchQuery = it })
+                    DrawerSearchField(
+                        query = searchQuery,
+                        onQueryChange = { newQuery ->
+                            searchQuery = newQuery
+                            if (selectionMode) {
+                                selectedSessionIds =
+                                    retainVisibleSelection(selectedSessionIds, recentSessions, newQuery)
+                            }
+                        },
+                    )
                     if (selectionMode) {
                         SelectionActionBar(
                             selectedCount = selectedSessionIds.size,
@@ -204,7 +219,7 @@ fun AppDrawerContent(
             currentTitle = session.title,
             onDismiss = { renameTarget = null },
             onSave = { title ->
-                onRenameSession(session.id, session.runtimeId, session.directory, title)
+                onRenameSession(session.id, session.runtimeId, title)
                 renameTarget = null
             },
         )
@@ -253,7 +268,8 @@ private fun DrawerChatList(
         return
     }
 
-    val pinned = recentSessions.filter { it.isPinned }
+    val browsable = browsableSessions(recentSessions)
+    val pinned = browsable.filter { it.isPinned }
     if (pinned.isNotEmpty()) {
         DrawerSectionHeader(
             text = stringResource(R.string.drawer_pinned),
@@ -273,7 +289,7 @@ private fun DrawerChatList(
         }
     }
 
-    val unpinned = recentSessions.filterNot { it.isPinned }
+    val unpinned = browsable.filterNot { it.isPinned }
     // All chats pinned: the pinned section above already lists everything, so no empty "Recent".
     if (unpinned.isEmpty()) return
 

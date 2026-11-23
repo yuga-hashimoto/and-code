@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -877,6 +878,9 @@ fun AndCodeApp(
                             ?: IllegalStateException("session removal failed")
                     }
                     app.catalogRepository.refreshSessionsOnly()
+                    // refreshSessionsOnly() only launches the refresh, so keep the row hidden
+                    // until the catalog really drops it (or the wait times out).
+                    awaitSessionGone(app.catalogRepository.allSessions, id)
                     app.preferences.setSessionsPinned(setOf(id), false)
                 },
                 onCommitFailed = { _, _, _ ->
@@ -905,6 +909,7 @@ fun AndCodeApp(
                 completedSessionIds = activityState.completedSessionIds,
                 pinnedSessionIds = preferences.pinnedSessionIds,
                 pendingRemoval = pendingRemovals,
+                maxUnpinned = Int.MAX_VALUE,
                 timeLabel = { relativeTimeLabel(context, it) },
             )
         }
@@ -1045,7 +1050,7 @@ fun AndCodeApp(
                             },
                             onDeleteSession = { sessionId -> removals.remove(sessionId, RemovalKind.DELETE) },
                             onArchiveSession = { sessionId -> removals.remove(sessionId, RemovalKind.ARCHIVE) },
-                            onRenameSession = { sessionId, runtimeId, _, title ->
+                            onRenameSession = { sessionId, runtimeId, title ->
                                 voiceScope.launch {
                                     val targets = app.runtimeRegistry.targets.value
                                     val candidates =
@@ -1061,7 +1066,8 @@ fun AndCodeApp(
                                                 true
                                             } catch (cancellation: CancellationException) {
                                                 throw cancellation
-                                            } catch (_: Exception) {
+                                            } catch (exception: Exception) {
+                                                android.util.Log.w("AndCodeApp", "Failed to rename a chat", exception)
                                                 false
                                             }
                                         }
@@ -1083,6 +1089,7 @@ fun AndCodeApp(
                                         }.awaitAll()
                                     }
                                     app.catalogRepository.refreshSessionsOnly()
+                                    app.preferences.setSessionsPinned(sessionIds, false)
                                 }
                             },
                             onBatchArchive = { sessionIds ->
@@ -1096,6 +1103,7 @@ fun AndCodeApp(
                                         }.awaitAll()
                                     }
                                     app.catalogRepository.refreshSessionsOnly()
+                                    app.preferences.setSessionsPinned(sessionIds, false)
                                 }
                             },
                             collapsedSections = collapsedSections,
@@ -1616,6 +1624,7 @@ fun AndCodeApp(
                     Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
+                        .imePadding()
                         .padding(16.dp),
             )
         }

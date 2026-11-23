@@ -55,6 +55,7 @@ import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -654,21 +655,23 @@ internal fun DrawerChatRows(
 ) {
     Column {
         sessions.forEach { session ->
-            DrawerChatRow(
-                title = session.title.ifBlank { session.id },
-                relativeTime = session.relativeTime,
-                status = session.status,
-                hasAttention = session.hasAttention,
-                isActive = session.isActive,
-                hasUnread = session.hasUnread,
-                isSelected = session.id in selectedSessionIds,
-                selectionMode = selectionMode,
-                indented = indented,
-                agent = session.agent,
-                menuActions = menuActions(session),
-                onClick = { onOpenSession(session) },
-                onToggleSelection = { onToggleSelection(session.id) },
-            )
+            key(session.id) {
+                DrawerChatRow(
+                    title = session.title.ifBlank { session.id },
+                    relativeTime = session.relativeTime,
+                    status = session.status,
+                    hasAttention = session.hasAttention,
+                    isActive = session.isActive,
+                    hasUnread = session.hasUnread,
+                    isSelected = session.id in selectedSessionIds,
+                    selectionMode = selectionMode,
+                    indented = indented,
+                    agent = session.agent,
+                    menuActions = menuActions(session),
+                    onClick = { onOpenSession(session) },
+                    onToggleSelection = { onToggleSelection(session.id) },
+                )
+            }
         }
     }
 }

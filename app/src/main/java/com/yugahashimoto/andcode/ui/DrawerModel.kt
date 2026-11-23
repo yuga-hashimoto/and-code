@@ -3,9 +3,15 @@ package com.yugahashimoto.andcode.ui
 import com.yugahashimoto.andcode.data.repository.RuntimeSessionRef
 import com.yugahashimoto.andcode.runtime.LocalAgent
 import com.yugahashimoto.andcode.ui.components.SessionStatus
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 
 /** Unpinned chats beyond this many are left out of the drawer; pinned chats are always kept. */
 private const val MAX_UNPINNED_SESSIONS = 25
+
+/** How long a removal waits for the session catalog to catch up before letting the row reappear. */
+internal const val REMOVAL_REFRESH_WAIT_MILLIS = 5_000L
 
 data class DrawerRecentSession(
     val id: String,
@@ -41,6 +47,7 @@ internal fun drawerRecentSessions(
     completedSessionIds: Set<String>,
     pinnedSessionIds: Set<String>,
     pendingRemoval: Set<String>,
+    maxUnpinned: Int = MAX_UNPINNED_SESSIONS,
     timeLabel: (Long) -> String,
 ): List<DrawerRecentSession> {
     var unpinnedCount = 0
@@ -50,7 +57,7 @@ internal fun drawerRecentSessions(
 
         val pinned = session.id in pinnedSessionIds
         if (!pinned) {
-            if (unpinnedCount >= MAX_UNPINNED_SESSIONS) return@mapNotNull null
+            if (unpinnedCount >= maxUnpinned) return@mapNotNull null
             unpinnedCount++
         }
 
@@ -91,3 +98,47 @@ internal fun toggledSection(
     collapsed: Set<String>,
     section: String,
 ): Set<String> = if (section in collapsed) collapsed - section else collapsed + section
+
+/** The browse view keeps the same cap the catalog builder used to apply, without hiding search hits. */
+internal fun browsableSessions(
+    sessions: List<DrawerRecentSession>,
+    maxUnpinned: Int = MAX_UNPINNED_SESSIONS,
+): List<DrawerRecentSession> {
+    var unpinnedCount = 0
+    return sessions.filter { session ->
+        if (session.isPinned) {
+            true
+        } else if (unpinnedCount < maxUnpinned) {
+            unpinnedCount++
+            true
+        } else {
+            false
+        }
+    }
+}
+
+/** Drops selected chats that the current search no longer shows; a blank query shows them all. */
+internal fun retainVisibleSelection(
+    selectedSessionIds: Set<String>,
+    sessions: List<DrawerRecentSession>,
+    query: String,
+): Set<String> {
+    if (query.isBlank()) return selectedSessionIds
+    val visibleIds = filterDrawerSessions(sessions, query).map { it.id }.toSet()
+    return selectedSessionIds.intersect(visibleIds)
+}
+
+/**
+ * Suspends until [sessions] no longer lists [id], or [timeoutMillis] passes (the removal did not
+ * take). The caller keeps its pending-removal mark until this returns, so a slow catalog cannot
+ * flash the removed row back into the drawer.
+ */
+internal suspend fun awaitSessionGone(
+    sessions: Flow<List<RuntimeSessionRef>>,
+    id: String,
+    timeoutMillis: Long = REMOVAL_REFRESH_WAIT_MILLIS,
+) {
+    withTimeoutOrNull(timeoutMillis) {
+        sessions.first { refs -> refs.none { it.session.id == id } }
+    }
+}
