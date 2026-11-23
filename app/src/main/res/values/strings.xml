@@ -447,6 +447,8 @@
     <string name="drawer_search_hint">Search chats</string>
     <string name="drawer_search_clear">Clear search</string>
     <string name="drawer_search_no_results">No chats match</string>
+    <string name="cd_search_projects">Search projects</string>
+    <string name="drawer_project_search_hint">Search projects</string>
     <string name="drawer_search_more">Showing the first %1$d chats. Keep typing to narrow it down.</string>
     <string name="drawer_pin_session">Pin</string>
     <string name="drawer_unpin_session">Unpin</string>

@@ -1,9 +1,11 @@
 package com.yugahashimoto.andcode.ui
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -32,12 +34,6 @@ import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
-
-private fun DrawerRecentSession.projectKey(): String =
-    directory?.trimEnd('/')?.takeIf { it.isNotBlank() && it != "/root" && it != "/workspace" }.orEmpty()
-
-private fun DrawerRecentSession.projectLabel(defaultLabel: String): String =
-    projectKey().substringAfterLast('/').takeIf { it.isNotBlank() } ?: defaultLabel
 
 @Composable
 fun AppDrawerContent(
@@ -69,6 +65,8 @@ fun AppDrawerContent(
     var showDeleteConfirm by remember { mutableStateOf(false) }
     var renameTarget by remember { mutableStateOf<DrawerRecentSession?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var projectSearchOpen by rememberSaveable { mutableStateOf(false) }
+    var projectQuery by rememberSaveable { mutableStateOf("") }
     val selectionMode = selectedSessionIds.isNotEmpty()
     val selectionAllPinned = allSelectedPinned(selectedSessionIds, recentSessions)
     val focusManager = LocalFocusManager.current
@@ -79,6 +77,8 @@ fun AppDrawerContent(
     LaunchedEffect(drawerOpen) {
         if (!drawerOpen) {
             searchQuery = ""
+            projectSearchOpen = false
+            projectQuery = ""
             selectedSessionIds = emptySet()
             showDeleteConfirm = false
             renameTarget = null
@@ -147,6 +147,13 @@ fun AppDrawerContent(
                     onToggle = { onToggleSection("projects") },
                     onSelectProject = onSelectProject,
                     onAddProject = { onNavigate("workspaces") },
+                    searchOpen = projectSearchOpen,
+                    onToggleSearch = {
+                        projectSearchOpen = !projectSearchOpen
+                        if (!projectSearchOpen) projectQuery = ""
+                    },
+                    projectQuery = projectQuery,
+                    onProjectQueryChange = { projectQuery = it },
                 )
 
                 if (recentSessions.isNotEmpty()) {
@@ -161,16 +168,40 @@ fun AppDrawerContent(
                         },
                     )
                     if (selectionMode) {
+                        val singleSelected = selectedSessionIds.singleOrNull()?.let { id -> recentSessions.firstOrNull { it.id == id } }
                         SelectionActionBar(
                             selectedCount = selectedSessionIds.size,
                             allSelectedPinned = selectionAllPinned,
                             onCancel = { selectedSessionIds = emptySet() },
                             onArchive = {
-                                onBatchArchive(selectedSessionIds)
+                                // One chat archives straight away with Undo; a batch keeps the list action.
+                                val singleId = selectedSessionIds.singleOrNull()
+                                if (singleId != null) {
+                                    onArchiveSession(singleId)
+                                } else {
+                                    onBatchArchive(selectedSessionIds)
+                                }
                                 selectedSessionIds = emptySet()
                             },
-                            onDelete = { showDeleteConfirm = true },
+                            onDelete = {
+                                // One chat goes straight away, with Undo on the snackbar; a batch is
+                                // worth a question first.
+                                val singleId = selectedSessionIds.singleOrNull()
+                                if (singleId != null) {
+                                    onDeleteSession(singleId)
+                                    selectedSessionIds = emptySet()
+                                } else {
+                                    showDeleteConfirm = true
+                                }
+                            },
                             onTogglePin = { setPinnedState() },
+                            onRename =
+                                singleSelected?.let { session ->
+                                    {
+                                        renameTarget = session
+                                        selectedSessionIds = emptySet()
+                                    }
+                                },
                         )
                     }
                     DrawerChatList(
@@ -188,17 +219,29 @@ fun AppDrawerContent(
             }
 
             HorizontalDivider(color = MaterialTheme.colorScheme.outline.copy(alpha = 0.42f))
-            DrawerDestinationRow(
-                icon = Icons.Default.Schedule,
-                label = stringResource(R.string.nav_schedules),
-                onClick = { onNavigate("schedules") },
-            )
-            DrawerDestinationRow(
-                icon = Icons.Default.Settings,
-                label = stringResource(R.string.nav_settings),
-                onClick = { onNavigate("settings") },
-            )
-            Spacer(Modifier.padding(bottom = 3.dp))
+            // The places you go less often share one row, so the chat list keeps the height.
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                // An equal share each, so a long label in one language cannot squeeze out the other.
+                val item = Modifier.weight(1f)
+                DrawerDestinationRow(
+                    icon = Icons.Default.Schedule,
+                    label = stringResource(R.string.nav_schedules),
+                    modifier = item,
+                    onClick = { onNavigate("schedules") },
+                )
+                DrawerDestinationRow(
+                    icon = Icons.Default.Settings,
+                    label = stringResource(R.string.nav_settings),
+                    modifier = item,
+                    onClick = { onNavigate("settings") },
+                )
+            }
         }
     }
 
@@ -314,16 +357,8 @@ private fun DrawerChatList(
             // Grouped by project, always. The project/status switch that used to sit here made
             // the drawer ask a question before it answered one, and the status a chat is in
             // already shows on its own row.
-            val grouped =
-                unpinned
-                    .groupBy { it.projectKey() }
-                    .toList()
-                    .sortedByDescending { (_, sessions) ->
-                        sessions.firstOrNull()?.let { unpinned.indexOf(it) } ?: Int.MAX_VALUE
-                    }
-            grouped.forEach { (key, sessions) ->
+            groupedByProject(unpinned).forEach { (key, sessions) ->
                 val sectionKey = "project_$key"
-                val sorted = sessions.sortedByDescending { it.hasAttention }
                 DrawerRecentProjectHeader(
                     label = sessions.first().projectLabel(defaultLabel),
                     collapsed = collapsedSections.contains(sectionKey),
@@ -331,7 +366,7 @@ private fun DrawerChatList(
                 )
                 AnimatedVisibility(visible = !collapsedSections.contains(sectionKey)) {
                     DrawerChatRows(
-                        sessions = sorted,
+                        sessions = sessions,
                         selectedSessionIds = selectedSessionIds,
                         selectionMode = selectionMode,
                         indented = true,

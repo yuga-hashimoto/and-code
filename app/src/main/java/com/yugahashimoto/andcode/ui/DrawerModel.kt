@@ -2,6 +2,7 @@ package com.yugahashimoto.andcode.ui
 
 import com.yugahashimoto.andcode.data.repository.RuntimeSessionRef
 import com.yugahashimoto.andcode.runtime.LocalAgent
+import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.ui.components.SessionStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
@@ -95,6 +96,42 @@ internal fun filterDrawerSessions(
         val haystack = "${session.title} ${session.directory.orEmpty()}"
         terms.all { term -> haystack.contains(term, ignoreCase = true) }
     }
+}
+
+/** Projects whose name contains [query], ignoring case; all of them while [query] is blank. */
+internal fun filterDrawerProjects(
+    workspaces: List<WorkspaceRef>,
+    query: String,
+): List<WorkspaceRef> {
+    val needle = query.trim()
+    if (needle.isEmpty()) return workspaces
+    return workspaces.filter { it.name.contains(needle, ignoreCase = true) }
+}
+
+/** The folder a chat belongs to, or an empty key for chats without a usable project directory. */
+internal fun DrawerRecentSession.projectKey(): String =
+    directory?.trimEnd('/')?.takeIf { it.isNotBlank() && it != "/root" && it != "/workspace" }.orEmpty()
+
+/** The last path segment of the chat's project, falling back to [defaultLabel]. */
+internal fun DrawerRecentSession.projectLabel(defaultLabel: String): String =
+    projectKey().substringAfterLast('/').takeIf { it.isNotBlank() } ?: defaultLabel
+
+/**
+ * Chats grouped by project, in the order their newest chat appears in [sessions] (which the drawer
+ * keeps newest first). Within a group, chats waiting on attention stay on top without disturbing the
+ * order of the rest.
+ */
+internal fun groupedByProject(sessions: List<DrawerRecentSession>): List<Pair<String, List<DrawerRecentSession>>> {
+    val inputOrder = sessions.mapIndexed { index, session -> session.id to index }.toMap()
+    return sessions
+        .groupBy { it.projectKey() }
+        .map { (key, group) ->
+            val (attention, rest) = group.partition { it.hasAttention }
+            key to (attention + rest)
+        }
+        .sortedBy { (_, group) ->
+            group.minOfOrNull { inputOrder[it.id] ?: Int.MAX_VALUE } ?: Int.MAX_VALUE
+        }
 }
 
 internal fun toggledSection(

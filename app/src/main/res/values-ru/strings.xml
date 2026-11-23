@@ -464,6 +464,8 @@
     <string name="drawer_search_hint">Поиск чатов</string>
     <string name="drawer_search_clear">Очистить поиск</string>
     <string name="drawer_search_no_results">Нет подходящих чатов</string>
+    <string name="cd_search_projects">Поиск проектов</string>
+    <string name="drawer_project_search_hint">Поиск проектов</string>
     <string name="drawer_search_more">Показаны первые %1$d чатов. Продолжайте вводить текст, чтобы сузить поиск.</string>
     <string name="drawer_pin_session">Закрепить</string>
     <string name="drawer_unpin_session">Открепить</string>

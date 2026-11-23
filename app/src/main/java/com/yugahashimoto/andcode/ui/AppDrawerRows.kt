@@ -1,13 +1,10 @@
 package com.yugahashimoto.andcode.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,14 +18,13 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Archive
 import androidx.compose.material.icons.filled.Checklist
 import androidx.compose.material.icons.filled.ChevronRight
@@ -40,18 +36,16 @@ import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,20 +56,20 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.runtime.LocalAgent
-import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.ui.components.SessionStatus
 import com.yugahashimoto.andcode.ui.components.StatusDot
 
@@ -106,33 +100,24 @@ internal fun DrawerHeader() {
 
 @Composable
 internal fun NewChatRow(onClick: () -> Unit) {
-    Surface(
+    // The one thing the drawer exists to start, so it is the one filled, accent-coloured control.
+    // Material3 keeps the touch target at 48dp even though the pill is drawn at 44dp.
+    Button(
+        onClick = onClick,
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 10.dp, vertical = 3.dp)
-                .heightIn(min = 48.dp)
-                .clickable(onClick = onClick),
-        shape = RoundedCornerShape(12.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.62f),
+                .padding(horizontal = 12.dp, vertical = 4.dp)
+                .height(44.dp),
+        shape = RoundedCornerShape(100.dp),
+        contentPadding = PaddingValues(horizontal = 16.dp),
     ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Icon(
-                Icons.AutoMirrored.Filled.Chat,
-                contentDescription = stringResource(R.string.cd_new_chat),
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(18.dp),
-            )
-            Text(
-                text = stringResource(R.string.new_chat),
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium,
-            )
-        }
+        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = stringResource(R.string.new_chat),
+            style = MaterialTheme.typography.labelLarge,
+        )
     }
 }
 
@@ -149,121 +134,24 @@ internal fun DrawerSectionHeader(
                 .fillMaxWidth()
                 .heightIn(min = 48.dp)
                 .clickable(onClick = onToggle)
-                .padding(start = 16.dp, end = 8.dp),
+                .padding(start = 18.dp, end = 16.dp, top = 18.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        Text(
+            text = text,
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        trailing?.invoke()
         Icon(
             imageVector = if (collapsed) Icons.Default.ChevronRight else Icons.Default.ExpandMore,
             contentDescription = stringResource(R.string.cd_expand_collapse),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(16.dp),
         )
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = text,
-            modifier = Modifier.weight(1f),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        trailing?.invoke()
-    }
-}
-
-@Composable
-internal fun DrawerAgentChips(
-    agents: List<DrawerAgent>,
-    selectedRuntimeId: String?,
-    onSelectAgent: (DrawerAgent) -> Unit,
-) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        agents.forEach { agent ->
-            FilterChip(
-                selected = agent.runtimeId == selectedRuntimeId,
-                onClick = { onSelectAgent(agent) },
-                label = {
-                    Text(
-                        text = stringResource(agent.agent.displayNameRes),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        painter = painterResource(agent.agent.iconRes),
-                        contentDescription = null,
-                        modifier = Modifier.size(FilterChipDefaults.IconSize),
-                    )
-                },
-                modifier = Modifier.minimumInteractiveComponentSize(),
-            )
-        }
-    }
-}
-
-@Composable
-internal fun DrawerProjectsSection(
-    workspaces: List<WorkspaceRef>,
-    selectedWorkspacePath: String?,
-    collapsed: Boolean,
-    onToggle: () -> Unit,
-    onSelectProject: (WorkspaceRef) -> Unit,
-    onAddProject: () -> Unit,
-) {
-    val addProjectDescription = stringResource(R.string.cd_add_project)
-    DrawerSectionHeader(
-        text = stringResource(R.string.drawer_projects_title),
-        collapsed = collapsed,
-        onToggle = onToggle,
-        trailing = {
-            TextButton(
-                onClick = onAddProject,
-                modifier = Modifier.semantics { contentDescription = addProjectDescription },
-                contentPadding = PaddingValues(horizontal = 8.dp),
-            ) {
-                Text(
-                    text = stringResource(R.string.drawer_add_project),
-                    color = MaterialTheme.colorScheme.primary,
-                    style = MaterialTheme.typography.labelLarge,
-                )
-            }
-        },
-    )
-    if (workspaces.isNotEmpty()) {
-        AnimatedVisibility(visible = !collapsed) {
-            Row(
-                modifier =
-                    Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                workspaces.forEach { workspace ->
-                    FilterChip(
-                        selected = workspace.path == selectedWorkspacePath,
-                        onClick = { onSelectProject(workspace) },
-                        label = {
-                            Text(
-                                text = workspace.name,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        },
-                        modifier = Modifier.minimumInteractiveComponentSize(),
-                    )
-                }
-            }
-        }
     }
 }
 
@@ -271,6 +159,7 @@ internal fun DrawerProjectsSection(
 internal fun DrawerSearchField(
     query: String,
     onQueryChange: (String) -> Unit,
+    hint: String = stringResource(R.string.drawer_search_hint),
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     // The visible field stays compact while the clear button keeps a full 48dp touch target that
@@ -287,16 +176,15 @@ internal fun DrawerSearchField(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .height(44.dp),
-            shape = RoundedCornerShape(12.dp),
-            color = MaterialTheme.colorScheme.surface,
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
+                    .height(42.dp),
+            shape = RoundedCornerShape(100.dp),
+            color = MaterialTheme.colorScheme.surfaceVariant,
         ) {
             Row(
                 modifier =
                     Modifier
                         .fillMaxSize()
-                        .padding(start = 12.dp, end = if (query.isEmpty()) 12.dp else 48.dp),
+                        .padding(start = 14.dp, end = if (query.isEmpty()) 12.dp else 48.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -304,7 +192,7 @@ internal fun DrawerSearchField(
                     imageVector = Icons.Default.Search,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
+                    modifier = Modifier.size(18.dp),
                 )
                 Box(
                     modifier = Modifier.weight(1f),
@@ -312,7 +200,7 @@ internal fun DrawerSearchField(
                 ) {
                     if (query.isEmpty()) {
                         Text(
-                            text = stringResource(R.string.drawer_search_hint),
+                            text = hint,
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -361,6 +249,8 @@ internal fun SelectionActionBar(
     onArchive: () -> Unit,
     onDelete: () -> Unit,
     onTogglePin: () -> Unit,
+    /** Offered only while one chat is selected; a name is given to one chat at a time. */
+    onRename: (() -> Unit)? = null,
 ) {
     Row(
         modifier =
@@ -379,6 +269,16 @@ internal fun SelectionActionBar(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
+        onRename?.let { rename ->
+            IconButton(onClick = rename) {
+                Icon(
+                    Icons.Default.Edit,
+                    contentDescription = stringResource(R.string.rename_session),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(20.dp),
+                )
+            }
+        }
         IconButton(onClick = onTogglePin) {
             Icon(
                 Icons.Default.PushPin,
@@ -421,29 +321,30 @@ internal fun DrawerRecentProjectHeader(
                 .fillMaxWidth()
                 .heightIn(min = 48.dp)
                 .clickable(onClick = onToggle)
-                .padding(start = 16.dp, end = 16.dp),
+                .padding(start = 18.dp, end = 16.dp, top = 14.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
+        Icon(
+            Icons.Default.Folder,
+            contentDescription = stringResource(R.string.cd_folder),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(14.dp),
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            fontFamily = FontFamily.Monospace,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
+        )
         Icon(
             imageVector = if (collapsed) Icons.Default.ChevronRight else Icons.Default.ExpandMore,
             contentDescription = stringResource(R.string.cd_expand_collapse),
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.size(14.dp),
-        )
-        Icon(
-            Icons.Default.Folder,
-            contentDescription = stringResource(R.string.cd_folder),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(18.dp),
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -483,69 +384,105 @@ internal fun DrawerChatRow(
     val actions = menuActions
 
     Box(modifier = Modifier.fillMaxWidth()) {
-        Row(
+        Surface(
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 48.dp)
-                    .combinedClickable(
-                        onClick = if (selectionMode) onToggleSelection else onClick,
-                        onLongClick =
-                            if (!selectionMode && actions != null) {
-                                { menuExpanded = true }
-                            } else {
-                                null
-                            },
-                    )
-                    .padding(
-                        start = if (indented) 48.dp else 16.dp,
-                        end = 16.dp,
-                        top = 8.dp,
-                        bottom = 8.dp,
-                    ),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 8.dp, vertical = 1.dp),
+            shape = RoundedCornerShape(12.dp),
+            color = if (isActive || isSelected) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface,
         ) {
-            if (selectionMode) {
-                Checkbox(
-                    checked = isSelected,
-                    onCheckedChange = { onToggleSelection() },
-                    modifier = Modifier.size(20.dp),
-                )
-                Spacer(Modifier.width(4.dp))
-            }
-            StatusDot(status = status)
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = relativeTime,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (hasAttention) {
-                Box(
-                    modifier =
-                        Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.error),
-                )
-            }
-            if (agent != null) {
-                Icon(
-                    painter = painterResource(agent.iconRes),
-                    contentDescription = stringResource(agent.displayNameRes),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(14.dp),
-                )
+            Row(
+                modifier =
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .combinedClickable(
+                            onClick = if (selectionMode) onToggleSelection else onClick,
+                            onLongClick =
+                                if (!selectionMode && actions != null) {
+                                    { menuExpanded = true }
+                                } else {
+                                    null
+                                },
+                        )
+                        // TalkBack reads the title, agent and time as one row instead of three stops.
+                        .semantics(mergeDescendants = true) {}
+                        .padding(
+                            start = if (indented) 14.dp else 10.dp,
+                            end = 12.dp,
+                            top = 8.dp,
+                            bottom = 8.dp,
+                        ),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                if (selectionMode) {
+                    Checkbox(
+                        checked = isSelected,
+                        onCheckedChange = { onToggleSelection() },
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                Box(modifier = Modifier.width(16.dp), contentAlignment = Alignment.Center) {
+                    StatusDot(status = status, size = 7.dp)
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = if (hasUnread || isActive) FontWeight.SemiBold else FontWeight.Normal,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        if (agent != null) {
+                            Icon(
+                                painter = painterResource(agent.iconRes),
+                                // The name is written right beside it.
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(12.dp),
+                            )
+                            Text(
+                                text = stringResource(agent.displayNameRes),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                            )
+                        }
+                        if (relativeTime.isNotBlank()) {
+                            if (agent != null) {
+                                Text(
+                                    text = "·",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Text(
+                                text = relativeTime,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                }
+                // The status dot already turns amber for an approval; the extra marker is for
+                // attention the status does not show.
+                if (hasAttention) {
+                    Box(
+                        modifier =
+                            Modifier
+                                .size(8.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.error),
+                    )
+                }
             }
         }
 
@@ -678,27 +615,34 @@ internal fun DrawerChatRows(
 
 @Composable
 internal fun DrawerDestinationRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     label: String,
+    modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    Row(
+    Column(
         modifier =
-            Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
+            modifier
+                .clip(RoundedCornerShape(12.dp))
                 .clickable(onClick = onClick)
-                .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(11.dp),
+                .heightIn(min = 48.dp)
+                .padding(horizontal = 4.dp, vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(3.dp),
     ) {
         Icon(
             icon,
-            contentDescription = stringResource(R.string.cd_nav_item),
+            contentDescription = null,
             tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(19.dp),
+            modifier = Modifier.size(20.dp),
         )
-        Text(label, style = MaterialTheme.typography.bodyMedium)
+        Text(
+            label,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

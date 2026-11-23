@@ -462,6 +462,8 @@
     <string name="drawer_search_hint">Buscar chats</string>
     <string name="drawer_search_clear">Borrar búsqueda</string>
     <string name="drawer_search_no_results">Ningún chat coincide</string>
+    <string name="cd_search_projects">Buscar proyectos</string>
+    <string name="drawer_project_search_hint">Buscar proyectos</string>
     <string name="drawer_search_more">Mostrando los primeros %1$d chats. Sigue escribiendo para acotar la búsqueda.</string>
     <string name="drawer_pin_session">Fijar</string>
     <string name="drawer_unpin_session">Dejar de fijar</string>

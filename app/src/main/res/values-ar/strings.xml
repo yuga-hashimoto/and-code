@@ -468,6 +468,8 @@
     <string name="drawer_search_hint">البحث في الدردشات</string>
     <string name="drawer_search_clear">مسح البحث</string>
     <string name="drawer_search_no_results">لا توجد دردشات مطابقة</string>
+    <string name="cd_search_projects">البحث عن المشاريع</string>
+    <string name="drawer_project_search_hint">البحث عن المشاريع</string>
     <string name="drawer_search_more">يتم عرض أول %1$d دردشة. تابع الكتابة لتضييق النتائج.</string>
     <string name="drawer_pin_session">تثبيت</string>
     <string name="drawer_unpin_session">إلغاء التثبيت</string>

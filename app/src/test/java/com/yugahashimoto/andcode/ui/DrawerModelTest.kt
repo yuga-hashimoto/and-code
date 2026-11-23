@@ -3,6 +3,7 @@ package com.yugahashimoto.andcode.ui
 import com.yugahashimoto.andcode.core.api.OpenCodeSession
 import com.yugahashimoto.andcode.core.api.OpenCodeTime
 import com.yugahashimoto.andcode.data.repository.RuntimeSessionRef
+import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.ui.components.SessionStatus
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -307,17 +308,107 @@ class DrawerModelTest {
         assertEquals(selected, retainVisibleSelection(selected, sessions, "   "))
     }
 
+    @Test
+    fun `project filter returns every project for a blank query`() {
+        val workspaces = listOf(workspace("android-code"), workspace("api-server"))
+
+        assertEquals(workspaces, filterDrawerProjects(workspaces, ""))
+        assertEquals(workspaces, filterDrawerProjects(workspaces, "   "))
+    }
+
+    @Test
+    fun `project filter matches the name ignoring case`() {
+        val workspaces = listOf(workspace("android-code"), workspace("api-server"), workspace("Android-tools"))
+
+        assertEquals(
+            listOf("android-code", "Android-tools"),
+            filterDrawerProjects(workspaces, "ANDROID").map { it.name },
+        )
+    }
+
+    @Test
+    fun `project filter trims the query`() {
+        val workspaces = listOf(workspace("android-code"), workspace("api-server"))
+
+        assertEquals(listOf("api-server"), filterDrawerProjects(workspaces, "  api  ").map { it.name })
+    }
+
+    @Test
+    fun `project filter returns an empty list when nothing matches`() {
+        val workspaces = listOf(workspace("android-code"))
+
+        assertTrue(filterDrawerProjects(workspaces, "missing").isEmpty())
+    }
+
+    @Test
+    fun `grouped chats order projects by their newest chat`() {
+        val chats =
+            listOf(
+                session("a", "A", "/workspace/P2"),
+                session("b", "B", "/workspace/P1"),
+                session("c", "C", "/workspace/P2"),
+            )
+
+        val groups = groupedByProject(chats)
+
+        // The project whose newest chat appears first in the newest-first list leads.
+        assertEquals(listOf("/workspace/P2", "/workspace/P1"), groups.map { it.first })
+        assertEquals(listOf("a", "c"), groups.first().second.map { it.id })
+    }
+
+    @Test
+    fun `grouped chats put attention chats first and keep the rest in order`() {
+        val chats =
+            listOf(
+                session("one", "One", "/workspace/P"),
+                session("two", "Two", "/workspace/P", hasAttention = true),
+                session("three", "Three", "/workspace/P"),
+                session("four", "Four", "/workspace/P", hasAttention = true),
+            )
+
+        assertEquals(
+            listOf("two", "four", "one", "three"),
+            groupedByProject(chats).single().second.map { it.id },
+        )
+    }
+
+    @Test
+    fun `chats without a usable directory share the empty project group`() {
+        val chats =
+            listOf(
+                session("one", "One", null),
+                session("two", "Two", "/root"),
+                session("three", "Three", "/workspace"),
+                session("four", "Four", "/workspace/real-project"),
+            )
+
+        val groups = groupedByProject(chats)
+
+        assertEquals("", groups.first().first)
+        assertEquals(listOf("one", "two", "three"), groups.first().second.map { it.id })
+        assertEquals("/workspace/real-project", groups.last().first)
+    }
+
+    private fun workspace(name: String) =
+        WorkspaceRef(
+            id = name,
+            name = name,
+            path = "/workspace/$name",
+        )
+
     private fun session(
         id: String,
         title: String,
         directory: String?,
         isPinned: Boolean = false,
+        hasAttention: Boolean = false,
     ) = DrawerRecentSession(
         id = id,
         title = title,
         relativeTime = "now",
         directory = directory,
         isPinned = isPinned,
+        hasAttention = hasAttention,
     )
 
     private fun ref(
