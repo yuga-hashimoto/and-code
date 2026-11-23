@@ -11,10 +11,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Extension
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.PlayArrow
@@ -26,16 +24,12 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -72,7 +66,6 @@ import com.yugahashimoto.andcode.ui.runtimeAgentIcon
  * Provider credentials, the model catalogue and MCP servers are all OpenCode's, and having them at
  * the top level implied they applied to every agent.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgentSettingsScreen(
     onOpenOpenCode: () -> Unit,
@@ -105,7 +98,6 @@ data class CodexSignInActions(
 )
 
 /** Codex's own settings: install and sign-in, the latter through the same dialog OpenCode's providers use. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CodexAgentSettingsScreen(
     codex: CodexUiState,
@@ -118,13 +110,16 @@ fun CodexAgentSettingsScreen(
 ) {
     AgentSettingsScaffold(title = stringResource(LocalAgent.CODEX.displayNameRes), onBack = onBack) {
         AgentCardSection {
-            AgentStatusCard(
-                status = codex.statusLabel(),
+            AgentSettingsStatusCard(
+                status =
+                    agentStatusLabel(
+                        installing = codex.install is CodexInstallStatus.Installing,
+                        failed = codex.install is CodexInstallStatus.Failed,
+                        installed = codex.installed,
+                        ready = codex.ready,
+                    ),
                 active = codex.ready,
-                metrics =
-                    codex.version?.takeIf(String::isNotBlank)?.let { version ->
-                        listOf(AgentMetric(stringResource(R.string.agent_version_label), version))
-                    }.orEmpty(),
+                version = codex.version,
             ) {
                 CodexCard(
                     codex = codex,
@@ -137,11 +132,7 @@ fun CodexAgentSettingsScreen(
         // The same agent-scoped section Claude Code and Antigravity have, so every agent's MCP
         // servers are configured from that agent's own screen.
         SettingsSection(title = stringResource(R.string.settings_agents_section)) {
-            SettingsRow(
-                icon = Icons.Default.Extension,
-                title = stringResource(R.string.mcp_settings_row),
-                onClick = onOpenMcp,
-            )
+            AgentMcpSettingsRow(onOpenMcp)
         }
     }
     if (signInDialog != null) {
@@ -159,18 +150,7 @@ fun CodexAgentSettingsScreen(
     }
 }
 
-@Composable
-private fun CodexUiState.statusLabel(): String =
-    when {
-        install is CodexInstallStatus.Installing -> stringResource(R.string.runtime_status_setting_up)
-        install is CodexInstallStatus.Failed -> stringResource(R.string.agent_status_install_failed)
-        !installed -> stringResource(R.string.runtime_status_not_installed)
-        ready -> stringResource(R.string.agent_status_ready)
-        else -> stringResource(R.string.agent_status_sign_in_required)
-    }
-
 /** Antigravity's own settings: the same install, sign-in and permission controls as the setup guide. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AntigravityAgentSettingsScreen(
     antigravity: AntigravityControllerState,
@@ -187,13 +167,16 @@ fun AntigravityAgentSettingsScreen(
 ) {
     AgentSettingsScaffold(title = stringResource(LocalAgent.ANTIGRAVITY.displayNameRes), onBack = onBack) {
         AgentCardSection {
-            AgentStatusCard(
-                status = antigravity.statusLabel(),
+            AgentSettingsStatusCard(
+                status =
+                    agentStatusLabel(
+                        installing = antigravity.install is AntigravityInstallStatus.Installing,
+                        failed = antigravity.install is AntigravityInstallStatus.Failed,
+                        installed = antigravity.installed || antigravity.install is AntigravityInstallStatus.Ready,
+                        ready = antigravity.isReady(),
+                    ),
                 active = antigravity.isReady(),
-                metrics =
-                    antigravity.version?.takeIf(String::isNotBlank)?.let { version ->
-                        listOf(AgentMetric(stringResource(R.string.agent_version_label), version))
-                    }.orEmpty(),
+                version = antigravity.version,
             ) {
                 com.yugahashimoto.andcode.feature.workspace.AntigravityCard(
                     antigravity = antigravity,
@@ -210,17 +193,12 @@ fun AntigravityAgentSettingsScreen(
             }
         }
         SettingsSection(title = stringResource(R.string.settings_agents_section)) {
-            SettingsRow(
-                icon = Icons.Default.Extension,
-                title = stringResource(R.string.mcp_settings_row),
-                onClick = onOpenMcp,
-            )
+            AgentMcpSettingsRow(onOpenMcp)
         }
     }
 }
 
 /** Claude Code's own settings: the same install, sign-in and permission controls as Workspaces. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ClaudeCodeAgentSettingsScreen(
     claude: ClaudeCodeUiState,
@@ -238,13 +216,16 @@ fun ClaudeCodeAgentSettingsScreen(
 ) {
     AgentSettingsScaffold(title = stringResource(LocalAgent.CLAUDE_CODE.displayNameRes), onBack = onBack) {
         AgentCardSection {
-            AgentStatusCard(
-                status = claude.statusLabel(),
+            AgentSettingsStatusCard(
+                status =
+                    agentStatusLabel(
+                        installing = claude.install is ClaudeInstallStatus.Installing,
+                        failed = claude.install is ClaudeInstallStatus.Failed,
+                        installed = claude.installed || claude.install is ClaudeInstallStatus.Ready,
+                        ready = claude.isReady(),
+                    ),
                 active = claude.isReady(),
-                metrics =
-                    claude.version?.takeIf(String::isNotBlank)?.let { version ->
-                        listOf(AgentMetric(stringResource(R.string.agent_version_label), version))
-                    }.orEmpty(),
+                version = claude.version,
             ) {
                 ClaudeCodeCard(
                     claude = claude,
@@ -271,11 +252,7 @@ fun ClaudeCodeAgentSettingsScreen(
                 onClick = onOpenSystemPrompt,
             )
             SettingsDivider()
-            SettingsRow(
-                icon = Icons.Default.Extension,
-                title = stringResource(R.string.mcp_settings_row),
-                onClick = onOpenMcp,
-            )
+            AgentMcpSettingsRow(onOpenMcp)
         }
     }
 }
@@ -289,7 +266,6 @@ fun ClaudeCodeAgentSettingsScreen(
  * that move it live here rather than on the shared local runtime screen, which reports the Linux
  * environment all three agents share.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun OpenCodeAgentSettingsScreen(
     state: OpenCodeAgentUiState,
@@ -316,10 +292,12 @@ fun OpenCodeAgentSettingsScreen(
             (state.status as? LocalRuntimeStatus.Updating)?.let { RuntimeUpdateProgressCard(it) }
             state.lastOperation?.let { RuntimeOperationResultCard(it) }
 
-            AgentStatusCard(
+            AgentSettingsStatusCard(
                 status = state.status.displayName(),
                 active = state.status is LocalRuntimeStatus.Ready,
-                metrics = openCodeMetrics(state),
+                version = state.version,
+                extraMetrics =
+                    listOfNotNull(state.port?.let { AgentMetric(stringResource(R.string.port_label), it.toString()) }),
             ) {
                 if (state.installed) {
                     OpenCodeProcessControls(state, onStart, onStop, onRestart)
@@ -373,11 +351,7 @@ fun OpenCodeAgentSettingsScreen(
                 onClick = onOpenSystemPrompt,
             )
             SettingsDivider()
-            SettingsRow(
-                icon = Icons.Default.Extension,
-                title = stringResource(R.string.mcp_settings_row),
-                onClick = onOpenMcp,
-            )
+            AgentMcpSettingsRow(onOpenMcp)
         }
     }
 
@@ -589,38 +563,9 @@ private fun OpenCodeUpdateCard(
 }
 
 @Composable
-private fun openCodeMetrics(state: OpenCodeAgentUiState): List<AgentMetric> =
-    buildList {
-        state.version?.takeIf(String::isNotBlank)?.let {
-            add(AgentMetric(stringResource(R.string.agent_version_label), it))
-        }
-        state.port?.let { add(AgentMetric(stringResource(R.string.port_label), it.toString())) }
-    }
-
-@Composable
-private fun ClaudeCodeUiState.statusLabel(): String =
-    when {
-        install is ClaudeInstallStatus.Installing -> stringResource(R.string.runtime_status_setting_up)
-        install is ClaudeInstallStatus.Failed -> stringResource(R.string.agent_status_install_failed)
-        !installed && install !is ClaudeInstallStatus.Ready -> stringResource(R.string.runtime_status_not_installed)
-        isReady() -> stringResource(R.string.agent_status_ready)
-        else -> stringResource(R.string.agent_status_sign_in_required)
-    }
-
-@Composable
 private fun ClaudeCodeUiState.isReady(): Boolean =
     (installed || install is ClaudeInstallStatus.Ready) &&
         (auth is ClaudeAuthCoordinator.State.SignedIn || !signedInAccount.isNullOrBlank())
-
-@Composable
-private fun AntigravityControllerState.statusLabel(): String =
-    when {
-        install is AntigravityInstallStatus.Installing -> stringResource(R.string.runtime_status_setting_up)
-        install is AntigravityInstallStatus.Failed -> stringResource(R.string.agent_status_install_failed)
-        !installed && install !is AntigravityInstallStatus.Ready -> stringResource(R.string.runtime_status_not_installed)
-        isReady() -> stringResource(R.string.agent_status_ready)
-        else -> stringResource(R.string.agent_status_sign_in_required)
-    }
 
 @Composable
 private fun AntigravityControllerState.isReady(): Boolean =
@@ -650,29 +595,13 @@ private fun AgentRow(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AgentSettingsScaffold(
     title: String,
     onBack: () -> Unit,
     content: @Composable () -> Unit,
 ) {
-    Scaffold(
-        containerColor = MaterialTheme.colorScheme.background,
-        topBar = {
-            TopAppBar(
-                title = { Text(title, fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.nav_back),
-                        )
-                    }
-                },
-            )
-        },
-    ) { padding ->
+    SettingsScaffold(title = title, onBack = onBack, titleFontWeight = FontWeight.SemiBold) { padding ->
         Column(
             modifier =
                 Modifier

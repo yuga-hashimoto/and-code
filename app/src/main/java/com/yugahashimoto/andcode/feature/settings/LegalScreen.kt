@@ -7,20 +7,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Gavel
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Policy
 import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -34,7 +28,6 @@ import com.yugahashimoto.andcode.R
  * Legal, privacy, and licensing information, reachable from Settings and readable entirely offline
  * - every document it links to is bundled as an app asset rather than fetched from the network.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LegalScreen(
     onOpenDocument: (LegalDocument) -> Unit,
@@ -49,17 +42,9 @@ fun LegalScreen(
             }.getOrDefault("" to "")
         }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.legal_screen_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
-                    }
-                },
-            )
-        },
+    SettingsScaffold(
+        title = stringResource(R.string.legal_screen_title),
+        onBack = onBack,
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(padding),

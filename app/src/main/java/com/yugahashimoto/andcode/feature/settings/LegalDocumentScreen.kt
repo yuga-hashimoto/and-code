@@ -8,16 +8,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
@@ -40,7 +33,6 @@ private sealed interface LegalDocState {
 }
 
 /** Renders a bundled legal/OSS document asset offline - no network request is made to show it. */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LegalDocumentScreen(
     document: LegalDocument,
@@ -61,17 +53,9 @@ fun LegalDocumentScreen(
                 )
         }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(document.titleRes)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
-                    }
-                },
-            )
-        },
+    SettingsScaffold(
+        title = stringResource(document.titleRes),
+        onBack = onBack,
     ) { padding ->
         when (val current = state) {
             LegalDocState.Loading ->
