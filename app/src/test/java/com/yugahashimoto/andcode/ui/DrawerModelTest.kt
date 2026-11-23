@@ -171,7 +171,7 @@ class DrawerModelTest {
         runTest {
             val sessions = MutableStateFlow(listOf(ref("other")))
 
-            awaitSessionGone(sessions, "chat")
+            assertTrue(awaitSessionGone(sessions, "chat"))
 
             assertEquals(0L, testScheduler.currentTime)
         }
@@ -180,7 +180,11 @@ class DrawerModelTest {
     fun `awaitSessionGone waits for a list without the id`() =
         runTest {
             val sessions = MutableStateFlow(listOf(ref("chat")))
-            val job = launch { awaitSessionGone(sessions, "chat") }
+            var gone = false
+            val job =
+                launch {
+                    gone = awaitSessionGone(sessions, "chat")
+                }
             runCurrent()
             assertFalse(job.isCompleted)
 
@@ -188,6 +192,7 @@ class DrawerModelTest {
             runCurrent()
 
             assertTrue(job.isCompleted)
+            assertTrue(gone)
             assertEquals(0L, testScheduler.currentTime)
         }
 
@@ -197,10 +202,45 @@ class DrawerModelTest {
             val sessions = MutableStateFlow(listOf(ref("chat")))
             val started = testScheduler.currentTime
 
-            awaitSessionGone(sessions, "chat", timeoutMillis = 1_000L)
+            assertFalse(awaitSessionGone(sessions, "chat", timeoutMillis = 1_000L))
 
             assertEquals(1_000L, testScheduler.currentTime - started)
         }
+
+    @Test
+    fun `search results show everything under the cap`() {
+        val sessions =
+            listOf(
+                session("one", "Fix one", null),
+                session("two", "Fix two", null),
+                session("three", "Update docs", null),
+            )
+
+        val results = searchResults(sessions, "fix")
+
+        assertEquals(listOf("one", "two"), results.shown.map { it.id })
+        assertEquals(2, results.totalCount)
+    }
+
+    @Test
+    fun `search results cap the shown rows while keeping the full count`() {
+        val sessions = (1..60).map { session("chat-$it", "Chat $it", null) }
+
+        val results = searchResults(sessions, "chat", max = 50)
+
+        assertEquals((1..50).map { "chat-$it" }, results.shown.map { it.id })
+        assertEquals(60, results.totalCount)
+    }
+
+    @Test
+    fun `blank search results cap the rows and count every session`() {
+        val sessions = (1..60).map { session("chat-$it", "Chat $it", null) }
+
+        val results = searchResults(sessions, "   ", max = 50)
+
+        assertEquals((1..50).map { "chat-$it" }, results.shown.map { it.id })
+        assertEquals(60, results.totalCount)
+    }
 
     @Test
     fun `browsable sessions cap unpinned chats but keep pinned ones beyond the cap`() {

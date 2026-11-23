@@ -865,25 +865,25 @@ fun AndCodeApp(
                                     runCatching {
                                         when (kind) {
                                             RemovalKind.DELETE -> target.deleteSession(id)
-                                            RemovalKind.ARCHIVE -> target.archiveSession(id)
+                                            RemovalKind.ARCHIVE -> {
+                                                target.archiveSession(id)
+                                                true
+                                            }
                                         }
                                     }
                                 }
                             }.awaitAll()
                         }
-                    // One runtime owning the chat is enough; only surface a failure when every
-                    // target failed.
-                    if (results.isNotEmpty() && results.all { it.isFailure }) {
-                        throw results.firstNotNullOfOrNull { it.exceptionOrNull() }
-                            ?: IllegalStateException("session removal failed")
-                    }
+                    removalFailure(kind, results)?.let { throw it }
                     app.catalogRepository.refreshSessionsOnly()
                     // refreshSessionsOnly() only launches the refresh, so keep the row hidden
                     // until the catalog really drops it (or the wait times out).
-                    awaitSessionGone(app.catalogRepository.allSessions, id)
-                    app.preferences.setSessionsPinned(setOf(id), false)
+                    if (awaitSessionGone(app.catalogRepository.allSessions, id)) {
+                        app.preferences.setSessionsPinned(setOf(id), false)
+                    }
                 },
                 onCommitFailed = { _, _, _ ->
+                    app.catalogRepository.refreshSessionsOnly()
                     voiceScope.launch {
                         snackbarHostState.showSnackbar(context.getString(R.string.error_opencode_operation))
                     }

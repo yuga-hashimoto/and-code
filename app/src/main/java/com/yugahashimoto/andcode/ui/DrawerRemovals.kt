@@ -10,6 +10,22 @@ import kotlinx.coroutines.launch
 
 internal enum class RemovalKind { DELETE, ARCHIVE }
 
+/** Null when the removal took effect on at least one runtime, otherwise why it did not. */
+internal fun removalFailure(
+    kind: RemovalKind,
+    results: List<Result<Boolean>>,
+): Throwable? {
+    if (results.isEmpty()) return null
+    val succeeded =
+        when (kind) {
+            RemovalKind.DELETE -> results.any { it.getOrNull() == true }
+            RemovalKind.ARCHIVE -> results.any { it.isSuccess }
+        }
+    if (succeeded) return null
+    return results.firstNotNullOfOrNull { it.exceptionOrNull() }
+        ?: IllegalStateException("session removal failed")
+}
+
 /**
  * Hides a chat as soon as its delete/archive is requested and only commits after the undo offer
  * ends. A still-running offer is ended by the caller dismissing the previous snackbar, so the older

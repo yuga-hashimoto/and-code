@@ -462,6 +462,7 @@
     <string name="drawer_search_hint">Rechercher des discussions</string>
     <string name="drawer_search_clear">Effacer la recherche</string>
     <string name="drawer_search_no_results">Aucune discussion correspondante</string>
+    <string name="drawer_search_more">Affichage des %1$d premières discussions. Continuez à taper pour affiner.</string>
     <string name="drawer_pin_session">Épingler</string>
     <string name="drawer_unpin_session">Désépingler</string>
     <string name="drawer_chat_deleted">Discussion supprimée</string>

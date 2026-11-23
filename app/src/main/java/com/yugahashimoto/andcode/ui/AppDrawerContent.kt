@@ -246,8 +246,8 @@ private fun DrawerChatList(
     onToggleSelection: (String) -> Unit,
 ) {
     if (query.isNotBlank()) {
-        val filtered = filterDrawerSessions(recentSessions, query)
-        if (filtered.isEmpty()) {
+        val results = searchResults(recentSessions, query)
+        if (results.totalCount == 0) {
             Text(
                 text = stringResource(R.string.drawer_search_no_results),
                 style = MaterialTheme.typography.bodyMedium,
@@ -255,15 +255,25 @@ private fun DrawerChatList(
                 modifier = Modifier.padding(16.dp),
             )
         } else {
-            DrawerChatRows(
-                sessions = filtered,
-                selectedSessionIds = selectedSessionIds,
-                selectionMode = selectionMode,
-                indented = false,
-                onOpenSession = onOpenSession,
-                menuActions = menuActions,
-                onToggleSelection = onToggleSelection,
-            )
+            Column {
+                DrawerChatRows(
+                    sessions = results.shown,
+                    selectedSessionIds = selectedSessionIds,
+                    selectionMode = selectionMode,
+                    indented = false,
+                    onOpenSession = onOpenSession,
+                    menuActions = menuActions,
+                    onToggleSelection = onToggleSelection,
+                )
+                if (results.totalCount > results.shown.size) {
+                    Text(
+                        text = stringResource(R.string.drawer_search_more, results.shown.size),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                    )
+                }
+            }
         }
         return
     }

@@ -459,6 +459,7 @@
     <string name="drawer_search_hint">チャットを検索</string>
     <string name="drawer_search_clear">検索をクリア</string>
     <string name="drawer_search_no_results">一致するチャットなし</string>
+    <string name="drawer_search_more">最初の%1$d件のチャットを表示しています。入力を続けると絞り込めます。</string>
     <string name="drawer_pin_session">ピン留め</string>
     <string name="drawer_unpin_session">ピン留めを解除</string>
     <string name="drawer_chat_deleted">チャットを削除しました</string>

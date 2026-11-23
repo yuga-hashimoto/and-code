@@ -13,6 +13,9 @@ private const val MAX_UNPINNED_SESSIONS = 25
 /** How long a removal waits for the session catalog to catch up before letting the row reappear. */
 internal const val REMOVAL_REFRESH_WAIT_MILLIS = 5_000L
 
+/** A match cap for the non-lazy search list; the count above it is still reported. */
+internal const val MAX_SEARCH_RESULTS = 50
+
 data class DrawerRecentSession(
     val id: String,
     val title: String,
@@ -128,6 +131,21 @@ internal fun retainVisibleSelection(
     return selectedSessionIds.intersect(visibleIds)
 }
 
+data class SearchResults(
+    val shown: List<DrawerRecentSession>,
+    val totalCount: Int,
+)
+
+/** Caps the rows handed to the non-lazy search list while keeping the pre-cap match count. */
+internal fun searchResults(
+    sessions: List<DrawerRecentSession>,
+    query: String,
+    max: Int = MAX_SEARCH_RESULTS,
+): SearchResults {
+    val matches = filterDrawerSessions(sessions, query)
+    return SearchResults(shown = matches.take(max), totalCount = matches.size)
+}
+
 /**
  * Suspends until [sessions] no longer lists [id], or [timeoutMillis] passes (the removal did not
  * take). The caller keeps its pending-removal mark until this returns, so a slow catalog cannot
@@ -137,8 +155,8 @@ internal suspend fun awaitSessionGone(
     sessions: Flow<List<RuntimeSessionRef>>,
     id: String,
     timeoutMillis: Long = REMOVAL_REFRESH_WAIT_MILLIS,
-) {
+): Boolean =
     withTimeoutOrNull(timeoutMillis) {
         sessions.first { refs -> refs.none { it.session.id == id } }
-    }
-}
+        true
+    } ?: false

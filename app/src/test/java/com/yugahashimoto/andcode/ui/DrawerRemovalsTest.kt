@@ -94,6 +94,36 @@ class DrawerRemovalsTest {
         }
 
     @Test
+    fun `pending keeps the id hidden until a suspended commit completes`() =
+        runTest {
+            val offers = ArrayDeque<CompletableDeferred<Boolean>>()
+            val offer = CompletableDeferred<Boolean>()
+            offers.addLast(offer)
+            val commitStarted = CompletableDeferred<Unit>()
+            val commitGate = CompletableDeferred<Unit>()
+            val removals =
+                drawerRemovals(
+                    offers,
+                    commit = { _, _ ->
+                        commitStarted.complete(Unit)
+                        commitGate.await()
+                    },
+                )
+
+            removals.remove("chat", RemovalKind.DELETE)
+            runCurrent()
+            offer.complete(false)
+            runCurrent()
+            assertTrue(commitStarted.isCompleted)
+            assertTrue("chat" in removals.pending.value)
+
+            commitGate.complete(Unit)
+            advanceUntilIdle()
+
+            assertFalse("chat" in removals.pending.value)
+        }
+
+    @Test
     fun `a failed commit clears the id and reports exactly once`() =
         runTest {
             val offers = ArrayDeque<CompletableDeferred<Boolean>>()
