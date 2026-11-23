@@ -1264,4 +1264,14 @@
     <string name="file_edit_error_changed_on_disk">Файл был изменён другим процессом после того, как вы его открыли, поэтому ваши правки не сохранены. Скопируйте текст, закройте редактор и откройте файл снова.</string>
     <string name="file_edit_error_write_failed">Не удалось сохранить файл.</string>
     <string name="file_edit_error_generic">Не удалось отредактировать файл.</string>
+    <string name="side_panel_tools_title">Инструменты</string>
+    <string name="side_panel_close">Закрыть инструменты</string>
+    <string name="side_panel_preview_not_running">Сервер не запущен</string>
+    <string name="side_panel_terminal_title">Терминал</string>
+    <string name="guest_browser_control_user">Управление у вас</string>
+    <string name="guest_browser_control_agent_active">Агент управляет</string>
+    <string name="guest_browser_control_shared_idle">Совместно с агентом</string>
+    <string name="guest_browser_control_take_over">Перехватить</string>
+    <string name="guest_browser_control_manual_only">Только ручное управление</string>
+    <string name="guest_browser_control_enable_agent">Разрешить агенту</string>
 </resources>

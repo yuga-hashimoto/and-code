@@ -1275,4 +1275,14 @@
     <string name="file_edit_error_changed_on_disk">ファイルを開いた後に他の処理によって変更されたため、編集内容は保存されませんでした。テキストをコピーし、エディターを閉じてからファイルを開き直してください。</string>
     <string name="file_edit_error_write_failed">ファイルを保存できませんでした。</string>
     <string name="file_edit_error_generic">ファイルを編集できませんでした。</string>
+    <string name="side_panel_tools_title">ツール</string>
+    <string name="side_panel_close">ツールを閉じる</string>
+    <string name="side_panel_preview_not_running">サーバーが起動していません</string>
+    <string name="side_panel_terminal_title">ターミナル</string>
+    <string name="guest_browser_control_user">あなたが操作中</string>
+    <string name="guest_browser_control_agent_active">AIが操作中</string>
+    <string name="guest_browser_control_shared_idle">AIと共有中（待機中）</string>
+    <string name="guest_browser_control_take_over">操作を引き継ぐ</string>
+    <string name="guest_browser_control_manual_only">手動操作のみ</string>
+    <string name="guest_browser_control_enable_agent">AI操作を許可</string>
 </resources>

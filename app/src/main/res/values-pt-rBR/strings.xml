@@ -1261,4 +1261,14 @@
     <string name="file_edit_error_changed_on_disk">O arquivo foi alterado por outro processo desde que você o abriu, então suas edições não foram salvas. Copie seu texto, feche o editor e abra o arquivo novamente.</string>
     <string name="file_edit_error_write_failed">Não foi possível salvar o arquivo.</string>
     <string name="file_edit_error_generic">Não foi possível editar o arquivo.</string>
+    <string name="side_panel_tools_title">Ferramentas</string>
+    <string name="side_panel_close">Fechar ferramentas</string>
+    <string name="side_panel_preview_not_running">O servidor não está em execução</string>
+    <string name="side_panel_terminal_title">Terminal</string>
+    <string name="guest_browser_control_user">Você está no controle</string>
+    <string name="guest_browser_control_agent_active">O agente está operando</string>
+    <string name="guest_browser_control_shared_idle">Compartilhado com o agente</string>
+    <string name="guest_browser_control_take_over">Assumir o controle</string>
+    <string name="guest_browser_control_manual_only">Somente controle manual</string>
+    <string name="guest_browser_control_enable_agent">Permitir agente</string>
 </resources>

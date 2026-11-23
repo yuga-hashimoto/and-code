@@ -235,6 +235,16 @@ def _read_status() -> str | None:
     return state if isinstance(state, str) else None
 
 
+def _require_agent_control() -> None:
+    """Block agent browser mutations while the user explicitly holds control."""
+    state = _read_status()
+    if state in ("user", "awaiting_user"):
+        raise CdpError(
+            "the user currently has control of the browser; wait until they tap "
+            '"Hand back to agent"'
+        )
+
+
 def _require_web_url(url: str) -> str:
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https") or not parsed.netloc:
@@ -243,12 +253,14 @@ def _require_web_url(url: str) -> str:
 
 
 def tool_show(args: dict) -> str:
+    _require_agent_control()
     url = _require_web_url(args["url"])
     _write_command({"action": "open", "url": url})
     return f"requested the app to open {url}"
 
 
 def tool_preview(args: dict) -> str:
+    _require_agent_control()
     url = _require_web_url(args["url"])
     _write_command({"action": "preview", "url": url})
     return f"requested the app to show {url} as an inline preview"
@@ -293,10 +305,13 @@ def tool_status(args: dict) -> str:
     if name is None:
         return "not connected: no WebView devtools socket. " + AGENT_CONTROL_HINT
     pages = [t.get("url", "") for t in CdpSession(name).list_targets() if t.get("type") in ("document", "page")]
-    return f"connected: {name} / pages: {pages}"
+    state = _read_status()
+    control = "user" if state in ("user", "awaiting_user") else "agent"
+    return f"connected: {name} / control: {control} / pages: {pages}"
 
 
 def tool_navigate(args: dict) -> str:
+    _require_agent_control()
     url = _require_web_url(args["url"])
     page = _session().open_page_session()
     try:
@@ -331,6 +346,7 @@ def tool_upload(args: dict) -> str:
     found; pass click_selector for a picker the site creates lazily. The file chooser dialog is
     intercepted so clicking such a button does not open the native Android chooser.
     """
+    _require_agent_control()
     path = os.path.realpath(os.path.expanduser(args["path"]))
     if not os.path.isfile(path):
         raise CdpError(f"no such file: {path}")
@@ -374,6 +390,7 @@ def tool_upload(args: dict) -> str:
 
 
 def tool_click(args: dict) -> str:
+    _require_agent_control()
     page = _session().open_page_session()
     try:
         expr = (
@@ -388,6 +405,7 @@ def tool_click(args: dict) -> str:
 
 
 def tool_type(args: dict) -> str:
+    _require_agent_control()
     page = _session().open_page_session()
     try:
         # Credentials are the user's to type: a password field means the agent should have handed

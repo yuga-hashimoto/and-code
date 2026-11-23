@@ -1261,4 +1261,14 @@
     <string name="file_edit_error_changed_on_disk">Le fichier a été modifié par autre chose depuis son ouverture ; vos modifications n’ont donc pas été enregistrées. Copiez votre texte, fermez l’éditeur, puis rouvrez le fichier.</string>
     <string name="file_edit_error_write_failed">Impossible d’enregistrer le fichier.</string>
     <string name="file_edit_error_generic">Impossible de modifier le fichier.</string>
+    <string name="side_panel_tools_title">Outils</string>
+    <string name="side_panel_close">Fermer les outils</string>
+    <string name="side_panel_preview_not_running">Le serveur ne fonctionne pas</string>
+    <string name="side_panel_terminal_title">Terminal</string>
+    <string name="guest_browser_control_user">Vous avez le contrôle</string>
+    <string name="guest_browser_control_agent_active">L\'agent est en train d\'opérer</string>
+    <string name="guest_browser_control_shared_idle">Partagé avec l\'agent</string>
+    <string name="guest_browser_control_take_over">Prendre le contrôle</string>
+    <string name="guest_browser_control_manual_only">Contrôle manuel uniquement</string>
+    <string name="guest_browser_control_enable_agent">Autoriser l\'agent</string>
 </resources>

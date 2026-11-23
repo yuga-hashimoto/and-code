@@ -1270,4 +1270,14 @@
     <string name="file_edit_error_changed_on_disk">تم تغيير الملف بواسطة عملية أخرى منذ فتحته، لذلك لم يتم حفظ تعديلاتك. انسخ نصك، وأغلق المحرر، ثم افتح الملف مرة أخرى.</string>
     <string name="file_edit_error_write_failed">تعذر حفظ الملف.</string>
     <string name="file_edit_error_generic">تعذر تحرير الملف.</string>
+    <string name="side_panel_tools_title">الأدوات</string>
+    <string name="side_panel_close">إغلاق الأدوات</string>
+    <string name="side_panel_preview_not_running">الخادم لا يعمل</string>
+    <string name="side_panel_terminal_title">الطرفية</string>
+    <string name="guest_browser_control_user">أنت تتحكم الآن</string>
+    <string name="guest_browser_control_agent_active">الوكيل قيد التشغيل</string>
+    <string name="guest_browser_control_shared_idle">مشترك مع الوكيل</string>
+    <string name="guest_browser_control_take_over">تولي التحكم</string>
+    <string name="guest_browser_control_manual_only">تحكم يدوي فقط</string>
+    <string name="guest_browser_control_enable_agent">السماح للوكيل</string>
 </resources>

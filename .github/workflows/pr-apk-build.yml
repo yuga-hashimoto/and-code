@@ -20,10 +20,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
       - uses: gradle/actions/setup-gradle@v4
-      - uses: android-actions/setup-android@v3
-      - run: yes | sdkmanager --licenses >/dev/null || true
-      - run: sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
+      - name: Cache generated Android runtime
+        uses: actions/cache@v4
+        with:
+          path: |
+            build/generated/runtime-assets
+            build/generated/runtime-jni
+          key: and-code-runtime-${{ runner.os }}-${{ hashFiles('runtime_tools/termux_assets.lock.json', 'runtime_tools/termux_assets.py', 'scripts/prepare_android_runtime_*.py') }}
       # See release.yml for why this is AND_CODE_-prefixed rather than GITHUB_CLIENT_ID directly.
       - run: ./gradlew :app:testGithubDebugUnitTest :app:assembleGithubDebug
         env:
