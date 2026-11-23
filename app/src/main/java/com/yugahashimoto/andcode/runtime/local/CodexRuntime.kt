@@ -122,7 +122,7 @@ class CodexRuntime(
     suspend fun install(abi: String): String {
         val runtime = installedRuntimeProvider() ?: error(messages.runtimeMissing)
         cachedVersion = null
-        val version =
+        val installedVersion =
             runCatching {
                 CodexInstaller.install(
                     rootfs = runtime.rootfs,
@@ -136,7 +136,7 @@ class CodexRuntime(
         // every chat kept talking to the previous one. On a first install there is no server and
         // this is a no-op.
         stopServer()
-        return version
+        return installedVersion
     }
 
     /**
