@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -252,60 +253,57 @@ internal fun SelectionActionBar(
     /** Offered only while one chat is selected; a name is given to one chat at a time. */
     onRename: (() -> Unit)? = null,
 ) {
-    Row(
-        modifier =
-            Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TextButton(onClick = onCancel) {
-            Text(stringResource(R.string.cancel))
-        }
-        Spacer(Modifier.width(4.dp))
-        Text(
-            text = stringResource(R.string.drawer_selected_count, selectedCount),
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-        )
-        onRename?.let { rename ->
-            IconButton(onClick = rename) {
-                Icon(
-                    Icons.Default.Edit,
-                    contentDescription = stringResource(R.string.rename_session),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(20.dp),
-                )
+    // Two tiers: the drawer is 288dp wide, and Cancel, the count and four 48dp action buttons do not
+    // fit on one line (the count got a few dp and wrapped letter by letter, worse in Japanese).
+    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(onClick = onCancel) {
+                Text(stringResource(R.string.cancel))
             }
+            Spacer(Modifier.width(4.dp))
+            Text(
+                text = stringResource(R.string.drawer_selected_count, selectedCount),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
         }
-        IconButton(onClick = onTogglePin) {
-            Icon(
-                Icons.Default.PushPin,
-                contentDescription =
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            onRename?.let { rename ->
+                SelectionActionButton(Icons.Default.Edit, stringResource(R.string.rename_session), onClick = rename)
+            }
+            SelectionActionButton(
+                icon = Icons.Default.PushPin,
+                description =
                     stringResource(
                         if (allSelectedPinned) R.string.drawer_unpin_session else R.string.drawer_pin_session,
                     ),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
+                onClick = onTogglePin,
             )
-        }
-        IconButton(onClick = onArchive) {
-            Icon(
-                Icons.Default.Archive,
-                contentDescription = stringResource(R.string.drawer_archive_session),
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-        IconButton(onClick = onDelete) {
-            Icon(
-                Icons.Default.Delete,
-                contentDescription = stringResource(R.string.delete_session),
+            SelectionActionButton(Icons.Default.Archive, stringResource(R.string.drawer_archive_session), onClick = onArchive)
+            SelectionActionButton(
+                icon = Icons.Default.Delete,
+                description = stringResource(R.string.delete_session),
                 tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(20.dp),
+                onClick = onDelete,
             )
         }
+    }
+}
+
+@Composable
+private fun SelectionActionButton(
+    icon: ImageVector,
+    description: String,
+    tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+    onClick: () -> Unit,
+) {
+    IconButton(onClick = onClick) {
+        Icon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -453,6 +451,7 @@ internal fun DrawerChatRow(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                         if (relativeTime.isNotBlank()) {
@@ -461,6 +460,8 @@ internal fun DrawerChatRow(
                                     text = "·",
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    // A separator only; TalkBack should not read it out.
+                                    modifier = Modifier.clearAndSetSemantics {},
                                 )
                             }
                             Text(
@@ -468,6 +469,7 @@ internal fun DrawerChatRow(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
                         }
                     }

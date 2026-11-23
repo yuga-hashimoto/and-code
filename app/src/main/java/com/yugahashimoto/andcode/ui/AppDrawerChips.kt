@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -65,7 +66,7 @@ internal fun DrawerAgentChips(
                 // a phone-width drawer without truncating any of them.
                 modifier =
                     Modifier
-                        .height(38.dp)
+                        .heightIn(min = 38.dp)
                         .then(if (selected) Modifier.weight(1f) else Modifier.width(44.dp))
                         .semantics { this.selected = selected },
                 shape = RoundedCornerShape(12.dp),
@@ -135,7 +136,8 @@ internal fun DrawerProjectsSection(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            if (workspaces.isNotEmpty()) {
+            // Not while the section is collapsed: the field lives inside it, so the tap would do nothing.
+            if (workspaces.isNotEmpty() && !collapsed) {
                 IconButton(
                     onClick = onToggleSearch,
                     modifier = Modifier.size(32.dp),

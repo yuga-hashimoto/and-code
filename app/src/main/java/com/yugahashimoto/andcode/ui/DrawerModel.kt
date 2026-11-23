@@ -121,18 +121,14 @@ internal fun DrawerRecentSession.projectLabel(defaultLabel: String): String =
  * keeps newest first). Within a group, chats waiting on attention stay on top without disturbing the
  * order of the rest.
  */
-internal fun groupedByProject(sessions: List<DrawerRecentSession>): List<Pair<String, List<DrawerRecentSession>>> {
-    val inputOrder = sessions.mapIndexed { index, session -> session.id to index }.toMap()
-    return sessions
+internal fun groupedByProject(sessions: List<DrawerRecentSession>): List<Pair<String, List<DrawerRecentSession>>> =
+    // groupBy keeps first-occurrence order, which for a newest-first list is "project of the newest chat first".
+    sessions
         .groupBy { it.projectKey() }
         .map { (key, group) ->
             val (attention, rest) = group.partition { it.hasAttention }
             key to (attention + rest)
         }
-        .sortedBy { (_, group) ->
-            group.minOfOrNull { inputOrder[it.id] ?: Int.MAX_VALUE } ?: Int.MAX_VALUE
-        }
-}
 
 internal fun toggledSection(
     collapsed: Set<String>,
