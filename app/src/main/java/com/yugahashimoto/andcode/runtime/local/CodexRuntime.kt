@@ -122,28 +122,32 @@ class CodexRuntime(
     suspend fun install(abi: String): String {
         val runtime = installedRuntimeProvider() ?: error(messages.runtimeMissing)
         cachedVersion = null
-        return runCatching {
-            CodexInstaller.install(
-                rootfs = runtime.rootfs,
-                abi = abi,
-                runtimeDirectory = runtimeDirectory,
-                accessCoordinator = accessCoordinator,
-            )
-        }.getOrElse { throw IllegalStateException(messages.installFailed, it) }
+        val version =
+            runCatching {
+                CodexInstaller.install(
+                    rootfs = runtime.rootfs,
+                    abi = abi,
+                    runtimeDirectory = runtimeDirectory,
+                    accessCoordinator = accessCoordinator,
+                )
+            }.getOrElse { throw IllegalStateException(messages.installFailed, it) }
+        // A re-install replaces the binaries under a running app-server, which keeps the old release
+        // in memory until stopped; without this a retried install would report the new version while
+        // every chat kept talking to the previous one. On a first install there is no server and
+        // this is a no-op.
+        stopServer()
+        return version
     }
 
     /**
-     * Replaces the installed binaries with the newest release, then stops the app-server.
+     * Replaces the installed binaries with the newest release, then reads the version back.
      *
-     * The app-server is a long-lived process started from the binary that was just replaced, so it
-     * keeps running the old release in memory until it is stopped. Without this the settings card
-     * would report the new version while every chat kept talking to the previous one until the app
-     * restarted. The version is read back from the new binary so a broken download fails the update
-     * instead of being reported as success.
+     * [install] already stops the app-server so the next call starts the release now on disk; reading
+     * the version from the new binary here makes a broken download fail the update instead of being
+     * reported as success.
      */
     suspend fun update(abi: String): String {
         install(abi)
-        stopServer()
         return version() ?: error(messages.installFailed)
     }
 

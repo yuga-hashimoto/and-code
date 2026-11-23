@@ -18,6 +18,12 @@ recorded in the runtime metadata (`components`), so a later install that rebuild
 Codex-only selection provisions the shared environment itself (`CodexController.install`). The sign-in check starts the resident app-server, so it runs when the settings screen
 is opened, not at app launch.
 
+Updating reuses the same installer against the existing rootfs (`CodexController.update` ->
+`CodexRuntime.update`): `CodexReleaseClient` resolves npm's latest at press time, the two binaries are
+re-verified and swapped in place, and the app-server is stopped so the next call starts the release now
+on disk instead of the one it still had in memory. The version is read back from the new binary, which
+is how the card can report `Updated: x -> y` or `Already up to date (y)` rather than just going quiet.
+
 ### Verified on an emulator (API 36, arm64, 2026-09-21, unauthenticated)
 
 - Install from Settings > Agents > Codex on a fresh install with the local runtime already set up:

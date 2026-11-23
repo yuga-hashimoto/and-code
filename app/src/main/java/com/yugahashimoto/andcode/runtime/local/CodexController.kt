@@ -138,7 +138,9 @@ class CodexController(
                     }
                 }
                     .onSuccess {
-                        mutableState.update { it.copy(install = CodexInstallStatus.Idle) }
+                        // A re-install supersedes any earlier update report, the way
+                        // AntigravityController.install rebuilds its state from scratch.
+                        mutableState.update { it.copy(install = CodexInstallStatus.Idle, lastUpdate = null) }
                         runCatching { rehydrate() }
                     }
                     .onFailure { error ->
