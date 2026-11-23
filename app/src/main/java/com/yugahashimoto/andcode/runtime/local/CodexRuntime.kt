@@ -122,14 +122,33 @@ class CodexRuntime(
     suspend fun install(abi: String): String {
         val runtime = installedRuntimeProvider() ?: error(messages.runtimeMissing)
         cachedVersion = null
-        return runCatching {
-            CodexInstaller.install(
-                rootfs = runtime.rootfs,
-                abi = abi,
-                runtimeDirectory = runtimeDirectory,
-                accessCoordinator = accessCoordinator,
-            )
-        }.getOrElse { throw IllegalStateException(messages.installFailed, it) }
+        val installedVersion =
+            runCatching {
+                CodexInstaller.install(
+                    rootfs = runtime.rootfs,
+                    abi = abi,
+                    runtimeDirectory = runtimeDirectory,
+                    accessCoordinator = accessCoordinator,
+                )
+            }.getOrElse { throw IllegalStateException(messages.installFailed, it) }
+        // A re-install replaces the binaries under a running app-server, which keeps the old release
+        // in memory until stopped; without this a retried install would report the new version while
+        // every chat kept talking to the previous one. On a first install there is no server and
+        // this is a no-op.
+        stopServer()
+        return installedVersion
+    }
+
+    /**
+     * Replaces the installed binaries with the newest release, then reads the version back.
+     *
+     * [install] already stops the app-server so the next call starts the release now on disk; reading
+     * the version from the new binary here makes a broken download fail the update instead of being
+     * reported as success.
+     */
+    suspend fun update(abi: String): String {
+        install(abi)
+        return version() ?: error(messages.installFailed)
     }
 
     /** A `codex` invocation in the shared sandbox, common to every process this runtime starts. */

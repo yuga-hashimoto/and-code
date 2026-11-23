@@ -26,11 +26,33 @@ sealed interface CodexInstallStatus {
     data class Failed(val message: String?) : CodexInstallStatus
 }
 
+/** What an update attempt did to the installed release, mirroring `AntigravityUpdateResult`. */
+sealed interface CodexUpdateResult {
+    /** The version now installed, whether or not this attempt changed it. */
+    val version: String
+
+    data class Updated(val fromVersion: String, override val version: String) : CodexUpdateResult
+
+    data class AlreadyLatest(override val version: String) : CodexUpdateResult
+}
+
+/** Classifies an update by what it did to the installed version. */
+internal fun codexUpdateResult(
+    before: String?,
+    after: String,
+): CodexUpdateResult =
+    if (before.isNullOrBlank() || before == after) {
+        CodexUpdateResult.AlreadyLatest(after)
+    } else {
+        CodexUpdateResult.Updated(before, after)
+    }
+
 data class CodexUiState(
     val installed: Boolean = false,
     val version: String? = null,
     val signedIn: Boolean = false,
     val install: CodexInstallStatus = CodexInstallStatus.Idle,
+    val lastUpdate: CodexUpdateResult? = null,
 ) {
     val ready: Boolean get() = installed && signedIn
 }
@@ -116,8 +138,49 @@ class CodexController(
                     }
                 }
                     .onSuccess {
-                        mutableState.update { it.copy(install = CodexInstallStatus.Idle) }
+                        // A re-install supersedes any earlier update report, the way
+                        // AntigravityController.install rebuilds its state from scratch.
+                        mutableState.update { it.copy(install = CodexInstallStatus.Idle, lastUpdate = null) }
                         runCatching { rehydrate() }
+                    }
+                    .onFailure { error ->
+                        val detail = error.cause?.message?.takeIf { it.isNotBlank() }
+                        val message = listOfNotNull(error.message, detail).joinToString(": ").ifBlank { null }
+                        mutableState.update { it.copy(install = CodexInstallStatus.Failed(message)) }
+                    }
+            }
+        }
+    }
+
+    /**
+     * Replaces the installed binaries with the newest npm release.
+     *
+     * Deliberately not [install]: an update only re-downloads the two Codex binaries into the
+     * existing environment, while [install] may provision a whole one. The release is resolved at
+     * press time, so whether anything newer exists is only known by comparing the version on both
+     * sides of the attempt - which is also what lets the card say what happened instead of just
+     * going quiet.
+     */
+    fun update() {
+        if (mutableState.value.install is CodexInstallStatus.Installing) return
+        val before = mutableState.value.version
+        mutableState.update { it.copy(install = CodexInstallStatus.Installing(), lastUpdate = null) }
+        scope.launch {
+            runtimeWork.withLease(UPDATE_LEASE_TAG) {
+                runCatching { runtime.update(abi) }
+                    .onSuccess { version ->
+                        // Re-reads the new binary's version and re-announces the target, so the
+                        // connection quality monitor and the drawer see the release that is now on
+                        // disk rather than the one this state happened to hold.
+                        target.connect()
+                        mutableState.update {
+                            it.copy(
+                                installed = true,
+                                version = version,
+                                install = CodexInstallStatus.Idle,
+                                lastUpdate = codexUpdateResult(before, version),
+                            )
+                        }
                     }
                     .onFailure { error ->
                         val detail = error.cause?.message?.takeIf { it.isNotBlank() }
@@ -137,5 +200,6 @@ class CodexController(
 
     private companion object {
         const val INSTALL_LEASE_TAG = "codex-install"
+        const val UPDATE_LEASE_TAG = "codex-update"
     }
 }

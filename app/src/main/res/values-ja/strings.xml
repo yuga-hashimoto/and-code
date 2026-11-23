@@ -1096,6 +1096,7 @@
     <string name="codex_status_signed_out">サインインしていません。ChatGPTアカウントまたはOpenAI APIキーでサインインしてください。</string>
     <string name="codex_sign_in_button">サインイン</string>
     <string name="codex_sign_out_button">サインアウト</string>
+    <string name="codex_update_button">Codexを更新</string>
     <string name="codex_sign_in_method_chatgpt">ChatGPTアカウント</string>
     <string name="codex_sign_in_method_api_key">APIキー</string>
     <string name="codex_sign_in_browser_instructions">ブラウザでChatGPTアカウントにサインインしてください。完了するとこの画面は自動的に閉じます。</string>
