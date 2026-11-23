@@ -88,6 +88,28 @@ internal fun shouldStartRuntimeInstall(
     fullDevelopmentToolsInstalled: Boolean = false,
 ): Boolean = !installComplete || (installFullDevelopmentTools && !fullDevelopmentToolsInstalled)
 
+/** True when any install the guide started has ended in a failure the user has to be shown. */
+internal fun setupInstallFailed(
+    runtimeStatus: LocalRuntimeStatus,
+    claude: ClaudeCodeUiState,
+    antigravity: AntigravityControllerState,
+    codex: CodexUiState,
+    fullDevelopmentToolsInstallFailed: Boolean,
+): Boolean =
+    runtimeStatus is LocalRuntimeStatus.Broken ||
+        claude.install is ClaudeInstallStatus.Failed ||
+        antigravity.error != null ||
+        codex.install is CodexInstallStatus.Failed ||
+        fullDevelopmentToolsInstallFailed
+
+/** Whether Step 2's wait for the full-toolchain install is over: it failed, or it ran and everything is in place. */
+internal fun shouldLeaveFullToolsInstallWait(
+    installFailed: Boolean,
+    installObserved: Boolean,
+    installRunning: Boolean,
+    agentsInstallComplete: Boolean,
+): Boolean = installFailed || (installObserved && !installRunning && agentsInstallComplete)
+
 /**
  * Guided setup: choose agents, install them, sign in, then connect GitHub.
  *
@@ -186,6 +208,7 @@ fun AndroidSetupScreen(
             claude.install is ClaudeInstallStatus.Installing ||
             codex.install is CodexInstallStatus.Installing ||
             antigravity.busy
+    val installFailed = setupInstallFailed(runtimeStatus, claude, antigravity, codex, fullDevelopmentToolsInstallFailed)
     val fullToolsReady = !installFullDevelopmentTools || fullDevelopmentToolsInstalled
     val agentsInstallComplete =
         (!openCodeSelected || openCodeReady) &&
@@ -195,19 +218,17 @@ fun AndroidSetupScreen(
             fullToolsReady
     val installComplete = agentsInstallComplete && !fullToolsInstallPending
 
-    LaunchedEffect(packageInstallRunning, fullToolsInstallPending, agentsInstallComplete, fullDevelopmentToolsInstallFailed) {
+    // The guide's first-time install reports a failure as a Broken runtime (or a Failed agent
+    // install), not as the Settings flow's "development-tools-install" operation. Keying this wait
+    // only on fullDevelopmentToolsInstallFailed therefore stranded the user on Step 2 forever after
+    // any failure, so every failure kind now releases it and lands on Step 3's error and Retry.
+    LaunchedEffect(packageInstallRunning, fullToolsInstallPending, agentsInstallComplete, installFailed) {
         if (!fullToolsInstallPending) return@LaunchedEffect
-        if (fullDevelopmentToolsInstallFailed) {
+        if (packageInstallRunning) fullToolsInstallObserved = true
+        if (shouldLeaveFullToolsInstallWait(installFailed, fullToolsInstallObserved, packageInstallRunning, agentsInstallComplete)) {
             fullToolsInstallPending = false
             fullToolsInstallObserved = false
             currentStep = 3
-        } else {
-            if (packageInstallRunning) fullToolsInstallObserved = true
-            if (fullToolsInstallObserved && !packageInstallRunning && agentsInstallComplete) {
-                fullToolsInstallPending = false
-                fullToolsInstallObserved = false
-                currentStep = 3
-            }
         }
     }
 
@@ -270,13 +291,7 @@ fun AndroidSetupScreen(
             3 ->
                 if (installComplete) {
                     SetupPrimaryAction(stringResource(R.string.setup_next_action), true) { currentStep = 4 }
-                } else if (
-                    runtimeStatus is LocalRuntimeStatus.Broken ||
-                    claude.install is ClaudeInstallStatus.Failed ||
-                    antigravity.error != null ||
-                    codex.install is CodexInstallStatus.Failed ||
-                    fullDevelopmentToolsInstallFailed
-                ) {
+                } else if (installFailed) {
                     SetupPrimaryAction(stringResource(R.string.claude_retry_install_button), true) {
                         onStartSetup(
                             // A failed Codex install is retried with the whole selection too: the
@@ -362,6 +377,7 @@ fun AndroidSetupScreen(
                     DevelopmentToolsStep(
                         installFullDevelopmentTools = installFullDevelopmentTools,
                         installPending = fullToolsInstallPending,
+                        installStatus = runtimeStatus as? LocalRuntimeStatus.Installing,
                         onInstallFullDevelopmentToolsChanged = { installFullDevelopmentTools = it },
                     )
                 3 ->
@@ -667,6 +683,7 @@ private fun AgentOption(
 private fun DevelopmentToolsStep(
     installFullDevelopmentTools: Boolean,
     installPending: Boolean,
+    installStatus: LocalRuntimeStatus.Installing?,
     onInstallFullDevelopmentToolsChanged: (Boolean) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -721,9 +738,17 @@ private fun DevelopmentToolsStep(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (installPending) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            // The shared runtime status already knows the percentage and the step; Step 2 only ever
+            // printed a hard-coded label, which made a several-minute download look frozen.
+            val progress = installStatus?.progress
+            if (progress != null) {
+                LinearProgressIndicator(progress = { progress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+            } else {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
             Text(
-                stringResource(R.string.install_step_installing_dev_tools),
+                installStatus?.step?.takeIf(String::isNotBlank)
+                    ?: stringResource(R.string.install_step_installing_dev_tools),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
