@@ -292,10 +292,12 @@ fun OpenCodeAgentSettingsScreen(
             (state.status as? LocalRuntimeStatus.Updating)?.let { RuntimeUpdateProgressCard(it) }
             state.lastOperation?.let { RuntimeOperationResultCard(it) }
 
-            AgentStatusCard(
+            AgentSettingsStatusCard(
                 status = state.status.displayName(),
                 active = state.status is LocalRuntimeStatus.Ready,
-                metrics = openCodeMetrics(state),
+                version = state.version,
+                extraMetrics =
+                    listOfNotNull(state.port?.let { AgentMetric(stringResource(R.string.port_label), it.toString()) }),
             ) {
                 if (state.installed) {
                     OpenCodeProcessControls(state, onStart, onStop, onRestart)
@@ -559,11 +561,6 @@ private fun OpenCodeUpdateCard(
         }
     }
 }
-
-@Composable
-private fun openCodeMetrics(state: OpenCodeAgentUiState): List<AgentMetric> =
-    agentVersionMetrics(state.version) +
-        listOfNotNull(state.port?.let { AgentMetric(stringResource(R.string.port_label), it.toString()) })
 
 @Composable
 private fun ClaudeCodeUiState.isReady(): Boolean =

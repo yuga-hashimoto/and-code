@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
@@ -23,12 +22,11 @@ import com.yugahashimoto.andcode.R
  * to the back affordance had to be repeated eight times. Only the title, the optional trailing
  * [actions] and the optional [snackbarHost]/[floatingActionButton] ever differed.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SettingsScaffold(
     title: String,
     onBack: () -> Unit,
-    /** Null keeps the default body weight; the agent screens ask for SemiBold. */
+    /** Null keeps the top bar title's default weight; the agent screens ask for SemiBold. */
     titleFontWeight: FontWeight? = null,
     actions: @Composable RowScope.() -> Unit = {},
     snackbarHost: @Composable () -> Unit = {},
