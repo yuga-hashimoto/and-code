@@ -107,6 +107,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.asImageBitmap
@@ -282,11 +283,14 @@ fun ChatHomeScreen(
     previewWorkspaceDir: File? = null,
     /** The user's opt-in for the agent driving the browser; off means the preview is view-only. */
     agentControlEnabled: Boolean = false,
+    onEnableAgentControl: (() -> Unit)? = null,
     onPreviewRequested: (PreviewTarget) -> Unit = {},
     onPreviewMinimize: () -> Unit = {},
     onPreviewRestore: () -> Unit = {},
     onExpandPreview: (PreviewTarget) -> Unit = {},
     onClosePreview: () -> Unit = {},
+    sessionTools: SessionToolsUiState = SessionToolsUiState(),
+    sessionToolsActions: SessionToolsActions = SessionToolsActions(),
     onImageAttachment: (Bitmap) -> Unit = {},
     /** Fetches and opens the diff dialog for a tapped [ChatPart.Patch] card. */
     onOpenPatchDiff: (ChatPart.Patch) -> Unit = {},
@@ -430,6 +434,10 @@ fun ChatHomeScreen(
     // A subagent session is a detour, not a destination: the system back gesture returns to the
     // main agent instead of leaving the chat, matching the in-chat return banner.
     BackHandler(enabled = state.parentSession != null) { onReturnToParentSession() }
+    BackHandler(enabled = showSidePanel) { showSidePanel = false }
+    LaunchedEffect(showSidePanel) {
+        if (showSidePanel) sessionToolsActions.onRefreshPreviewAvailability()
+    }
 
     Box(
         modifier =
@@ -486,6 +494,9 @@ fun ChatHomeScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showSidePanel = true }) {
+                        Icon(Icons.Default.Tune, contentDescription = stringResource(R.string.side_panel_tools_title))
+                    }
                     IconButton(onClick = onNewChat) {
                         Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_chat))
                     }
@@ -666,6 +677,7 @@ fun ChatHomeScreen(
                             onExpand = onExpandPreview,
                             onClose = onClosePreview,
                             agentControlEnabled = agentControlEnabled,
+                            onEnableAgentControl = onEnableAgentControl,
                             modifier = Modifier.padding(bottom = 6.dp),
                         )
                     }
@@ -802,34 +814,27 @@ fun ChatHomeScreen(
             }
         }
 
+        if (showSidePanel) {
+            Box(
+                modifier =
+                    Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.32f))
+                        .clickable { showSidePanel = false },
+            )
+        }
+
         AnimatedVisibility(
             visible = showSidePanel,
             enter = slideInHorizontally(initialOffsetX = { it }),
             exit = slideOutHorizontally(targetOffsetX = { it }),
             modifier = Modifier.align(Alignment.CenterEnd),
         ) {
-            Surface(
-                modifier =
-                    Modifier
-                        .width(280.dp)
-                        .fillMaxSize(),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 4.dp,
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = stringResource(R.string.side_panel_files_title),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Text(
-                        text = stringResource(R.string.side_panel_files_desc),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
+            SessionToolsPanel(
+                state = sessionTools,
+                actions = sessionToolsActions,
+                onClose = { showSidePanel = false },
+            )
         }
     }
 

@@ -46,8 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.yugahashimoto.andcode.R
-import com.yugahashimoto.andcode.feature.browser.BrowserHandoff
-import com.yugahashimoto.andcode.feature.browser.GuestBrowserHandoffBanner
+import com.yugahashimoto.andcode.feature.browser.BrowserControlBar
 import com.yugahashimoto.andcode.feature.browser.GuestWebContent
 import com.yugahashimoto.andcode.feature.browser.PreviewTarget
 import com.yugahashimoto.andcode.feature.browser.StaticAssetInterceptor
@@ -73,6 +72,7 @@ fun ChatPreviewCard(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
     agentControlEnabled: Boolean = false,
+    onEnableAgentControl: (() -> Unit)? = null,
 ) {
     var fullscreen by remember(target) { mutableStateOf(false) }
     var webView by remember(target) { mutableStateOf<WebView?>(null) }
@@ -112,7 +112,10 @@ fun ChatPreviewCard(
                         onReload = { webView?.reload() },
                         onClose = onClose,
                     )
-                    PreviewHandoffBanner()
+                    BrowserControlBar(
+                        agentControlEnabled = agentControlEnabled,
+                        onEnableAgentControl = onEnableAgentControl,
+                    )
                     PreviewBody(
                         target = target,
                         url = currentUrl,
@@ -145,7 +148,10 @@ fun ChatPreviewCard(
                     onReload = { webView?.reload() },
                     onClose = onClose,
                 )
-                PreviewHandoffBanner()
+                BrowserControlBar(
+                    agentControlEnabled = agentControlEnabled,
+                    onEnableAgentControl = onEnableAgentControl,
+                )
                 PreviewBody(
                     target = target,
                     url = currentUrl,
@@ -165,20 +171,6 @@ private fun initialPreviewUrl(target: PreviewTarget): String =
         is PreviewTarget.Url -> target.url
         is PreviewTarget.Static -> staticPreviewUrl(target.entry)
     }
-
-/**
- * Shows the same handoff controls as the full-screen guest browser, so the user can take over and
- * hand back without leaving the conversation.
- */
-@Composable
-private fun PreviewHandoffBanner() {
-    if (BrowserHandoff.active != null) {
-        GuestBrowserHandoffBanner(
-            onHandBack = BrowserHandoff::handBack,
-            onDismiss = BrowserHandoff::dismiss,
-        )
-    }
-}
 
 @Composable
 private fun PreviewToolbar(

@@ -46,6 +46,7 @@ fun GuestBrowserScreen(
     initialUrl: String,
     onBack: () -> Unit,
     agentControlEnabled: Boolean = false,
+    onEnableAgentControl: (() -> Unit)? = null,
 ) {
     var urlInput by rememberSaveable { mutableStateOf(initialUrl) }
     var progress by remember { mutableIntStateOf(0) }
@@ -76,12 +77,10 @@ fun GuestBrowserScreen(
         },
     ) { padding ->
         Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-            if (BrowserHandoff.active != null) {
-                GuestBrowserHandoffBanner(
-                    onHandBack = BrowserHandoff::handBack,
-                    onDismiss = BrowserHandoff::dismiss,
-                )
-            }
+            BrowserControlBar(
+                agentControlEnabled = agentControlEnabled,
+                onEnableAgentControl = onEnableAgentControl,
+            )
             if (!webViewUnavailable) {
                 GuestBrowserUrlBar(
                     urlInput = urlInput,
