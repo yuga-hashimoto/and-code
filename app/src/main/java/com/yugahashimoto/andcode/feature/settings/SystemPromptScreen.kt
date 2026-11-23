@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -22,10 +21,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -67,24 +64,16 @@ fun SystemPromptScreen(
     var showEditor by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<SystemPromptPreset?>(null) }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(stringResource(R.string.system_prompt_title)) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nav_back))
-                    }
-                },
-                actions = {
-                    IconButton(onClick = {
-                        editing = null
-                        showEditor = true
-                    }) {
-                        Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_system_prompt_preset))
-                    }
-                },
-            )
+    SettingsScaffold(
+        title = stringResource(R.string.system_prompt_title),
+        onBack = onBack,
+        actions = {
+            IconButton(onClick = {
+                editing = null
+                showEditor = true
+            }) {
+                Icon(Icons.Default.Add, contentDescription = stringResource(R.string.cd_add_system_prompt_preset))
+            }
         },
     ) { padding ->
         LazyColumn(
