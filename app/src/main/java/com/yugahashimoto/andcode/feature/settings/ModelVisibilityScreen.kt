@@ -27,9 +27,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.OpenCodeProvider
+import com.yugahashimoto.andcode.ui.theme.Spacing
 
 @Composable
 fun ModelVisibilityScreen(
@@ -49,15 +49,15 @@ fun ModelVisibilityScreen(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+                    .padding(horizontal = Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.hairline),
         ) {
             item {
                 Text(
                     text = stringResource(R.string.model_visibility_caption),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 8.dp),
+                    modifier = Modifier.padding(bottom = Spacing.sm),
                 )
             }
             item {
@@ -85,7 +85,7 @@ fun ModelVisibilityScreen(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp),
+                            modifier = Modifier.padding(top = Spacing.lg, bottom = Spacing.xs),
                         )
                     }
                     items(models, key = { "vis-${provider.id}-${it.id}" }) { model ->
@@ -96,9 +96,9 @@ fun ModelVisibilityScreen(
                                 Modifier
                                     .fillMaxWidth()
                                     .clickable { onToggleModelVisibility(provider.id, model.id) }
-                                    .padding(vertical = 4.dp),
+                                    .padding(vertical = Spacing.xs),
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                         ) {
                             Checkbox(
                                 checked = visible,
@@ -116,13 +116,13 @@ fun ModelVisibilityScreen(
                         }
                     }
                     item {
-                        HorizontalDivider(modifier = Modifier.padding(top = 4.dp))
+                        HorizontalDivider(modifier = Modifier.padding(top = Spacing.xs))
                     }
                 }
             }
 
             item {
-                Spacer(Modifier.padding(bottom = 24.dp))
+                Spacer(Modifier.padding(bottom = Spacing.xxl))
             }
         }
     }

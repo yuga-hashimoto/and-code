@@ -21,6 +21,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.ui.theme.Spacing
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -68,7 +69,7 @@ fun LegalDocumentScreen(
                 }
             LegalDocState.Failed ->
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(padding).padding(20.dp),
+                    modifier = Modifier.fillMaxSize().padding(padding).padding(Spacing.xl),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
@@ -78,8 +79,8 @@ fun LegalDocumentScreen(
                 SelectionContainer {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize().padding(padding),
-                        contentPadding = PaddingValues(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        contentPadding = PaddingValues(Spacing.xl),
+                        verticalArrangement = Arrangement.spacedBy(Spacing.xs),
                     ) {
                         items(current.lines) { line -> LegalDocLine(line) }
                     }
@@ -96,21 +97,21 @@ private fun LegalDocLine(line: String) {
                 line.removePrefix("# "),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp, bottom = 4.dp),
+                modifier = Modifier.padding(top = Spacing.sm, bottom = Spacing.xs),
             )
         line.startsWith("## ") ->
             Text(
                 line.removePrefix("## "),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(top = 8.dp, bottom = 2.dp),
+                modifier = Modifier.padding(top = Spacing.sm, bottom = Spacing.hairline),
             )
         line.startsWith("### ") ->
             Text(
                 line.removePrefix("### "),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(top = 6.dp, bottom = 2.dp),
+                modifier = Modifier.padding(top = 6.dp, bottom = Spacing.hairline),
             )
         line.startsWith("- ") || line.startsWith("* ") ->
             Text("•  ${line.drop(2)}", style = MaterialTheme.typography.bodyMedium)

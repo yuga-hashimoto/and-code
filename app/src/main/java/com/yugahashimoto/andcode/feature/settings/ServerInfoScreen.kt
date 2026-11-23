@@ -52,6 +52,7 @@ import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 import com.yugahashimoto.andcode.ui.ViewModelFactory
 import com.yugahashimoto.andcode.ui.components.StatusChip
+import com.yugahashimoto.andcode.ui.theme.Spacing
 
 @Composable
 fun ServerInfoScreen(
@@ -150,8 +151,8 @@ private fun ConfigTab(
     val isEditing = state.configEditDraft != null
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        contentPadding = PaddingValues(Spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         item {
             Row(
@@ -198,7 +199,7 @@ private fun ConfigTab(
                         text = state.configJson ?: "{}",
                         modifier =
                             Modifier
-                                .padding(12.dp)
+                                .padding(Spacing.md)
                                 .horizontalScroll(rememberScrollState()),
                         style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 11.sp),
                     )
@@ -225,8 +226,8 @@ private fun ProvidersTab(state: ServerInfoUiState) {
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(Spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         items(state.configProviders, key = { it.id }) { provider ->
             Surface(
@@ -283,8 +284,8 @@ private fun CommandsTab(state: ServerInfoUiState) {
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(Spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         items(state.commands, key = { it.name }) { command ->
             Surface(
@@ -295,7 +296,7 @@ private fun CommandsTab(state: ServerInfoUiState) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Text("/${command.name}", fontWeight = FontWeight.Medium)
                     command.description?.let {
-                        Spacer(Modifier.height(2.dp))
+                        Spacer(Modifier.height(Spacing.hairline))
                         Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
@@ -321,8 +322,8 @@ private fun SkillsTab(state: ServerInfoUiState) {
     }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(Spacing.lg),
+        verticalArrangement = Arrangement.spacedBy(Spacing.sm),
     ) {
         items(state.skills, key = { it.name }) { skill ->
             Surface(
@@ -333,7 +334,7 @@ private fun SkillsTab(state: ServerInfoUiState) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Text(skill.name, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     skill.description?.let {
-                        Spacer(Modifier.height(2.dp))
+                        Spacer(Modifier.height(Spacing.hairline))
                         Text(
                             it,
                             style = MaterialTheme.typography.bodySmall,
@@ -343,7 +344,7 @@ private fun SkillsTab(state: ServerInfoUiState) {
                         )
                     }
                     skill.location?.let {
-                        Spacer(Modifier.height(2.dp))
+                        Spacer(Modifier.height(Spacing.hairline))
                         Text(
                             it,
                             style = MaterialTheme.typography.labelSmall,
