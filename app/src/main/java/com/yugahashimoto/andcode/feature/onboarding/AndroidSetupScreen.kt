@@ -1130,8 +1130,10 @@ private fun SignInStep(
                     CodexCard(
                         codex = codex,
                         onInstall = {},
+                        onUpdate = {},
                         onSignIn = onSignInCodex,
                         onSignOut = onSignOutCodex,
+                        showUpdateAction = false,
                     )
             }
         }

@@ -1048,6 +1048,7 @@
     <string name="codex_status_signed_out">未登录。请使用 ChatGPT 账号或 OpenAI API 密钥登录。</string>
     <string name="codex_sign_in_button">登录</string>
     <string name="codex_sign_out_button">退出登录</string>
+    <string name="codex_update_button">更新 Codex</string>
     <string name="codex_sign_in_method_chatgpt">ChatGPT 账号</string>
     <string name="codex_sign_in_method_api_key">API 密钥</string>
     <string name="codex_sign_in_browser_instructions">请在浏览器中使用 ChatGPT 账号登录。完成后此窗口会自动关闭。</string>

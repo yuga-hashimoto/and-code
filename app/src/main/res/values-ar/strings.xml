@@ -1063,6 +1063,7 @@
     <string name="codex_status_signed_out">لم يتم تسجيل الدخول. سجّل الدخول بحساب ChatGPT أو بمفتاح OpenAI API.</string>
     <string name="codex_sign_in_button">تسجيل الدخول</string>
     <string name="codex_sign_out_button">تسجيل الخروج</string>
+    <string name="codex_update_button">تحديث Codex</string>
     <string name="codex_sign_in_method_chatgpt">حساب ChatGPT</string>
     <string name="codex_sign_in_method_api_key">مفتاح API</string>
     <string name="codex_sign_in_browser_instructions">سجّل الدخول بحساب ChatGPT عبر المتصفح. ستُغلق هذه النافذة عند الانتهاء.</string>

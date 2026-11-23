@@ -2,6 +2,7 @@ package com.yugahashimoto.andcode.feature.workspace
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -16,6 +18,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -23,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.runtime.local.CodexInstallStatus
 import com.yugahashimoto.andcode.runtime.local.CodexUiState
+import com.yugahashimoto.andcode.runtime.local.CodexUpdateResult
 
 /**
  * Install and sign-in controls for the Android-local Codex agent.
@@ -34,8 +38,11 @@ import com.yugahashimoto.andcode.runtime.local.CodexUiState
 fun CodexCard(
     codex: CodexUiState,
     onInstall: () -> Unit,
+    onUpdate: () -> Unit,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
+    /** False in the setup guide, where installation and updates are driven by the guide's own step. */
+    showUpdateAction: Boolean = true,
 ) {
     Spacer(Modifier.height(12.dp))
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -61,7 +68,7 @@ fun CodexCard(
             }
             CodexInstallStatus.Idle ->
                 if (codex.installed) {
-                    InstalledSection(codex, onSignIn, onSignOut)
+                    InstalledSection(codex, onUpdate, onSignIn, onSignOut, showUpdateAction)
                 } else {
                     Text(
                         text = stringResource(R.string.codex_needs_runtime_hint),
@@ -89,8 +96,10 @@ private fun InstallButton(
 @Composable
 private fun InstalledSection(
     codex: CodexUiState,
+    onUpdate: () -> Unit,
     onSignIn: () -> Unit,
     onSignOut: () -> Unit,
+    showUpdateAction: Boolean,
 ) {
     if (codex.signedIn) {
         Text(
@@ -101,14 +110,47 @@ private fun InstalledSection(
         OutlinedButton(onClick = onSignOut, modifier = Modifier.fillMaxWidth()) {
             Text(stringResource(R.string.codex_sign_out_button))
         }
-        return
+    } else {
+        Text(
+            text = stringResource(R.string.codex_status_signed_out),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Button(onClick = onSignIn, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.codex_sign_in_button))
+        }
     }
-    Text(
-        text = stringResource(R.string.codex_status_signed_out),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Button(onClick = onSignIn, modifier = Modifier.fillMaxWidth()) {
-        Text(stringResource(R.string.codex_sign_in_button))
+    if (showUpdateAction) {
+        codex.lastUpdate?.let { UpdateResultRow(it) }
+        OutlinedButton(onClick = onUpdate, modifier = Modifier.fillMaxWidth()) {
+            Text(stringResource(R.string.codex_update_button))
+        }
+    }
+}
+
+/**
+ * Says whether the last update moved the version or found nothing newer.
+ *
+ * The release is resolved at press time rather than from a pinned build, so the same button can
+ * legitimately do nothing; without this the only feedback was the progress bar disappearing.
+ */
+@Composable
+private fun UpdateResultRow(result: CodexUpdateResult) {
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(
+            Icons.Default.CheckCircle,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+        )
+        Text(
+            text =
+                when (result) {
+                    is CodexUpdateResult.Updated ->
+                        stringResource(R.string.agent_update_result_updated, result.fromVersion, result.version)
+                    is CodexUpdateResult.AlreadyLatest ->
+                        stringResource(R.string.agent_update_result_latest, result.version)
+                },
+            style = MaterialTheme.typography.bodySmall,
+        )
     }
 }

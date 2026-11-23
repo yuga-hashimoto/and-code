@@ -428,6 +428,7 @@ fun NavGraphBuilder.settingsNavGraph(
                     onLaunchBrowser = { url -> UrlLauncher.openUrl(context, url) },
                 ),
             onInstall = app.codexController::install,
+            onUpdate = app.codexController::update,
             onSignOut = app.codexController::signOut,
             onOpenMcp = { navController.navigate(ROUTE_SETTINGS_MCP_CODEX) },
             onBack = { navController.popBackStack() },

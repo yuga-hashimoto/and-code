@@ -1054,6 +1054,7 @@
     <string name="codex_status_signed_out">Sin sesión iniciada. Inicie sesión con su cuenta de ChatGPT o una clave API de OpenAI.</string>
     <string name="codex_sign_in_button">Iniciar sesión</string>
     <string name="codex_sign_out_button">Cerrar sesión</string>
+    <string name="codex_update_button">Actualizar Codex</string>
     <string name="codex_sign_in_method_chatgpt">Cuenta de ChatGPT</string>
     <string name="codex_sign_in_method_api_key">Clave API</string>
     <string name="codex_sign_in_browser_instructions">Inicie sesión con su cuenta de ChatGPT en el navegador. Esta ventana se cerrará al terminar.</string>

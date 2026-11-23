@@ -1057,6 +1057,7 @@
     <string name="codex_status_signed_out">Вы не вошли. Войдите в аккаунт ChatGPT или используйте ключ API OpenAI.</string>
     <string name="codex_sign_in_button">Войти</string>
     <string name="codex_sign_out_button">Выйти</string>
+    <string name="codex_update_button">Обновить Codex</string>
     <string name="codex_sign_in_method_chatgpt">Аккаунт ChatGPT</string>
     <string name="codex_sign_in_method_api_key">Ключ API</string>
     <string name="codex_sign_in_browser_instructions">Войдите в аккаунт ChatGPT через браузер. Это окно закроется по завершении.</string>

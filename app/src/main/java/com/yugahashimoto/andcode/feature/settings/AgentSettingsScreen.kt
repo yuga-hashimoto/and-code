@@ -104,6 +104,7 @@ fun CodexAgentSettingsScreen(
     signInDialog: ProviderAuthDialogState?,
     signIn: CodexSignInActions,
     onInstall: () -> Unit,
+    onUpdate: () -> Unit,
     onSignOut: () -> Unit,
     onOpenMcp: () -> Unit,
     onBack: () -> Unit,
@@ -124,6 +125,7 @@ fun CodexAgentSettingsScreen(
                 CodexCard(
                     codex = codex,
                     onInstall = onInstall,
+                    onUpdate = onUpdate,
                     onSignIn = signIn.onOpen,
                     onSignOut = onSignOut,
                 )

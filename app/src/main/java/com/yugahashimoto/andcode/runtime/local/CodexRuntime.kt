@@ -132,6 +132,21 @@ class CodexRuntime(
         }.getOrElse { throw IllegalStateException(messages.installFailed, it) }
     }
 
+    /**
+     * Replaces the installed binaries with the newest release, then stops the app-server.
+     *
+     * The app-server is a long-lived process started from the binary that was just replaced, so it
+     * keeps running the old release in memory until it is stopped. Without this the settings card
+     * would report the new version while every chat kept talking to the previous one until the app
+     * restarted. The version is read back from the new binary so a broken download fails the update
+     * instead of being reported as success.
+     */
+    suspend fun update(abi: String): String {
+        install(abi)
+        stopServer()
+        return version() ?: error(messages.installFailed)
+    }
+
     /** A `codex` invocation in the shared sandbox, common to every process this runtime starts. */
     private fun buildCodexProcess(
         runtime: LocalRuntimeInstaller.InstalledRuntime,

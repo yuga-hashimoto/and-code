@@ -1087,6 +1087,7 @@
     <string name="codex_status_signed_out">Not signed in. Sign in with your ChatGPT account or an OpenAI API key.</string>
     <string name="codex_sign_in_button">Sign in</string>
     <string name="codex_sign_out_button">Sign out</string>
+    <string name="codex_update_button">Update Codex</string>
     <string name="codex_sign_in_method_chatgpt">ChatGPT account</string>
     <string name="codex_sign_in_method_api_key">API key</string>
     <string name="codex_sign_in_browser_instructions">Sign in with your ChatGPT account in the browser. This closes when you are done.</string>
