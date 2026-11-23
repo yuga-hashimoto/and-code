@@ -62,4 +62,32 @@ class BrowserHandoffTest {
         BrowserHandoff.dismiss()
         assertEquals(BrowserControlOwner.AGENT, BrowserHandoff.controlOwner)
     }
+
+    @Test
+    fun `clearStaleUserTakeover resets stale user file but preserves awaiting_user`() {
+        val statusFile = browserStatusFile(temporaryFolder.newFolder("workspace"))
+        writeBrowserStatus(statusFile, BROWSER_STATUS_USER)
+
+        BrowserHandoff.clearStaleUserTakeover(statusFile)
+        assertEquals(BROWSER_STATUS_AGENT, readBrowserStatus(statusFile))
+
+        writeBrowserStatus(statusFile, BROWSER_STATUS_AWAITING_USER)
+        BrowserHandoff.clearStaleUserTakeover(statusFile)
+        assertEquals(BROWSER_STATUS_AWAITING_USER, readBrowserStatus(statusFile))
+    }
+
+    @Test
+    fun `releaseUserTakeover clears manual takeover without dismissing agent handoff`() {
+        val statusFile = browserStatusFile(temporaryFolder.newFolder("workspace"))
+        BrowserHandoff.bindWorkspaceStatusFile(statusFile)
+        BrowserHandoff.takeOver()
+
+        BrowserHandoff.releaseUserTakeover()
+        assertEquals(BrowserControlOwner.AGENT, BrowserHandoff.controlOwner)
+        assertEquals(BROWSER_STATUS_AGENT, readBrowserStatus(statusFile))
+
+        BrowserHandoff.begin(statusFile)
+        BrowserHandoff.releaseUserTakeover()
+        assertEquals(BrowserControlOwner.AGENT_HANDOFF, BrowserHandoff.controlOwner)
+    }
 }

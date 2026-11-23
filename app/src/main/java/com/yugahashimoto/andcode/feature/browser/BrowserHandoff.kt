@@ -54,6 +54,25 @@ object BrowserHandoff {
         boundStatusFile = statusFile
     }
 
+    /**
+     * Clears a leftover `"user"` takeover left on disk after a previous process exit so the agent
+     * is not permanently blocked when the UI starts back in [BrowserControlOwner.AGENT].
+     * Never overwrites `"awaiting_user"`, which belongs to an agent-initiated handoff.
+     */
+    fun clearStaleUserTakeover(statusFile: File) {
+        if (controlOwner == BrowserControlOwner.AGENT && readBrowserStatus(statusFile) == BROWSER_STATUS_USER) {
+            writeBrowserStatus(statusFile, BROWSER_STATUS_AGENT)
+        }
+    }
+
+    /** Releases only a manual user takeover, leaving any agent-initiated handoff intact. */
+    fun releaseUserTakeover() {
+        if (!userHasControl) return
+        userControlStatusFile?.let { writeBrowserStatus(it, BROWSER_STATUS_AGENT) }
+        userHasControl = false
+        userControlStatusFile = null
+    }
+
     /** Reflects whether the agent is currently running in the active session. */
     fun updateAgentWorking(working: Boolean) {
         agentWorking = working

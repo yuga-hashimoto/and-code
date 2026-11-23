@@ -253,12 +253,14 @@ def _require_web_url(url: str) -> str:
 
 
 def tool_show(args: dict) -> str:
+    _require_agent_control()
     url = _require_web_url(args["url"])
     _write_command({"action": "open", "url": url})
     return f"requested the app to open {url}"
 
 
 def tool_preview(args: dict) -> str:
+    _require_agent_control()
     url = _require_web_url(args["url"])
     _write_command({"action": "preview", "url": url})
     return f"requested the app to show {url} as an inline preview"

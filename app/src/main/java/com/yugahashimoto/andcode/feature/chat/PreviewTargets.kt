@@ -45,7 +45,7 @@ suspend fun runningSessionPreviewTargets(
 
 private fun previewTargetPort(rawUrl: String): Int? {
     val uri = runCatching { URI(rawUrl.trim()) }.getOrNull() ?: return null
-    if (uri.port > 0) return uri.port
+    if (uri.port != -1) return uri.port.takeIf { it in 1..MAX_PORT }
     return when (uri.scheme?.lowercase()) {
         "http" -> HTTP_DEFAULT_PORT
         "https" -> HTTPS_DEFAULT_PORT
@@ -55,3 +55,4 @@ private fun previewTargetPort(rawUrl: String): Int? {
 
 private const val HTTP_DEFAULT_PORT = 80
 private const val HTTPS_DEFAULT_PORT = 443
+private const val MAX_PORT = 65535

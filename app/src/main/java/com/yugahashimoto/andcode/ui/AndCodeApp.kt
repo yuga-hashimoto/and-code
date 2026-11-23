@@ -88,7 +88,6 @@ import com.yugahashimoto.andcode.feature.browser.PreviewTarget
 import com.yugahashimoto.andcode.feature.browser.PreviewUiState
 import com.yugahashimoto.andcode.feature.browser.activeWorkspaceHostDirectory
 import com.yugahashimoto.andcode.feature.browser.browserStatusFile
-import com.yugahashimoto.andcode.feature.browser.findPreviewEntry
 import com.yugahashimoto.andcode.feature.chat.ChatHomeScreen
 import com.yugahashimoto.andcode.feature.chat.ChatViewModel
 import com.yugahashimoto.andcode.feature.chat.SessionToolsActions
@@ -111,6 +110,7 @@ import com.yugahashimoto.andcode.feature.settings.SettingsViewModel
 import com.yugahashimoto.andcode.feature.wakeword.WakeWordService
 import com.yugahashimoto.andcode.feature.wakeword.WakeWordSettingsPolicy
 import com.yugahashimoto.andcode.feature.workspace.WorkspaceViewModel
+import com.yugahashimoto.andcode.runtime.BackendKind
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.runtime.local.GitCloneResult
@@ -384,33 +384,33 @@ fun AndCodeApp(
                 deviceStorage = DeviceStorage.mounts(),
             )
         }
-    var staticPreviewTarget by remember { mutableStateOf<PreviewTarget.Static?>(null) }
-    LaunchedEffect(previewWorkspaceDir) {
-        staticPreviewTarget =
-            withContext(Dispatchers.IO) {
-                previewWorkspaceDir?.let { directory ->
-                    findPreviewEntry(directory)?.let { entry -> PreviewTarget.Static(directory.path, entry) }
-                }
-            }
-    }
     val sessionPreviewTargets =
-        remember(chatState.sessionId, chatState.messages, lastPreviewTarget, staticPreviewTarget) {
+        remember(chatState.sessionId, chatState.messages, lastPreviewTarget) {
             buildList {
                 lastPreviewTarget?.let(::add)
-                staticPreviewTarget?.let(::add)
                 addAll(loopbackPreviewTargets(chatState.messages))
             }.distinctBy { target -> target.key }
         }
     val devServerProbe = remember { LoopbackDevServerProbe() }
     var runningPreviewTargets by remember { mutableStateOf<List<PreviewTarget.Url>>(emptyList()) }
     var previewProbeNonce by remember { mutableIntStateOf(0) }
-    LaunchedEffect(sessionPreviewTargets, appForeground, previewProbeNonce) {
+    LaunchedEffect(sessionPreviewTargets, selectedRuntime?.kind, appForeground, previewProbeNonce) {
+        if (selectedRuntime?.kind != BackendKind.LOCAL || sessionPreviewTargets.isEmpty()) {
+            runningPreviewTargets = emptyList()
+            return@LaunchedEffect
+        }
         if (!appForeground) return@LaunchedEffect
         runningPreviewTargets =
             runningSessionPreviewTargets(sessionPreviewTargets, devServerProbe::isListening)
     }
     LaunchedEffect(previewWorkspaceDir) {
-        BrowserHandoff.bindWorkspaceStatusFile(previewWorkspaceDir?.let(::browserStatusFile))
+        val statusFile = previewWorkspaceDir?.let(::browserStatusFile)
+        BrowserHandoff.bindWorkspaceStatusFile(statusFile)
+        if (statusFile != null) {
+            withContext(Dispatchers.IO) {
+                BrowserHandoff.clearStaleUserTakeover(statusFile)
+            }
+        }
     }
     LaunchedEffect(chatState.isRunning) {
         BrowserHandoff.updateAgentWorking(chatState.isRunning)
@@ -423,6 +423,7 @@ fun AndCodeApp(
             BrowserHandoff.dismiss()
             previewState = PreviewUiState.None
             lastPreviewTarget = null
+            runningPreviewTargets = emptyList()
         }
         previewSessionInitialized = true
     }
@@ -1382,8 +1383,7 @@ fun AndCodeApp(
                                 SessionToolsUiState(
                                     runningPreviewTargets = runningPreviewTargets,
                                     workspaceLabel = chatState.sessionDirectory ?: chatState.selectedWorkspacePath,
-                                    isLocalRuntime =
-                                        selectedRuntime?.kind == com.yugahashimoto.andcode.runtime.BackendKind.LOCAL,
+                                    isLocalRuntime = selectedRuntime?.kind == BackendKind.LOCAL,
                                 ),
                             sessionToolsActions =
                                 SessionToolsActions(

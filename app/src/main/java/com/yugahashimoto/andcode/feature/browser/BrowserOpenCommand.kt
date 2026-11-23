@@ -46,6 +46,13 @@ internal fun writeBrowserStatus(
     }
 }
 
+/** Reads the current handoff/control state recorded in [file], or null if missing or unreadable. */
+internal fun readBrowserStatus(file: File): String? =
+    runCatching {
+        if (!file.isFile) return null
+        JSONObject(file.readText()).optString("state").takeIf { it.isNotBlank() }
+    }.getOrNull()
+
 /**
  * Resolves the active guest workspace to the same host folder its PRoot process sees, or null when
  * the workspace is remote or the runtime is not local.

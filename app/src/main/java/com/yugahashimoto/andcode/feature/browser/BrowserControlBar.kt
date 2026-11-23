@@ -33,6 +33,7 @@ internal fun BrowserControlBar(
             GuestBrowserHandoffBanner(
                 onHandBack = BrowserHandoff::handBack,
                 onDismiss = BrowserHandoff::dismiss,
+                modifier = modifier,
             )
         }
         BrowserControlOwner.USER_TAKEOVER -> {

@@ -55,12 +55,17 @@ fun GuestBrowserScreen(
     var webView by remember { mutableStateOf<WebView?>(null) }
     var webViewUnavailable by remember { mutableStateOf(false) }
 
+    val exitBrowser = {
+        BrowserHandoff.releaseUserTakeover()
+        onBack()
+    }
+
     BackHandler {
         val view = webView
         if (view != null && view.canGoBack()) {
             view.goBack()
         } else {
-            onBack()
+            exitBrowser()
         }
     }
 
@@ -69,7 +74,7 @@ fun GuestBrowserScreen(
             GuestBrowserTopBar(
                 canGoBack = canGoBack,
                 canGoForward = canGoForward,
-                onBack = onBack,
+                onBack = exitBrowser,
                 onHistoryBack = { webView?.goBack() },
                 onForward = { webView?.goForward() },
                 onReload = { webView?.reload() },
@@ -133,8 +138,9 @@ private fun WebViewUnavailableNotice(modifier: Modifier = Modifier) {
 internal fun GuestBrowserHandoffBanner(
     onHandBack: () -> Unit,
     onDismiss: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
+    Surface(color = MaterialTheme.colorScheme.primaryContainer, modifier = modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,

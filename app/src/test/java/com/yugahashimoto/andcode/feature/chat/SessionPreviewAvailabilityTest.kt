@@ -52,4 +52,25 @@ class SessionPreviewAvailabilityTest {
             assertEquals(listOf(targets[0], targets[1]), result)
             assertEquals(listOf(3000, 5173), probedPorts)
         }
+
+    @Test
+    fun `out of range ports are ignored without probing`() =
+        runTest {
+            val probedPorts = mutableListOf<Int>()
+            val targets =
+                listOf(
+                    PreviewTarget.Url("http://localhost:99999"),
+                    PreviewTarget.Url("http://127.0.0.1:0"),
+                    PreviewTarget.Url("http://localhost:3000"),
+                )
+
+            val result =
+                runningSessionPreviewTargets(targets) { port ->
+                    probedPorts += port
+                    true
+                }
+
+            assertEquals(listOf(targets[2]), result)
+            assertEquals(listOf(3000), probedPorts)
+        }
 }
