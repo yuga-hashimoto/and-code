@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Terminal
 import androidx.compose.material3.Card
@@ -23,7 +22,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.ui.theme.AppShapes
 import com.yugahashimoto.andcode.ui.theme.LocalThemeColors
+import com.yugahashimoto.andcode.ui.theme.Spacing
 
 @Composable
 fun OpenCodeBrand(modifier: Modifier = Modifier) {
@@ -33,7 +34,7 @@ fun OpenCodeBrand(modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Surface(
-            shape = RoundedCornerShape(12.dp),
+            shape = AppShapes.md,
             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.14f),
         ) {
             Icon(
@@ -65,7 +66,7 @@ fun SectionCard(
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
+        shape = AppShapes.xl,
         colors =
             CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface,
@@ -88,7 +89,7 @@ fun StatusChip(
         modifier = modifier,
         color = color.copy(alpha = 0.14f),
         contentColor = color,
-        shape = RoundedCornerShape(100.dp),
+        shape = AppShapes.pill,
     ) {
         Text(
             text = text,
@@ -109,7 +110,7 @@ fun LabelValueRow(
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
     ) {
         Text(
             text = label,

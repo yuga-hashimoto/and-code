@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.ui.components.SectionCard
 import com.yugahashimoto.andcode.ui.components.StatusChip
+import com.yugahashimoto.andcode.ui.theme.Spacing
 
 /** A label/value pair shown under an [AgentStatusCard]'s status row. */
 data class AgentMetric(
@@ -59,7 +60,7 @@ fun AgentStatusCard(
             Spacer(Modifier.height(10.dp))
             metrics.forEach { metric -> AgentMetricRow(metric.label, metric.value) }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { content() }
+        Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) { content() }
     }
 }
 
@@ -72,8 +73,8 @@ fun AgentMetricRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                .padding(vertical = Spacing.xs),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.md),
         verticalAlignment = Alignment.Top,
     ) {
         Text(

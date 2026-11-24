@@ -45,6 +45,7 @@ import com.yugahashimoto.andcode.runtime.LocalAgent
 import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 import com.yugahashimoto.andcode.ui.ViewModelFactory
 import com.yugahashimoto.andcode.ui.components.StatusChip
+import com.yugahashimoto.andcode.ui.theme.Spacing
 
 @Composable
 fun McpScreen(
@@ -108,9 +109,9 @@ fun McpScreen(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding =
                     PaddingValues(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = padding.calculateTopPadding() + 8.dp,
+                        start = Spacing.lg,
+                        end = Spacing.lg,
+                        top = padding.calculateTopPadding() + Spacing.sm,
                         bottom = padding.calculateBottomPadding() + 88.dp,
                     ),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -205,11 +206,11 @@ private fun McpServerCard(
                 )
             }
             server.url?.let {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Spacing.xs))
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             server.command?.let {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Spacing.xs))
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             if (server.tools.isNotEmpty()) {
@@ -221,11 +222,11 @@ private fun McpServerCard(
                 )
             }
             server.error?.let {
-                Spacer(Modifier.height(4.dp))
+                Spacer(Modifier.height(Spacing.xs))
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
             Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                 // An agent that always connects to what it is configured with has nothing to toggle;
                 // it offers removal instead, so the label matches what the button really does.
                 if (supportsOAuth && server.status == "needs_auth") {
@@ -239,7 +240,7 @@ private fun McpServerCard(
                             contentDescription = stringResource(R.string.cd_disconnect),
                             modifier = Modifier.size(16.dp),
                         )
-                        Spacer(Modifier.size(4.dp))
+                        Spacer(Modifier.size(Spacing.xs))
                         Text(stringResource(R.string.mcp_remove_server))
                     }
                 } else if (isConnected) {
@@ -249,13 +250,13 @@ private fun McpServerCard(
                             contentDescription = stringResource(R.string.cd_disconnect),
                             modifier = Modifier.size(16.dp),
                         )
-                        Spacer(Modifier.size(4.dp))
+                        Spacer(Modifier.size(Spacing.xs))
                         Text(stringResource(R.string.mcp_disconnect))
                     }
                 } else {
                     OutlinedButton(onClick = onConnect) {
                         Icon(Icons.Default.Link, contentDescription = stringResource(R.string.cd_connect), modifier = Modifier.size(16.dp))
-                        Spacer(Modifier.size(4.dp))
+                        Spacer(Modifier.size(Spacing.xs))
                         Text(stringResource(R.string.mcp_connect))
                     }
                 }

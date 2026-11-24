@@ -45,6 +45,8 @@ import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.api.OpenCodeProvider
 import com.yugahashimoto.andcode.core.api.ProviderAuthMethod
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
+import com.yugahashimoto.andcode.ui.theme.AppShapes
+import com.yugahashimoto.andcode.ui.theme.Spacing
 
 @Composable
 fun ProviderSettingsScreen(
@@ -83,8 +85,8 @@ fun ProviderSettingsScreen(
                     .fillMaxSize()
                     .padding(paddingValues)
                     .verticalScroll(rememberScrollState())
-                    .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+                    .padding(Spacing.xl),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             OutlinedTextField(
                 value = searchQuery,
@@ -126,7 +128,7 @@ fun ProviderSettingsScreen(
                     stringResource(R.string.setup_provider_no_results),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 8.dp),
+                    modifier = Modifier.padding(vertical = Spacing.sm),
                 )
             } else {
                 filtered.forEach { provider ->
@@ -212,13 +214,13 @@ fun GithubDeviceCodeCard(
     val context = LocalContext.current
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = AppShapes.lg,
         color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)),
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(Spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(Spacing.md),
         ) {
             Text(
                 text = stringResource(R.string.github_device_flow_instructions),
@@ -226,13 +228,13 @@ fun GithubDeviceCodeCard(
             )
             Surface(
                 modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
+                shape = AppShapes.md,
                 color = MaterialTheme.colorScheme.surface,
             ) {
                 Row(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    modifier = Modifier.padding(horizontal = Spacing.lg, vertical = Spacing.md),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.md),
                 ) {
                     SelectionContainer {
                         Text(
@@ -289,7 +291,7 @@ private fun ProviderRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp),
+                .padding(vertical = Spacing.xs),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Row(
@@ -322,7 +324,7 @@ private fun ProviderRow(
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
             OutlinedButton(
                 onClick = onConnect,
                 modifier = Modifier.weight(1f),

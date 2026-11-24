@@ -59,6 +59,7 @@ import com.yugahashimoto.andcode.ui.components.displayName
 import com.yugahashimoto.andcode.ui.components.formatRuntimeBytes
 import com.yugahashimoto.andcode.ui.components.systemPromptPresetLabel
 import com.yugahashimoto.andcode.ui.runtimeAgentIcon
+import com.yugahashimoto.andcode.ui.theme.Spacing
 
 /**
  * Lists the agents so their settings sit under the agent they belong to.
@@ -311,7 +312,7 @@ fun OpenCodeAgentSettingsScreen(
                     )
                     Button(onClick = onOpenSetup, modifier = Modifier.fillMaxWidth()) {
                         Icon(Icons.Default.Build, contentDescription = null)
-                        Spacer(Modifier.padding(horizontal = 4.dp))
+                        Spacer(Modifier.padding(horizontal = Spacing.xs))
                         Text(stringResource(R.string.opencode_open_setup_button))
                     }
                 }
@@ -363,7 +364,7 @@ fun OpenCodeAgentSettingsScreen(
             onDismissRequest = onDismissUpdate,
             title = { Text(stringResource(R.string.update_confirm_title, available.release.version)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(Spacing.sm)) {
                     Text(stringResource(R.string.update_confirm_body1))
                     Text(stringResource(R.string.update_confirm_body2, available.currentVersion))
                     Text(
@@ -402,16 +403,16 @@ private fun OpenCodeProcessControls(
     onRestart: () -> Unit,
 ) {
     val running = state.status is LocalRuntimeStatus.Ready
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(Spacing.sm)) {
         if (running) {
             OutlinedButton(onClick = onStop, modifier = Modifier.weight(1f)) {
                 Icon(Icons.Default.Stop, contentDescription = null)
-                Spacer(Modifier.padding(horizontal = 4.dp))
+                Spacer(Modifier.padding(horizontal = Spacing.xs))
                 Text(stringResource(R.string.runtime_stop_button))
             }
             OutlinedButton(onClick = onRestart, enabled = !state.busy, modifier = Modifier.weight(1f)) {
                 Icon(Icons.Default.Refresh, contentDescription = null)
-                Spacer(Modifier.padding(horizontal = 4.dp))
+                Spacer(Modifier.padding(horizontal = Spacing.xs))
                 Text(stringResource(R.string.runtime_restart_button))
             }
         } else {
@@ -421,13 +422,13 @@ private fun OpenCodeProcessControls(
                 } else {
                     Icon(Icons.Default.PlayArrow, contentDescription = null)
                 }
-                Spacer(Modifier.padding(horizontal = 4.dp))
+                Spacer(Modifier.padding(horizontal = Spacing.xs))
                 Text(stringResource(R.string.runtime_start_button))
             }
             if (state.status is LocalRuntimeStatus.Starting) {
                 OutlinedButton(onClick = onStop, modifier = Modifier.weight(1f)) {
                     Icon(Icons.Default.Stop, contentDescription = null)
-                    Spacer(Modifier.padding(horizontal = 4.dp))
+                    Spacer(Modifier.padding(horizontal = Spacing.xs))
                     Text(stringResource(R.string.runtime_stop_button))
                 }
             }
@@ -458,7 +459,7 @@ private fun OpenCodeUpdateCard(
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
             }
         }
-        Spacer(Modifier.padding(vertical = 4.dp))
+        Spacer(Modifier.padding(vertical = Spacing.xs))
 
         when (val check = state.updateCheck) {
             null -> {
@@ -470,13 +471,13 @@ private fun OpenCodeUpdateCard(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.cd_check_update))
-                    Spacer(Modifier.padding(horizontal = 4.dp))
+                    Spacer(Modifier.padding(horizontal = Spacing.xs))
                     Text(stringResource(R.string.check_for_update_button))
                 }
             }
             is LocalRuntimeUpdateCheck.UpToDate -> {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(Spacing.sm),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Icon(
@@ -486,7 +487,7 @@ private fun OpenCodeUpdateCard(
                     )
                     Text(stringResource(R.string.up_to_date_label, check.currentVersion), fontWeight = FontWeight.Medium)
                 }
-                Spacer(Modifier.padding(vertical = 4.dp))
+                Spacer(Modifier.padding(vertical = Spacing.xs))
                 OutlinedButton(
                     onClick = onCheckForUpdate,
                     enabled = !state.isCheckingUpdate && !state.busy,
@@ -530,14 +531,14 @@ private fun OpenCodeUpdateCard(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Icon(Icons.Default.SystemUpdate, contentDescription = stringResource(R.string.cd_update))
-                    Spacer(Modifier.padding(horizontal = 4.dp))
+                    Spacer(Modifier.padding(horizontal = Spacing.xs))
                     Text(stringResource(R.string.update_to_button, check.release.version))
                 }
             }
         }
 
         state.updateError?.let { error ->
-            Spacer(Modifier.padding(vertical = 4.dp))
+            Spacer(Modifier.padding(vertical = Spacing.xs))
             Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
         }
 
@@ -550,14 +551,14 @@ private fun OpenCodeUpdateCard(
                 stringResource(R.string.revert_available_note, rollbackVersion),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Spacer(Modifier.padding(vertical = 4.dp))
+            Spacer(Modifier.padding(vertical = Spacing.xs))
             OutlinedButton(
                 onClick = onRequestRollback,
                 enabled = !state.busy,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Icon(Icons.Default.History, contentDescription = stringResource(R.string.cd_rollback))
-                Spacer(Modifier.padding(horizontal = 4.dp))
+                Spacer(Modifier.padding(horizontal = Spacing.xs))
                 Text(stringResource(R.string.rollback_to_button, rollbackVersion))
             }
         }
@@ -578,7 +579,7 @@ private fun AntigravityControllerState.isReady(): Boolean =
 @Composable
 private fun AgentCardSection(content: @Composable () -> Unit) {
     Column(
-        modifier = Modifier.padding(bottom = 16.dp),
+        modifier = Modifier.padding(bottom = Spacing.lg),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         content()
@@ -610,7 +611,7 @@ private fun AgentSettingsScaffold(
                     .fillMaxSize()
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
-                    .padding(start = 20.dp, end = 20.dp, top = 6.dp, bottom = 28.dp),
+                    .padding(start = Spacing.xl, end = Spacing.xl, top = 6.dp, bottom = 28.dp),
         ) {
             content()
         }

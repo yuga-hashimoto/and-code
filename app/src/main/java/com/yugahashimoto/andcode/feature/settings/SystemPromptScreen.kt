@@ -32,12 +32,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.runtime.local.MAX_SYSTEM_PROMPT_LENGTH
 import com.yugahashimoto.andcode.runtime.local.SystemPromptPreset
 import com.yugahashimoto.andcode.runtime.local.sanitizeSystemPrompt
 import com.yugahashimoto.andcode.ui.components.systemPromptPresetLabel
+import com.yugahashimoto.andcode.ui.theme.Spacing
 
 /**
  * Lets the user pick a system-prompt preset and manage the custom ones they have saved.
@@ -81,14 +81,14 @@ fun SystemPromptScreen(
                 Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 20.dp),
+                    .padding(horizontal = Spacing.xl),
         ) {
             item {
                 Text(
                     text = stringResource(R.string.system_prompt_caption),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp, bottom = 12.dp),
+                    modifier = Modifier.padding(top = Spacing.sm, bottom = Spacing.md),
                 )
             }
             item {
@@ -114,7 +114,7 @@ fun SystemPromptScreen(
                 )
                 HorizontalDivider()
             }
-            item { Spacer(Modifier.height(24.dp)) }
+            item { Spacer(Modifier.height(Spacing.xxl)) }
         }
     }
 
@@ -164,9 +164,9 @@ private fun PresetRow(
         modifier =
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 4.dp),
+                .padding(vertical = Spacing.xs),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(Spacing.xs),
     ) {
         RadioButton(selected = selected, onClick = onSelect)
         Column(modifier = Modifier.weight(1f)) {
@@ -219,7 +219,7 @@ private fun SystemPromptEditDialog(
             )
         },
         text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(Spacing.md)) {
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
