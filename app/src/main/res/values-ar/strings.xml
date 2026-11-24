@@ -461,7 +461,6 @@
     <string name="drawer_project_default">افتراضي</string>
     <string name="drawer_projects_title">المشاريع</string>
     <string name="drawer_agents_title">الوكلاء</string>
-    <string name="drawer_add_project">إضافة مشروع</string>
     <string name="drawer_pinned">مثبت</string>
     <string name="drawer_pinned_sample_1">محادثة مهمة</string>
     <string name="drawer_pinned_sample_2">ملاحظات المشروع</string>
@@ -746,7 +745,6 @@
     <string name="cd_app_logo">AndCode</string>
     <string name="cd_permission">Permission</string>
     <string name="cd_runtime_type">Runtime type</string>
-    <string name="cd_new_chat">New chat</string>
     <string name="cd_setting">Setting</string>
     <string name="cd_server_url">Server URL</string>
     <string name="cd_password">Password</string>
@@ -821,7 +819,6 @@
     <string name="cd_error">Error</string>
     <string name="cd_runtime_ready">Runtime ready</string>
     <string name="cd_workspaces">Workspaces</string>
-    <string name="cd_nav_item">Navigation item</string>
     <string name="cd_terminal">Terminal</string>
     <string name="cd_add_tab">Add tab</string>
     <string name="cd_back">Back</string>

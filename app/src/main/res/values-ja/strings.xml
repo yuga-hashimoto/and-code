@@ -452,7 +452,6 @@
     <string name="drawer_project_default">デフォルト</string>
     <string name="drawer_projects_title">プロジェクト</string>
     <string name="drawer_agents_title">エージェント</string>
-    <string name="drawer_add_project">プロジェクトを追加</string>
     <string name="drawer_pinned">ピン留め</string>
     <string name="drawer_pinned_sample_1">重要な会話</string>
     <string name="drawer_pinned_sample_2">プロジェクトのメモ</string>
@@ -744,7 +743,6 @@
     <string name="cd_app_logo">AndCode</string>
     <string name="cd_permission">権限</string>
     <string name="cd_runtime_type">ランタイムタイプ</string>
-    <string name="cd_new_chat">新しいチャット</string>
     <string name="cd_setting">設定</string>
     <string name="cd_server_url">サーバーURL</string>
     <string name="cd_password">パスワード</string>
@@ -819,7 +817,6 @@
     <string name="cd_error">エラー</string>
     <string name="cd_runtime_ready">ランタイム準備完了</string>
     <string name="cd_workspaces">ワークスペース</string>
-    <string name="cd_nav_item">ナビゲーション項目</string>
     <string name="cd_terminal">ターミナル</string>
     <string name="cd_add_tab">タブを追加</string>
     <string name="cd_back">戻る</string>

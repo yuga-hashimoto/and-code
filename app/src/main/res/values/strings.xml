@@ -440,7 +440,6 @@
     <string name="drawer_project_default">Default</string>
     <string name="drawer_projects_title">Projects</string>
     <string name="drawer_agents_title">Agents</string>
-    <string name="drawer_add_project">Add project</string>
     <string name="drawer_pinned">Pinned</string>
     <string name="drawer_pinned_sample_1">Important conversation</string>
     <string name="drawer_pinned_sample_2">Project notes</string>
@@ -735,7 +734,6 @@
     <string name="cd_app_logo">AndCode</string>
     <string name="cd_permission">Permission</string>
     <string name="cd_runtime_type">Runtime type</string>
-    <string name="cd_new_chat">New chat</string>
     <string name="cd_setting">Setting</string>
     <string name="cd_server_url">Server URL</string>
     <string name="cd_password">Password</string>
@@ -810,7 +808,6 @@
     <string name="cd_error">Error</string>
     <string name="cd_runtime_ready">Runtime ready</string>
     <string name="cd_workspaces">Workspaces</string>
-    <string name="cd_nav_item">Navigation item</string>
     <string name="cd_terminal">Terminal</string>
     <string name="cd_add_tab">Add tab</string>
     <string name="cd_back">Back</string>
