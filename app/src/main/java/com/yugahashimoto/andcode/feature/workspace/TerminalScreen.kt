@@ -61,7 +61,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -78,6 +77,7 @@ import com.yugahashimoto.andcode.feature.terminal.DevServerStatus
 import com.yugahashimoto.andcode.feature.terminal.StyledLine
 import com.yugahashimoto.andcode.feature.terminal.TerminalKey
 import com.yugahashimoto.andcode.feature.terminal.TerminalStyle
+import com.yugahashimoto.andcode.ui.theme.CodeFontFamily
 import kotlinx.coroutines.launch
 
 private val TerminalBackground = Color(0xFF1A1A2E)
@@ -86,7 +86,7 @@ private val OutputColor = Color(0xFFD4D4D4)
 private val ErrorColor = Color(0xFFF44747)
 private val SystemColor = Color(0xFFDCDCAA)
 private val OutputPadding = 8.dp
-private val OutputTextStyle = TextStyle(fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+private val OutputTextStyle = TextStyle(fontFamily = CodeFontFamily, fontSize = 12.sp)
 
 @Composable
 fun TerminalScreen(
@@ -357,7 +357,7 @@ private fun RowScope.TerminalKeyButton(
                 .weight(1f)
                 .then(if (description != null) Modifier.semantics { contentDescription = description } else Modifier),
     ) {
-        Text(label, fontFamily = FontFamily.Monospace, color = if (enabled) AccentColor else AccentColor.copy(alpha = 0.4f))
+        Text(label, fontFamily = CodeFontFamily, color = if (enabled) AccentColor else AccentColor.copy(alpha = 0.4f))
     }
 }
 
@@ -379,7 +379,7 @@ private fun TerminalInput(
             value = value,
             onValueChange = onValueChange,
             modifier = Modifier.weight(1f),
-            textStyle = LocalTextStyle.current.copy(fontFamily = FontFamily.Monospace),
+            textStyle = LocalTextStyle.current.copy(fontFamily = CodeFontFamily),
             placeholder = { Text(stringResource(R.string.terminal_input_hint), color = Color.White.copy(alpha = 0.4f)) },
             singleLine = true,
             keyboardOptions =

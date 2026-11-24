@@ -148,6 +148,16 @@ test enforces the two stay byte-for-byte identical). An artifact absent from the
 a claim that it ships no NOTICE file — only that none of the standard `NOTICE`/`NOTICE.txt` entry
 names were found at the top level of its jar/aar or its nested `classes.jar`.
 
+## Bundled fonts
+
+| Font | Version | License |
+|---|---|---|
+| JetBrains Mono (NL, Regular and Bold), used for code, diffs and the terminal | `2.304` | SIL Open Font License 1.1 — [github.com/JetBrains/JetBrainsMono](https://github.com/JetBrains/JetBrainsMono) |
+
+The font files ship unmodified at `res/font/jetbrains_mono_*.ttf`. The OFL text is bundled at
+[`THIRD_PARTY_LICENSES/OFL-1.1-JetBrainsMono.txt`](THIRD_PARTY_LICENSES/OFL-1.1-JetBrainsMono.txt)
+and `assets/legal/licenses/OFL-1.1-JetBrainsMono.txt` inside the APK.
+
 ## Wake-word speech model (downloaded at runtime, not bundled)
 
 The on-device wake word is recognised with [Vosk](https://github.com/alphacep/vosk-api)
@@ -195,7 +205,7 @@ This file, along with [PRIVACY.md](PRIVACY.md), [TERMS.md](TERMS.md),
 [THIRD_PARTY_SERVICES.md](THIRD_PARTY_SERVICES.md), [TRADEMARKS.md](TRADEMARKS.md), and
 [docs/AUTHENTICATION_AND_DATA_FLOW.md](docs/AUTHENTICATION_AND_DATA_FLOW.md), is bundled into the
 APK as an asset and reachable offline from **Settings → Legal & Privacy → Open-source Licenses**.
-The full GPL-2.0, GPL-3.0, LGPL-3.0, and BSD-3-Clause license texts referenced above are bundled at
+The full GPL-2.0, GPL-3.0, LGPL-3.0, BSD-3-Clause, and OFL-1.1 license texts referenced above are bundled at
 `assets/legal/licenses/*.txt` inside the same APK (extractable with e.g. `unzip -p app.apk
 assets/legal/licenses/GPL-2.0.txt`), and at [`THIRD_PARTY_LICENSES/`](THIRD_PARTY_LICENSES/) in this
 source repository.

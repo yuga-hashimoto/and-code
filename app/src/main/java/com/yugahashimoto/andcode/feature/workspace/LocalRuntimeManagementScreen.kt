@@ -42,7 +42,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -57,6 +56,7 @@ import com.yugahashimoto.andcode.ui.components.StatusChip
 import com.yugahashimoto.andcode.ui.components.displayName
 import com.yugahashimoto.andcode.ui.components.formatRuntimeBytes
 import com.yugahashimoto.andcode.ui.components.formatRuntimeDuration
+import com.yugahashimoto.andcode.ui.theme.CodeFontFamily
 
 @Composable
 fun LocalRuntimeManagementScreen(
@@ -325,7 +325,7 @@ private fun RuntimeLogsCard(logTail: String) {
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                             .horizontalScroll(rememberScrollState()),
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = CodeFontFamily,
                     style = MaterialTheme.typography.bodySmall,
                 )
             }

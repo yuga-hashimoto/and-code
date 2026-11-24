@@ -622,6 +622,7 @@
     <string name="legal_license_lgpl3">LGPL-3.0</string>
     <string name="legal_license_bsd3">BSD-3-Clause (libandroid-shmem)</string>
     <string name="legal_license_apache2">Licence Apache 2.0</string>
+    <string name="legal_license_ofl">Licence SIL Open Font 1.1 (JetBrains Mono)</string>
     <string name="section_appearance_settings">Apparence</string>
     <string name="theme_row">Thème</string>
     <string name="theme_dialog_title">Sélectionner le thème</string>

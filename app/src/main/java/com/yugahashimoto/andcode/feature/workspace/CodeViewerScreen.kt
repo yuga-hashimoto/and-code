@@ -54,7 +54,6 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
@@ -62,6 +61,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.ui.theme.CodeFontFamily
 import com.yugahashimoto.andcode.ui.theme.SyntaxTheme
 import com.yugahashimoto.andcode.ui.theme.syntaxThemeFor
 import kotlinx.coroutines.launch
@@ -301,7 +301,7 @@ fun CodeViewerScreen(
                                     color = LineNumberColor,
                                     fontSize = 12.sp,
                                     lineHeight = 18.sp,
-                                    fontFamily = FontFamily.Monospace,
+                                    fontFamily = CodeFontFamily,
                                     textAlign = TextAlign.End,
                                     modifier = Modifier.width(40.dp),
                                 )
@@ -320,7 +320,7 @@ fun CodeViewerScreen(
                                     color = CodeForeground,
                                     fontSize = 12.sp,
                                     lineHeight = 18.sp,
-                                    fontFamily = FontFamily.Monospace,
+                                    fontFamily = CodeFontFamily,
                                     softWrap = wrap,
                                     maxLines = if (wrap) Int.MAX_VALUE else 1,
                                 )
@@ -376,7 +376,7 @@ private fun CodeEditor(
         textStyle =
             TextStyle(
                 color = CodeForeground,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = CodeFontFamily,
                 fontSize = 12.sp,
                 lineHeight = 18.sp,
             ),

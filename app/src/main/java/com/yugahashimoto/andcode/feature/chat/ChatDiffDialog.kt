@@ -27,7 +27,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -37,6 +36,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeFileChange
 import com.yugahashimoto.andcode.feature.workspace.DiffViewMode
 import com.yugahashimoto.andcode.feature.workspace.SplitDiffView
 import com.yugahashimoto.andcode.feature.workspace.UnifiedDiffView
+import com.yugahashimoto.andcode.ui.theme.CodeFontFamily
 
 /**
  * Diff for a tapped [ChatPart.Patch] card, opened by [ChatViewModel.openPatchDiff].
@@ -124,7 +124,7 @@ private fun PatchFileEntry(
     Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = file,
-            fontFamily = FontFamily.Monospace,
+            fontFamily = CodeFontFamily,
             fontWeight = FontWeight.Medium,
             style = MaterialTheme.typography.bodySmall,
         )
