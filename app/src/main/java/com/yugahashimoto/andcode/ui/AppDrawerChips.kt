@@ -5,16 +5,12 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -27,14 +23,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -111,29 +105,21 @@ internal fun DrawerProjectsSection(
     projectQuery: String,
     onProjectQueryChange: (String) -> Unit,
 ) {
-    val addProjectDescription = stringResource(R.string.cd_add_project)
     DrawerSectionHeader(
         text = stringResource(R.string.drawer_projects_title),
         collapsed = collapsed,
         onToggle = onToggle,
         trailing = {
-            // Capped, so a long translation at a large font size cannot push the search icon out.
-            TextButton(
+            // Icon only: a "+ Add project" text button squeezed the title and was cut off on a phone.
+            IconButton(
                 onClick = onAddProject,
-                contentPadding = PaddingValues(horizontal = 8.dp),
-                modifier =
-                    Modifier
-                        .height(32.dp)
-                        .widthIn(max = 150.dp)
-                        .semantics { contentDescription = addProjectDescription },
+                modifier = Modifier.size(32.dp),
             ) {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(4.dp))
-                Text(
-                    text = stringResource(R.string.drawer_add_project),
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
+                Icon(
+                    Icons.Default.Add,
+                    contentDescription = stringResource(R.string.cd_add_project),
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(20.dp),
                 )
             }
             // Not while the section is collapsed: the field lives inside it, so the tap would do nothing.
