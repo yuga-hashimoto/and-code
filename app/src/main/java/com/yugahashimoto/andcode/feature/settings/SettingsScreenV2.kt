@@ -79,7 +79,9 @@ import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
 import com.yugahashimoto.andcode.ui.theme.AppShapes
+import com.yugahashimoto.andcode.ui.theme.AppTheme
 import com.yugahashimoto.andcode.ui.theme.Spacing
+import com.yugahashimoto.andcode.ui.theme.supportsDynamicColor
 
 /** Compact settings landing screen backed only by real destinations and state. */
 @Composable
@@ -450,7 +452,10 @@ fun SettingsScreenV2(
     }
 
     if (showThemeDialog) {
-        val themes = listOf("dark", "light", "zinc", "midnight", "claude", "ghostty", "auto")
+        // "dynamic" (Material You) is only offered where the system provides a wallpaper scheme.
+        val themes =
+            listOf("dark", "light", "zinc", "midnight", "claude", "ghostty", "auto") +
+                if (supportsDynamicColor()) listOf(AppTheme.DYNAMIC.key) else emptyList()
         AlertDialog(
             onDismissRequest = { showThemeDialog = false },
             title = { Text(stringResource(R.string.theme_dialog_title)) },

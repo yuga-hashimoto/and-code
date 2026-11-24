@@ -1,17 +1,23 @@
 package com.yugahashimoto.andcode.ui.theme
 
 import android.app.Activity
+import android.os.Build
+import androidx.annotation.ChecksSdkIntAtLeast
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.sp
 import androidx.core.view.WindowCompat
@@ -26,6 +32,9 @@ enum class AppTheme(val key: String) {
     CLAUDE("claude"),
     GHOSTTY("ghostty"),
     AUTO("auto"),
+
+    /** Material You: colors derived from the wallpaper on Android 12+, AUTO elsewhere. */
+    DYNAMIC("dynamic"),
     ;
 
     companion object {
@@ -44,8 +53,40 @@ fun themeColorsFor(
         AppTheme.MIDNIGHT -> MidnightTheme
         AppTheme.CLAUDE -> ClaudeTheme
         AppTheme.GHOSTTY -> GhosttyTheme
-        AppTheme.AUTO -> if (systemDark) DarkTheme else LightTheme
+        AppTheme.AUTO, AppTheme.DYNAMIC -> if (systemDark) DarkTheme else LightTheme
     }
+
+/** Wallpaper-derived color schemes exist from Android 12 (API 31). */
+@ChecksSdkIntAtLeast(api = Build.VERSION_CODES.S)
+fun supportsDynamicColor(): Boolean = Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
+
+/**
+ * Maps a wallpaper-derived Material scheme onto the app's own palette slots. Status colors, diff
+ * tints and the success/warning hues stay from [base] on purpose: they carry meaning (running,
+ * error, added, deleted) that must not shift with whatever the wallpaper happens to be.
+ */
+internal fun themeColorsFromScheme(
+    scheme: ColorScheme,
+    base: ThemeColors,
+): ThemeColors =
+    base.copy(
+        surface0 = scheme.background,
+        surface1 = scheme.surfaceContainerLow,
+        surface2 = scheme.surfaceContainer,
+        surface3 = scheme.surfaceContainerHigh,
+        surface4 = scheme.surfaceContainerHighest,
+        surfaceSidebar = scheme.surfaceContainerLowest,
+        foreground = scheme.onSurface,
+        foregroundMuted = scheme.onSurfaceVariant,
+        foregroundExtraMuted = scheme.outline,
+        border = scheme.outlineVariant,
+        borderAccent = scheme.outline,
+        accent = scheme.primary,
+        accentBright = scheme.inversePrimary,
+        accentForeground = scheme.onPrimary,
+        secondary = scheme.tertiary,
+        destructive = scheme.error,
+    )
 
 private fun buildColorScheme(
     tc: ThemeColors,
@@ -163,8 +204,18 @@ fun AndCodeTheme(
     content: @Composable () -> Unit,
 ) {
     val systemDark = isSystemInDarkTheme()
-    val tc = themeColorsFor(appTheme, systemDark)
-    val isDark = appTheme != AppTheme.LIGHT && (appTheme != AppTheme.AUTO || systemDark)
+    val followsSystem = appTheme == AppTheme.AUTO || appTheme == AppTheme.DYNAMIC
+    val isDark = appTheme != AppTheme.LIGHT && (!followsSystem || systemDark)
+    // Below Android 12 there is no wallpaper scheme, so DYNAMIC falls back to AUTO's palette.
+    val dynamicScheme =
+        if (appTheme == AppTheme.DYNAMIC && supportsDynamicColor()) {
+            val context = LocalContext.current
+            if (isDark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+        } else {
+            null
+        }
+    val baseColors = themeColorsFor(appTheme, systemDark)
+    val tc = dynamicScheme?.let { themeColorsFromScheme(it, baseColors) } ?: baseColors
     val colorScheme = buildColorScheme(tc, isDark)
     val typography = buildTypography(uiFontSize)
 
