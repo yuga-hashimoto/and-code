@@ -151,6 +151,7 @@ class LegalDisclosureComplianceTest {
             "LGPL-3.0.txt",
             "BSD-3-Clause-libandroid-shmem.txt",
             "Apache-2.0.txt",
+            "OFL-1.1-JetBrainsMono.txt",
         ).forEach { name ->
             val text = readRepoFile("app/src/main/assets/legal/licenses/$name")
             assertTrue("$name should be non-trivial license text", text.length > 200)
@@ -288,7 +289,14 @@ class LegalDisclosureComplianceTest {
      */
     @Test
     fun `bundled license texts are byte-for-byte identical to the repository copies`() {
-        val licenseFiles = listOf("GPL-2.0.txt", "GPL-3.0.txt", "LGPL-3.0.txt", "BSD-3-Clause-libandroid-shmem.txt")
+        val licenseFiles =
+            listOf(
+                "GPL-2.0.txt",
+                "GPL-3.0.txt",
+                "LGPL-3.0.txt",
+                "BSD-3-Clause-libandroid-shmem.txt",
+                "OFL-1.1-JetBrainsMono.txt",
+            )
         licenseFiles.forEach { name ->
             val sourceText = readRepoFile("THIRD_PARTY_LICENSES/$name")
             val assetText = readRepoFile("app/src/main/assets/legal/licenses/$name")

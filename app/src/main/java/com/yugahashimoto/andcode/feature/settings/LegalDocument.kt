@@ -38,6 +38,7 @@ enum class LegalDocument(val assetPath: String, val titleRes: Int, val assetPath
     LICENSE_LGPL_3_0("legal/licenses/LGPL-3.0.txt", R.string.legal_license_lgpl3),
     LICENSE_BSD_3_CLAUSE("legal/licenses/BSD-3-Clause-libandroid-shmem.txt", R.string.legal_license_bsd3),
     LICENSE_APACHE_2_0("legal/licenses/Apache-2.0.txt", R.string.legal_license_apache2),
+    LICENSE_OFL_1_1("legal/licenses/OFL-1.1-JetBrainsMono.txt", R.string.legal_license_ofl),
     ;
 
     /** Resolves to the Japanese asset when one exists and [languageTag] is Japanese, else [assetPath]. */

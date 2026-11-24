@@ -59,7 +59,6 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
@@ -73,6 +72,7 @@ import com.yugahashimoto.andcode.core.ProvideSafeUriHandler
 import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.feature.browser.isLoopbackPreviewUrl
 import com.yugahashimoto.andcode.runtime.PermissionResponse
+import com.yugahashimoto.andcode.ui.theme.CodeFontFamily
 import com.yugahashimoto.andcode.ui.theme.LocalThemeColors
 import java.io.File
 import java.text.SimpleDateFormat
@@ -274,13 +274,13 @@ fun PermissionCard(
             )
             Text(
                 text = permission.permission,
-                fontFamily = FontFamily.Monospace,
+                fontFamily = CodeFontFamily,
                 color = MaterialTheme.colorScheme.primary,
             )
             permission.patterns.forEach { pattern ->
                 Text(
                     text = pattern,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = CodeFontFamily,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
@@ -561,7 +561,7 @@ private fun CodeBlockView(code: String) {
                         .absolutePadding(top = 10.dp, right = 52.dp, bottom = 10.dp)
                         .horizontalScroll(rememberScrollState())
                         .absolutePadding(left = 10.dp),
-                fontFamily = FontFamily.Monospace,
+                fontFamily = CodeFontFamily,
                 // Code is always laid out LTR, even in RTL app locales (issue #341).
                 style = MaterialTheme.typography.bodySmall.copy(textDirection = TextDirection.Ltr),
             )
@@ -793,7 +793,7 @@ private fun renderInline(
                     is MarkdownInline.Code -> {
                         val start = length
                         withStyle(
-                            SpanStyle(fontFamily = FontFamily.Monospace, background = codeBackground),
+                            SpanStyle(fontFamily = CodeFontFamily, background = codeBackground),
                         ) { append(inline.text) }
                         addStringAnnotation("code", inline.text, start, length)
                     }

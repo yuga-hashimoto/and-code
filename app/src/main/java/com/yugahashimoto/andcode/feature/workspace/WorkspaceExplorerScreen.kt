@@ -63,7 +63,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -74,6 +73,7 @@ import com.yugahashimoto.andcode.ui.components.FileTypeIcon
 import com.yugahashimoto.andcode.ui.components.RetainedPanel
 import com.yugahashimoto.andcode.ui.components.SectionCard
 import com.yugahashimoto.andcode.ui.components.StatusChip
+import com.yugahashimoto.andcode.ui.theme.CodeFontFamily
 
 data class CommitInfo(
     val hash: String,
@@ -337,7 +337,7 @@ private fun TerminalTabPlaceholder() {
         Column {
             Text(
                 "$ ",
-                fontFamily = FontFamily.Monospace,
+                fontFamily = CodeFontFamily,
                 color = Color(0xFF6FCF97),
             )
             TextField(
@@ -385,7 +385,7 @@ private fun FilesTab(
                     Text(
                         state.currentPath,
                         modifier = Modifier.weight(1f),
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = CodeFontFamily,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -491,7 +491,7 @@ private fun SearchTab(
                             contentDescription = stringResource(R.string.cd_file),
                             tint = MaterialTheme.colorScheme.secondary,
                         )
-                        Text(path, fontFamily = FontFamily.Monospace, modifier = Modifier.weight(1f))
+                        Text(path, fontFamily = CodeFontFamily, modifier = Modifier.weight(1f))
                     }
                 }
             }
@@ -513,14 +513,14 @@ private fun SearchTab(
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 "${match.path.text}:${match.lineNumber}",
-                                fontFamily = FontFamily.Monospace,
+                                fontFamily = CodeFontFamily,
                                 fontWeight = FontWeight.SemiBold,
                             )
                             Spacer(Modifier.height(6.dp))
                             SelectionContainer {
                                 Text(
                                     match.lines.text.trimEnd(),
-                                    fontFamily = FontFamily.Monospace,
+                                    fontFamily = CodeFontFamily,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                 )
@@ -833,7 +833,7 @@ internal fun UnifiedDiffView(patch: String) {
                     }
                 Text(
                     line,
-                    fontFamily = FontFamily.Monospace,
+                    fontFamily = CodeFontFamily,
                     style = MaterialTheme.typography.bodySmall,
                     modifier =
                         Modifier
@@ -878,7 +878,7 @@ internal fun SplitDiffView(patch: String) {
                 oldLines.forEach { line ->
                     Text(
                         line,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = CodeFontFamily,
                         style = MaterialTheme.typography.bodySmall,
                         modifier =
                             Modifier
@@ -892,7 +892,7 @@ internal fun SplitDiffView(patch: String) {
                 newLines.forEach { line ->
                     Text(
                         line,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = CodeFontFamily,
                         style = MaterialTheme.typography.bodySmall,
                         modifier =
                             Modifier
@@ -925,7 +925,7 @@ private fun CommitCard(commit: CommitInfo) {
             }
             Text(
                 commit.hash.take(7),
-                fontFamily = FontFamily.Monospace,
+                fontFamily = CodeFontFamily,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary,
             )

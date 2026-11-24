@@ -108,6 +108,7 @@ fun LegalScreen(
                             LegalDocument.LICENSE_LGPL_3_0,
                             LegalDocument.LICENSE_BSD_3_CLAUSE,
                             LegalDocument.LICENSE_APACHE_2_0,
+                            LegalDocument.LICENSE_OFL_1_1,
                         )
                     licenseTexts.forEachIndexed { index, document ->
                         SettingsRow(

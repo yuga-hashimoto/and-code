@@ -52,13 +52,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.ui.theme.CodeFontFamily
 import com.yugahashimoto.andcode.ui.theme.LocalThemeColors
 
 /**
@@ -338,7 +338,7 @@ fun ToolCard(part: ChatPart.Tool) {
                                 .fillMaxWidth()
                                 .horizontalScroll(rememberScrollState())
                                 .padding(vertical = 4.dp),
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = CodeFontFamily,
                         // Tool input is a command: always LTR (issue #341).
                         style = MaterialTheme.typography.bodySmall.copy(textDirection = TextDirection.Ltr),
                     )
@@ -359,7 +359,7 @@ fun ToolCard(part: ChatPart.Tool) {
                                 .verticalScroll(rememberScrollState())
                                 .horizontalScroll(rememberScrollState())
                                 .padding(vertical = 4.dp),
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = CodeFontFamily,
                         // Tool output can be RTL prose; resolve from content (issue #341).
                         style = MaterialTheme.typography.bodySmall.copy(textDirection = TextDirection.Content),
                     )
@@ -376,7 +376,7 @@ fun ToolCard(part: ChatPart.Tool) {
                     Text(
                         text = error,
                         color = MaterialTheme.colorScheme.error,
-                        fontFamily = FontFamily.Monospace,
+                        fontFamily = CodeFontFamily,
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -450,7 +450,7 @@ fun PatchCard(
                 )
             } else {
                 part.files.forEach { file ->
-                    Text(file, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.bodySmall)
+                    Text(file, fontFamily = CodeFontFamily, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }

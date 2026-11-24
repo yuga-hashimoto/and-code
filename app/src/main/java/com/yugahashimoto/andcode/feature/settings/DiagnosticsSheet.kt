@@ -20,7 +20,6 @@ import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.BuildConfig
@@ -28,6 +27,7 @@ import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.diagnostics.CrashLog
 import com.yugahashimoto.andcode.ui.components.LabelValueRow
 import com.yugahashimoto.andcode.ui.components.SectionCard
+import com.yugahashimoto.andcode.ui.theme.CodeFontFamily
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -137,7 +137,7 @@ fun DiagnosticsSheet(
                         Text(
                             text = lastCrash.lineSequence().take(CRASH_PREVIEW_LINES).joinToString("\n"),
                             style = MaterialTheme.typography.bodySmall,
-                            fontFamily = FontFamily.Monospace,
+                            fontFamily = CodeFontFamily,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
