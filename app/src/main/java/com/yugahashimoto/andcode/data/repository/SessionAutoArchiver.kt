@@ -13,8 +13,9 @@ import java.util.concurrent.TimeUnit
 /**
  * Keeps the chat drawer from growing without bound by archiving sessions that the user's settings
  * say are no longer worth keeping active: ones untouched for a configured number of days, and/or
- * the oldest ones once the active count passes a configured cap. Both rules are opt-in and off by
- * default (see [AppPreferences.autoArchiveStaleEnabled] and [AppPreferences.autoArchiveMaxSessionsEnabled]).
+ * the oldest ones once the active count passes a configured cap. Pinned chats are never archived.
+ * Both rules are opt-in and off by default (see [AppPreferences.autoArchiveStaleEnabled] and
+ * [AppPreferences.autoArchiveMaxSessionsEnabled]).
  */
 class SessionAutoArchiver(
     private val registry: RuntimeRegistry,
@@ -40,11 +41,14 @@ class SessionAutoArchiver(
     ) {
         if (!prefs.autoArchiveStaleEnabled && !prefs.autoArchiveMaxSessionsEnabled) return
 
-        // Never archive a chat that is actively running or that an archive call was already sent
-        // for - the latter avoids resubmitting the same id every time the list recomputes before the
-        // runtime's own listSessions() catches up and drops it.
+        // Never archive a chat that is actively running, pinned, or that an archive call was already
+        // sent for - the latter avoids resubmitting the same id every time the list recomputes before
+        // the runtime's own listSessions() catches up and drops it.
         val active = activeSessionIds()
-        val candidates = sessions.filterNot { it.session.id in active || it.session.id in alreadyArchived }
+        val candidates =
+            sessions.filterNot {
+                it.session.id in active || it.session.id in prefs.pinnedSessionIds || it.session.id in alreadyArchived
+            }
 
         val stale =
             if (prefs.autoArchiveStaleEnabled) {

@@ -163,6 +163,10 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         get() = preferences.getStringSet(KEY_FAVORITE_MODELS, emptySet()).orEmpty()
         set(value) = preferences.edit().putStringSet(KEY_FAVORITE_MODELS, value).apply()
 
+    var pinnedSessionIds: Set<String>
+        get() = preferences.getStringSet(KEY_PINNED_SESSIONS, emptySet()).orEmpty()
+        set(value) = preferences.edit().putStringSet(KEY_PINNED_SESSIONS, value).apply()
+
     var recentModelKeys: List<String>
         get() =
             preferences.getString(KEY_RECENT_MODELS, null)
@@ -554,6 +558,7 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         private const val KEY_MODEL_ID = "model_id"
         private const val KEY_AGENT_ID = "agent_id"
         private const val KEY_FAVORITE_MODELS = "favorite_models"
+        private const val KEY_PINNED_SESSIONS = "pinned_sessions"
         private const val KEY_RECENT_MODELS = "recent_models"
         private const val MAX_RECENT_MODELS = 3
         private const val KEY_HIDDEN_MODELS = "hidden_models"

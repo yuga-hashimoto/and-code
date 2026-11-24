@@ -147,6 +147,36 @@ class SessionAutoArchiverTest {
         }
 
     @Test
+    fun `never archives a stale session that is pinned`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target =
+                FakeTarget(
+                    "mac",
+                    sessions =
+                        listOf(
+                            session("pinned", updatedDaysAgo = 90),
+                            session("stale", updatedDaysAgo = 90),
+                        ),
+                )
+            val registry = registry(target)
+            val catalog = RuntimeCatalogRepository(registry, TestScope(dispatcher))
+            val preferences =
+                fakePreferences(
+                    autoArchiveStaleEnabled = true,
+                    autoArchiveStaleDays = 30,
+                    pinnedSessionIds = setOf("pinned"),
+                )
+            val archiver =
+                SessionAutoArchiver(registry, catalog, activeSessionIds = { emptySet() }, preferences, TestScope(dispatcher))
+
+            archiver.start()
+            advanceUntilIdle()
+
+            assertEquals(listOf("stale"), target.archivedIds)
+        }
+
+    @Test
     fun `a session is retried after a failed archive call instead of being skipped forever`() =
         runTest {
             val dispatcher = StandardTestDispatcher(testScheduler)
@@ -196,6 +226,7 @@ class SessionAutoArchiverTest {
         autoArchiveStaleDays: Int = 30,
         autoArchiveMaxSessionsEnabled: Boolean = false,
         autoArchiveMaxSessions: Int = 50,
+        pinnedSessionIds: Set<String> = emptySet(),
     ): MutableStateFlow<AppPreferences> =
         MutableStateFlow(
             AppPreferences(
@@ -203,6 +234,7 @@ class SessionAutoArchiverTest {
                 autoArchiveStaleDays = autoArchiveStaleDays,
                 autoArchiveMaxSessionsEnabled = autoArchiveMaxSessionsEnabled,
                 autoArchiveMaxSessions = autoArchiveMaxSessions,
+                pinnedSessionIds = pinnedSessionIds,
             ),
         )
 
