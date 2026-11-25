@@ -293,6 +293,7 @@ class AndCodeApplication : Application() {
                 runtimeDirectory = runtimeDirectory,
                 abi = abi,
                 accessCoordinator = accessCoordinator,
+                userAgentInstructions = { settings.agentInstructions },
             )
         localRuntimeInstaller = installer
         // Guest startup commands (issue #379): read from the workspace on every runtime start,

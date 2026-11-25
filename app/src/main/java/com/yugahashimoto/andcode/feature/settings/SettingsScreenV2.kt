@@ -130,6 +130,7 @@ fun SettingsScreenV2(
     onSendBehaviorChange: (String) -> Unit = {},
     enterToSend: Boolean = false,
     onEnterToSendChange: (Boolean) -> Unit = {},
+    onOpenAgentInstructions: () -> Unit = {},
     autoArchiveStaleEnabled: Boolean = false,
     onAutoArchiveStaleEnabledChange: (Boolean) -> Unit = {},
     autoArchiveStaleDays: Int = 30,
@@ -284,6 +285,12 @@ fun SettingsScreenV2(
                     title = stringResource(R.string.enter_to_send_row),
                     checked = enterToSend,
                     onCheckedChange = onEnterToSendChange,
+                )
+                SettingsDivider()
+                SettingsRow(
+                    icon = Icons.Default.DataObject,
+                    title = stringResource(R.string.agent_instructions_row),
+                    onClick = onOpenAgentInstructions,
                 )
             }
 

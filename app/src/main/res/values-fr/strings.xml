@@ -648,6 +648,14 @@
     <string name="send_behavior_interrupt">Interrompre</string>
     <string name="send_behavior_queue">File d\'attente</string>
     <string name="enter_to_send_row">Entrée envoie le message</string>
+    <string name="agent_instructions_row">Règles partagées des agents</string>
+    <string name="agent_instructions_title">Règles partagées des agents</string>
+    <string name="agent_instructions_description">Ces instructions sont transmises à OpenCode, Claude Code, Antigravity et Codex en même temps. Elles s\'appliquent au prochain démarrage d\'un agent.</string>
+    <string name="agent_instructions_label">Vos instructions</string>
+    <string name="agent_instructions_hint">Par exemple : des réponses courtes et lancer les tests avant de terminer.</string>
+    <string name="agent_instructions_save">Enregistrer</string>
+    <string name="agent_instructions_builtin_title">Contexte AndCode intégré (lecture seule)</string>
+    <string name="agent_instructions_saved">Enregistré. Les nouvelles règles s\'appliquent au prochain démarrage d\'un agent.</string>
 
     <string name="section_sessions_settings">Sessions</string>
     <string name="auto_archive_stale_row">Archiver automatiquement les discussions inactives</string>

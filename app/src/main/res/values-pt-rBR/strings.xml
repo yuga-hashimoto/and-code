@@ -648,6 +648,14 @@
     <string name="send_behavior_interrupt">Interromper</string>
     <string name="send_behavior_queue">Fila</string>
     <string name="enter_to_send_row">Enter envia a mensagem</string>
+    <string name="agent_instructions_row">Regras compartilhadas dos agentes</string>
+    <string name="agent_instructions_title">Regras compartilhadas dos agentes</string>
+    <string name="agent_instructions_description">Estas instruções são passadas para OpenCode, Claude Code, Antigravity e Codex ao mesmo tempo. Elas passam a valer na próxima vez que um agente iniciar.</string>
+    <string name="agent_instructions_label">Suas instruções</string>
+    <string name="agent_instructions_hint">Por exemplo: respostas curtas e rodar os testes antes de terminar.</string>
+    <string name="agent_instructions_save">Salvar</string>
+    <string name="agent_instructions_builtin_title">Contexto integrado do AndCode (somente leitura)</string>
+    <string name="agent_instructions_saved">Salvo. As novas regras passam a valer na próxima vez que um agente iniciar.</string>
 
     <string name="section_sessions_settings">Sessões</string>
     <string name="auto_archive_stale_row">Arquivar chats inativos automaticamente</string>

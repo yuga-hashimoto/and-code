@@ -453,6 +453,16 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         set(value) = preferences.edit().putBoolean(KEY_ANALYTICS_ENABLED, value).apply()
 
     /**
+     * Extra instructions appended to every agent's shared AndCode context.
+     *
+     * The bundled context is the part AndCode owns; this is the user's own addition, applied to
+     * OpenCode, Claude Code, Antigravity and Codex together so a rule only has to be written once.
+     */
+    var agentInstructions: String
+        get() = preferences.getString(KEY_AGENT_INSTRUCTIONS, "") ?: ""
+        set(value) = preferences.edit().putString(KEY_AGENT_INSTRUCTIONS, value).apply()
+
+    /**
      * Lets the in-guest agent drive the Guest Browser by exposing its WebView devtools socket.
      *
      * Opt-in: the socket is a powerful cross-process surface, and the whole point of the feature is
@@ -599,6 +609,7 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         private const val KEY_LANGUAGE = "language"
         private const val KEY_LIVE_TRANSCRIPT_ENABLED = "live_transcript_enabled"
         private const val KEY_ANALYTICS_ENABLED = "analytics_enabled"
+        private const val KEY_AGENT_INSTRUCTIONS = "agent_instructions"
         private const val KEY_GUEST_BROWSER_AGENT_CONTROL = "guest_browser_agent_control"
         private const val KEY_LOCAL_RUNTIME_IDLE_STOP_ENABLED = "local_runtime_idle_stop_enabled"
         private const val KEY_LOCAL_RUNTIME_STOPPED_BY_USER = "local_runtime_stopped_by_user"

@@ -57,10 +57,56 @@ class LocalRuntimeProcessLauncherTest {
             "root/.config/opencode/and-code-context.md",
             "root/.claude/CLAUDE.md",
             "root/.gemini/GEMINI.md",
+            "root/.codex/AGENTS.md",
         ).forEach { relativePath ->
             val context = File(rootfs, relativePath).readText()
             assertEquals(AGENT_CONTEXT_FIXTURE, context)
         }
+    }
+
+    @Test
+    fun `user instructions are appended to every agent's context`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-user-instructions")
+
+        installAndCodeAgentContext(
+            rootfs,
+            AGENT_CONTEXT_FIXTURE.toByteArray(),
+            userInstructions = "Always answer in Japanese.",
+        )
+
+        val expected = "$AGENT_CONTEXT_FIXTURE\n\n## User instructions\n\nAlways answer in Japanese.\n"
+        listOf(
+            "root/.config/opencode/and-code-context.md",
+            "root/.claude/CLAUDE.md",
+            "root/.gemini/GEMINI.md",
+            "root/.codex/AGENTS.md",
+        ).forEach { relativePath ->
+            assertEquals(expected, File(rootfs, relativePath).readText())
+        }
+    }
+
+    @Test
+    fun `blank user instructions leave the bundled context untouched`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-blank-user-instructions")
+
+        installAndCodeAgentContext(
+            rootfs,
+            AGENT_CONTEXT_FIXTURE.toByteArray(),
+            userInstructions = "   \n  ",
+        )
+
+        assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, "root/.claude/CLAUDE.md").readText())
+    }
+
+    @Test
+    fun `clearing user instructions restores the bundled context`() {
+        val rootfs = temporaryFolder.newFolder("rootfs-cleared-user-instructions")
+
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray(), "Old rule.")
+        installAndCodeAgentContext(rootfs, AGENT_CONTEXT_FIXTURE.toByteArray(), "")
+
+        assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, "root/.claude/CLAUDE.md").readText())
+        assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, "root/.codex/AGENTS.md").readText())
     }
 
     @Test
@@ -93,6 +139,7 @@ class LocalRuntimeProcessLauncherTest {
             "root/.config/opencode/and-code-context.md",
             "root/.claude/CLAUDE.md",
             "root/.gemini/GEMINI.md",
+            "root/.codex/AGENTS.md",
         ).forEach { relativePath ->
             assertEquals(updatedFixture, File(rootfs, relativePath).readText())
         }
@@ -170,6 +217,7 @@ class LocalRuntimeProcessLauncherTest {
             "root/.config/opencode/and-code-context.md",
             "root/.claude/CLAUDE.md",
             "root/.gemini/GEMINI.md",
+            "root/.codex/AGENTS.md",
         ).forEach { relativePath ->
             assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
         }
@@ -193,6 +241,7 @@ class LocalRuntimeProcessLauncherTest {
             "root/.config/opencode/and-code-context.md",
             "root/.claude/CLAUDE.md",
             "root/.gemini/GEMINI.md",
+            "root/.codex/AGENTS.md",
         ).forEach { relativePath ->
             assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
         }
@@ -215,6 +264,7 @@ class LocalRuntimeProcessLauncherTest {
             "root/.config/opencode/and-code-context.md",
             "root/.claude/CLAUDE.md",
             "root/.gemini/GEMINI.md",
+            "root/.codex/AGENTS.md",
         ).forEach { relativePath ->
             assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
         }
@@ -238,6 +288,7 @@ class LocalRuntimeProcessLauncherTest {
             "root/.config/opencode/and-code-context.md",
             "root/.claude/CLAUDE.md",
             "root/.gemini/GEMINI.md",
+            "root/.codex/AGENTS.md",
         ).forEach { relativePath ->
             assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
         }
@@ -245,7 +296,7 @@ class LocalRuntimeProcessLauncherTest {
     }
 
     @Test
-    fun `one target that cannot be written does not stop the other two from installing`() {
+    fun `one target that cannot be written does not stop the others from installing`() {
         val rootfs = temporaryFolder.newFolder("rootfs-target-unwritable")
 
         // Simulate an agent replacing CLAUDE.md's parent directory with a regular file before
@@ -253,7 +304,7 @@ class LocalRuntimeProcessLauncherTest {
         // exist yet, and canonicalization of a missing leaf under an existing non-directory
         // succeeds lexically), but mkdirs() on the parent then fails and writeBytes() throws
         // FileSystemException (an IOException) because ".claude" is not a directory. That must
-        // skip only this target, not the opencode or gemini instruction files.
+        // skip only this target, not the other agents' instruction files.
         val claudeDir = File(rootfs, "root/.claude")
         claudeDir.parentFile.mkdirs()
         claudeDir.writeText("not a directory")
@@ -263,6 +314,7 @@ class LocalRuntimeProcessLauncherTest {
         listOf(
             "root/.config/opencode/and-code-context.md",
             "root/.gemini/GEMINI.md",
+            "root/.codex/AGENTS.md",
         ).forEach { relativePath ->
             assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
         }
@@ -278,6 +330,10 @@ class LocalRuntimeProcessLauncherTest {
         assertTrue(
             "gemini's hash must be recorded as written",
             "root/.gemini/GEMINI.md" in recordedPaths,
+        )
+        assertTrue(
+            "codex's hash must be recorded as written",
+            "root/.codex/AGENTS.md" in recordedPaths,
         )
         assertFalse(
             "the failed CLAUDE.md write must not be recorded as successfully written",
@@ -303,6 +359,7 @@ class LocalRuntimeProcessLauncherTest {
             "root/.config/opencode/and-code-context.md",
             "root/.claude/CLAUDE.md",
             "root/.gemini/GEMINI.md",
+            "root/.codex/AGENTS.md",
         ).forEach { relativePath ->
             assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
         }
@@ -324,6 +381,7 @@ class LocalRuntimeProcessLauncherTest {
             "root/.config/opencode/and-code-context.md",
             "root/.claude/CLAUDE.md",
             "root/.gemini/GEMINI.md",
+            "root/.codex/AGENTS.md",
         ).forEach { relativePath ->
             assertEquals(AGENT_CONTEXT_FIXTURE, File(rootfs, relativePath).readText())
         }
@@ -333,6 +391,7 @@ class LocalRuntimeProcessLauncherTest {
                 "root/.config/opencode/and-code-context.md",
                 "root/.claude/CLAUDE.md",
                 "root/.gemini/GEMINI.md",
+                "root/.codex/AGENTS.md",
             ),
             recordedPaths,
         )

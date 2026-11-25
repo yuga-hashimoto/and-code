@@ -17,6 +17,7 @@ import com.yugahashimoto.andcode.core.UrlLauncher
 import com.yugahashimoto.andcode.data.settings.AppPreferences
 import com.yugahashimoto.andcode.data.settings.AppPreferencesRepository
 import com.yugahashimoto.andcode.feature.assistant.TtsPreview
+import com.yugahashimoto.andcode.feature.settings.AgentInstructionsScreen
 import com.yugahashimoto.andcode.feature.settings.AgentSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.AntigravityAgentSettingsScreen
 import com.yugahashimoto.andcode.feature.settings.ClaudeCodeAgentSettingsScreen
@@ -114,6 +115,7 @@ fun NavGraphBuilder.settingsNavGraph(
             onSendBehaviorChange = { appPreferences.setSendBehavior(it) },
             enterToSend = preferences().enterToSend,
             onEnterToSendChange = { appPreferences.setEnterToSend(it) },
+            onOpenAgentInstructions = { navController.navigate(ROUTE_SETTINGS_AGENT_INSTRUCTIONS) },
             autoArchiveStaleEnabled = preferences().autoArchiveStaleEnabled,
             onAutoArchiveStaleEnabledChange = appPreferences::setAutoArchiveStaleEnabled,
             autoArchiveStaleDays = preferences().autoArchiveStaleDays,
@@ -379,6 +381,14 @@ fun NavGraphBuilder.settingsNavGraph(
             onSelect = claudeActions.onSelectSystemPrompt,
             onSave = claudeActions.onSaveSystemPromptPreset,
             onDelete = claudeActions.onDeleteSystemPromptPreset,
+            onBack = { navController.popBackStack() },
+        )
+    }
+
+    composable(ROUTE_SETTINGS_AGENT_INSTRUCTIONS) {
+        AgentInstructionsScreen(
+            savedInstructions = preferences().agentInstructions,
+            onSave = appPreferences::setAgentInstructions,
             onBack = { navController.popBackStack() },
         )
     }
