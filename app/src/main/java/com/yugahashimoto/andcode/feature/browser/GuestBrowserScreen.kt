@@ -34,10 +34,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.data.browser.GuestBrowserLastUrl
 
 /** In-app browser for pages served inside the guest runtime (e.g. http://127.0.0.1:PORT/). */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -48,7 +50,12 @@ fun GuestBrowserScreen(
     agentControlEnabled: Boolean = false,
     onEnableAgentControl: (() -> Unit)? = null,
 ) {
-    var urlInput by rememberSaveable { mutableStateOf(initialUrl) }
+    val context = LocalContext.current
+    val lastUrl = remember(context) { GuestBrowserLastUrl.create(context) }
+    // An explicit URL (agent `browser_show`, a preview handoff) wins; otherwise resume the page the
+    // user was last on instead of opening blank.
+    val startUrl = remember(initialUrl, lastUrl) { initialUrl.ifBlank { lastUrl.load().orEmpty() } }
+    var urlInput by rememberSaveable { mutableStateOf(startUrl) }
     var progress by remember { mutableIntStateOf(0) }
     var canGoBack by remember { mutableStateOf(false) }
     var canGoForward by remember { mutableStateOf(false) }
@@ -100,13 +107,14 @@ fun GuestBrowserScreen(
                 WebViewUnavailableNotice(modifier = Modifier.weight(1f).fillMaxWidth())
             } else {
                 GuestWebContent(
-                    url = initialUrl,
+                    url = startUrl,
                     modifier = Modifier.weight(1f).clipToBounds(),
                     agentControlEnabled = agentControlEnabled,
                     onWebViewCreated = { webView = it },
                     onProgress = { progress = it },
                     onNavigationStateChange = { url, back, forward ->
                         urlInput = url
+                        lastUrl.save(url)
                         canGoBack = back
                         canGoForward = forward
                     },

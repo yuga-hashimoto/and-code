@@ -209,9 +209,10 @@ fun NavGraphBuilder.workspaceNavGraph(
     composable(GUEST_BROWSER_ROUTE_PATTERN) { backStack ->
         val requestedUrl = backStack.arguments?.getString(GUEST_BROWSER_ARG_URL)?.let { decodeRouteArg(it) }
         val preferences by app.preferences.state.collectAsState()
-        // Opened from Settings without a URL, there is no page to guess at: the runtime's HTTP
+        // Opened from Settings without a URL, the screen resumes the page the user was last on;
+        // before any page has been visited there is none to guess at, because the runtime's HTTP
         // servers (opencode serve included) are APIs, not UIs, and the local one now requires basic
-        // auth. Leave the URL bar empty for the user to fill in instead of loading a 401.
+        // auth. In that case the URL bar stays empty for the user to fill in instead of loading a 401.
         GuestBrowserScreen(
             initialUrl = requestedUrl.orEmpty(),
             agentControlEnabled = preferences.guestBrowserAgentControlEnabled,
