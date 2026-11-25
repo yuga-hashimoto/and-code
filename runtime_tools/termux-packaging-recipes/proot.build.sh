@@ -1,6 +1,6 @@
 # Mirrored verbatim from https://github.com/termux/termux-packages/blob/master/packages/proot/build.sh
-# Retrieved: 2026-10-31, at master commit e9f81a4ccf3e48e218c7b57ff5739f56537783f9 (packages/proot/
-# build.sh at 5.1.107.101, unchanged since bump commit d6a36549b20eadb7723015eb3423e753ea125567).
+# Retrieved: 2026-11-25, at master commit b734bc49dc0eedb2c454e1c5d3c48d35d81d4bc9 (packages/proot/
+# build.sh at 5.1.107.102).
 # Mirrored here (rather than only linked) because the upstream
 # 'master' branch is mutable and would otherwise be an unstable reference for the exact
 # packaging recipe used to build the binaries pinned by SHA-256 in
@@ -11,9 +11,9 @@ TERMUX_PKG_HOMEPAGE=https://proot-me.github.io/
 TERMUX_PKG_DESCRIPTION="Emulate chroot, bind mount and binfmt_misc for non-root users"
 TERMUX_PKG_LICENSE="GPL-2.0"
 TERMUX_PKG_MAINTAINER="Michal Bednarski @michalbednarski"
-TERMUX_PKG_VERSION="5.1.107.101"
+TERMUX_PKG_VERSION="5.1.107.102"
 TERMUX_PKG_SRCURL=https://github.com/termux/proot/archive/v${TERMUX_PKG_VERSION}.zip
-TERMUX_PKG_SHA256=a66743f50c7b0bac1913b83bf55e139d679c80a0ca2808eec76432a65640017f
+TERMUX_PKG_SHA256=30d12a6e2cc4147123756ff58edea262d3083bbc238c12d0ab9b39e3d1c40852
 TERMUX_PKG_AUTO_UPDATE=true
 TERMUX_PKG_UPDATE_TAG_TYPE="newest-tag"
 TERMUX_PKG_DEPENDS="libandroid-shmem, libtalloc"
