@@ -27,8 +27,8 @@ private const val SETTLED_REFRESH_INTERVAL_MILLIS = 10 * 60_000L
 
 /**
  * Remembers which pull requests each chat linked so the drawer can badge a conversation it has not
- * opened this run. Implemented by the settings repository; absent in tests, which then stay in
- * memory only.
+ * opened this run. Implemented by the settings repository; when absent (the default) the
+ * association stays in memory only, so tests can opt out or inject a fake.
  */
 interface PullRequestSessionStore {
     /** Chat id to the pull requests linked in its transcript, newest first. */
