@@ -1266,4 +1266,13 @@
     <string name="guest_browser_control_take_over">接管操作</string>
     <string name="guest_browser_control_manual_only">仅手动操作</string>
     <string name="guest_browser_control_enable_agent">允许智能体</string>
+    <string name="rate_limit_ring_cd_percent">订阅用量 %1$d%%</string>
+    <string name="rate_limit_ring_cd_unknown">订阅用量</string>
+    <string name="rate_limit_sheet_title">使用限额</string>
+    <string name="rate_limit_refresh_cd">刷新使用限额</string>
+    <string name="rate_limit_window_five_hour">5 小时限额</string>
+    <string name="rate_limit_window_weekly">每周限额</string>
+    <string name="rate_limit_resets_at">重置时间：%1$s</string>
+    <string name="rate_limit_empty_refreshable">暂无用量数据，请点击刷新查看。</string>
+    <string name="rate_limit_empty_passive">发送消息后会自动更新最新用量。</string>
 </resources>

@@ -163,6 +163,7 @@ import com.yugahashimoto.andcode.feature.workspace.GitHubAutoAttachChips
 import com.yugahashimoto.andcode.feature.workspace.GitHubReference
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
+import com.yugahashimoto.andcode.runtime.SubscriptionRateLimit
 import com.yugahashimoto.andcode.runtime.local.AntigravityPermissionMode
 import com.yugahashimoto.andcode.runtime.local.ClaudePermissionMode
 import com.yugahashimoto.andcode.runtime.local.SystemPromptPreset
@@ -300,6 +301,12 @@ fun ChatHomeScreen(
     onLoadDraft: (String) -> String? = { null },
     /** Keeps the composer's unsent text for a session; blank text clears it. */
     onSaveDraft: (String, String) -> Unit = { _, _ -> },
+    /** Subscription quota snapshot for the selected runtime, or null when unknown/unsupported. */
+    rateLimit: SubscriptionRateLimit? = null,
+    supportsRateLimits: Boolean = false,
+    canRefreshRateLimits: Boolean = false,
+    rateLimitsRefreshing: Boolean = false,
+    onRefreshRateLimits: () -> Unit = {},
 ) {
     // Saved state, not plain remember: the Activity is recreated on rotation and other
     // configuration changes, and a remembered field would come back empty. The TextFieldValue
@@ -310,6 +317,7 @@ fun ChatHomeScreen(
     val input = inputValue.text
     val listState = rememberLazyListState()
     var showModelPicker by remember { mutableStateOf(false) }
+    var showRateLimitSheet by remember { mutableStateOf(false) }
     val errorKind = classifyChatError(state.error)
     val runtimeNotReady = errorKind == ChatErrorKind.RUNTIME_NOT_READY && state.messages.isEmpty()
     val isAtBottom = remember { mutableStateOf(true) }
@@ -811,6 +819,11 @@ fun ChatHomeScreen(
                             if (uris.isEmpty()) showAttachFailure() else attachImageUris(uris)
                         }
                     },
+                    rateLimit = rateLimit,
+                    selectedModelId = selectedModelId,
+                    supportsRateLimits = supportsRateLimits,
+                    rateLimitsRefreshing = rateLimitsRefreshing,
+                    onRateLimitClick = { showRateLimitSheet = true },
                 )
             }
         }
@@ -840,6 +853,18 @@ fun ChatHomeScreen(
                 onClose = { showSidePanel = false },
             )
         }
+    }
+
+    if (showRateLimitSheet) {
+        RateLimitDetailSheet(
+            backendName = state.backendName,
+            rateLimit = rateLimit,
+            selectedModelId = selectedModelId,
+            canRefresh = canRefreshRateLimits,
+            refreshing = rateLimitsRefreshing,
+            onRefresh = onRefreshRateLimits,
+            onDismiss = { showRateLimitSheet = false },
+        )
     }
 
     if (showModelPicker) {
@@ -1430,6 +1455,11 @@ private fun ChatComposer(
     onCameraLaunch: () -> Unit,
     onGalleryLaunch: () -> Unit,
     onPasteImage: () -> Unit,
+    rateLimit: SubscriptionRateLimit? = null,
+    selectedModelId: String? = null,
+    supportsRateLimits: Boolean = false,
+    rateLimitsRefreshing: Boolean = false,
+    onRateLimitClick: () -> Unit = {},
 ) {
     val input = inputValue.text
     val voiceActive = isListening || isSpeechProcessing
@@ -1752,84 +1782,100 @@ private fun ChatComposer(
         }
         Spacer(Modifier.height(6.dp))
         Row(
-            // Scrollable because the chips vary with the runtime: Claude Code shows permission,
-            // thinking and system-prompt chips plus the context meter, which no longer fits a narrow
-            // phone. None of the chips take a weight, so scrolling only affects overflow.
             modifier =
                 Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
                     .padding(horizontal = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            if (claudePermissionMode != null) {
-                // Claude Code has a single agent and decides permissions per session, so the mode
-                // chip selects the permission mode. Auto-accept is an OpenCode concept and has no
-                // meaning here, so it is left out rather than shown as a dead toggle.
-                PermissionModeChip(
-                    selectedLabel = claudePermissionMode.labelRes,
-                    options = ClaudePermissionMode.entries.map { PermissionModeOption(it.cliValue, it.labelRes) },
-                    onSelect = { id -> onSelectClaudePermissionMode(ClaudePermissionMode.fromCliValue(id)) },
-                )
-            } else if (antigravityPermissionMode != null) {
-                // Antigravity decides the same way. Its modes were once offered through the agent
-                // chip below, where the globally remembered agent id overrode the mode settings
-                // chose; the choice now comes from - and goes back to - that same setting.
-                PermissionModeChip(
-                    selectedLabel = antigravityPermissionMode.labelRes,
-                    options = AntigravityPermissionMode.entries.map { PermissionModeOption(it.cliValue, it.labelRes) },
-                    onSelect = { id -> onSelectAntigravityPermissionMode(AntigravityPermissionMode.fromCliValue(id)) },
-                )
-            } else {
-                ModeChip(
-                    agents = agents,
-                    selectedAgentId = selectedAgentId,
-                    onSelect = onSelectAgent,
-                    onRefresh = onRefreshAgents,
-                    loading = agentsLoading,
-                )
-                // Auto-accept answers permission prompts, so it only means something on a runtime
-                // that asks for permission. Antigravity decides permissions per invocation from its
-                // mode flag and never raises a prompt, which made this a switch that did nothing.
-                if (supportsPermissions) {
-                    AutoAcceptChip(
-                        enabled = autoAcceptPermissions,
-                        onToggle = onToggleAutoAccept,
+            Row(
+                // Scrollable because the chips vary with the runtime: Claude Code shows permission,
+                // thinking and system-prompt chips plus the context meter, which no longer fits a narrow
+                // phone. None of the chips take a weight, so scrolling only affects overflow.
+                modifier =
+                    Modifier
+                        .weight(1f)
+                        .horizontalScroll(rememberScrollState()),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (claudePermissionMode != null) {
+                    // Claude Code has a single agent and decides permissions per session, so the mode
+                    // chip selects the permission mode. Auto-accept is an OpenCode concept and has no
+                    // meaning here, so it is left out rather than shown as a dead toggle.
+                    PermissionModeChip(
+                        selectedLabel = claudePermissionMode.labelRes,
+                        options = ClaudePermissionMode.entries.map { PermissionModeOption(it.cliValue, it.labelRes) },
+                        onSelect = { id -> onSelectClaudePermissionMode(ClaudePermissionMode.fromCliValue(id)) },
+                    )
+                } else if (antigravityPermissionMode != null) {
+                    // Antigravity decides the same way. Its modes were once offered through the agent
+                    // chip below, where the globally remembered agent id overrode the mode settings
+                    // chose; the choice now comes from - and goes back to - that same setting.
+                    PermissionModeChip(
+                        selectedLabel = antigravityPermissionMode.labelRes,
+                        options = AntigravityPermissionMode.entries.map { PermissionModeOption(it.cliValue, it.labelRes) },
+                        onSelect = { id -> onSelectAntigravityPermissionMode(AntigravityPermissionMode.fromCliValue(id)) },
+                    )
+                } else {
+                    ModeChip(
+                        agents = agents,
+                        selectedAgentId = selectedAgentId,
+                        onSelect = onSelectAgent,
+                        onRefresh = onRefreshAgents,
+                        loading = agentsLoading,
+                    )
+                    // Auto-accept answers permission prompts, so it only means something on a runtime
+                    // that asks for permission. Antigravity decides permissions per invocation from its
+                    // mode flag and never raises a prompt, which made this a switch that did nothing.
+                    if (supportsPermissions) {
+                        AutoAcceptChip(
+                            enabled = autoAcceptPermissions,
+                            onToggle = onToggleAutoAccept,
+                        )
+                    }
+                }
+                if (thinkingOptions.isNotEmpty()) {
+                    ThinkingChip(
+                        options = thinkingOptions,
+                        selected = selectedVariant,
+                        onSelect = onSelectVariant,
                     )
                 }
+                // Right after the effort chip: both decide how the model runs the next turn, so they
+                // read as a pair. Only a Codex model with a fast tier offers it.
+                if (fastModeAvailable) {
+                    FastModeChip(
+                        enabled = fastModeEnabled,
+                        description = fastModeDescription,
+                        onToggle = onToggleFastMode,
+                    )
+                }
+                if (systemPromptPresets.isNotEmpty()) {
+                    SystemPromptChip(
+                        presets = systemPromptPresets,
+                        selectedId = selectedSystemPromptId,
+                        onSelect = onSelectSystemPrompt,
+                    )
+                }
+                if (contextLimit > 0L) {
+                    CompactContextMeter(
+                        tokensUsed = contextTokensUsed,
+                        contextLimit = contextLimit,
+                    )
+                }
+                if (isRunning && tokensPerSecond >= 0.05) {
+                    CompactTokenSpeed(tokensPerSecond)
+                }
             }
-            if (thinkingOptions.isNotEmpty()) {
-                ThinkingChip(
-                    options = thinkingOptions,
-                    selected = selectedVariant,
-                    onSelect = onSelectVariant,
+            if (supportsRateLimits) {
+                SubscriptionRateLimitRing(
+                    rateLimit = rateLimit,
+                    selectedModelId = selectedModelId,
+                    refreshing = rateLimitsRefreshing,
+                    onClick = onRateLimitClick,
                 )
-            }
-            // Right after the effort chip: both decide how the model runs the next turn, so they
-            // read as a pair. Only a Codex model with a fast tier offers it.
-            if (fastModeAvailable) {
-                FastModeChip(
-                    enabled = fastModeEnabled,
-                    description = fastModeDescription,
-                    onToggle = onToggleFastMode,
-                )
-            }
-            if (systemPromptPresets.isNotEmpty()) {
-                SystemPromptChip(
-                    presets = systemPromptPresets,
-                    selectedId = selectedSystemPromptId,
-                    onSelect = onSelectSystemPrompt,
-                )
-            }
-            if (contextLimit > 0L) {
-                CompactContextMeter(
-                    tokensUsed = contextTokensUsed,
-                    contextLimit = contextLimit,
-                )
-            }
-            if (isRunning && tokensPerSecond >= 0.05) {
-                CompactTokenSpeed(tokensPerSecond)
             }
         }
     }

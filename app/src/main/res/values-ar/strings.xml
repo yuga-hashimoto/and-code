@@ -1281,4 +1281,13 @@
     <string name="guest_browser_control_take_over">تولي التحكم</string>
     <string name="guest_browser_control_manual_only">تحكم يدوي فقط</string>
     <string name="guest_browser_control_enable_agent">السماح للوكيل</string>
+    <string name="rate_limit_ring_cd_percent">استخدام الاشتراك %1$d%%</string>
+    <string name="rate_limit_ring_cd_unknown">استخدام الاشتراك</string>
+    <string name="rate_limit_sheet_title">حدود الاستخدام</string>
+    <string name="rate_limit_refresh_cd">تحديث حدود الاستخدام</string>
+    <string name="rate_limit_window_five_hour">حد 5 ساعات</string>
+    <string name="rate_limit_window_weekly">الحد الأسبوعي</string>
+    <string name="rate_limit_resets_at">إعادة التعيين %1$s</string>
+    <string name="rate_limit_empty_refreshable">لا توجد بيانات استخدام بعد. اضغط على التحديث للتحقق.</string>
+    <string name="rate_limit_empty_passive">يتم تحديث الاستخدام تلقائياً بعد إرسال رسالة.</string>
 </resources>
