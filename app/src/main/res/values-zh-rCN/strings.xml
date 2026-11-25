@@ -1177,6 +1177,7 @@
     <string name="pr_state_conflict">有冲突</string>
     <string name="cd_pull_request_link">在 GitHub 上打开拉取请求 #%1$d</string>
     <string name="cd_pull_request_link_state">拉取请求 #%1$d，%2$s。在 GitHub 上打开</string>
+    <string name="cd_pull_request_status">拉取请求 #%1$d，%2$s</string>
     <string name="cd_pull_request_files">拉取请求 #%1$d，新增 %2$d 行，删除 %3$d 行。在 GitHub 上打开更改的文件</string>
     <string name="pr_collapse">收起</string>
     <string name="cd_pull_request_expand">显示另外 %1$d 个拉取请求</string>

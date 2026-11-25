@@ -283,6 +283,7 @@ class AndCodeApplication : Application() {
             PullRequestStatusRepository(
                 api = GitHubApiClient(token = { settings.githubToken }, client = httpClient),
                 scope = applicationScope,
+                sessionStore = settings,
             )
         val runtimeDirectory = File(filesDir, "runtime")
         val abi = Build.SUPPORTED_ABIS.firstOrNull().orEmpty()

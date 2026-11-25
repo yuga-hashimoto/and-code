@@ -929,6 +929,9 @@ fun AndCodeApp(
     // Every runtime's chats, not just the selected one's: switching agent used to look like the
     // history had been wiped. Each row carries the runtime that owns it so opening one can switch.
     val allSessions by app.catalogRepository.allSessions.collectAsState()
+    // Each chat's pull request state, keyed by session id, so drawer rows can badge the chats that
+    // opened one without the user having to open them.
+    val sessionPullRequests by app.pullRequestStatusRepository.sessionStatuses.collectAsState()
     val recentSessions =
         remember(
             allSessions,
@@ -936,6 +939,7 @@ fun AndCodeApp(
             activityState.completedSessionIds,
             preferences.pinnedSessionIds,
             pendingRemovals,
+            sessionPullRequests,
         ) {
             drawerRecentSessions(
                 allSessions = allSessions,
@@ -944,6 +948,7 @@ fun AndCodeApp(
                 pinnedSessionIds = preferences.pinnedSessionIds,
                 pendingRemoval = pendingRemovals,
                 maxUnpinned = Int.MAX_VALUE,
+                pullRequestStatuses = sessionPullRequests,
                 timeLabel = { relativeTimeLabel(context, it) },
             )
         }
@@ -999,6 +1004,9 @@ fun AndCodeApp(
 
     fun openDrawer() {
         keyboardController?.hide()
+        // A pull request merged or closed elsewhere since the last look should be current when the
+        // list with its badges appears.
+        app.pullRequestStatusRepository.refreshTrackedSessions()
         drawerScope.launch { drawerState.open() }
     }
 

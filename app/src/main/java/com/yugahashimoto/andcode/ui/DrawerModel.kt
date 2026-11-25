@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.ui
 
+import com.yugahashimoto.andcode.core.api.PullRequestStatus
 import com.yugahashimoto.andcode.data.repository.RuntimeSessionRef
 import com.yugahashimoto.andcode.runtime.LocalAgent
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
@@ -30,6 +31,8 @@ data class DrawerRecentSession(
     val runtimeId: String? = null,
     /** Null for a remote runtime, which is not one of the three local agents. */
     val agent: LocalAgent? = null,
+    /** The newest pull request this chat linked, once GitHub has reported its state. */
+    val pullRequest: PullRequestStatus? = null,
     /** Pinned chats live in their own section and are exempt from the unpinned cap. */
     val isPinned: Boolean = false,
 )
@@ -52,6 +55,7 @@ internal fun drawerRecentSessions(
     pinnedSessionIds: Set<String>,
     pendingRemoval: Set<String>,
     maxUnpinned: Int = MAX_UNPINNED_SESSIONS,
+    pullRequestStatuses: Map<String, List<PullRequestStatus>> = emptyMap(),
     timeLabel: (Long) -> String,
 ): List<DrawerRecentSession> {
     var unpinnedCount = 0
@@ -80,6 +84,7 @@ internal fun drawerRecentSessions(
                 },
             runtimeId = ref.runtimeId,
             agent = ref.agent,
+            pullRequest = pullRequestStatuses[session.id]?.firstOrNull(),
             isPinned = pinned,
         )
     }

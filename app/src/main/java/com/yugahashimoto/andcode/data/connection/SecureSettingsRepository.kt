@@ -4,13 +4,21 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import com.yugahashimoto.andcode.core.api.PullRequestRef
+import com.yugahashimoto.andcode.data.repository.PullRequestSessionStore
 import com.yugahashimoto.andcode.data.repository.UnreadSessionStore
+import com.yugahashimoto.andcode.data.repository.decodeSessionPullRequests
+import com.yugahashimoto.andcode.data.repository.encodeSessionPullRequests
 import com.yugahashimoto.andcode.data.security.EncryptedPreferences
 import com.yugahashimoto.andcode.feature.wakeword.WakeWordGrammar
 import com.yugahashimoto.andcode.runtime.RuntimeConnectionStore
 import com.yugahashimoto.andcode.runtime.local.AdbConnectionStore
 
-class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, UnreadSessionStore, AdbConnectionStore {
+class SecureSettingsRepository(context: Context) :
+    RuntimeConnectionStore,
+    UnreadSessionStore,
+    PullRequestSessionStore,
+    AdbConnectionStore {
     // Never throws: this runs in AndCodeApplication.onCreate, where a Keystore failure would crash
     // the app on every launch. See EncryptedPreferences for how an unusable Keystore is handled.
     private val preferences: SharedPreferences = EncryptedPreferences.open(context, PREFS_NAME)
@@ -347,6 +355,14 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         get() = preferences.getString(KEY_GITHUB_LOGIN, null)
         set(value) = preferences.edit().putString(KEY_GITHUB_LOGIN, value).apply()
 
+    /**
+     * Pull requests each chat linked, kept so the drawer keeps its badge across restarts. Stored as
+     * one `chatId<TAB>owner/repo#number` line per link; see [encodeSessionPullRequests].
+     */
+    override var sessionPullRequests: Map<String, List<PullRequestRef>>
+        get() = decodeSessionPullRequests(preferences.getString(KEY_SESSION_PULL_REQUESTS, null))
+        set(value) = preferences.edit().putString(KEY_SESSION_PULL_REQUESTS, encodeSessionPullRequests(value)).apply()
+
     var githubStarPromptShown: Boolean
         get() = preferences.getBoolean(KEY_GITHUB_STAR_PROMPT_SHOWN, false)
         set(value) = preferences.edit().putBoolean(KEY_GITHUB_STAR_PROMPT_SHOWN, value).apply()
@@ -585,6 +601,7 @@ class SecureSettingsRepository(context: Context) : RuntimeConnectionStore, Unrea
         private const val KEY_HIDDEN_WORKSPACE_PATHS = "hidden_workspace_paths"
         private const val KEY_ONBOARDING_COMPLETED = "onboarding_completed"
         private const val KEY_UNREAD_SESSIONS = "unread_sessions"
+        private const val KEY_SESSION_PULL_REQUESTS = "session_pull_requests"
         private const val KEY_GITHUB_TOKEN = "github_token"
         private const val KEY_GITHUB_LOGIN = "github_login"
         private const val KEY_GITHUB_STAR_PROMPT_SHOWN = "github_star_prompt_shown"

@@ -2,6 +2,9 @@ package com.yugahashimoto.andcode.ui
 
 import com.yugahashimoto.andcode.core.api.OpenCodeSession
 import com.yugahashimoto.andcode.core.api.OpenCodeTime
+import com.yugahashimoto.andcode.core.api.PullRequestRef
+import com.yugahashimoto.andcode.core.api.PullRequestState
+import com.yugahashimoto.andcode.core.api.PullRequestStatus
 import com.yugahashimoto.andcode.data.repository.RuntimeSessionRef
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.ui.components.SessionStatus
@@ -12,6 +15,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -108,6 +112,25 @@ class DrawerModelTest {
         assertTrue(built.first { it.id == "running" }.isActive)
         assertTrue(built.first { it.id == "done" }.hasUnread)
         assertEquals("label-1000", built.first().relativeTime)
+    }
+
+    @Test
+    fun `builder attaches the newest pull request state to its chat`() {
+        val pullRef = PullRequestRef("o", "r", 443)
+        val merged = PullRequestStatus(pullRef, PullRequestState.MERGED)
+        val built =
+            drawerRecentSessions(
+                allSessions = listOf(ref("with-pr"), ref("plain")),
+                activeSessionIds = emptySet(),
+                completedSessionIds = emptySet(),
+                pinnedSessionIds = emptySet(),
+                pendingRemoval = emptySet(),
+                pullRequestStatuses = mapOf("with-pr" to listOf(merged)),
+                timeLabel = { it.toString() },
+            )
+
+        assertEquals(merged, built.first { it.id == "with-pr" }.pullRequest)
+        assertNull(built.first { it.id == "plain" }.pullRequest)
     }
 
     @Test
