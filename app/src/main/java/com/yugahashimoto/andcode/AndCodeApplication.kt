@@ -35,6 +35,8 @@ import com.yugahashimoto.andcode.di.viewModelModule
 import com.yugahashimoto.andcode.feature.schedule.AppScheduleStore
 import com.yugahashimoto.andcode.feature.schedule.ScheduleBridge
 import com.yugahashimoto.andcode.feature.schedule.ScheduleManager
+import com.yugahashimoto.andcode.feature.settings.AgentSettingsBridge
+import com.yugahashimoto.andcode.feature.settings.AppAgentSettingsStore
 import com.yugahashimoto.andcode.feature.support.GitHubStarCoordinator
 import com.yugahashimoto.andcode.feature.support.GitHubStarService
 import com.yugahashimoto.andcode.feature.wakeword.VoskModelStore
@@ -44,6 +46,7 @@ import com.yugahashimoto.andcode.runtime.RuntimeRegistry
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.local.AdbConnectionManager
 import com.yugahashimoto.andcode.runtime.local.AdbShellRunner
+import com.yugahashimoto.andcode.runtime.local.AgentMcpConfig
 import com.yugahashimoto.andcode.runtime.local.AndroidClaudeMessages
 import com.yugahashimoto.andcode.runtime.local.AndroidCodexMessages
 import com.yugahashimoto.andcode.runtime.local.AndroidLocalRuntimeMessages
@@ -609,6 +612,17 @@ class AndCodeApplication : Application() {
             combine(appForeground.foreground, runtimeWork.active) { foreground, working -> foreground || working }
                 .distinctUntilChanged()
         applicationScope.launch { scheduleBridge.run(scheduleBridgeActive) }
+        // Same gating for the settings bridge: agents manage app settings and MCP servers through it.
+        val agentSettingsBridge =
+            AgentSettingsBridge(
+                File(runtimeDirectory, "workspace"),
+                AppAgentSettingsStore(preferences),
+                AgentMcpConfig {
+                    val environment = File(runtimeDirectory, "environment")
+                    listOf(File(environment, "rootfs"), File(environment, "antigravity-rootfs")).filter(File::isDirectory)
+                },
+            )
+        applicationScope.launch { agentSettingsBridge.run(scheduleBridgeActive) }
         observeForegroundForRuntimeRestart()
         scheduleDeferredInitialization()
     }

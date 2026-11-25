@@ -87,6 +87,7 @@ On-device agents run inside a Linux environment via PRoot. OpenCode, Claude Code
 - **Tool approvals** — Approve or reject dangerous tool operations
 - **Session management** — Create, resume, rename, and delete sessions
 - **Scheduled tasks** — Run prompts automatically on a one-time or recurring (cron) schedule, with run history
+- **Agent-managed settings** — Ask any agent to change AndCode's settings (theme, fonts, model picks, voice, auto-archive, ...) or to register an MCP server with all agents, via the built-in `and-code-settings` MCP server. Security-sensitive switches stay user-only
 - **Dynamic models** — Models, providers, and agents fetched live from your connected agent instance
 - **Real-time streaming** — SSE-based live responses, tool execution, and approval requests
 - **Structured timeline** — Collapsible reasoning, tool calls, and command output

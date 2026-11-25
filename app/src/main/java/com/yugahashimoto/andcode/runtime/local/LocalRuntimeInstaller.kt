@@ -528,11 +528,12 @@ class LocalRuntimeInstaller(
         installAndroidHelperScripts(rootfs)
         provisionBrowserMcp(rootfs)
         provisionScheduleMcp(rootfs)
+        provisionSettingsMcp(rootfs)
         require(suite.proot.isFile) { "PRoot launcher is unavailable" }
     }
 
     /**
-     * Re-seeds the guest MCP servers (browser + schedule) and agent registrations on runtimes that
+     * Re-seeds the guest MCP servers (browser + schedule + settings) and agent registrations on runtimes that
      * were installed before the provisioning existed. Idempotent and safe to call on every start.
      */
     fun provisionGuestCapabilitiesForExistingInstall() {
@@ -543,6 +544,7 @@ class LocalRuntimeInstaller(
                 installAndroidHelperScripts(rootfs)
                 provisionBrowserMcp(rootfs)
                 provisionScheduleMcp(rootfs)
+                provisionSettingsMcp(rootfs)
                 provisionClaudePermissionHook(rootfs)
             }
     }
@@ -557,80 +559,60 @@ class LocalRuntimeInstaller(
         }
     }
 
+    private fun provisionBrowserMcp(rootfs: File) =
+        provisionBuiltInMcp(rootfs, BROWSER_MCP_NAME, BROWSER_MCP_BIN, BROWSER_MCP_TIMEOUT_MILLIS)
+
+    private fun provisionScheduleMcp(rootfs: File) =
+        provisionBuiltInMcp(rootfs, SCHEDULE_MCP_NAME, SCHEDULE_MCP_BIN, SCHEDULE_MCP_TIMEOUT_MILLIS)
+
+    private fun provisionSettingsMcp(rootfs: File) =
+        provisionBuiltInMcp(rootfs, SETTINGS_MCP_NAME, SETTINGS_MCP_BIN, SETTINGS_MCP_TIMEOUT_MILLIS)
+
     /**
-     * Registers the guest-browser MCP server with every agent (OpenCode, Claude Code,
-     * Antigravity) so they all expose the same browser_* tools. User-added servers are kept.
+     * Registers a built-in guest MCP server with every agent (OpenCode, Claude Code, Antigravity)
+     * so they all expose the same tools. User-added servers are kept.
      */
-    private fun provisionBrowserMcp(rootfs: File) {
+    private fun provisionBuiltInMcp(
+        rootfs: File,
+        name: String,
+        bin: String,
+        timeoutMillis: Int,
+    ) {
         mergeJsonConfig(File(rootfs, "root/.config/opencode/opencode.json")) { root ->
             val mcp = root.optJSONObject("mcp") ?: JSONObject()
-            mcp.put(BROWSER_MCP_NAME, browserMcpEntry("opencode"))
+            mcp.put(name, builtInMcpEntry("opencode", bin, timeoutMillis))
             root.put("mcp", mcp)
         }
         mergeJsonConfig(File(rootfs, "root/.claude.json")) { root ->
             val servers = root.optJSONObject("mcpServers") ?: JSONObject()
-            servers.put(BROWSER_MCP_NAME, browserMcpEntry("claude"))
+            servers.put(name, builtInMcpEntry("claude", bin, timeoutMillis))
             root.put("mcpServers", servers)
         }
         mergeJsonConfig(File(rootfs, "root/.gemini/config/mcp_config.json")) { root ->
             val servers = root.optJSONObject("mcpServers") ?: JSONObject()
-            servers.put(BROWSER_MCP_NAME, browserMcpEntry("antigravity"))
+            servers.put(name, builtInMcpEntry("antigravity", bin, timeoutMillis))
             root.put("mcpServers", servers)
         }
     }
 
-    private fun browserMcpEntry(agent: String): JSONObject =
+    private fun builtInMcpEntry(
+        agent: String,
+        bin: String,
+        timeoutMillis: Int,
+    ): JSONObject =
         when (agent) {
             "claude" ->
                 JSONObject()
                     .put("type", "stdio")
-                    .put("command", BROWSER_MCP_BIN)
+                    .put("command", bin)
                     .put("args", JSONArray())
-            "antigravity" -> JSONObject().put("command", BROWSER_MCP_BIN)
+            "antigravity" -> JSONObject().put("command", bin)
             else ->
                 JSONObject()
                     .put("type", "local")
-                    .put("command", JSONArray(listOf(BROWSER_MCP_BIN)))
+                    .put("command", JSONArray(listOf(bin)))
                     .put("enabled", true)
-                    .put("timeout", BROWSER_MCP_TIMEOUT_MILLIS)
-        }
-
-    /**
-     * Registers the guest-schedule MCP server with every agent (OpenCode, Claude Code, Antigravity)
-     * so they all expose the same schedule_* tools. User-added servers are kept.
-     */
-    private fun provisionScheduleMcp(rootfs: File) {
-        mergeJsonConfig(File(rootfs, "root/.config/opencode/opencode.json")) { root ->
-            val mcp = root.optJSONObject("mcp") ?: JSONObject()
-            mcp.put(SCHEDULE_MCP_NAME, scheduleMcpEntry("opencode"))
-            root.put("mcp", mcp)
-        }
-        mergeJsonConfig(File(rootfs, "root/.claude.json")) { root ->
-            val servers = root.optJSONObject("mcpServers") ?: JSONObject()
-            servers.put(SCHEDULE_MCP_NAME, scheduleMcpEntry("claude"))
-            root.put("mcpServers", servers)
-        }
-        mergeJsonConfig(File(rootfs, "root/.gemini/config/mcp_config.json")) { root ->
-            val servers = root.optJSONObject("mcpServers") ?: JSONObject()
-            servers.put(SCHEDULE_MCP_NAME, scheduleMcpEntry("antigravity"))
-            root.put("mcpServers", servers)
-        }
-    }
-
-    private fun scheduleMcpEntry(agent: String): JSONObject =
-        when (agent) {
-            "claude" ->
-                JSONObject()
-                    .put("type", "stdio")
-                    .put("command", SCHEDULE_MCP_BIN)
-                    .put("args", JSONArray())
-            "antigravity" -> JSONObject().put("command", SCHEDULE_MCP_BIN)
-            else ->
-                JSONObject()
-                    .put("type", "local")
-                    .put("command", JSONArray(listOf(SCHEDULE_MCP_BIN)))
-                    .put("enabled", true)
-                    .put("timeout", SCHEDULE_MCP_TIMEOUT_MILLIS)
+                    .put("timeout", timeoutMillis)
         }
 
     private fun mergeJsonConfig(
@@ -662,6 +644,7 @@ class LocalRuntimeInstaller(
             "android-build-setup.sh" to "android-build-setup",
             "andcode-browser-mcp.py" to "andcode-browser-mcp.py",
             "andcode-schedule-mcp.py" to "andcode-schedule-mcp.py",
+            "andcode-settings-mcp.py" to "andcode-settings-mcp.py",
         ).forEach {
                 (assetName, scriptName) ->
             val scriptFile = File(binDir, scriptName)
@@ -694,6 +677,9 @@ class LocalRuntimeInstaller(
         private const val SCHEDULE_MCP_NAME = "and-code-schedule"
         private const val SCHEDULE_MCP_BIN = "/usr/local/bin/andcode-schedule-mcp.py"
         private const val SCHEDULE_MCP_TIMEOUT_MILLIS = 120000
+        private const val SETTINGS_MCP_NAME = "and-code-settings"
+        private const val SETTINGS_MCP_BIN = "/usr/local/bin/andcode-settings-mcp.py"
+        private const val SETTINGS_MCP_TIMEOUT_MILLIS = 120000
 
         /** Required by OpenCode and AndCode's built-in Git, MCP, and Android-device features. */
         val REQUIRED_RUNTIME_PACKAGES =
