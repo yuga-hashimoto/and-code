@@ -7,9 +7,16 @@ import com.yugahashimoto.andcode.core.api.OpenCodeModelReference
 import com.yugahashimoto.andcode.core.api.OpenCodePart
 import com.yugahashimoto.andcode.core.api.OpenCodeTime
 import com.yugahashimoto.andcode.core.api.PromptAttachment
+import com.yugahashimoto.andcode.runtime.SubscriptionRateLimit
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.decodeFromString
@@ -66,6 +73,9 @@ class AntigravityRuntime(
     @Volatile private var cachedModels: List<AntigravityModels.Entry>? = null
     private val adapter = AntigravityTranscriptAdapter(json)
     private val authCoordinator = AntigravityAuthCoordinator(runtimeDirectory, installedRuntimeProvider, githubToken)
+    private val backgroundScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val mutableRateLimits = MutableStateFlow<SubscriptionRateLimit?>(null)
+    val rateLimits: StateFlow<SubscriptionRateLimit?> = mutableRateLimits.asStateFlow()
 
     init {
         load()
@@ -151,6 +161,54 @@ class AntigravityRuntime(
     /** Clears the cached model list; called after sign-in and sign-out so a switched account is picked up. */
     fun invalidateModels() {
         cachedModels = null
+        mutableRateLimits.value = null
+    }
+
+    /**
+     * Fetches the current quota snapshot via `agy --output-format json --print /usage`.
+     *
+     * Runs under [AntigravityProcessGate.exclusive] so it never races or delays an active chat
+     * turn: if another `agy` process is already running, this simply skips rather than blocking.
+     */
+    suspend fun refreshRateLimits() {
+        withContext(Dispatchers.IO) {
+            if (!isInstalled()) return@withContext
+            val runtime = installedRuntimeProvider() ?: return@withContext
+            val workspace = File(runtimeDirectory, "workspace").apply { mkdirs() }
+            runCatching {
+                AntigravityProcessGate.exclusive {
+                    val process =
+                        with(AntigravityProcessGate) {
+                            ProcessBuilder(
+                                AntigravitySandboxLauncher.command(
+                                    runtime,
+                                    workspace.absolutePath,
+                                    listOf("--output-format", "json", "--print", "/usage"),
+                                    false,
+                                ),
+                            )
+                                .redirectErrorStream(false)
+                                .withoutStdin()
+                                .apply {
+                                    environment().putAll(
+                                        AntigravitySandboxLauncher.environment(
+                                            runtime,
+                                            File(runtimeDirectory, "proot-tmp").apply { mkdirs() },
+                                            githubToken(),
+                                        ),
+                                    )
+                                }
+                                .start()
+                        }
+                    val output = AntigravityProcessGate.readWithTimeout(process, USAGE_READ_TIMEOUT_MS)
+                    if (output == null || !process.waitFor(5, java.util.concurrent.TimeUnit.SECONDS)) {
+                        terminate(process)
+                        return@exclusive null
+                    }
+                    if (process.exitValue() != 0) null else AntigravityRateLimits.parse(output)
+                }?.let { parsed -> mutableRateLimits.value = parsed }
+            }
+        }
     }
 
     suspend fun send(
@@ -323,6 +381,7 @@ class AntigravityRuntime(
                     if (turnFinished) {
                         // On a failed result the parser already emitted SessionError then SessionIdle;
                         // the user turn is persisted above, and there is no assistant reply to add.
+                        backgroundScope.launch { refreshRateLimits() }
                         return@serialize finalText.orEmpty()
                     }
                     if (wasKilledIntentionally) {
@@ -527,6 +586,7 @@ class AntigravityRuntime(
     private companion object {
         val VERSION_PATTERN = Regex("\\b\\d+\\.\\d+\\.\\d+\\b")
         const val MODELS_READ_TIMEOUT_MS = 45_000L
+        const val USAGE_READ_TIMEOUT_MS = 30_000L
         const val TITLE_READ_TIMEOUT_MS = 45_000L
         const val TITLE_PROMPT_LIMIT = 2_000
         const val TITLE_LENGTH = 40

@@ -36,6 +36,17 @@ class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarge
         RuntimeCapabilities(toolEvents = true, forcesQueue = true, fileEditing = true)
     private val mutableState = MutableStateFlow<RuntimeState>(RuntimeState.Disconnected)
     override val state: StateFlow<RuntimeState> = mutableState.asStateFlow()
+
+    override val rateLimits: StateFlow<SubscriptionRateLimit?>
+        get() = runtime.rateLimits
+
+    override val supportsRateLimits: Boolean = true
+    override val canRefreshRateLimits: Boolean = true
+
+    override suspend fun refreshRateLimits() {
+        runtime.refreshRateLimits()
+    }
+
     private val files =
         ClaudeWorkspaceFiles(
             workspaceHostDir = File(runtime.runtimeDirectory, "workspace"),

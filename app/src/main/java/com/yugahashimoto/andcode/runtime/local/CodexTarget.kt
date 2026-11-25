@@ -21,6 +21,7 @@ import com.yugahashimoto.andcode.runtime.RuntimeCapabilities
 import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.RuntimeType
+import com.yugahashimoto.andcode.runtime.SubscriptionRateLimit
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -69,6 +70,16 @@ class CodexTarget(
 
     private val mutableState = MutableStateFlow<RuntimeState>(RuntimeState.Disconnected)
     override val state: StateFlow<RuntimeState> = mutableState.asStateFlow()
+
+    override val rateLimits: StateFlow<SubscriptionRateLimit?>
+        get() = runtime.rateLimits
+
+    override val supportsRateLimits: Boolean = true
+    override val canRefreshRateLimits: Boolean = true
+
+    override suspend fun refreshRateLimits() {
+        withContext(Dispatchers.IO) { runtime.refreshRateLimits() }
+    }
 
     private val files =
         ClaudeWorkspaceFiles(

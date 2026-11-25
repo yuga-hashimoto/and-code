@@ -1275,4 +1275,13 @@
     <string name="guest_browser_control_take_over">Перехватить</string>
     <string name="guest_browser_control_manual_only">Только ручное управление</string>
     <string name="guest_browser_control_enable_agent">Разрешить агенту</string>
+    <string name="rate_limit_ring_cd_percent">Использование подписки %1$d%%</string>
+    <string name="rate_limit_ring_cd_unknown">Использование подписки</string>
+    <string name="rate_limit_sheet_title">Лимиты использования</string>
+    <string name="rate_limit_refresh_cd">Обновить лимиты использования</string>
+    <string name="rate_limit_window_five_hour">Лимит за 5 часов</string>
+    <string name="rate_limit_window_weekly">Недельный лимит</string>
+    <string name="rate_limit_resets_at">Сброс: %1$s</string>
+    <string name="rate_limit_empty_refreshable">Данных пока нет. Нажмите «Обновить», чтобы проверить.</string>
+    <string name="rate_limit_empty_passive">Данные обновляются автоматически после отправки сообщения.</string>
 </resources>

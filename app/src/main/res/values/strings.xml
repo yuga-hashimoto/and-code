@@ -1291,4 +1291,13 @@
     <string name="guest_browser_control_take_over">Take over</string>
     <string name="guest_browser_control_manual_only">Manual control only</string>
     <string name="guest_browser_control_enable_agent">Allow agent</string>
+    <string name="rate_limit_ring_cd_percent">Subscription usage %1$d%%</string>
+    <string name="rate_limit_ring_cd_unknown">Subscription usage</string>
+    <string name="rate_limit_sheet_title">Usage limits</string>
+    <string name="rate_limit_refresh_cd">Refresh usage limits</string>
+    <string name="rate_limit_window_five_hour">5-hour limit</string>
+    <string name="rate_limit_window_weekly">Weekly limit</string>
+    <string name="rate_limit_resets_at">Resets %1$s</string>
+    <string name="rate_limit_empty_refreshable">No usage data yet. Tap refresh to check.</string>
+    <string name="rate_limit_empty_passive">Usage updates automatically after sending a message.</string>
 </resources>

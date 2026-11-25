@@ -1272,4 +1272,13 @@
     <string name="guest_browser_control_take_over">Assumir o controle</string>
     <string name="guest_browser_control_manual_only">Somente controle manual</string>
     <string name="guest_browser_control_enable_agent">Permitir agente</string>
+    <string name="rate_limit_ring_cd_percent">Uso da assinatura %1$d%%</string>
+    <string name="rate_limit_ring_cd_unknown">Uso da assinatura</string>
+    <string name="rate_limit_sheet_title">Limites de uso</string>
+    <string name="rate_limit_refresh_cd">Atualizar limites de uso</string>
+    <string name="rate_limit_window_five_hour">Limite de 5 horas</string>
+    <string name="rate_limit_window_weekly">Limite semanal</string>
+    <string name="rate_limit_resets_at">Redefine em %1$s</string>
+    <string name="rate_limit_empty_refreshable">Ainda sem dados de uso. Toque em atualizar para verificar.</string>
+    <string name="rate_limit_empty_passive">O uso é atualizado automaticamente após enviar uma mensagem.</string>
 </resources>

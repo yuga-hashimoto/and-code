@@ -3,7 +3,9 @@ package com.yugahashimoto.andcode.runtime
 import com.yugahashimoto.andcode.core.api.OpenCodeHealth
 import com.yugahashimoto.andcode.core.api.OpenCodeProject
 import com.yugahashimoto.andcode.core.api.OpenCodeSession
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 
 enum class RuntimeType {
     LOCAL,
@@ -98,12 +100,29 @@ interface RuntimeTarget : OpenCodeBackend {
     val capabilities: RuntimeCapabilities
         get() = RuntimeCapabilities()
 
+    /** Latest known subscription rate-limit snapshot for this target, or null when unsupported/unknown. */
+    val rateLimits: StateFlow<SubscriptionRateLimit?>
+        get() = emptyRateLimits
+
+    /** True when this target can report subscription rate limits (actively or passively). */
+    val supportsRateLimits: Boolean
+        get() = false
+
+    /** True when [refreshRateLimits] can actively fetch updated rate limits on demand. */
+    val canRefreshRateLimits: Boolean
+        get() = false
+
+    /** Refreshes [rateLimits] on demand when supported; no-op otherwise. */
+    suspend fun refreshRateLimits() {}
+
     suspend fun connect(): Result<OpenCodeHealth>
 
     fun disconnect()
 
     suspend fun listWorkspaces(): List<WorkspaceRef>
 }
+
+private val emptyRateLimits: StateFlow<SubscriptionRateLimit?> = MutableStateFlow<SubscriptionRateLimit?>(null).asStateFlow()
 
 interface RuntimeConnectionStore {
     var selectedRuntimeId: String?

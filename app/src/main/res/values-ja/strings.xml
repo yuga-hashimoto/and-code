@@ -1286,4 +1286,13 @@
     <string name="guest_browser_control_take_over">操作を引き継ぐ</string>
     <string name="guest_browser_control_manual_only">手動操作のみ</string>
     <string name="guest_browser_control_enable_agent">AI操作を許可</string>
+    <string name="rate_limit_ring_cd_percent">利用上限 %1$d%%</string>
+    <string name="rate_limit_ring_cd_unknown">利用上限</string>
+    <string name="rate_limit_sheet_title">利用上限</string>
+    <string name="rate_limit_refresh_cd">利用上限を更新</string>
+    <string name="rate_limit_window_five_hour">5時間制限</string>
+    <string name="rate_limit_window_weekly">週間制限</string>
+    <string name="rate_limit_resets_at">リセット: %1$s</string>
+    <string name="rate_limit_empty_refreshable">まだ取得されていません。更新ボタンから確認できます。</string>
+    <string name="rate_limit_empty_passive">メッセージを送信すると、最新の上限使用率が自動的に反映されます。</string>
 </resources>

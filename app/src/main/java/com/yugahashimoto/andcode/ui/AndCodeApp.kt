@@ -1278,6 +1278,23 @@ fun AndCodeApp(
                                     }
                                 }
                             }
+                            val activeRateLimitFlow =
+                                remember(selectedRuntime?.id) {
+                                    selectedRuntime?.rateLimits
+                                        ?: kotlinx.coroutines.flow.MutableStateFlow(null)
+                                }
+                            val activeRateLimit by activeRateLimitFlow.collectAsState()
+                            var rateLimitsRefreshing by remember(selectedRuntime?.id) { mutableStateOf(false) }
+                            LaunchedEffect(selectedRuntime?.id) {
+                                val target = selectedRuntime ?: return@LaunchedEffect
+                                if (!target.canRefreshRateLimits || target.rateLimits.value != null) return@LaunchedEffect
+                                rateLimitsRefreshing = true
+                                try {
+                                    target.refreshRateLimits()
+                                } finally {
+                                    rateLimitsRefreshing = false
+                                }
+                            }
                             ChatHomeScreen(
                                 state = chatState,
                                 providers = settingsState.providers,
@@ -1391,6 +1408,23 @@ fun AndCodeApp(
                                 onPermission = chatViewModel::respondToPermission,
                                 onAbort = chatViewModel::abort,
                                 onRecheckStall = chatViewModel::checkForStall,
+                                rateLimit = activeRateLimit,
+                                supportsRateLimits = selectedRuntime?.supportsRateLimits == true,
+                                canRefreshRateLimits = selectedRuntime?.canRefreshRateLimits == true,
+                                rateLimitsRefreshing = rateLimitsRefreshing,
+                                onRefreshRateLimits = {
+                                    val target = selectedRuntime
+                                    if (target != null && target.canRefreshRateLimits && !rateLimitsRefreshing) {
+                                        voiceScope.launch {
+                                            rateLimitsRefreshing = true
+                                            try {
+                                                target.refreshRateLimits()
+                                            } finally {
+                                                rateLimitsRefreshing = false
+                                            }
+                                        }
+                                    }
+                                },
                                 onMic = requestVoiceInput,
                                 onNewChat = {
                                     pendingSession = null

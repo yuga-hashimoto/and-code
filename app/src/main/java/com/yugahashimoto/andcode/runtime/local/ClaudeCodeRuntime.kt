@@ -10,6 +10,7 @@ import com.yugahashimoto.andcode.core.api.PromptAttachment
 import com.yugahashimoto.andcode.core.api.QuestionRequest
 import com.yugahashimoto.andcode.core.util.pollWhileActive
 import com.yugahashimoto.andcode.runtime.PermissionResponse
+import com.yugahashimoto.andcode.runtime.SubscriptionRateLimit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -155,6 +156,8 @@ class ClaudeCodeRuntime(
      */
     private val resolvedModelsFile = File(runtimeDirectory, "claude-resolved-models.json")
     private val resolvedModels = MutableStateFlow<Map<String, String>>(emptyMap())
+    private val mutableRateLimits = MutableStateFlow<SubscriptionRateLimit?>(null)
+    val rateLimits: StateFlow<SubscriptionRateLimit?> = mutableRateLimits.asStateFlow()
 
     val auth = ClaudeAuthCoordinator(runtimeDirectory, installedRuntimeProvider, accessCoordinator, messages, githubToken)
 
@@ -608,6 +611,9 @@ class ClaudeCodeRuntime(
         parsed.todos?.let { synchronized(this) { todos[sessionId] = it } }
         parsed.slashCommands?.let { synchronized(this) { announcedCommands = it } }
         parsed.skills?.let { synchronized(this) { announcedSkills = it } }
+        parsed.rateLimit?.let { incoming ->
+            mutableRateLimits.value = ClaudeRateLimits.merge(mutableRateLimits.value, incoming)
+        }
         parsed.messages.forEach { message -> messageStore.upsert(sessionId, message) }
         parsed.events.forEach(events::tryEmit)
         if (parsed.turnFinished) messageStore.flush()

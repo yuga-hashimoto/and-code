@@ -6,6 +6,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeMessageInfo
 import com.yugahashimoto.andcode.core.api.OpenCodePart
 import com.yugahashimoto.andcode.core.api.OpenCodeTime
 import com.yugahashimoto.andcode.core.api.OpenCodeTodo
+import com.yugahashimoto.andcode.runtime.SubscriptionRateLimit
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -39,6 +40,7 @@ class ClaudeStreamJsonParser(
         /** Slash commands and skills the CLI reports at startup. */
         val slashCommands: List<String>? = null,
         val skills: List<String>? = null,
+        val rateLimit: SubscriptionRateLimit? = null,
         val turnFinished: Boolean = false,
         val errorMessage: String? = null,
     )
@@ -75,6 +77,7 @@ class ClaudeStreamJsonParser(
             "assistant" -> parseModelMessage(root, role = "assistant")
             "user" -> parseModelMessage(root, role = "user")
             "stream_event" -> parsePartialDelta(root)
+            "rate_limit_event" -> Parsed(rateLimit = ClaudeRateLimits.parse(root))
             "result" -> parseResult(root)
             else -> Parsed()
         }

@@ -9,6 +9,7 @@ import com.yugahashimoto.andcode.core.api.OpenCodeTime
 import com.yugahashimoto.andcode.core.api.PermissionRequest
 import com.yugahashimoto.andcode.core.api.PromptAttachment
 import com.yugahashimoto.andcode.runtime.PermissionResponse
+import com.yugahashimoto.andcode.runtime.SubscriptionRateLimit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -93,6 +94,9 @@ class CodexRuntime(
     private val pendingApprovals = ConcurrentHashMap<String, PendingApproval>()
 
     private val logins = CodexLoginTracker()
+
+    private val mutableRateLimits = MutableStateFlow<SubscriptionRateLimit?>(null)
+    val rateLimits: StateFlow<SubscriptionRateLimit?> = mutableRateLimits.asStateFlow()
 
     private val mutableNeedsForeground = MutableStateFlow(false)
 
@@ -229,6 +233,7 @@ class CodexRuntime(
             }
         }
         stopServer()
+        mutableRateLimits.value = null
     }
 
     /** A ChatGPT browser sign-in that has been started: [authUrl] is what to open, [loginId] what to poll. */
@@ -267,6 +272,14 @@ class CodexRuntime(
     }
 
     suspend fun isSignedIn(): Boolean = runCatching { hasSignedInAccount(call("account/read")) }.getOrDefault(false)
+
+    suspend fun refreshRateLimits() {
+        if (!isInstalled()) return
+        runCatching {
+            val result = call(RATE_LIMITS_READ_METHOD)
+            CodexRateLimits.parse(result)?.let { mutableRateLimits.value = it }
+        }
+    }
 
     suspend fun modelList(): JsonObject = call("model/list")
 
@@ -568,6 +581,10 @@ class CodexRuntime(
             refreshForegroundNeed()
             return
         }
+        if (method == RATE_LIMITS_UPDATED_METHOD) {
+            CodexRateLimits.parse(body)?.let { mutableRateLimits.value = it }
+            return
+        }
         val sessionId = body.string("threadId") ?: return
         val parsed = itemParser.handleNotification(sessionId, method, body)
         if (parsed.events.any { it is OpenCodeEvent.SessionIdle }) {
@@ -658,6 +675,8 @@ class CodexRuntime(
     private companion object {
         const val DEFAULT_TITLE = "Codex"
         const val LOGIN_COMPLETED_METHOD = "account/login/completed"
+        const val RATE_LIMITS_READ_METHOD = "account/rateLimits/read"
+        const val RATE_LIMITS_UPDATED_METHOD = "account/rateLimits/updated"
         const val MCP_TIMEOUT_SECONDS = 30L
 
         fun JsonObject.string(key: String): String? = (this[key] as? JsonPrimitive)?.contentOrNull
