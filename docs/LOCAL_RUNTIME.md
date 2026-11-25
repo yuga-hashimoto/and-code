@@ -224,6 +224,19 @@ OpenCodeがOAuthの `auto` 方式を返した場合、Androidはブラウザを�
 - 書き込み系はスケジューリングUIと同じく暗号化リポジトリとアラーム（`ScheduleManager`）を通るため、変更はアプリのスケジュール画面へ即反映される
 - 提供ツール: `schedule_list` / `schedule_get` / `schedule_runs` / `schedule_create` / `schedule_update` / `schedule_delete` / `schedule_set_enabled` / `schedule_run_now`
 
+## 設定MCPツール
+
+ゲスト内エージェント（OpenCode・Claude Code・Antigravity）に頼むだけで、AndCode自体の設定変更と、全エージェント共通のMCPサーバー管理ができるようにする。設定はアプリの暗号化設定に保存されておりゲストからは直接読めないため、スケジュールMCPと同じファイルブリッジ方式を取る。
+
+- `andcode-settings-mcp.py` が `/usr/local/bin` に入り、全エージェントのMCP設定へ `and-code-settings` サーバーとして登録される（既存インストールも起動時に補完される）
+- サーバーは `/workspace/.and-code/settings-bridge/pending/<id>.json` へリクエストを書き、アプリ側の`AgentSettingsBridge`が実行して `responses/<id>.json` へ書き戻す。ポーリングの条件、期限切れリクエストの破棄はスケジュールブリッジと同じ
+- 設定の項目・型・取り得る値・範囲・既定値は `AgentSettingsCatalog` に宣言されており、`settings_list` で実行時に取得できる。書き込みは入力を検証してから `AppPreferencesRepository` を通すので、画面は即時に追従する。`settings_set_many` は全件を検証してから適用し、1件でも不正なら何も変更しない
+- カテゴリ: `model`（モデル・エージェント選択、お気に入り、非表示）/ `appearance`（テーマ・フォント・言語）/ `chat` / `sessions`（ピン留め、自動アーカイブ）/ `runtime` / `voice`（TTS・ウェイクワード）/ `security`
+- **エージェントからは読み取り専用**: 権限リクエストの自動承認（`autoAcceptPermissions`）、ゲストブラウザの操作許可（`guestBrowserAgentControlEnabled`）、アナリティクス（`analyticsEnabled`）は、エージェント自身の権限を広げる／ユーザーの同意が前提なので、ユーザーがアプリの設定画面で変更する。マイク権限とサービス起動が要るウェイクワードの有効化（`wakeWordEnabled`）も同様。`settings_list` では `writable: false` と理由が返る
+- APIキー（TTS）は書き込み専用で、読み取りは設定済みかどうか（`isSet`）しか返さない
+- MCPサーバー管理: `mcp_servers_list` / `mcp_server_add`（ローカルは `command` のargv、リモートは `url`）/ `mcp_server_remove`。3エージェントそれぞれの設定ファイル形式で全rootfs（Alpine・Antigravity）へ書き込む。組み込みの `and-code-*` サーバーは置換・削除できない。環境変数の値とヘッダーは一覧に出さない。反映は各エージェントの次のセッション開始時
+- 提供ツール: `settings_list` / `settings_get` / `settings_set` / `settings_set_many` / `settings_reset` / `settings_update_list` / `mcp_servers_list` / `mcp_server_add` / `mcp_server_remove`
+
 ## 組み込みターミナル
 
 ワークスペースのターミナルアイコンから開く、サンドボックス内の対話シェル。1コマンドごとに起動して30秒で打ち切る方式ではなく、画面を開いている間はシェルが常駐する。
