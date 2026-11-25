@@ -27,6 +27,7 @@ val viewModelModule =
                 // Same Codex fast-mode wiring as the factory in ui/AndCodeApp.kt; keep the two in step.
                 onCodexFastModeChanged = preferences::setCodexFastMode,
                 initialCodexFastMode = settings.codexFastMode,
+                initialSendBehavior = preferences.state.value.sendBehavior,
                 // Kept in step with the hand-rolled factory in ui/AndCodeApp.kt: both construction
                 // paths have to park the connection probe and stall watchdog while the app is
                 // backgrounded, or whichever one the screen happens to use decides whether those

@@ -149,6 +149,12 @@ internal fun mergeReloadedMessages(
     existing: List<ChatMessage>,
     previewsByFilename: Map<String, Bitmap> = emptyMap(),
     retainIds: Set<String> = emptySet(),
+    /**
+     * Texts of user prompts still waiting in the send queue. They are on screen but not in the
+     * runtime's transcript yet, so a reload driven by the previous turn would erase them until the
+     * drained prompt is persisted. Kept here, they survive that reload exactly once.
+     */
+    retainUserTexts: Set<String> = emptySet(),
 ): List<ChatMessage> {
     // Nothing persisted yet means nothing to reconcile against: keeping what is on screen is both
     // correct and what callers did with an empty result before this could ever retain anything.
@@ -196,6 +202,22 @@ internal fun mergeReloadedMessages(
             .forEach { message ->
                 // The bubble belongs where it streamed, ahead of everything that came after it,
                 // not pinned to the bottom of a timeline that has moved on.
+                val index = merged.indexOfFirst { it.timestamp > message.timestamp }
+                if (index >= 0) {
+                    merged.add(index, message)
+                } else {
+                    merged.add(message)
+                }
+            }
+    }
+    if (retainUserTexts.isNotEmpty()) {
+        val reloadedUserTexts = reloaded.filter { it.isUser }.map { it.text }.toSet()
+        existing
+            .asSequence()
+            .filter { it.isUser && it.text in retainUserTexts && it.text !in reloadedUserTexts && it !in merged }
+            .forEach { message ->
+                // Queued before the reply it is sitting behind finished, so it keeps that place
+                // rather than jumping to the bottom of a timeline it did not take part in yet.
                 val index = merged.indexOfFirst { it.timestamp > message.timestamp }
                 if (index >= 0) {
                     merged.add(index, message)
@@ -650,6 +672,16 @@ class ChatViewModel(
     private val onCodexFastModeChanged: (Boolean?) -> Unit = {},
     /** The user's saved Codex fast-mode choice, read when the ViewModel starts. */
     private val initialCodexFastMode: Boolean? = null,
+    /** The user's saved send behavior ("interrupt" or "queue"), read when the ViewModel starts. */
+    private val initialSendBehavior: String = "interrupt",
+    /**
+     * Whether a session already has a run in flight, learned from the app's activity store.
+     *
+     * Opening such a chat used to leave [ChatUiState.isRunning] false, so a send there was treated
+     * as idle and went straight to the runtime. Antigravity cannot interrupt a one-shot turn (it
+     * kills the process), so that send silently discarded the run the user was watching.
+     */
+    private val isSessionRunning: (String) -> Boolean = { false },
 ) : ViewModel() {
     private val _uiState =
         MutableStateFlow(
@@ -657,7 +689,7 @@ class ChatViewModel(
         )
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
-    private val _sendBehavior = MutableStateFlow("interrupt")
+    private val _sendBehavior = MutableStateFlow(initialSendBehavior)
     val sendBehavior: StateFlow<String> = _sendBehavior.asStateFlow()
 
     private val _workspaceTitleSource = MutableStateFlow("title")
@@ -755,17 +787,19 @@ class ChatViewModel(
                     .distinctUntilChanged()
                     .collect { (sessionId, running) ->
                         if (sessionId == null) return@collect
-                        // The run we last reported as active is over the moment the open chat
-                        // stops running OR the client moves to another chat (it can no longer
-                        // track the old one's isRunning). The previous logic keyed on the
-                        // (sessionId, isRunning) pair, so a mid-turn navigation produced the
-                        // transition (oldSession, true) -> (newSession, false) and matched neither
-                        // branch: the old session was never reported finished and its drawer dot
-                        // stayed on the spinner forever. Clear the stale run explicitly here so the
-                        // drawer only reflects chats the runtime itself still reports as active.
+                        // Only a run of the chat that is still on screen can be tracked here, so
+                        // moving to another chat hands the old one to the runtime's own stream
+                        // rather than reporting it finished. Reporting it finished on navigation
+                        // cleared the drawer spinner for a turn that was still in flight, and a
+                        // runtime that emits no busy status (Antigravity) never put it back until
+                        // the next streamed token - so the drawer showed the chat as idle mid-run.
+                        // The activity store still settles the session on the runtime's idle (or
+                        // its watchdog if that never arrives).
                         runningSession?.let { previous ->
-                            if (previous != sessionId || !running) {
+                            if (previous == sessionId && !running) {
                                 onRunStateChanged(previous, false)
+                                runningSession = null
+                            } else if (previous != sessionId) {
                                 runningSession = null
                             }
                         }
@@ -1089,6 +1123,10 @@ class ChatViewModel(
         // state too — otherwise the composer opens the new chat already stuck on the stop button
         // because the old chat happened to be mid-turn when the user navigated away.
         val switchingSession = _uiState.value.sessionId != sessionId
+        // Opening a chat whose run is still in flight (started before this client opened it) must
+        // not look idle: a send there would reach the runtime as an interrupt, which on Antigravity
+        // kills the one-shot process instead of cancelling anything.
+        val alreadyRunning = switchingSession && isSessionRunning(sessionId)
         if (switchingSession) pendingInterrupts.clear()
         // The composer is moving to another chat, so a preset chosen for the one it is leaving -
         // which never got a session to record it on - stops applying here.
@@ -1109,12 +1147,13 @@ class ChatViewModel(
                 permissions = emptyList(),
                 pendingQuestions = emptyList(),
                 sessionDirectory = null,
-                isRunning = if (switchingSession) false else it.isRunning,
-                isThinking = if (switchingSession) false else it.isThinking,
+                isRunning = if (switchingSession) alreadyRunning else it.isRunning,
+                isThinking = if (switchingSession) alreadyRunning else it.isThinking,
                 dismissedTodoBarId = null,
                 error = null,
             )
         }
+        if (alreadyRunning) recordProgress()
         if (parent == null) resolveParentSession(sessionId)
         refreshPendingQuestions(sessionId)
         viewModelScope.launch {
@@ -1126,7 +1165,12 @@ class ChatViewModel(
                     _uiState.update {
                         it.copy(
                             isLoadingHistory = false,
-                            messages = mergeReloadedMessages(messages.mapNotNull(::toUiMessage), it.messages),
+                            messages =
+                                mergeReloadedMessages(
+                                    messages.mapNotNull(::toUiMessage),
+                                    it.messages,
+                                    retainUserTexts = pendingQueuedTexts(),
+                                ),
                             selectedProviderId = selectedModel?.providerId ?: it.selectedProviderId,
                             selectedModelId = selectedModel?.modelId ?: it.selectedModelId,
                         )
@@ -1386,7 +1430,14 @@ class ChatViewModel(
     ) {
         val messages = currentBackend.listMessages(sessionId)
         _uiState.update {
-            it.copy(messages = mergeReloadedMessages(messages.mapNotNull(::toUiMessage), it.messages))
+            it.copy(
+                messages =
+                    mergeReloadedMessages(
+                        messages.mapNotNull(::toUiMessage),
+                        it.messages,
+                        retainUserTexts = pendingQueuedTexts(),
+                    ),
+            )
         }
     }
 
@@ -1412,6 +1463,17 @@ class ChatViewModel(
     }
 
     fun sendMessage(text: String) {
+        sendMessage(text, fromQueue = false)
+    }
+
+    /**
+     * [fromQueue] means the prompt was already drawn as the user's bubble when it was queued, so
+     * sending it now must not add a second copy to the transcript.
+     */
+    private fun sendMessage(
+        text: String,
+        fromQueue: Boolean,
+    ) {
         val normalized = text.trim()
         val pendingAttachments = _uiState.value.attachments
         val messageIdsBeforeSend = _uiState.value.messages.map { it.id }.toSet()
@@ -1448,7 +1510,7 @@ class ChatViewModel(
         // (OpenCode expands the template server-side) rather than sent as a plain prompt.
         val slashCommand = matchSlashCommand(normalized)
         if (slashCommand != null) {
-            sendSlashCommand(slashCommand.first, slashCommand.second)
+            sendSlashCommand(slashCommand.first, slashCommand.second, fromQueue)
             return
         }
 
@@ -1475,19 +1537,6 @@ class ChatViewModel(
             return
         }
 
-        // Some runtimes (Antigravity) must always queue behind a running turn rather than interrupt
-        // it - interrupting there kills the in-flight one-shot process instead of cancelling a
-        // request, which surfaced as a crash. See RuntimeCapabilities.forcesQueue.
-        val mustQueue = (currentBackend as? RuntimeTarget)?.capabilities?.forcesQueue == true
-        if ((_sendBehavior.value == "queue" || mustQueue) && _uiState.value.isRunning) {
-            messageQueue.update {
-                it + QueuedPrompt(outgoingText, modelAttachments, _uiState.value.imagePreviews)
-            }
-            _uiState.update { it.copy(attachments = emptyList(), imagePreviews = emptyList()) }
-            return
-        }
-        val interrupting = _uiState.value.isRunning
-
         val userMessage =
             ChatMessage(
                 isUser = true,
@@ -1498,9 +1547,32 @@ class ChatViewModel(
                 attachments = pendingAttachments,
                 imagePreviews = _uiState.value.imagePreviews,
             )
+
+        // Some runtimes (Antigravity) must always queue behind a running turn rather than interrupt
+        // it - interrupting there kills the in-flight one-shot process instead of cancelling a
+        // request, which surfaced as a crash. See RuntimeCapabilities.forcesQueue.
+        val mustQueue = (currentBackend as? RuntimeTarget)?.capabilities?.forcesQueue == true
+        if ((_sendBehavior.value == "queue" || mustQueue) && _uiState.value.isRunning) {
+            messageQueue.update {
+                it + QueuedPrompt(outgoingText, modelAttachments, _uiState.value.imagePreviews)
+            }
+            // The prompt waits for the running turn, but it has to be visible while it waits: the
+            // old path dropped it from the screen entirely, which read as if the send had been
+            // swallowed. When it is already drawn (a drain), only the attachments are consumed.
+            _uiState.update {
+                it.copy(
+                    messages = if (fromQueue) it.messages else it.messages + userMessage,
+                    attachments = emptyList(),
+                    imagePreviews = emptyList(),
+                )
+            }
+            return
+        }
+        val interrupting = _uiState.value.isRunning
+
         _uiState.update {
             it.copy(
-                messages = it.messages + userMessage,
+                messages = if (fromQueue) it.messages else it.messages + userMessage,
                 isRunning = true,
                 isThinking = true,
                 retry = null,
@@ -1597,6 +1669,7 @@ class ChatViewModel(
                                             _uiState.value.messages,
                                             pendingPreviewsByFilename,
                                             retainIds,
+                                            retainUserTexts = pendingQueuedTexts(),
                                         )
                                     if (uiMessages.isNotEmpty() && uiMessages != _uiState.value.messages) {
                                         _uiState.update { it.copy(messages = uiMessages) }
@@ -1639,6 +1712,7 @@ class ChatViewModel(
                                     _uiState.value.messages,
                                     pendingPreviewsByFilename,
                                     retainedIds,
+                                    retainUserTexts = pendingQueuedTexts(),
                                 )
                             _uiState.update {
                                 it.copy(
@@ -1650,6 +1724,10 @@ class ChatViewModel(
                             // Refresh after the final assistant message is persisted. The
                             // pre-send refresh only contains the previous turn's tokens.
                             refreshContextUsage(targetSessionId)
+                            // The turn ended through this fallback rather than the runtime's own
+                            // idle, so the idle handler will not drain the queue: a prompt sent
+                            // while the run was going would wait forever.
+                            drainQueue()
                         }
                 }
             }.onFailure { error ->
@@ -1678,6 +1756,14 @@ class ChatViewModel(
         command: String,
         arguments: String,
     ) {
+        sendSlashCommand(command, arguments, fromQueue = false)
+    }
+
+    private fun sendSlashCommand(
+        command: String,
+        arguments: String,
+        fromQueue: Boolean,
+    ) {
         val currentBackend = backend
         if (currentBackend == null) {
             _uiState.update { it.copy(error = "OpenCode connection is not configured") }
@@ -1703,21 +1789,25 @@ class ChatViewModel(
             return
         }
 
-        val mustQueue = (currentBackend as? RuntimeTarget)?.capabilities?.forcesQueue == true
-        if ((_sendBehavior.value == "queue" || mustQueue) && _uiState.value.isRunning) {
-            messageQueue.update { it + QueuedPrompt(displayText, emptyList(), emptyList()) }
-            return
-        }
-        val interrupting = _uiState.value.isRunning
-
         val userMessage =
             ChatMessage(
                 isUser = true,
                 parts = listOf(ChatPart.Text(id = UUID.randomUUID().toString(), text = displayText)),
             )
+
+        val mustQueue = (currentBackend as? RuntimeTarget)?.capabilities?.forcesQueue == true
+        if ((_sendBehavior.value == "queue" || mustQueue) && _uiState.value.isRunning) {
+            messageQueue.update { it + QueuedPrompt(displayText, emptyList(), emptyList()) }
+            if (!fromQueue) {
+                _uiState.update { it.copy(messages = it.messages + userMessage) }
+            }
+            return
+        }
+        val interrupting = _uiState.value.isRunning
+
         _uiState.update {
             it.copy(
-                messages = it.messages + userMessage,
+                messages = if (fromQueue) it.messages else it.messages + userMessage,
                 isRunning = true,
                 isThinking = true,
                 retry = null,
@@ -1797,6 +1887,7 @@ class ChatViewModel(
                                             serverMessages.mapNotNull(::toUiMessage),
                                             _uiState.value.messages,
                                             retainIds = retainIds,
+                                            retainUserTexts = pendingQueuedTexts(),
                                         )
                                     if (uiMessages.isNotEmpty() && uiMessages != _uiState.value.messages) {
                                         _uiState.update { it.copy(messages = uiMessages) }
@@ -1827,12 +1918,16 @@ class ChatViewModel(
                                             serverMessages.mapNotNull(::toUiMessage),
                                             it.messages,
                                             retainIds = retainedIds,
+                                            retainUserTexts = pendingQueuedTexts(),
                                         ),
                                     isRunning = false,
                                     isThinking = false,
                                 )
                             }
                             refreshContextUsage(targetSessionId)
+                            // See sendMessage: a turn ended by this fallback still has to drain
+                            // prompts the user queued while it ran.
+                            drainQueue()
                         }
                 }
             }.onFailure { error ->
@@ -2324,6 +2419,7 @@ class ChatViewModel(
                                                 messages.mapNotNull(::toUiMessage),
                                                 it.messages,
                                                 retainIds = retainedIds,
+                                                retainUserTexts = pendingQueuedTexts(),
                                             ),
                                     )
                                 }
@@ -2527,6 +2623,10 @@ class ChatViewModel(
         retainIds: Set<String> = emptySet(),
     ) {
         val currentBackend = backend ?: return
+        // Captured before the launch: the idle handler drains the queue right after calling this,
+        // so reading it inside the coroutine would already see the queue emptied and drop the
+        // just-queued bubble from the reload.
+        val retainUserTexts = pendingQueuedTexts()
         viewModelScope.launch {
             runCatching { currentBackend.listMessages(sessionId) }
                 .onSuccess { messages ->
@@ -2535,6 +2635,7 @@ class ChatViewModel(
                             messages.mapNotNull(::toUiMessage),
                             _uiState.value.messages,
                             retainIds = retainIds,
+                            retainUserTexts = retainUserTexts,
                         )
                     if (uiMessages.isNotEmpty()) {
                         _uiState.update { it.copy(messages = uiMessages) }
@@ -2676,6 +2777,12 @@ class ChatViewModel(
         return _uiState.value.messages.firstOrNull { it.id == messageId }?.text
     }
 
+    /**
+     * Prompts waiting in [messageQueue], by text. A transcript reload must keep their optimistic
+     * bubbles on screen even though the runtime has not been given them yet.
+     */
+    private fun pendingQueuedTexts(): Set<String> = messageQueue.value.mapTo(mutableSetOf()) { it.text }
+
     private fun drainQueue() {
         val queued = messageQueue.value
         if (queued.isEmpty()) return
@@ -2706,7 +2813,8 @@ class ChatViewModel(
                 imagePreviews = queuedPrompt.imagePreviews,
             )
         }
-        sendMessage(queuedPrompt.text)
+        // The bubble was drawn when this prompt was queued, so it is not added again here.
+        sendMessage(queuedPrompt.text, fromQueue = true)
     }
 
     override fun onCleared() {
@@ -2795,6 +2903,7 @@ class ChatViewModel(
                                         messages.mapNotNull(::toUiMessage),
                                         it.messages,
                                         retainIds = retainedIds,
+                                        retainUserTexts = pendingQueuedTexts(),
                                     ),
                             )
                         }

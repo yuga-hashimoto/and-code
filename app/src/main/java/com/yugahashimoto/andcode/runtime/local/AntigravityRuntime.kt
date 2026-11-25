@@ -234,18 +234,21 @@ class AntigravityRuntime(
                         prompt,
                         attachments,
                     )
-                // Normally unreachable now that the app always queues a send behind a running
-                // Antigravity turn (see RuntimeCapabilities.forcesQueue) - kept as a safety net for
-                // e.g. two clients racing the same session. Marking the kill as intentional here is
-                // what stops the superseded call's own send() below from reporting it as a crash.
-                processes.remove(sessionId)?.let {
-                    abortTracker.markIntentional(sessionId)
-                    terminate(it)
-                }
+                // A send for a session that still has a process running waits on the gate below
+                // instead of killing it. The app normally queues (RuntimeCapabilities.forcesQueue),
+                // but the chat's own isRunning can be stale - a chat opened mid-turn used to look
+                // idle and send straight through - and terminating the in-flight one-shot process
+                // there discarded the turn the user was watching with no reply at all. The gate
+                // serializes the whole launch, so the waiting send starts once this one finishes.
                 // Concurrent agy launches hang on the PRoot/Android deployment (see
                 // AntigravityProcessGate), so a send queues behind any in-flight launch and the two
                 // run one at a time instead of racing each other into a deadlock.
                 AntigravityProcessGate.serialize {
+                    // The record is authoritative once the gate is free: a send that waited here
+                    // read the session before the previous turn had a chance to persist the
+                    // conversation id it discovered, so without this it would start a brand-new
+                    // guest conversation and lose the chat's context.
+                    val effectiveConversationId = records[sessionId]?.conversationId ?: conversationId
                     // `--print` takes the prompt as its value, so it must come last with the prompt
                     // immediately after it. Every other flag goes first: with `--print` leading, the CLI
                     // took the *next* token as the prompt, so a message sent with any flag set asked the
@@ -254,9 +257,9 @@ class AntigravityRuntime(
                         buildList {
                             add("--output-format")
                             add("stream-json")
-                            if (conversationId != null) {
+                            if (effectiveConversationId != null) {
                                 add("--conversation")
-                                add(conversationId)
+                                add(effectiveConversationId)
                             }
                             addAll(AntigravityModels.cliArgs(model, variant))
                             addAll(permissionMode.cliArgs)
