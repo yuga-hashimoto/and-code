@@ -884,8 +884,9 @@ class ChatViewModel(
     /**
      * Hides one pull request's badges above the composer. Nothing server-side tracks this — the
      * badge is a view over the transcript, and the transcript keeps its link — so this is purely a
-     * local "stop showing me this": the ref is dropped here, which also stops the periodic refresh
-     * from fetching its state, and stays dismissed for as long as this chat is open.
+     * local "stop showing me this": the ref is dropped from the composer here and stays dismissed
+     * for as long as this chat is open. The drawer still shows the chat's pull request, because it
+     * tracks the transcript independently of this dismissal.
      */
     fun dismissPullRequest(key: String) {
         dismissedPullRequestKeys += key
