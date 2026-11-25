@@ -24,7 +24,7 @@ class OpenCodeEventParser(
         // `/global/event` wraps each instance event as {directory, project, workspace, payload};
         // the per-instance `/event` stream emits the event object directly.
         val root = envelope["payload"] as? JsonObject ?: envelope
-        val type = root["type"]?.jsonPrimitive?.content ?: return OpenCodeEvent.Unknown("missing-type", raw)
+        val type = (root["type"] as? JsonPrimitive)?.content ?: return OpenCodeEvent.Unknown("missing-type", raw)
         val properties = root["properties"] as? JsonObject ?: JsonObject(emptyMap())
 
         return runCatching {
