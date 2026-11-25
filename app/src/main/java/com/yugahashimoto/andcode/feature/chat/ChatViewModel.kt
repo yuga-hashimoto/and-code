@@ -850,13 +850,17 @@ class ChatViewModel(
     private fun trackPullRequests(statuses: PullRequestStatusRepository) {
         viewModelScope.launch {
             uiState
-                .map { it.messages }
+                .map { it.sessionId to it.messages }
                 .distinctUntilChanged()
                 .conflate()
-                .collect { messages ->
-                    val refs = pullRequestRefsIn(messages).filterNot { it.key in dismissedPullRequestKeys }
-                    pullRequestRefs.value = refs
-                    statuses.track(refs)
+                .collect { (sessionId, messages) ->
+                    // Record the chat's pull requests before applying any dismissal: the drawer's
+                    // badge is about what the chat produced, not what the user hid in the composer.
+                    val refs = pullRequestRefsIn(messages)
+                    sessionId?.let { statuses.trackSession(it, refs) }
+                    val visible = refs.filterNot { it.key in dismissedPullRequestKeys }
+                    pullRequestRefs.value = visible
+                    statuses.track(visible)
                     delay(PULL_REQUEST_SCAN_THROTTLE_MS)
                 }
         }

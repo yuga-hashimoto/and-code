@@ -130,22 +130,79 @@ class PullRequestStatusRepositoryTest {
         assertNull(repository().statuses.value[ref.key])
     }
 
+    @Test
+    fun `a chat's pull request is remembered and reported with its state`() =
+        runBlocking {
+            server.enqueue(pullResponse(state = "closed", merged = true))
+            val repository = repository()
+
+            repository.trackSession("chat-1", listOf(ref))
+
+            val statuses =
+                withTimeout(AWAIT_TIMEOUT_MS) {
+                    repository.sessionStatuses.first { it["chat-1"]?.isNotEmpty() == true }
+                }
+            assertEquals(PullRequestState.MERGED, statuses.getValue("chat-1").single().state)
+        }
+
+    @Test
+    fun `remembered chats are tracked when the repository starts`() =
+        runBlocking {
+            server.enqueue(pullResponse())
+            val store = FakeStore(mapOf("chat-1" to listOf(ref)))
+            val repository = repository(store = store)
+
+            val statuses =
+                withTimeout(AWAIT_TIMEOUT_MS) {
+                    repository.sessionStatuses.first { it["chat-1"]?.isNotEmpty() == true }
+                }
+            assertEquals(PullRequestState.OPEN, statuses.getValue("chat-1").single().state)
+        }
+
+    @Test
+    fun `an empty transcript does not erase what a chat already linked`() {
+        val store = FakeStore()
+        val repository = repository(store = store)
+
+        repository.trackSession("chat-1", listOf(ref))
+        repository.trackSession("chat-1", emptyList())
+
+        assertEquals(mapOf("chat-1" to listOf(ref)), store.sessionPullRequests)
+    }
+
+    @Test
+    fun `session storage round-trips`() {
+        val sessions = mapOf("chat-1" to listOf(ref, PullRequestRef("o", "r", 8)), "chat-2" to listOf(ref))
+
+        assertEquals(sessions, decodeSessionPullRequests(encodeSessionPullRequests(sessions)))
+        assertEquals(emptyMap<String, List<PullRequestRef>>(), decodeSessionPullRequests("garbage"))
+    }
+
     private suspend fun awaitStatus(repository: PullRequestStatusRepository): PullRequestStatus =
         withTimeout(AWAIT_TIMEOUT_MS) {
             repository.statuses.first { it.containsKey(ref.key) }.getValue(ref.key)
         }
 
-    private fun repository(token: String? = null) =
-        PullRequestStatusRepository(
-            api =
-                GitHubApiClient(
-                    token = { token },
-                    client = OkHttpClient(),
-                    baseUrl = server.url("/").toString().trimEnd('/'),
-                ),
-            scope = scope,
-            clock = { now },
-        )
+    private fun repository(
+        token: String? = null,
+        store: PullRequestSessionStore? = null,
+    ) = PullRequestStatusRepository(
+        api =
+            GitHubApiClient(
+                token = { token },
+                client = OkHttpClient(),
+                baseUrl = server.url("/").toString().trimEnd('/'),
+            ),
+        scope = scope,
+        clock = { now },
+        sessionStore = store,
+    )
+
+    private class FakeStore(
+        initial: Map<String, List<PullRequestRef>> = emptyMap(),
+    ) : PullRequestSessionStore {
+        override var sessionPullRequests: Map<String, List<PullRequestRef>> = initial
+    }
 
     private fun pullResponse(
         state: String = "open",

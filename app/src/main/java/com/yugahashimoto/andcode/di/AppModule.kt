@@ -7,6 +7,7 @@ import com.yugahashimoto.andcode.core.notification.RuntimeNotificationHelper
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
 import com.yugahashimoto.andcode.data.repository.AndroidRuntimeActivityMessages
 import com.yugahashimoto.andcode.data.repository.AndroidRuntimeCatalogMessages
+import com.yugahashimoto.andcode.data.repository.PullRequestSessionStore
 import com.yugahashimoto.andcode.data.repository.PullRequestStatusRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeActivityRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeCatalogRepository
@@ -197,8 +198,10 @@ val appModule =
             GitHubApiClient(token = { settings.githubToken }, client = get())
         }
 
+        single<PullRequestSessionStore> { get<SecureSettingsRepository>() }
+
         single {
-            PullRequestStatusRepository(api = get(), scope = get())
+            PullRequestStatusRepository(api = get(), scope = get(), sessionStore = get())
         }
 
         single {
