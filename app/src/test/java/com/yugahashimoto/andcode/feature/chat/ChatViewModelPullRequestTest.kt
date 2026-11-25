@@ -12,6 +12,7 @@ import com.yugahashimoto.andcode.core.api.PromptRequest
 import com.yugahashimoto.andcode.core.api.ProviderCatalog
 import com.yugahashimoto.andcode.core.api.PullRequestRef
 import com.yugahashimoto.andcode.core.api.QuestionRequest
+import com.yugahashimoto.andcode.data.repository.PullRequestSessionStore
 import com.yugahashimoto.andcode.data.repository.PullRequestStatusRepository
 import com.yugahashimoto.andcode.runtime.BackendKind
 import com.yugahashimoto.andcode.runtime.OpenCodeBackend
@@ -141,12 +142,31 @@ class ChatViewModelPullRequestTest {
             assertEquals(listOf(PullRequestRef("o", "r", 7)), viewModel.uiState.value.pullRequests.map { it.ref })
         }
 
+    /** Hiding a badge in the composer must not hide the chat's pull request from the drawer. */
+    @Test
+    fun `a dismissed pull request is still recorded for the drawer`() =
+        runTest(dispatcher) {
+            val store = RecordingSessionStore()
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend, pullRequestStatuses = pullRequestStatuses(store))
+            viewModel.openSession("session-1")
+            advanceUntilIdle()
+
+            backend.emitAssistantText("session-1", "part-1", "Opened https://github.com/o/r/pull/7 for review.")
+            advanceUntilIdle()
+            viewModel.dismissPullRequest(PullRequestRef("o", "r", 7).key)
+            advanceUntilIdle()
+
+            assertTrue(viewModel.uiState.value.pullRequests.isEmpty())
+            assertEquals(listOf(PullRequestRef("o", "r", 7)), store.sessionPullRequests["session-1"])
+        }
+
     /**
      * The real repository is built against GitHub, but what these tests assert is the ref flow, not
      * the fetch, so a client that can never connect keeps them hermetic; a badge simply waits for
      * its state, exactly as it does while the network is down.
      */
-    private fun pullRequestStatuses() =
+    private fun pullRequestStatuses(store: PullRequestSessionStore? = null) =
         PullRequestStatusRepository(
             api =
                 GitHubApiClient(
@@ -155,7 +175,12 @@ class ChatViewModelPullRequestTest {
                     baseUrl = "http://127.0.0.1:1",
                 ),
             scope = statusScope,
+            sessionStore = store,
         )
+
+    private class RecordingSessionStore : PullRequestSessionStore {
+        override var sessionPullRequests: Map<String, List<PullRequestRef>> = emptyMap()
+    }
 
     private class FakeBackend : OpenCodeBackend {
         override val id: String = "fake"
