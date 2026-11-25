@@ -25,6 +25,29 @@ from urllib.parse import urlparse
 
 COMMAND_FILE = Path(".and-code") / "browser-command.json"
 STATUS_FILE = Path(".and-code") / "browser-status.json"
+# The app publishes its devtools socket name here: /proc/net/unix is unreadable from the guest on
+# current Android (SELinux denies it to untrusted_app), so the socket cannot be found by scanning.
+DEVTOOLS_FILE = Path(".and-code") / "browser-devtools.txt"
+DEVTOOLS_PREFIX = "webview_devtools_remote_"
+
+
+def _published_devtools_socket() -> str | None:
+    """The socket name the app published, if something is actually listening on it."""
+    try:
+        name = DEVTOOLS_FILE.read_text(encoding="ascii").strip()
+    except (OSError, UnicodeDecodeError):
+        return None
+    if not name.startswith(DEVTOOLS_PREFIX):
+        return None
+    probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    probe.settimeout(2)
+    try:
+        probe.connect("\0" + name)
+    except OSError:
+        return None
+    finally:
+        probe.close()
+    return name
 
 
 def _find_devtools_socket() -> str | None:
@@ -32,7 +55,7 @@ def _find_devtools_socket() -> str | None:
         with open("/proc/net/unix", encoding="ascii") as fh:
             lines = fh.readlines()
     except OSError:
-        return None
+        return _published_devtools_socket()
     for line in lines[1:]:
         parts = line.split()
         if len(parts) < 8:

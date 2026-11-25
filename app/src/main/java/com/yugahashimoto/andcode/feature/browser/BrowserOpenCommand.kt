@@ -1,5 +1,6 @@
 package com.yugahashimoto.andcode.feature.browser
 
+import android.os.Process
 import com.yugahashimoto.andcode.core.storage.DeviceStorage
 import com.yugahashimoto.andcode.feature.workspace.WorkspaceFolders
 import com.yugahashimoto.andcode.runtime.LocalAgent
@@ -9,6 +10,7 @@ import java.net.URI
 
 internal const val BROWSER_COMMAND_FILE = ".and-code/browser-command.json"
 internal const val BROWSER_STATUS_FILE = ".and-code/browser-status.json"
+internal const val BROWSER_DEVTOOLS_FILE = ".and-code/browser-devtools.txt"
 
 internal const val BROWSER_STATUS_AWAITING_USER = "awaiting_user"
 internal const val BROWSER_STATUS_USER = "user"
@@ -54,6 +56,25 @@ internal fun readBrowserStatus(file: File): String? =
     }.getOrNull()
 
 /**
+ * Publishes the name of this app's WebView devtools socket (`webview_devtools_remote_<pid>`) for the
+ * in-guest MCP server. The guest cannot read `/proc/net/unix` on current Android (SELinux denies it
+ * to `untrusted_app`), so it cannot discover the socket by scanning; it can still connect to it once
+ * it knows the name. Rewritten only when it changes, as this runs on every poll.
+ */
+internal fun publishDevtoolsSocketName(
+    workspaceDir: File,
+    pid: Int = Process.myPid(),
+) {
+    runCatching {
+        val file = File(workspaceDir, BROWSER_DEVTOOLS_FILE)
+        val name = "webview_devtools_remote_$pid"
+        if (file.isFile && file.readText() == name) return
+        file.parentFile?.mkdirs()
+        file.writeText(name)
+    }
+}
+
+/**
  * Resolves the active guest workspace to the same host folder its PRoot process sees, or null when
  * the workspace is remote or the runtime is not local.
  */
@@ -94,6 +115,9 @@ internal fun consumeBrowserCommand(
         val workspace =
             activeWorkspaceHostDirectory(workspacePath, agent, runtimeDirectory, deviceStorage)
                 ?: return null
+        // The devtools socket only exists after the user's agent-control opt-in, so the name is
+        // published under the same opt-in.
+        if (allowRemotePreview) publishDevtoolsSocketName(workspace)
         val commandFile = File(workspace, BROWSER_COMMAND_FILE)
         if (!commandFile.isFile) return null
         val command = JSONObject(commandFile.readText())
