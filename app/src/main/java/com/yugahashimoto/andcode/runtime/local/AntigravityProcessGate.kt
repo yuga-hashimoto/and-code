@@ -18,13 +18,12 @@ import java.util.concurrent.locks.ReentrantLock
  * host, three simultaneous one-shot `agy` runs all completed in about ten seconds with no
  * contention, and `lsof` showed the CLI holding only read-only config files and network sockets, no
  * exclusive lock. Because the deadlock cannot be reproduced or fixed from outside PRoot, the app
- * keeps serializing every launch; [serialize] lets a chat send queue behind an in-flight one rather
- * than fail, while [exclusive] keeps short probes like `models` fail-fast.
+ * gates only the short startup window; once a chat process is started, its stream is independent and
+ * may run alongside another session. [exclusive] keeps short probes like `models` fail-fast.
  */
 object AntigravityProcessGate {
     private val lock = ReentrantLock()
     private const val MAX_WAIT_MS = 60_000L
-    private const val SEND_MAX_WAIT_MS = 10 * 60_000L
 
     /**
      * Runs [block] with the gate held, or returns null without running it if the gate is still busy
@@ -46,25 +45,10 @@ object AntigravityProcessGate {
     }
 
     /**
-     * Runs [block] once the gate is free, waiting up to [SEND_MAX_WAIT_MS] for an in-flight launch to
-     * finish. A chat turn can run for minutes, so a second session's send must queue behind it rather
-     * than fail fast the way [exclusive] does for short probes. Null means even that long wait elapsed
-     * without the gate freeing up; callers report that as "busy".
-     */
-    fun <T> serialize(block: () -> T): T? {
-        if (!lock.tryLock(SEND_MAX_WAIT_MS, TimeUnit.MILLISECONDS)) return null
-        try {
-            return block()
-        } finally {
-            lock.unlock()
-        }
-    }
-
-    /**
      * Holds the gate through [block] and for [holdMillis] afterward, then releases it - for a
-     * long-lived process (the interactive sign-in TUI) that keeps running once started. The hold
-     * covers just the CLI's own vulnerable startup window rather than the process's whole lifetime,
-     * so a signed-in check can still run once that window has passed.
+     * long-lived process (a chat turn or the interactive sign-in TUI) that keeps running once
+     * started. The hold covers just the CLI's own vulnerable startup window rather than the
+     * process's whole lifetime, so unrelated processes can start once that window has passed.
      */
     fun <T> acquireThenRelease(
         holdMillis: Long,

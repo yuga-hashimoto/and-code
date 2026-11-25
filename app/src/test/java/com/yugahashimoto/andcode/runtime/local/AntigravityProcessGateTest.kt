@@ -73,27 +73,28 @@ class AntigravityProcessGateTest {
     }
 
     @Test
-    fun `serialize queues a second send behind an in-flight one instead of failing`() {
-        val events = mutableListOf<String>()
+    fun `acquireThenRelease lets a second session start while the first is running`() {
+        val firstStarted = java.util.concurrent.CountDownLatch(1)
+        val firstFinished = java.util.concurrent.CountDownLatch(1)
         val first =
             Thread {
-                AntigravityProcessGate.serialize {
-                    events.add("first-start")
-                    Thread.sleep(150)
-                    events.add("first-end")
+                AntigravityProcessGate.acquireThenRelease(100) {
+                    firstStarted.countDown()
                 }
+                // Stay "streaming" until the second startup has been observed; a gate held for the
+                // whole response would leave the second call blocked here until its 60s timeout.
+                firstFinished.await()
             }
         first.start()
-        // Let the first sender take the gate, then a second send must wait for it to finish rather
-        // than run concurrently (the on-device hang) or fail fast (what `exclusive` would do).
-        Thread.sleep(20)
-        val secondResult =
-            AntigravityProcessGate.serialize {
-                events.add("second")
-                "done"
-            }
+        assertTrue(firstStarted.await(1, java.util.concurrent.TimeUnit.SECONDS))
+
+        val startedAt = System.currentTimeMillis()
+        val second = AntigravityProcessGate.acquireThenRelease(100) { "second" }
+        val elapsed = System.currentTimeMillis() - startedAt
+        firstFinished.countDown()
         first.join()
-        assertEquals("done", secondResult)
-        assertEquals(listOf("first-start", "first-end", "second"), events)
+
+        assertEquals("second", second)
+        assertTrue("second startup should not wait for the first response", elapsed < 5_000)
     }
 }

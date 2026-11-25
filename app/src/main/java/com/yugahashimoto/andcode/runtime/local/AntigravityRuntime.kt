@@ -24,6 +24,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.Base64
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 
 @Serializable
 data class AntigravitySessionRecord(
@@ -61,9 +63,12 @@ class AntigravityRuntime(
         }
     private val recordsFile = File(runtimeDirectory, "antigravity-sessions.json")
     private val messagesFile = File(runtimeDirectory, "antigravity-messages.json")
-    private val records = linkedMapOf<String, AntigravitySessionRecord>()
+
+    // Insertion-ordered (the drawer follows creation order) and safe for the concurrent sessions
+    // that now run in parallel; every iteration holds the map monitor explicitly.
+    private val records = Collections.synchronizedMap(linkedMapOf<String, AntigravitySessionRecord>())
     private val messageStore = AntigravityMessageStore(messagesFile, json)
-    private val processes = linkedMapOf<String, Process>()
+    private val processes = ConcurrentHashMap<String, Process>()
 
     /** See [AntigravityAbortTracker] for why an intentional kill must not be reported as a crash. */
     private val abortTracker = AntigravityAbortTracker()
@@ -242,29 +247,26 @@ class AntigravityRuntime(
                     abortTracker.markIntentional(sessionId)
                     terminate(it)
                 }
-                // Concurrent agy launches hang on the PRoot/Android deployment (see
-                // AntigravityProcessGate), so a send queues behind any in-flight launch and the two
-                // run one at a time instead of racing each other into a deadlock.
-                AntigravityProcessGate.serialize {
-                    // `--print` takes the prompt as its value, so it must come last with the prompt
-                    // immediately after it. Every other flag goes first: with `--print` leading, the CLI
-                    // took the *next* token as the prompt, so a message sent with any flag set asked the
-                    // model about "--conversation" or "--mode" instead of what the user typed.
-                    val args =
-                        buildList {
-                            add("--output-format")
-                            add("stream-json")
-                            if (conversationId != null) {
-                                add("--conversation")
-                                add(conversationId)
-                            }
-                            addAll(AntigravityModels.cliArgs(model, variant))
-                            addAll(permissionMode.cliArgs)
-                            add("--print")
-                            add(promptWithAttachments)
+                // PRoot/Android needs a short gap between agy launches while its shared guest state
+                // initializes. The old implementation held this gate until the whole response ended,
+                // which serialized unrelated sessions for minutes. Only the vulnerable startup window
+                // is shared; each session's already-started process can stream concurrently.
+                val args =
+                    buildList {
+                        add("--output-format")
+                        add("stream-json")
+                        if (conversationId != null) {
+                            add("--conversation")
+                            add(conversationId)
                         }
-                    val stderrLog = File(runtimeDirectory, "logs/agy-stderr.log").also { it.parentFile?.mkdirs() }
-                    val process =
+                        addAll(AntigravityModels.cliArgs(model, variant))
+                        addAll(permissionMode.cliArgs)
+                        add("--print")
+                        add(promptWithAttachments)
+                    }
+                val stderrLog = File(runtimeDirectory, "logs/agy-stderr.log").also { it.parentFile?.mkdirs() }
+                val process =
+                    AntigravityProcessGate.acquireThenRelease(PROCESS_STARTUP_GRACE_MS) {
                         ProcessBuilder(
                             AntigravitySandboxLauncher.command(
                                 runtime,
@@ -287,116 +289,116 @@ class AntigravityRuntime(
                                     ),
                                 )
                             }.start()
-                    processes[sessionId] = process
-                    val parser = AntigravityStreamJsonParser(sessionId, json)
-                    val record0 = records[sessionId] ?: AntigravitySessionRecord(sessionId, null, workspace)
-                    val turnNow = System.currentTimeMillis()
-                    // The turn's wall clock keeps the id unique per send: lastStep only advances
-                    // once the turn finishes (below), so a death in between - the app being killed
-                    // mid-turn, a read error on the stream - would replay the same id on the next
-                    // send. Two user rows sharing one id then crashed the chat's LazyColumn the
-                    // moment that conversation was opened (issue #311).
-                    val userId = "$sessionId-user-${record0.lastStep}-$turnNow"
-                    // Persist the user turn before the stream starts. The chat redraws from
-                    // listMessages the moment it sees SessionIdle, and the composer's optimistic
-                    // bubble is replaced by that snapshot - so a user turn that only lands at the
-                    // end of the send would vanish from the screen (and never reappear on a failed
-                    // result, which persisted nothing for it).
-                    messageStore.append(
-                        sessionId,
-                        OpenCodeMessage(
-                            OpenCodeMessageInfo(userId, sessionId, "user", OpenCodeTime(turnNow, turnNow, turnNow)),
-                            // A part without an id is dropped when the chat maps the transcript for
-                            // display, so an id-less part is invisible however well the run went.
-                            buildList {
-                                add(OpenCodePart(id = "$userId-text", type = "text", text = prompt))
-                                attachments.forEachIndexed { index, attachment ->
-                                    add(
-                                        OpenCodePart(
-                                            id = "$userId-file-$index",
-                                            sessionId = sessionId,
-                                            messageId = userId,
-                                            type = "file",
-                                            filename = attachment.filename,
-                                            mime = attachment.mime,
-                                            url = attachment.url,
-                                        ),
-                                    )
-                                }
-                            },
-                        ),
-                    )
-                    persistMessages()
-                    var discoveredConversationId: String? = null
-                    var turnFinished = false
-                    var turnError: String? = null
-                    var finalText: String? = null
-                    process.inputStream.bufferedReader().forEachLine { line ->
-                        if (line.isBlank()) return@forEachLine
-                        val parsed = parser.parse(line)
-                        parsed.conversationId?.let { discoveredConversationId = it }
-                        // Persist the assistant message before emitting its events. The chat's
-                        // SessionIdle handler clears the live stream buffer and reloads the
-                        // transcript with listMessages; if the turn is not on disk yet, that reload
-                        // paints the previous turn and the just-streamed reply disappears - the
-                        // one-turn lag seen on device. Claude Code avoids this by upserting before
-                        // it emits, so the assistant reply (and its tool parts) land first here too.
-                        parsed.messages.forEach { assistant ->
-                            messageStore.append(
-                                sessionId,
-                                assistant.copy(
-                                    info =
-                                        assistant.info.copy(
-                                            model = model?.let { OpenCodeModelReference(AntigravityModels.PROVIDER_ID, it) },
-                                        ),
-                                ),
-                            )
-                            persistMessages()
-                        }
-                        parsed.events.forEach(events::tryEmit)
-                        if (parsed.turnFinished) {
-                            turnFinished = true
-                            turnError = parsed.errorMessage
-                            finalText = parsed.finalText
-                        }
-                    }
-                    process.waitFor()
-                    processes.remove(sessionId)
-                    // Consumed unconditionally, even when the turn actually finished cleanly (an
-                    // abort can race a completion that was already on its way): leaving the flag set
-                    // would make an unrelated later crash on this same session silently swallowed as
-                    // "clean idle" instead of surfacing as an error.
-                    val wasKilledIntentionally = abortTracker.consumeIntentional(sessionId)
-                    records[sessionId] =
-                        record0.copy(
-                            // Never invent a conversation id: --conversation must only be used with
-                            // an id emitted by the official CLI, otherwise a cold resume can attach
-                            // to an unrelated conversation. The id now comes straight from the stream's
-                            // top-level conversation_id rather than being scraped out of the prose.
-                            conversationId = discoveredConversationId ?: record0.conversationId,
-                            updatedAt = System.currentTimeMillis(),
-                            lastStep = record0.lastStep + 1,
+                    } ?: error("Antigravity is busy and the turn could not be scheduled")
+                processes[sessionId] = process
+                val parser = AntigravityStreamJsonParser(sessionId, json)
+                val record0 = records[sessionId] ?: AntigravitySessionRecord(sessionId, null, workspace)
+                val turnNow = System.currentTimeMillis()
+                // The turn's wall clock keeps the id unique per send: lastStep only advances
+                // once the turn finishes (below), so a death in between - the app being killed
+                // mid-turn, a read error on the stream - would replay the same id on the next
+                // send. Two user rows sharing one id then crashed the chat's LazyColumn the
+                // moment that conversation was opened (issue #311).
+                val userId = "$sessionId-user-${record0.lastStep}-$turnNow"
+                // Persist the user turn before the stream starts. The chat redraws from
+                // listMessages the moment it sees SessionIdle, and the composer's optimistic
+                // bubble is replaced by that snapshot - so a user turn that only lands at the
+                // end of the send would vanish from the screen (and never reappear on a failed
+                // result, which persisted nothing for it).
+                messageStore.append(
+                    sessionId,
+                    OpenCodeMessage(
+                        OpenCodeMessageInfo(userId, sessionId, "user", OpenCodeTime(turnNow, turnNow, turnNow)),
+                        // A part without an id is dropped when the chat maps the transcript for
+                        // display, so an id-less part is invisible however well the run went.
+                        buildList {
+                            add(OpenCodePart(id = "$userId-text", type = "text", text = prompt))
+                            attachments.forEachIndexed { index, attachment ->
+                                add(
+                                    OpenCodePart(
+                                        id = "$userId-file-$index",
+                                        sessionId = sessionId,
+                                        messageId = userId,
+                                        type = "file",
+                                        filename = attachment.filename,
+                                        mime = attachment.mime,
+                                        url = attachment.url,
+                                    ),
+                                )
+                            }
+                        },
+                    ),
+                )
+                persistMessages()
+                var discoveredConversationId: String? = null
+                var turnFinished = false
+                var turnError: String? = null
+                var finalText: String? = null
+                process.inputStream.bufferedReader().forEachLine { line ->
+                    if (line.isBlank()) return@forEachLine
+                    val parsed = parser.parse(line)
+                    parsed.conversationId?.let { discoveredConversationId = it }
+                    // Persist the assistant message before emitting its events. The chat's
+                    // SessionIdle handler clears the live stream buffer and reloads the
+                    // transcript with listMessages; if the turn is not on disk yet, that reload
+                    // paints the previous turn and the just-streamed reply disappears - the
+                    // one-turn lag seen on device. Claude Code avoids this by upserting before
+                    // it emits, so the assistant reply (and its tool parts) land first here too.
+                    parsed.messages.forEach { assistant ->
+                        messageStore.append(
+                            sessionId,
+                            assistant.copy(
+                                info =
+                                    assistant.info.copy(
+                                        model = model?.let { OpenCodeModelReference(AntigravityModels.PROVIDER_ID, it) },
+                                    ),
+                            ),
                         )
-                    persistRecords()
-                    if (turnFinished) {
-                        // On a failed result the parser already emitted SessionError then SessionIdle;
-                        // the user turn is persisted above, and there is no assistant reply to add.
-                        backgroundScope.launch { refreshRateLimits() }
-                        return@serialize finalText.orEmpty()
+                        persistMessages()
                     }
-                    if (wasKilledIntentionally) {
-                        // Killed on purpose - the stop button, or a same-session supersede above -
-                        // not a crash. The process's exit code is 137 (SIGKILL) either way, so this
-                        // flag is the only thing that tells the two apart; idle is the honest state.
-                        events.tryEmit(OpenCodeEvent.SessionIdle(sessionId))
-                        return@serialize finalText.orEmpty()
+                    parsed.events.forEach(events::tryEmit)
+                    if (parsed.turnFinished) {
+                        turnFinished = true
+                        turnError = parsed.errorMessage
+                        finalText = parsed.finalText
                     }
-                    // No result event arrived: the CLI died mid-turn. Surface that as an error unless it
-                    // somehow exited cleanly, in which case idle is the honest state.
-                    require(process.exitValue() == 0) { "agy exited with ${process.exitValue()}" }
+                }
+                process.waitFor()
+                processes.remove(sessionId)
+                // Consumed unconditionally, even when the turn actually finished cleanly (an
+                // abort can race a completion that was already on its way): leaving the flag set
+                // would make an unrelated later crash on this same session silently swallowed as
+                // "clean idle" instead of surfacing as an error.
+                val wasKilledIntentionally = abortTracker.consumeIntentional(sessionId)
+                records[sessionId] =
+                    record0.copy(
+                        // Never invent a conversation id: --conversation must only be used with
+                        // an id emitted by the official CLI, otherwise a cold resume can attach
+                        // to an unrelated conversation. The id now comes straight from the stream's
+                        // top-level conversation_id rather than being scraped out of the prose.
+                        conversationId = discoveredConversationId ?: record0.conversationId,
+                        updatedAt = System.currentTimeMillis(),
+                        lastStep = record0.lastStep + 1,
+                    )
+                persistRecords()
+                if (turnFinished) {
+                    // On a failed result the parser already emitted SessionError then SessionIdle;
+                    // the user turn is persisted above, and there is no assistant reply to add.
+                    backgroundScope.launch { refreshRateLimits() }
+                    return@runCatching finalText.orEmpty()
+                }
+                if (wasKilledIntentionally) {
+                    // Killed on purpose - the stop button, or a same-session supersede above -
+                    // not a crash. The process's exit code is 137 (SIGKILL) either way, so this
+                    // flag is the only thing that tells the two apart; idle is the honest state.
                     events.tryEmit(OpenCodeEvent.SessionIdle(sessionId))
-                    finalText.orEmpty()
-                } ?: error("Antigravity is busy and the turn could not be scheduled")
+                    return@runCatching finalText.orEmpty()
+                }
+                // No result event arrived: the CLI died mid-turn. Surface that as an error unless it
+                // somehow exited cleanly, in which case idle is the honest state.
+                require(process.exitValue() == 0) { "agy exited with ${process.exitValue()}" }
+                events.tryEmit(OpenCodeEvent.SessionIdle(sessionId))
+                finalText.orEmpty()
             }.onFailure {
                 events.tryEmit(OpenCodeEvent.SessionError(sessionId, it.message))
                 events.tryEmit(OpenCodeEvent.SessionIdle(sessionId))
@@ -420,22 +422,26 @@ class AntigravityRuntime(
 
     /** The drawer's list: every chat that is not archived, optionally narrowed to one workspace. */
     fun listSessions(directory: String?): List<AntigravitySessionRecord> =
-        records.values.filter {
-            !it.archived && (directory == null || it.workspace == directory)
+        synchronized(records) {
+            records.values.filter {
+                !it.archived && (directory == null || it.workspace == directory)
+            }
         }
 
     /** A record by id whether archived or not, so reopening an archived chat still resolves. */
     fun findSession(sessionId: String): AntigravitySessionRecord? = records[sessionId]
 
     /** Every chat's workspace, archived ones included: the picker must keep offering folders whose chats were all archived. */
-    fun workspacePaths(): List<String> = records.values.map { it.workspace }.distinct()
+    fun workspacePaths(): List<String> = synchronized(records) { records.values.map { it.workspace }.distinct() }
 
     /** Marks a session archived; see [AntigravitySessionRecord.archived]. */
     fun archive(sessionId: String): AntigravitySessionRecord? {
-        val record = records[sessionId] ?: return null
-        if (record.archived) return record
-        val archived = record.copy(archived = true)
-        records[sessionId] = archived
+        val archived =
+            synchronized(records) {
+                val record = records[sessionId] ?: return null
+                if (record.archived) return record
+                record.copy(archived = true).also { records[sessionId] = it }
+            }
         persistRecords()
         return archived
     }
@@ -588,6 +594,7 @@ class AntigravityRuntime(
         const val MODELS_READ_TIMEOUT_MS = 45_000L
         const val USAGE_READ_TIMEOUT_MS = 30_000L
         const val TITLE_READ_TIMEOUT_MS = 45_000L
+        const val PROCESS_STARTUP_GRACE_MS = 2_500L
         const val TITLE_PROMPT_LIMIT = 2_000
         const val TITLE_LENGTH = 40
     }
@@ -601,9 +608,12 @@ class AntigravityRuntime(
     }
 
     private fun persistRecords() {
-        runCatching {
-            recordsFile.parentFile?.mkdirs()
-            writeAtomically(recordsFile, json.encodeToString(records.values.toList()))
+        val snapshot = synchronized(records) { records.values.toList() }
+        synchronized(recordsFile) {
+            runCatching {
+                recordsFile.parentFile?.mkdirs()
+                writeAtomically(recordsFile, json.encodeToString(snapshot))
+            }
         }
     }
 
