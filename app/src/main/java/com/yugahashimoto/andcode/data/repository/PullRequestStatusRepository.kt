@@ -60,8 +60,8 @@ class PullRequestStatusRepository(
 
     /**
      * The pull request state of each chat, newest first. A chat with no linked pull request is
-     * absent; an empty list means the state has not arrived from GitHub yet, so the drawer shows
-     * no icon until it does rather than guessing.
+     * absent, and a state still in flight is omitted rather than guessed, so the drawer may fall
+     * back to an older pull request of the same chat until the newest one has been fetched.
      */
     val sessionStatuses: StateFlow<Map<String, List<PullRequestStatus>>> =
         combine(sessionRefs, _statuses) { refsBySession, byKey ->
@@ -122,7 +122,7 @@ class PullRequestStatusRepository(
         track(tracked)
     }
 
-    /** Refreshes every chat's remembered pull request, e.g. when the drawer is opened. */
+    /** Refetches the remembered pull requests whose cached state has gone stale. */
     fun refreshTrackedSessions() {
         // Another repository instance in the same process may have remembered a chat since this
         // one was built, so take the store's copy before refreshing it.

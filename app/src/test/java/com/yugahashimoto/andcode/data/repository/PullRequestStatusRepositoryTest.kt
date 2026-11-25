@@ -161,6 +161,7 @@ class PullRequestStatusRepositoryTest {
 
     @Test
     fun `an empty transcript does not erase what a chat already linked`() {
+        server.enqueue(MockResponse().setResponseCode(500))
         val store = FakeStore()
         val repository = repository(store = store)
 
