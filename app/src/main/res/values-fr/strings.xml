@@ -1175,6 +1175,7 @@
     <string name="pr_state_conflict">Conflit</string>
     <string name="cd_pull_request_link">Ouvrir la pull request #%1$d sur GitHub</string>
     <string name="cd_pull_request_link_state">Pull request #%1$d, %2$s. Ouvre GitHub</string>
+    <string name="cd_pull_request_status">Pull request #%1$d, %2$s</string>
     <string name="cd_pull_request_files">Pull request #%1$d, %2$d ajouts, %3$d suppressions. Ouvre les fichiers modifiés sur GitHub</string>
     <string name="pr_collapse">Réduire</string>
     <string name="cd_pull_request_expand">Afficher %1$d pull requests de plus</string>

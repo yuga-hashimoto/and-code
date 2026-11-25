@@ -1178,6 +1178,7 @@
     <string name="pr_state_conflict">Конфликт</string>
     <string name="cd_pull_request_link">Открыть пул-реквест #%1$d на GitHub</string>
     <string name="cd_pull_request_link_state">Пул-реквест #%1$d, %2$s. Откроется на GitHub</string>
+    <string name="cd_pull_request_status">Пул-реквест #%1$d, %2$s</string>
     <string name="cd_pull_request_files">Пул-реквест #%1$d, добавлено строк: %2$d, удалено: %3$d. Откроет изменённые файлы на GitHub</string>
     <string name="pr_collapse">Свернуть</string>
     <string name="cd_pull_request_expand">Показать ещё пул-реквестов: %1$d</string>

@@ -1184,6 +1184,7 @@
     <string name="pr_state_conflict">تعارض</string>
     <string name="cd_pull_request_link">فتح طلب السحب رقم %1$d على GitHub</string>
     <string name="cd_pull_request_link_state">طلب السحب رقم %1$d، %2$s. يُفتح على GitHub</string>
+    <string name="cd_pull_request_status">طلب السحب رقم %1$d، %2$s</string>
     <string name="cd_pull_request_files">طلب السحب رقم %1$d، %2$d إضافة و%3$d حذف. يُفتح الملفات المُعدّلة على GitHub</string>
     <string name="pr_collapse">طيّ</string>
     <string name="cd_pull_request_expand">عرض %1$d طلبات سحب إضافية</string>

@@ -69,9 +69,13 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.yugahashimoto.andcode.R
+import com.yugahashimoto.andcode.core.api.PullRequestStatus
 import com.yugahashimoto.andcode.runtime.LocalAgent
 import com.yugahashimoto.andcode.ui.components.SessionStatus
 import com.yugahashimoto.andcode.ui.components.StatusDot
+import com.yugahashimoto.andcode.ui.components.color
+import com.yugahashimoto.andcode.ui.components.icon
+import com.yugahashimoto.andcode.ui.components.labelRes
 import com.yugahashimoto.andcode.ui.theme.CodeFontFamily
 
 @Composable
@@ -371,6 +375,8 @@ internal fun DrawerChatRow(
     indented: Boolean = false,
     /** Null for a remote runtime; the list now spans every agent, so rows have to say which. */
     agent: LocalAgent? = null,
+    /** The newest pull request this chat linked, once GitHub has reported its state. */
+    pullRequest: PullRequestStatus? = null,
     menuActions: DrawerChatMenuActions? = null,
     onClick: () -> Unit,
     onToggleSelection: () -> Unit = {},
@@ -473,6 +479,21 @@ internal fun DrawerChatRow(
                             )
                         }
                     }
+                }
+                // The chat's pull request state, so "where did that PR end up" is answerable from
+                // the drawer itself instead of opening every conversation.
+                pullRequest?.let { tracked ->
+                    Icon(
+                        imageVector = tracked.state.icon(),
+                        contentDescription =
+                            stringResource(
+                                R.string.cd_pull_request_status,
+                                tracked.ref.number,
+                                stringResource(tracked.state.labelRes()),
+                            ),
+                        tint = tracked.state.color(),
+                        modifier = Modifier.size(16.dp),
+                    )
                 }
                 // The status dot already turns amber for an approval; the extra marker is for
                 // attention the status does not show.
@@ -606,6 +627,7 @@ internal fun DrawerChatRows(
                     selectionMode = selectionMode,
                     indented = indented,
                     agent = session.agent,
+                    pullRequest = session.pullRequest,
                     menuActions = menuActions(session),
                     onClick = { onOpenSession(session) },
                     onToggleSelection = { onToggleSelection(session.id) },
