@@ -1527,7 +1527,7 @@ class ChatViewModel(
                 )
             _uiState.update {
                 it.copy(
-                    messages = it.messages + userMessage,
+                    messages = if (fromQueue) it.messages else it.messages + userMessage,
                     offlineQueue = it.offlineQueue + outgoingText,
                     isOfflineQueued = true,
                     attachments = emptyList(),

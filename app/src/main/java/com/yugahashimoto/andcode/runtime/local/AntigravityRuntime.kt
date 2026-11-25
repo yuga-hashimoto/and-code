@@ -388,9 +388,9 @@ class AntigravityRuntime(
                         return@serialize finalText.orEmpty()
                     }
                     if (wasKilledIntentionally) {
-                        // Killed on purpose - the stop button, or a same-session supersede above -
-                        // not a crash. The process's exit code is 137 (SIGKILL) either way, so this
-                        // flag is the only thing that tells the two apart; idle is the honest state.
+                        // Killed on purpose by the stop button - not a crash. The process's exit
+                        // code is 137 (SIGKILL) either way, so this flag is the only thing that
+                        // tells the two apart; idle is the honest state.
                         events.tryEmit(OpenCodeEvent.SessionIdle(sessionId))
                         return@serialize finalText.orEmpty()
                     }
