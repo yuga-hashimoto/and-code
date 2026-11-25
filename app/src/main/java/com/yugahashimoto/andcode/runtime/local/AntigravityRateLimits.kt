@@ -21,7 +21,11 @@ import kotlinx.serialization.json.jsonObject
  * with Codex and Claude Code.
  */
 object AntigravityRateLimits {
-    private val json = Json { ignoreUnknownKeys = true; isLenient = true }
+    private val json =
+        Json {
+            ignoreUnknownKeys = true
+            isLenient = true
+        }
 
     fun parse(
         output: String,
