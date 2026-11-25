@@ -17,6 +17,12 @@ class OpenCodeEventParserTest {
     }
 
     @Test
+    fun `non-primitive type yields unknown instead of throwing`() {
+        val event = parser.parse("""{"type":{"x":1},"properties":{}}""")
+        assertTrue(event is OpenCodeEvent.Unknown)
+    }
+
+    @Test
     fun `parses streamed text part update`() {
         val event =
             parser.parse(
