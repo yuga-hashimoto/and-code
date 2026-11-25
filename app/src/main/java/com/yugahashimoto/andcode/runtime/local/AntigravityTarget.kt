@@ -205,9 +205,10 @@ class AntigravityTarget(internal val runtime: AntigravityRuntime) : RuntimeTarge
             permissionMode,
             request.attachments,
         ).getOrThrow()
-        // Claude Code summarises while its answer is still streaming; here it has to wait for the
-        // send to finish, because two concurrent `agy` processes hang each other. Failure is silent:
-        // the prompt-derived name set above is already in the drawer and simply stays.
+        // Claude Code summarises while its answer is still streaming; here it waits for the send to
+        // finish because [AntigravityRuntime.summarizeTitle] refuses while any turn is in flight.
+        // Failure is silent: the prompt-derived name set above is already in the drawer and simply
+        // stays.
         if (needsTitle) {
             titleScope.launch {
                 val summary = withContext(kotlinx.coroutines.Dispatchers.IO) { runtime.summarizeTitle(request.text) }

@@ -24,6 +24,8 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
 import java.util.Base64
+import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 
 @Serializable
 data class AntigravitySessionRecord(
@@ -61,9 +63,12 @@ class AntigravityRuntime(
         }
     private val recordsFile = File(runtimeDirectory, "antigravity-sessions.json")
     private val messagesFile = File(runtimeDirectory, "antigravity-messages.json")
-    private val records = linkedMapOf<String, AntigravitySessionRecord>()
+
+    // Insertion-ordered (the drawer follows creation order) and safe for the concurrent sessions
+    // that now run in parallel; every iteration holds the map monitor explicitly.
+    private val records = Collections.synchronizedMap(linkedMapOf<String, AntigravitySessionRecord>())
     private val messageStore = AntigravityMessageStore(messagesFile, json)
-    private val processes = linkedMapOf<String, Process>()
+    private val processes = ConcurrentHashMap<String, Process>()
 
     /** See [AntigravityAbortTracker] for why an intentional kill must not be reported as a crash. */
     private val abortTracker = AntigravityAbortTracker()
@@ -167,8 +172,9 @@ class AntigravityRuntime(
     /**
      * Fetches the current quota snapshot via `agy --output-format json --print /usage`.
      *
-     * Runs under [AntigravityProcessGate.exclusive] so it never races or delays an active chat
-     * turn: if another `agy` process is already running, this simply skips rather than blocking.
+     * Runs under [AntigravityProcessGate.exclusive] so its own startup never overlaps another
+     * launch's vulnerable window. It may run while a chat turn is already streaming; a busy gate
+     * makes it skip rather than block the caller.
      */
     suspend fun refreshRateLimits() {
         withContext(Dispatchers.IO) {
@@ -242,29 +248,26 @@ class AntigravityRuntime(
                     abortTracker.markIntentional(sessionId)
                     terminate(it)
                 }
-                // Concurrent agy launches hang on the PRoot/Android deployment (see
-                // AntigravityProcessGate), so a send queues behind any in-flight launch and the two
-                // run one at a time instead of racing each other into a deadlock.
-                AntigravityProcessGate.serialize {
-                    // `--print` takes the prompt as its value, so it must come last with the prompt
-                    // immediately after it. Every other flag goes first: with `--print` leading, the CLI
-                    // took the *next* token as the prompt, so a message sent with any flag set asked the
-                    // model about "--conversation" or "--mode" instead of what the user typed.
-                    val args =
-                        buildList {
-                            add("--output-format")
-                            add("stream-json")
-                            if (conversationId != null) {
-                                add("--conversation")
-                                add(conversationId)
-                            }
-                            addAll(AntigravityModels.cliArgs(model, variant))
-                            addAll(permissionMode.cliArgs)
-                            add("--print")
-                            add(promptWithAttachments)
+                // PRoot/Android needs a short gap between agy launches while its shared guest state
+                // initializes. The old implementation held this gate until the whole response ended,
+                // which serialized unrelated sessions for minutes. Only the vulnerable startup window
+                // is shared; each session's already-started process can stream concurrently.
+                val args =
+                    buildList {
+                        add("--output-format")
+                        add("stream-json")
+                        if (conversationId != null) {
+                            add("--conversation")
+                            add(conversationId)
                         }
-                    val stderrLog = File(runtimeDirectory, "logs/agy-stderr.log").also { it.parentFile?.mkdirs() }
-                    val process =
+                        addAll(AntigravityModels.cliArgs(model, variant))
+                        addAll(permissionMode.cliArgs)
+                        add("--print")
+                        add(promptWithAttachments)
+                    }
+                val stderrLog = File(runtimeDirectory, "logs/agy-stderr.log").also { it.parentFile?.mkdirs() }
+                val process =
+                    AntigravityProcessGate.acquireThenRelease(PROCESS_STARTUP_GRACE_MS) {
                         ProcessBuilder(
                             AntigravitySandboxLauncher.command(
                                 runtime,
@@ -287,8 +290,12 @@ class AntigravityRuntime(
                                     ),
                                 )
                             }.start()
-                    processes[sessionId] = process
-                    val parser = AntigravityStreamJsonParser(sessionId, json)
+                            // Registered before the gate's startup grace begins, so abort() and
+                            // abortAll() can still see (and stop) a turn during those seconds.
+                            .also { processes[sessionId] = it }
+                    } ?: error("Antigravity is busy and the turn could not be scheduled")
+                val parser = AntigravityStreamJsonParser(sessionId, json)
+                try {
                     val record0 = records[sessionId] ?: AntigravitySessionRecord(sessionId, null, workspace)
                     val turnNow = System.currentTimeMillis()
                     // The turn's wall clock keeps the id unique per send: lastStep only advances
@@ -361,7 +368,6 @@ class AntigravityRuntime(
                         }
                     }
                     process.waitFor()
-                    processes.remove(sessionId)
                     // Consumed unconditionally, even when the turn actually finished cleanly (an
                     // abort can race a completion that was already on its way): leaving the flag set
                     // would make an unrelated later crash on this same session silently swallowed as
@@ -382,21 +388,27 @@ class AntigravityRuntime(
                         // On a failed result the parser already emitted SessionError then SessionIdle;
                         // the user turn is persisted above, and there is no assistant reply to add.
                         backgroundScope.launch { refreshRateLimits() }
-                        return@serialize finalText.orEmpty()
+                        return@runCatching finalText.orEmpty()
                     }
                     if (wasKilledIntentionally) {
                         // Killed on purpose - the stop button, or a same-session supersede above -
                         // not a crash. The process's exit code is 137 (SIGKILL) either way, so this
                         // flag is the only thing that tells the two apart; idle is the honest state.
                         events.tryEmit(OpenCodeEvent.SessionIdle(sessionId))
-                        return@serialize finalText.orEmpty()
+                        return@runCatching finalText.orEmpty()
                     }
                     // No result event arrived: the CLI died mid-turn. Surface that as an error unless it
                     // somehow exited cleanly, in which case idle is the honest state.
                     require(process.exitValue() == 0) { "agy exited with ${process.exitValue()}" }
                     events.tryEmit(OpenCodeEvent.SessionIdle(sessionId))
                     finalText.orEmpty()
-                } ?: error("Antigravity is busy and the turn could not be scheduled")
+                } finally {
+                    // A read/parse failure used to leave a live process and a stale map entry behind,
+                    // which kept summarizeTitle() refusing forever once another session had one.
+                    if (processes.remove(sessionId, process) && process.isAlive) {
+                        runCatching { terminate(process) }
+                    }
+                }
             }.onFailure {
                 events.tryEmit(OpenCodeEvent.SessionError(sessionId, it.message))
                 events.tryEmit(OpenCodeEvent.SessionIdle(sessionId))
@@ -420,22 +432,26 @@ class AntigravityRuntime(
 
     /** The drawer's list: every chat that is not archived, optionally narrowed to one workspace. */
     fun listSessions(directory: String?): List<AntigravitySessionRecord> =
-        records.values.filter {
-            !it.archived && (directory == null || it.workspace == directory)
+        synchronized(records) {
+            records.values.filter {
+                !it.archived && (directory == null || it.workspace == directory)
+            }
         }
 
     /** A record by id whether archived or not, so reopening an archived chat still resolves. */
     fun findSession(sessionId: String): AntigravitySessionRecord? = records[sessionId]
 
     /** Every chat's workspace, archived ones included: the picker must keep offering folders whose chats were all archived. */
-    fun workspacePaths(): List<String> = records.values.map { it.workspace }.distinct()
+    fun workspacePaths(): List<String> = synchronized(records) { records.values.map { it.workspace }.distinct() }
 
     /** Marks a session archived; see [AntigravitySessionRecord.archived]. */
     fun archive(sessionId: String): AntigravitySessionRecord? {
-        val record = records[sessionId] ?: return null
-        if (record.archived) return record
-        val archived = record.copy(archived = true)
-        records[sessionId] = archived
+        val archived =
+            synchronized(records) {
+                val record = records[sessionId] ?: return null
+                if (record.archived) return record
+                record.copy(archived = true).also { records[sessionId] = it }
+            }
         persistRecords()
         return archived
     }
@@ -489,10 +505,10 @@ class AntigravityRuntime(
      * Asks the model for a short name for a new chat, or null if it could not be produced.
      *
      * Mirrors [ClaudeCodeRuntime.summarizeTitle], with two differences the guest CLI forces. It runs
-     * through [AntigravityProcessGate] and refuses while any send is in flight, because two `agy`
-     * processes racing against the same rootfs hang each other; and it picks the cheapest model the
-     * account actually has from [models] rather than naming one, since `--model` only accepts a slug
-     * the signed-in account can use. `plan` mode keeps a naming call from touching the workspace.
+     * through [AntigravityProcessGate] and refuses while any send is in flight - a background naming
+     * probe should never take capacity from a chat the user is watching. It picks the cheapest model
+     * the account actually has from [models] rather than naming one, since `--model` only accepts a
+     * slug the signed-in account can use. `plan` mode keeps a naming call from touching the workspace.
      */
     fun summarizeTitle(prompt: String): String? {
         if (processes.isNotEmpty()) return null
@@ -588,6 +604,7 @@ class AntigravityRuntime(
         const val MODELS_READ_TIMEOUT_MS = 45_000L
         const val USAGE_READ_TIMEOUT_MS = 30_000L
         const val TITLE_READ_TIMEOUT_MS = 45_000L
+        const val PROCESS_STARTUP_GRACE_MS = 2_500L
         const val TITLE_PROMPT_LIMIT = 2_000
         const val TITLE_LENGTH = 40
     }
@@ -601,9 +618,12 @@ class AntigravityRuntime(
     }
 
     private fun persistRecords() {
-        runCatching {
-            recordsFile.parentFile?.mkdirs()
-            writeAtomically(recordsFile, json.encodeToString(records.values.toList()))
+        val snapshot = synchronized(records) { records.values.toList() }
+        synchronized(recordsFile) {
+            runCatching {
+                recordsFile.parentFile?.mkdirs()
+                writeAtomically(recordsFile, json.encodeToString(snapshot))
+            }
         }
     }
 
