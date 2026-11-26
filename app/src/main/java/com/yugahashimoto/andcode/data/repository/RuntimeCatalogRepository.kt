@@ -47,6 +47,8 @@ data class RuntimeCatalogState(
      * instead of looking dead.
      */
     val agentsLoading: Boolean = false,
+    /** Whether the catalog's own agent request can still supply a result. */
+    internal val agentsInitialReadPending: Boolean = false,
 )
 
 class RuntimeCatalogRepository(
@@ -182,13 +184,14 @@ class RuntimeCatalogRepository(
                 // as the fetch took — seconds, while a stopped runtime is retried — and OpenCode
                 // models appeared under Claude Code.
                 if (current.runtime?.id != target.id) {
-                    RuntimeCatalogState(runtime = target, isRefreshing = true, agentsLoading = true)
+                    RuntimeCatalogState(runtime = target, isRefreshing = true, agentsLoading = true, agentsInitialReadPending = true)
                 } else {
                     current.copy(
                         runtime = target,
                         isRefreshing = true,
                         error = null,
                         agentsLoading = !current.agents.hasSelectableAgent(),
+                        agentsInitialReadPending = true,
                     )
                 }
             }
@@ -217,12 +220,36 @@ class RuntimeCatalogRepository(
                     )
                 return
             }
+            mutableState.update {
+                if (it.runtime?.id == target.id) it.copy(health = connection.getOrNull()) else it
+            }
 
             val catalog =
                 supervisorScope {
                     val sessions = async { runCatching { target.listSessions() } }
                     val providers = async { runCatching { target.listProviders() } }
-                    val agents = async { runCatching { target.listAgents() } }
+                    // The picker can use agents as soon as they arrive, even if a provider or
+                    // workspace request is still waiting on the runtime.
+                    val agents =
+                        async {
+                            runCatching { target.listAgents() }.also { result ->
+                                val list = result.getOrNull()
+                                if (registry.selected.value?.id == target.id) {
+                                    mutableState.update { state ->
+                                        if (state.runtime?.id != target.id) {
+                                            state
+                                        } else {
+                                            val completed = state.copy(agentsInitialReadPending = false)
+                                            if (list.hasSelectableAgent()) completed.withAgents(list.orEmpty()) else completed
+                                        }
+                                    }
+                                    if (!mutableState.value.agentsFor(target).hasSelectableAgent()) {
+                                        // Retry immediately; unrelated requests may remain in flight.
+                                        refreshAgents()
+                                    }
+                                }
+                            }
+                        }
                     val workspaces = async { runCatching { target.listWorkspaces() } }
                     LoadedCatalog(
                         sessions = sessions.await(),
@@ -355,9 +382,9 @@ class RuntimeCatalogRepository(
                         when {
                             it.runtime?.id != target.id -> it
                             list != null -> it.withAgents(list)
-                            // A load still in flight for this runtime keeps the chip loading: it reads the
-                            // agents again itself, and a "tap to retry" now would only race it.
-                            else -> it.copy(agentsLoading = it.isRefreshing)
+                            // A separate initial agent read may still succeed; other catalog reads
+                            // alone must not keep the agent spinner running after retries give up.
+                            else -> it.copy(agentsLoading = it.agentsInitialReadPending)
                         }
                     }
                 }

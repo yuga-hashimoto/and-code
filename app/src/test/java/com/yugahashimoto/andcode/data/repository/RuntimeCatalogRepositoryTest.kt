@@ -19,12 +19,14 @@ import com.yugahashimoto.andcode.runtime.RuntimeState
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.RuntimeType
 import com.yugahashimoto.andcode.runtime.WorkspaceRef
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -40,6 +42,85 @@ import org.junit.rules.TemporaryFolder
 class RuntimeCatalogRepositoryTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
+
+    @Test
+    fun `agents become selectable while providers are still loading`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget("mac")
+            val providersGate = CompletableDeferred<Unit>()
+            target.providersGate = providersGate
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = "mac"),
+                    localTarget = FakeTarget("local-android", RuntimeType.LOCAL),
+                    remoteFactory = { target },
+                )
+            val repository = RuntimeCatalogRepository(registry, TestScope(dispatcher))
+
+            testScheduler.runCurrent()
+
+            assertEquals(listOf("build"), repository.state.value.agents.map { it.name })
+            assertFalse(repository.state.value.agentsLoading)
+            assertTrue(repository.state.value.isRefreshing)
+            providersGate.complete(Unit)
+            advanceUntilIdle()
+            assertEquals(listOf("build"), repository.state.value.agents.map { it.name })
+            assertFalse(repository.state.value.isRefreshing)
+        }
+
+    @Test
+    fun `agent retry succeeds while providers are still loading`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget("mac")
+            target.agentAnswers.add { error("temporarily unavailable") }
+            val providersGate = CompletableDeferred<Unit>()
+            target.providersGate = providersGate
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = "mac"),
+                    localTarget = FakeTarget("local-android", RuntimeType.LOCAL),
+                    remoteFactory = { target },
+                )
+            val repository = RuntimeCatalogRepository(registry, TestScope(dispatcher))
+
+            testScheduler.runCurrent()
+
+            assertEquals(listOf("build"), repository.state.value.agents.map { it.name })
+            assertFalse(repository.state.value.agentsLoading)
+            assertTrue(repository.state.value.isRefreshing)
+            providersGate.complete(Unit)
+            advanceUntilIdle()
+            assertNull(repository.state.value.agentsError)
+        }
+
+    @Test
+    fun `exhausted agent retries stop loading even while providers are pending`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val target = FakeTarget("mac")
+            repeat(6) { target.agentAnswers.add { error("temporarily unavailable") } }
+            val providersGate = CompletableDeferred<Unit>()
+            target.providersGate = providersGate
+            val registry =
+                RuntimeRegistry(
+                    store = FakeStore(selectedRuntimeId = "mac"),
+                    localTarget = FakeTarget("local-android", RuntimeType.LOCAL),
+                    remoteFactory = { target },
+                )
+            val repository = RuntimeCatalogRepository(registry, TestScope(dispatcher))
+
+            testScheduler.runCurrent()
+            advanceTimeBy(13_000)
+            testScheduler.runCurrent()
+
+            assertTrue(repository.state.value.agents.isEmpty())
+            assertFalse(repository.state.value.agentsLoading)
+            assertTrue(repository.state.value.isRefreshing)
+            providersGate.complete(Unit)
+            advanceUntilIdle()
+        }
 
     @Test
     fun `loads selected runtime catalog and workspaces`() =
@@ -498,6 +579,7 @@ class RuntimeCatalogRepositoryTest {
 
         /** What [listProviders] returns, when a test needs to change the catalogue mid-run. */
         var providersOverride: ProviderCatalog? = null
+        var providersGate: CompletableDeferred<Unit>? = null
 
         override suspend fun connect(): Result<OpenCodeHealth> =
             connectError?.let(Result.Companion::failure)
@@ -520,6 +602,7 @@ class RuntimeCatalogRepositoryTest {
         override suspend fun listMessages(sessionId: String): List<OpenCodeMessage> = emptyList()
 
         override suspend fun listProviders(): ProviderCatalog {
+            providersGate?.await()
             providersError?.let { throw it }
             providersOverride?.let { return it }
             return ProviderCatalog(
