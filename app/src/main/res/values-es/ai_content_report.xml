@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_report_action">Denunciar respuesta de IA</string>
+    <string name="ai_report_title">Denunciar respuesta de IA</string>
+    <string name="ai_report_warning">Esto crea un issue PÚBLICO de GitHub con tu cuenta. Introduce solo un fragmento revisado, sin código fuente, credenciales ni datos personales.</string>
+    <string name="ai_report_account">Conecta GitHub en Ajustes antes de denunciar.</string>
+    <string name="ai_report_excerpt">Fragmento apto para publicar (obligatorio)</string>
+    <string name="ai_report_reason">Motivo</string>
+    <string name="ai_report_harmful">Dañino o peligroso</string>
+    <string name="ai_report_harassment">Acoso u odio</string>
+    <string name="ai_report_deceptive">Contenido engañoso</string>
+    <string name="ai_report_other">Otro</string>
+    <string name="ai_report_send">Publicar denuncia</string>
+    <string name="ai_report_sending">Enviando…</string>
+    <string name="ai_report_success">Denuncia enviada</string>
+    <string name="ai_report_failure">No se pudo enviar. Revisa la conexión, la cuenta de GitHub y las credenciales en el texto.</string>
+    <string name="ai_report_account_name">Publicar como %1$s</string>
+</resources>

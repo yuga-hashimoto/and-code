@@ -59,6 +59,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.yugahashimoto.andcode.BuildConfig
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.core.UrlLauncher
 import com.yugahashimoto.andcode.core.api.OpenCodeProvider
@@ -604,7 +605,10 @@ private fun AgentSelectionStep(
         // OpenCode, Claude Code, Antigravity, Codex - and the sign-in step follows the same order.
         AgentOption(
             title = stringResource(R.string.agent_opencode_name),
-            description = stringResource(R.string.setup_agent_opencode_desc),
+            description =
+                stringResource(
+                    if (BuildConfig.FLAVOR == "play") R.string.setup_agent_opencode_desc_play else R.string.setup_agent_opencode_desc,
+                ),
             selected = LocalAgent.OPEN_CODE in selectedAgents,
             onToggle = { onToggle(LocalAgent.OPEN_CODE) },
         )

@@ -54,6 +54,7 @@ import com.yugahashimoto.andcode.runtime.local.AndroidLocalRuntimeMessages
 import com.yugahashimoto.andcode.runtime.local.AntigravityController
 import com.yugahashimoto.andcode.runtime.local.AntigravityRuntime
 import com.yugahashimoto.andcode.runtime.local.AntigravityTarget
+import com.yugahashimoto.andcode.runtime.local.BundledRuntimeArchive
 import com.yugahashimoto.andcode.runtime.local.ClaudeCodeController
 import com.yugahashimoto.andcode.runtime.local.ClaudeCodeRuntime
 import com.yugahashimoto.andcode.runtime.local.ClaudeCodeTarget
@@ -72,13 +73,17 @@ import com.yugahashimoto.andcode.runtime.local.LocalRuntimeCommandRunner
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeDiagnosticsCollector
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeInstaller
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeManager
+import com.yugahashimoto.andcode.runtime.local.LocalRuntimeManifestReader
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeMessages
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeProcessLauncher
+import com.yugahashimoto.andcode.runtime.local.LocalRuntimeRelease
+import com.yugahashimoto.andcode.runtime.local.LocalRuntimeReleaseAsset
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeReleaseClient
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeServiceController
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeTarget
 import com.yugahashimoto.andcode.runtime.local.LocalRuntimeUpdater
 import com.yugahashimoto.andcode.runtime.local.LocalTerminalSessionFactory
+import com.yugahashimoto.andcode.runtime.local.PlayBundledUpdateEngine
 import com.yugahashimoto.andcode.runtime.local.StartupCommandsRunner
 import com.yugahashimoto.andcode.runtime.local.SystemPromptStore
 import com.yugahashimoto.andcode.runtime.local.TerminalSessionFactory
@@ -389,18 +394,38 @@ class AndCodeApplication : Application() {
                 githubToken = { settings.githubToken },
             )
         val verifiedDownloader = VerifiedRuntimeDownloader(httpClient)
+        val updateMessages =
+            if (BuildConfig.FLAVOR == "play") {
+                object : LocalRuntimeMessages by runtimeMessages {
+                    override fun downloadingOpenCode(version: String): String = getString(R.string.install_step_preparing_bundled_opencode)
+                }
+            } else {
+                runtimeMessages
+            }
         val updater =
             LocalRuntimeUpdater(
                 runtimeDirectory = runtimeDirectory,
                 abi = abi,
                 downloadAsset = { asset, destination, progress ->
-                    verifiedDownloader.download(
-                        url = asset.url,
-                        destination = destination,
-                        expectedSha256 = asset.sha256,
-                        expectedSizeBytes = asset.sizeBytes,
-                        onProgress = progress,
-                    )
+                    if (BuildConfig.FLAVOR == "play") {
+                        val architecture = LocalRuntimeManifestReader(this).read().architecture(abi)
+                        require(asset.sha256 == architecture.openCodeSha256) { "Unexpected bundled OpenCode hash" }
+                        progress(0f)
+                        BundledRuntimeArchive.copyVerified(
+                            openAsset = { assets.open("play-runtime/$abi/opencode.tgz") },
+                            destination = destination,
+                            expectedSha256 = architecture.openCodeSha256,
+                        )
+                        progress(1f)
+                    } else {
+                        verifiedDownloader.download(
+                            url = asset.url,
+                            destination = destination,
+                            expectedSha256 = asset.sha256,
+                            expectedSizeBytes = asset.sizeBytes,
+                            onProgress = progress,
+                        )
+                    }
                 },
                 candidateVersionProvider = { candidate ->
                     val result =
@@ -415,13 +440,34 @@ class AndCodeApplication : Application() {
                         ?: error("OpenCode update candidate returned no version")
                 },
                 accessCoordinator = accessCoordinator,
-                messages = runtimeMessages,
+                messages = updateMessages,
             )
-        val updateEngine =
+        val defaultUpdateEngine =
             DefaultLocalRuntimeUpdateEngine(
                 releaseClient = LocalRuntimeReleaseClient(httpClient),
                 updater = updater,
             )
+        val updateEngine =
+            if (BuildConfig.FLAVOR == "play") {
+                PlayBundledUpdateEngine(defaultUpdateEngine, abi) { targetAbi ->
+                    val manifest = LocalRuntimeManifestReader(this).read()
+                    val architecture = manifest.architecture(targetAbi)
+                    val size = assets.openFd("play-runtime/$targetAbi/opencode.tgz").use { it.length }
+                    LocalRuntimeRelease(
+                        version = manifest.openCodeVersion,
+                        releaseNotes = "",
+                        asset =
+                            LocalRuntimeReleaseAsset(
+                                name = architecture.openCodeUrl.substringAfterLast('/'),
+                                url = architecture.openCodeUrl,
+                                sha256 = architecture.openCodeSha256,
+                                sizeBytes = size,
+                            ),
+                    )
+                }
+            } else {
+                defaultUpdateEngine
+            }
         localRuntimeManager =
             LocalRuntimeManager(
                 runtimeDirectory = runtimeDirectory,

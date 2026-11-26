@@ -216,6 +216,14 @@ service's terms.
 
 ## 12. Contact
 
+The experimental Play flavor offers an optional in-app report for an AI response. It creates a
+public issue in the AndCode GitHub repository using your connected GitHub account. Your GitHub
+username, selected reason, and the excerpt you explicitly enter are public. No conversation text,
+source files, attachments, or credentials are automatically included. The app blocks some common
+credential patterns, but detection is incomplete: review the excerpt and do not include personal
+information or secrets. GitHub processes the report under its own privacy terms; the repository
+maintainer reviews reports and may use them to improve safety. Reporting requires a GitHub account.
+
 This project is maintained on GitHub at
 [yuga-hashimoto/and-code](https://github.com/yuga-hashimoto/and-code). Open an issue there with
 privacy questions or data-deletion requests related to this repository's code.

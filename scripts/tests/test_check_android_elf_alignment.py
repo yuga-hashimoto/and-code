@@ -1,6 +1,10 @@
 import importlib.util
 import struct
+import subprocess
+import sys
+import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 spec = importlib.util.spec_from_file_location(
@@ -45,6 +49,31 @@ class AlignmentTest(unittest.TestCase):
             checker.load_alignments(b"not ELF")
         with self.assertRaises(ValueError):
             checker.load_alignments(elf64(16384)[:90])
+
+    def test_64_bit_failures_are_fatal_even_when_32_bit_is_warning(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp) / "test.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("lib/arm64-v8a/libloader32.so", elf32(4096))
+                archive.writestr("lib/arm64-v8a/lib64.so", elf64(4096))
+            result = subprocess.run(
+                [sys.executable, str(Path(spec.origin)), "--warn-elf32", str(apk)],
+                capture_output=True, text=True,
+            )
+            self.assertEqual(1, result.returncode)
+            self.assertIn("WARN lib/arm64-v8a/libloader32.so", result.stdout)
+            self.assertIn("FAIL lib/arm64-v8a/lib64.so", result.stdout)
+
+    def test_32_bit_warning_remains_fatal_in_strict_mode(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            apk = Path(tmp) / "test.apk"
+            with zipfile.ZipFile(apk, "w") as archive:
+                archive.writestr("lib/arm64-v8a/libloader32.so", elf32(4096))
+            strict = subprocess.run([sys.executable, str(Path(spec.origin)), str(apk)], capture_output=True, text=True)
+            warn = subprocess.run([sys.executable, str(Path(spec.origin)), "--warn-elf32", str(apk)], capture_output=True, text=True)
+            self.assertEqual(1, strict.returncode)
+            self.assertEqual(0, warn.returncode)
+            self.assertIn("WARN", warn.stdout)
 
 
 if __name__ == "__main__":

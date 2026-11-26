@@ -37,6 +37,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.yugahashimoto.andcode.BuildConfig
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.feature.workspace.ClaudeCodeCard
 import com.yugahashimoto.andcode.feature.workspace.CodexCard
@@ -319,6 +320,9 @@ fun OpenCodeAgentSettingsScreen(
             }
 
             if (state.installed) {
+                if (BuildConfig.FLAVOR == "play") {
+                    Text(stringResource(R.string.opencode_play_update_note), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
                 OpenCodeUpdateCard(state, onCheckForUpdate, onRequestUpdate, onRequestRollback)
             }
 
@@ -463,7 +467,12 @@ private fun OpenCodeUpdateCard(
 
         when (val check = state.updateCheck) {
             null -> {
-                Text(stringResource(R.string.check_update_source_note), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(
+                    stringResource(
+                        if (BuildConfig.FLAVOR == "play") R.string.opencode_play_update_note else R.string.check_update_source_note,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 Spacer(Modifier.padding(vertical = 5.dp))
                 OutlinedButton(
                     onClick = onCheckForUpdate,

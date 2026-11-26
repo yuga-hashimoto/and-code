@@ -12,9 +12,14 @@ execution during investigation; never claim PRoot is a VM exemption.
 | E: restricted local Play variant | Can reduce policy exposure, but removes some agents/package functionality. Identify concrete limits and consent, do not hide capability from reviewers. |
 | F: remote-only | Least local feature parity; do not choose merely for convenience. |
 
-The `play` flavor is a build and investigation scaffold implementing A, **not the final design**.
-Use B/C as the primary feasibility experiments and obtain explicit policy interpretation for native
-ELFs, package installation, and PRoot. If that fails, evaluate E before F. Do not submit A unchanged.
+The `play` flavor is an investigation scaffold combining A and B, **not the final design**. It
+ships pinned Alpine minirootfs and OpenCode archives for each ABI as Play-delivered assets,
+verifies SHA-256 before use, and limits OpenCode updates to the app-bundled version. Both ABI
+archives currently ship to every device, adding approximately 160 MiB; per-ABI delivery remains an
+optimization. The Debian rootfs, other native CLI binaries and package-manager packages still come
+from outside Play. Their distribution is unresolved.
+Continue B/C feasibility experiments and seek a policy interpretation for native ELFs, package
+installation, and PRoot. If those approaches fail, evaluate E before F. Do not submit this scaffold.
 
 ## Identity and signing
 
@@ -24,6 +29,6 @@ install both side by side. The Play manifest assigns local OpenCode port 4107 ra
 GitHub and official F-Droid signing certificate fingerprints, Play application ID availability,
 upgrade expectations, and app-signing key custody have not been verified. Same ID would require
 compatible signer lineage and coordinated version codes, and could replace features across stores.
-Existing `release` signing config is shared if its environment variables are provided; do not use
-production credentials for experimental Play builds. Decide and implement separate Play upload-key
-configuration before release. No key or Play Console operation was performed.
+Play signing uses separate `AND_CODE_PLAY_*` credentials, and remains unsigned without them even
+when the existing distribution signing credentials are present. Final upload-key and app-signing
+key custody still needs an explicit release decision. No key or Play Console operation was performed.

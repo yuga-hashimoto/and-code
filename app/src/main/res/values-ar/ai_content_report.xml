@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_report_action">الإبلاغ عن رد الذكاء الاصطناعي</string>
+    <string name="ai_report_title">الإبلاغ عن رد الذكاء الاصطناعي</string>
+    <string name="ai_report_warning">سيتم إنشاء بلاغ GitHub عام باسم حسابك. أدخل مقتطفاً راجعته فقط، دون شيفرة المصدر أو بيانات اعتماد أو معلومات شخصية.</string>
+    <string name="ai_report_account">اربط GitHub من الإعدادات قبل الإبلاغ.</string>
+    <string name="ai_report_excerpt">مقتطف صالح للنشر (مطلوب)</string>
+    <string name="ai_report_reason">السبب</string>
+    <string name="ai_report_harmful">ضار أو خطير</string>
+    <string name="ai_report_harassment">تحرش أو كراهية</string>
+    <string name="ai_report_deceptive">محتوى مضلل</string>
+    <string name="ai_report_other">غير ذلك</string>
+    <string name="ai_report_send">نشر البلاغ العام</string>
+    <string name="ai_report_sending">جارٍ الإرسال…</string>
+    <string name="ai_report_success">تم إرسال البلاغ</string>
+    <string name="ai_report_failure">تعذر الإرسال. تحقق من الاتصال وحساب GitHub وبيانات الاعتماد في النص.</string>
+    <string name="ai_report_account_name">النشر باسم %1$s</string>
+</resources>

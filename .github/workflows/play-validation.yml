@@ -1,8 +1,8 @@
 name: Experimental Play validation
 
-# The Play variant is not submission-ready. Once its known release blockers are fixed,
-# add this job to pull_request checks; until then it can be run explicitly for investigation.
+# This verifies the experimental variant; passing does not imply Play policy approval.
 on:
+  pull_request:
   workflow_dispatch:
 
 permissions:
@@ -19,6 +19,8 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Test bundled runtime asset verification
+        run: python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_runtime_assets.py'
       - name: Static analysis, tests, lint, APK and AAB
         run: >-
           ./gradlew detekt spotlessCheck
@@ -36,6 +38,22 @@ jobs:
           assert int(root.find('uses-sdk').attrib[android + 'targetSdkVersion']) >= 36
           PY
           unzip -p app/build/outputs/apk/play/debug/app-play-debug.apk assets/local-runtime-manifest.json | python3 -c 'import json, sys; assert json.load(sys.stdin)["port"] == 4107'
+          unzip -Z1 app/build/outputs/apk/play/debug/app-play-debug.apk > "$RUNNER_TEMP/play-apk-files.txt"
+          grep -Fx 'assets/play-runtime/arm64-v8a/alpine.tgz' "$RUNNER_TEMP/play-apk-files.txt"
+          grep -Fx 'assets/play-runtime/x86_64/alpine.tgz' "$RUNNER_TEMP/play-apk-files.txt"
+          grep -Fx 'assets/play-runtime/arm64-v8a/opencode.tgz' "$RUNNER_TEMP/play-apk-files.txt"
+          grep -Fx 'assets/play-runtime/x86_64/opencode.tgz' "$RUNNER_TEMP/play-apk-files.txt"
+          python3 - <<'PY'
+          import hashlib, json, zipfile
+          manifest = json.load(open('app/src/play/assets/local-runtime-manifest.json'))
+          with zipfile.ZipFile('app/build/outputs/apk/play/debug/app-play-debug.apk') as apk:
+              for abi in ('arm64-v8a', 'x86_64'):
+                  for name, key in (('alpine', 'alpineSha256'), ('opencode', 'openCodeSha256')):
+                      data = apk.read(f'assets/play-runtime/{abi}/{name}.tgz')
+                      assert hashlib.sha256(data).hexdigest() == manifest['architectures'][abi][key]
+          PY
+      - name: Verify release signing isolation
+        run: python3 -m unittest discover -s scripts/tests -p 'test_play_signing_isolation.py'
       - name: Validate bundle with pinned bundletool
         run: |
           curl -fsSL --retry 3 -o "$RUNNER_TEMP/bundletool.jar" https://github.com/google/bundletool/releases/download/1.18.2/bundletool-all-1.18.2.jar
@@ -45,18 +63,17 @@ jobs:
         run: |
           build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
           "$build_tools/zipalign" -c -P 16 -v 4 app/build/outputs/apk/play/debug/app-play-debug.apk
-      - name: Report ELF LOAD alignment (not a release gate)
+      - name: Check ELF LOAD alignment
         run: |
           python3 -m unittest discover -s scripts/tests -p 'test_check_android_elf_alignment.py'
           for artifact in app/build/outputs/apk/play/debug/app-play-debug.apk app/build/outputs/bundle/playRelease/app-play-release.aab; do
             status=0
-            python3 scripts/check_android_elf_alignment.py "$artifact" > "$RUNNER_TEMP/$(basename "$artifact").elf.txt" || status=$?
+            python3 scripts/check_android_elf_alignment.py --warn-elf32 "$artifact" > "$RUNNER_TEMP/$(basename "$artifact").elf.txt" || status=$?
             cat "$RUNNER_TEMP/$(basename "$artifact").elf.txt"
-            if [ "$status" -eq 1 ]; then
-              echo "::warning::$artifact has ELF segments below 16 KB; this investigation workflow is not a release approval"
-            elif [ "$status" -ne 0 ]; then
-              exit "$status"
+            if grep -q '^WARN ' "$RUNNER_TEMP/$(basename "$artifact").elf.txt"; then
+              echo "::warning::$artifact has 32-bit ELF segments below 16 KB; investigate 32-bit execution before release"
             fi
+            if [ "$status" -ne 0 ]; then exit "$status"; fi
           done
       - name: Save experimental artifacts and reports
         if: always()

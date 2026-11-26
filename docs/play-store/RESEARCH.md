@@ -30,7 +30,8 @@ approval of the same implementation in AndCode.
   android-shmem via `prepare_android_runtime_native_libs.py`. GitHub includes Firebase;
   F-Droid has no-op reporters. `app/src/main/AndroidManifest.xml` declares all-files access,
   microphone, camera, notification, boot, exact alarm, wake lock and special-use services.
-* `LocalRuntimeInstaller` downloads Alpine/OpenCode from the pinned manifest, installs additional
+* `LocalRuntimeInstaller` uses Play-bundled verified Alpine and OpenCode archives (other flavors
+  download them), installs additional
   tools, and invokes agent installers. `DebianRootfsInstaller`, `ClaudeCodeInstaller`,
   `CodexInstaller`, `AntigravityInstaller` and the update controllers introduce other executable
   sources. Some are version-resolved dynamically. See `docs/AUTHENTICATION_AND_DATA_FLOW.md`.
@@ -67,8 +68,12 @@ approval of the same implementation in AndCode.
   CLI flow against all current conditions; do not claim blanket authorization.
 * [Codex authentication](https://developers.openai.com/codex/auth) documents CLI authentication;
   verify current OpenAI terms for this specific third-party integration, redistribution and marks.
-* Antigravity's current installer uses `github.com/google-antigravity/antigravity-cli`; independent
-  verification of ownership, license, redistribution, authentication terms and trademark rights is
-  required before describing this source as officially authorized.
+* Antigravity: on 2026-11-26 the [Google installer](https://antigravity.google/cli/install.sh)
+  resolved the official 1.5.18 archives through HTTPS checksum manifests. Both Google Storage
+  archives matched their official SHA-512 and GitHub asset SHA-256 digests: arm64
+  `97799abac91ba0b29b77598b62f903b866461da17680263a182fef2cb796ab0d`; x86_64
+  `a4960723ed9cf5b5ac72ed541db8df4d62741795261eb93a4681006ccb23d5ad`. This establishes byte
+  identity for that release only, not organization ownership, other versions, redistribution rights,
+  authentication terms or trademark rights.
 * None of these sources establishes blanket permission for Android PRoot, all OAuth uses, or
   bundling every proprietary CLI into an AAB.

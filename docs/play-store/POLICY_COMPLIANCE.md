@@ -3,7 +3,7 @@
 | Area | Status | Evidence and next step |
 |---|---|---|
 | Native downloaded code | Fix required / individual review | Installers and package managers execute downloads; see RESEARCH and ARCHITECTURE. |
-| AI reporting | Fix required | No verified in-app report-to-developer pipeline. |
+| AI reporting | Individual review / partial implementation | The Play UI submits a user-reviewed excerpt as a public GitHub issue; GitHub authentication is required. Accountless reporting and operational moderation are not established. |
 | Target 36 | Implementation in progress | Flavor target set; build, behavior and supported AGP unverified. |
 | 16 KB | Insufficient information | Inspect final artifacts and run device tests. |
 | All-files, specialUse | Individual review | Shared manifest; justify declarations or implement alternatives. |

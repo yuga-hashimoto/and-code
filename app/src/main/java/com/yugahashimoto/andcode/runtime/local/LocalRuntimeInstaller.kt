@@ -2,6 +2,7 @@ package com.yugahashimoto.andcode.runtime.local
 
 import android.content.Context
 import android.system.Os
+import com.yugahashimoto.andcode.BuildConfig
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.runtime.LocalAgent
 import kotlinx.coroutines.Dispatchers
@@ -104,27 +105,49 @@ class LocalRuntimeInstaller(
 
             try {
                 val alpineArchive = File(cache, "alpine-${manifest.alpineVersion}-$abi.tar.gz")
-                download(
-                    architecture.alpineUrl,
-                    alpineArchive,
-                    architecture.alpineSha256,
-                    0.05f,
-                    0.22f,
-                    context.getString(R.string.install_step_downloading_alpine),
-                    onShared,
-                )
+                if (BuildConfig.FLAVOR == "play") {
+                    val label = context.getString(R.string.install_step_preparing_bundled_alpine)
+                    onShared(0.05f, label)
+                    BundledRuntimeArchive.copyVerified(
+                        openAsset = { context.assets.open("play-runtime/$abi/alpine.tgz") },
+                        destination = alpineArchive,
+                        expectedSha256 = architecture.alpineSha256,
+                    )
+                    onShared(0.22f, label)
+                } else {
+                    download(
+                        architecture.alpineUrl,
+                        alpineArchive,
+                        architecture.alpineSha256,
+                        0.05f,
+                        0.22f,
+                        context.getString(R.string.install_step_downloading_alpine),
+                        onShared,
+                    )
+                }
                 val withOpenCode = LocalAgent.OPEN_CODE in requestedAgents
                 val openCodeArchive =
                     File(cache, "opencode-${manifest.openCodeVersion}-$abi.tar.gz").takeIf { withOpenCode }?.also { archive ->
-                        download(
-                            architecture.openCodeUrl,
-                            archive,
-                            architecture.openCodeSha256,
-                            0.24f,
-                            0.72f,
-                            context.getString(R.string.install_step_downloading_opencode),
-                            onShared,
-                        )
+                        if (BuildConfig.FLAVOR == "play") {
+                            val label = context.getString(R.string.install_step_preparing_bundled_opencode)
+                            onShared(0.24f, label)
+                            BundledRuntimeArchive.copyVerified(
+                                openAsset = { context.assets.open("play-runtime/$abi/opencode.tgz") },
+                                destination = archive,
+                                expectedSha256 = architecture.openCodeSha256,
+                            )
+                            onShared(0.72f, label)
+                        } else {
+                            download(
+                                architecture.openCodeUrl,
+                                archive,
+                                architecture.openCodeSha256,
+                                0.24f,
+                                0.72f,
+                                context.getString(R.string.install_step_downloading_opencode),
+                                onShared,
+                            )
+                        }
                     }
 
                 val rootfs = File(staging, "rootfs").apply { mkdirs() }

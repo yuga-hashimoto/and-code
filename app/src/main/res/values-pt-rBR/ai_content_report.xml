@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_report_action">Denunciar resposta de IA</string>
+    <string name="ai_report_title">Denunciar resposta de IA</string>
+    <string name="ai_report_warning">Uma issue PÚBLICA será criada no GitHub com sua conta. Informe apenas um trecho revisado, sem código-fonte, credenciais ou dados pessoais.</string>
+    <string name="ai_report_account">Conecte o GitHub em Configurações antes de denunciar.</string>
+    <string name="ai_report_excerpt">Trecho seguro para publicação (obrigatório)</string>
+    <string name="ai_report_reason">Motivo</string>
+    <string name="ai_report_harmful">Nocivo ou perigoso</string>
+    <string name="ai_report_harassment">Assédio ou ódio</string>
+    <string name="ai_report_deceptive">Conteúdo enganoso</string>
+    <string name="ai_report_other">Outro</string>
+    <string name="ai_report_send">Publicar denúncia</string>
+    <string name="ai_report_sending">Enviando…</string>
+    <string name="ai_report_success">Denúncia enviada</string>
+    <string name="ai_report_failure">Não foi possível enviar. Verifique a conexão, a conta do GitHub e credenciais no texto.</string>
+    <string name="ai_report_account_name">Publicar como %1$s</string>
+</resources>

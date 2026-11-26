@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_report_action">Signaler la réponse IA</string>
+    <string name="ai_report_title">Signaler la réponse IA</string>
+    <string name="ai_report_warning">Un ticket GitHub PUBLIC sera créé avec votre compte. Saisissez uniquement un extrait vérifié, sans code source, identifiants ni données personnelles.</string>
+    <string name="ai_report_account">Connectez GitHub dans les paramètres avant le signalement.</string>
+    <string name="ai_report_excerpt">Extrait publiable (obligatoire)</string>
+    <string name="ai_report_reason">Motif</string>
+    <string name="ai_report_harmful">Dangereux ou nuisible</string>
+    <string name="ai_report_harassment">Harcèlement ou haine</string>
+    <string name="ai_report_deceptive">Contenu trompeur</string>
+    <string name="ai_report_other">Autre</string>
+    <string name="ai_report_send">Publier le signalement</string>
+    <string name="ai_report_sending">Envoi…</string>
+    <string name="ai_report_success">Signalement envoyé</string>
+    <string name="ai_report_failure">Envoi impossible. Vérifiez la connexion, le compte GitHub et les identifiants dans le texte.</string>
+    <string name="ai_report_account_name">Publier sous %1$s</string>
+</resources>

@@ -41,6 +41,23 @@ val githubClientId =
     ).trim()
 val generatedRuntimeAssets = rootProject.layout.buildDirectory.dir("generated/runtime-assets")
 val generatedRuntimeJni = rootProject.layout.buildDirectory.dir("generated/runtime-jni")
+val generatedPlayRuntimeAssets = rootProject.layout.buildDirectory.dir("generated/play-runtime-assets")
+
+val preparePlayRuntimeAssets =
+    tasks.register<Exec>("preparePlayRuntimeAssets") {
+        val manifest = repoRoot.resolve("app/src/play/assets/local-runtime-manifest.json")
+        inputs.file(manifest)
+        inputs.file(repoRoot.resolve("scripts/prepare_play_runtime_assets.py"))
+        outputs.dir(generatedPlayRuntimeAssets)
+        commandLine(
+            "python3",
+            repoRoot.resolve("scripts/prepare_play_runtime_assets.py").absolutePath,
+            "--manifest",
+            manifest.absolutePath,
+            "--output-dir",
+            generatedPlayRuntimeAssets.get().asFile.absolutePath,
+        )
+    }
 
 val prepareOpenCodeRuntimeAssets =
     tasks.register<Exec>("prepareOpenCodeRuntimeAssets") {
@@ -118,6 +135,28 @@ val hasReleaseSigning =
                 }
             resolved.isFile
         }
+val playStoreFile =
+    (System.getenv("AND_CODE_PLAY_STORE_FILE") ?: findProperty("AND_CODE_PLAY_STORE_FILE")?.toString())?.takeIf {
+        it.isNotBlank()
+    }
+val playStorePassword =
+    (System.getenv("AND_CODE_PLAY_STORE_PASSWORD") ?: findProperty("AND_CODE_PLAY_STORE_PASSWORD")?.toString())?.takeIf { it.isNotBlank() }
+val playKeyAlias =
+    (System.getenv("AND_CODE_PLAY_KEY_ALIAS") ?: findProperty("AND_CODE_PLAY_KEY_ALIAS")?.toString())?.takeIf {
+        it.isNotBlank()
+    }
+val playKeyPassword =
+    (System.getenv("AND_CODE_PLAY_KEY_PASSWORD") ?: findProperty("AND_CODE_PLAY_KEY_PASSWORD")?.toString())?.takeIf { it.isNotBlank() }
+val playSigningValues = listOf(playStoreFile, playStorePassword, playKeyAlias, playKeyPassword)
+require(playSigningValues.all { it == null } || playSigningValues.all { it != null }) {
+    "Incomplete Play signing configuration: provide all four AND_CODE_PLAY_* signing values or none."
+}
+val hasPlaySigning =
+    playSigningValues.all { it != null }.also { configured ->
+        require(!configured || rootProject.file(playStoreFile!!).isFile) {
+            "Play signing keystore does not exist."
+        }
+    }
 
 android {
     namespace = "com.yugahashimoto.andcode"
@@ -151,28 +190,6 @@ android {
         }
     }
 
-    flavorDimensions += "distribution"
-    productFlavors {
-        // Distributed via GitHub Releases (and the self-hosted F-Droid repo built from those
-        // release APKs). Includes Firebase Analytics/Crashlytics.
-        create("github") {
-            dimension = "distribution"
-        }
-        // Built from source by F-Droid's own build server for the official F-Droid catalog.
-        // Firebase is excluded entirely; see the isFdroidBuild guard above and the
-        // "githubImplementation" dependencies below.
-        create("fdroid") {
-            dimension = "distribution"
-        }
-        // Experimental only: this variant is not yet eligible for Play submission. See
-        // docs/play-store/REMAINING_TASKS.md before distributing it.
-        create("play") {
-            dimension = "distribution"
-            applicationIdSuffix = ".play"
-            targetSdk = 36
-        }
-    }
-
     if (hasReleaseSigning) {
         signingConfigs {
             create("release") {
@@ -195,6 +212,37 @@ android {
             }
         }
     }
+    if (hasPlaySigning) {
+        signingConfigs {
+            create("playRelease") {
+                storeFile = rootProject.file(playStoreFile!!)
+                storePassword = playStorePassword
+                keyAlias = playKeyAlias
+                keyPassword = playKeyPassword
+            }
+        }
+    }
+
+    flavorDimensions += "distribution"
+    productFlavors {
+        // Debug builds retain the debug signing config from their build type. Release signing
+        // belongs to each distribution so the Play build cannot inherit an existing store key.
+        create("github") {
+            dimension = "distribution"
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
+        }
+        create("fdroid") {
+            dimension = "distribution"
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
+        }
+        // Experimental only: not yet eligible for Play submission.
+        create("play") {
+            dimension = "distribution"
+            applicationIdSuffix = ".play"
+            targetSdk = 36
+            if (hasPlaySigning) signingConfig = signingConfigs.getByName("playRelease")
+        }
+    }
 
     buildTypes {
         release {
@@ -204,9 +252,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            if (hasReleaseSigning) {
-                signingConfig = signingConfigs.getByName("release")
-            }
         }
     }
     testOptions {
@@ -243,6 +288,7 @@ android {
         getByName("main").jniLibs.srcDir(generatedRuntimeJni)
         // Reuse the no-op diagnostics implementations; Play does not include Firebase.
         getByName("play").java.srcDir("src/fdroid/java")
+        getByName("play").assets.srcDir(files(generatedPlayRuntimeAssets).builtBy(preparePlayRuntimeAssets))
     }
     packaging {
         resources {
@@ -254,6 +300,7 @@ android {
     }
     androidResources {
         noCompress += "tflite"
+        noCompress += "tgz"
     }
 }
 

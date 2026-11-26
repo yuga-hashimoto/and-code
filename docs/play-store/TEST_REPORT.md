@@ -1,6 +1,7 @@
 # Test report — incomplete
 
-Baseline: origin/main `22d633ea`; date: 2026-11-26. An artifact build is not a policy or device
+Baseline: origin/main `22d633ea`; date: 2026-11-26. The first table describes the earlier build;
+its artifact size and toolchain are superseded by the additional work below. An artifact build is not a policy or device
 compatibility approval. SDK location was set via `ANDROID_HOME`; Java 21 was used locally.
 
 | Check | Result |
@@ -16,10 +17,41 @@ compatibility approval. SDK location was set via `ANDROID_HOME`; Java 21 was use
 | 16 KB emulator smoke test | Android API 36 Google APIs arm64 image, `getconf PAGE_SIZE` = 16384: Play debug install and Activity launch PASS; Alpine/OpenCode 1.19.6 setup reached ready, and PRoot plus OpenCode processes and a listener on 127.0.0.1:4107 were observed. Agent authentication/chat and 32-bit loader execution were not tested. |
 | Physical device smoke test | Android API 36, arm64, 4096-byte pages: new debug APK installation and Activity launch succeeded; permission prompt appeared. Experimental package was then removed. No setup or agent test was run. |
 
-The automated workflow `.github/workflows/play-validation.yml` is manually dispatched during this
-investigation. It records ELF findings as warnings and artifacts; the standalone strict checker fails on the two 32-bit loaders. A successful investigation job is not release approval. The workflow has not been run on GitHub Actions.
+The updated workflow `.github/workflows/play-validation.yml` runs on pull requests. It fails on
+unaligned 64-bit ELF segments and records the known 32-bit loader findings as warnings; the default
+strict checker also fails on those loaders. A successful job is not release approval. The updated
+workflow has not yet been run on GitHub Actions.
 
 Not yet verified: complete onboarding, other agent installs, all provider auth/chat, sessions, edits, Git, diffs, MCP,
 terminal, browser/automation, remote access, schedules, background/permission denial, app/device
 restart, offline recovery, downloads and updates, data migration, 16 KB execution and x86_64
 device operation. No Play submission or signing-key operation performed.
+
+## Additional work (2026-11-27)
+
+- After upgrading to AGP 8.11.1 and Gradle 8.13, the combined Play release APK/AAB, GitHub and
+  F-Droid debug APK, three debug unit-test suites, Play lint, detekt and spotless checks passed.
+  Each flavor reported 1,879 unit tests with zero failures or errors. The unsigned Play AAB was
+  approximately 174 MiB and passed bundletool validation. All checked 64-bit release APK ELF LOAD
+  segments met 16 KB alignment; both 32-bit loaders remained warnings.
+- Play report dialog: two Android 16 arm64 emulator UI tests passed with a mocked submit callback.
+  This is not a live GitHub report and does not establish accountless reporting.
+- Play Alpine: after packaging, both `.tgz` assets matched the manifest SHA-256. On an Android 16
+  arm64 4 KB emulator with Wi-Fi disabled, the app copied the bundled Alpine archive to its cache
+  and its SHA-256 matched; OpenCode download then failed as expected. After Wi-Fi was restored and
+  Retry was tapped, OpenCode 1.19.6 and PRoot started and listened on 127.0.0.1:4107.
+- A pair of dummy keystores verified separation between existing distribution and Play release
+  signing; incomplete Play credentials fail configuration. No production keys were used.
+- All release and policy conclusions above remain provisional after these changes.
+
+- The bundled Alpine APK also installed successfully on an Android 16 arm64 16 KB emulator; its
+  cached SHA-256 matched the manifest and PRoot/OpenCode reached ready on port 4107. The emulator
+  exposes no 32-bit ABI, so this does not test the 32-bit loader.
+- With both Alpine and OpenCode bundled, on the same 16 KB emulator and with airplane mode enabled
+  (`Active default network: none`), both arm64 archives were copied and matched the manifest
+  SHA-256. Setup then failed while resolving the additional Alpine packages, as expected. After
+  reconnecting, the first package attempt had an I/O error; going back and retrying succeeded,
+  and PRoot plus OpenCode 1.19.6 started. This does not establish full offline setup or Play policy
+  compliance for downloaded executable packages.
+- Three instrumented tests passed on the 16 KB emulator: two report-dialog tests and one test
+  opening and hashing all four bundled ABI/archive assets. Report submission was mocked.

@@ -159,6 +159,8 @@ import com.yugahashimoto.andcode.core.diagnostics.explain
 import com.yugahashimoto.andcode.core.diagnostics.supportingDetail
 import com.yugahashimoto.andcode.feature.browser.PreviewTarget
 import com.yugahashimoto.andcode.feature.browser.PreviewUiState
+import com.yugahashimoto.andcode.feature.report.AiContentReportDialog
+import com.yugahashimoto.andcode.feature.report.AiReportReason
 import com.yugahashimoto.andcode.feature.workspace.GitHubAutoAttachChips
 import com.yugahashimoto.andcode.feature.workspace.GitHubReference
 import com.yugahashimoto.andcode.runtime.PermissionResponse
@@ -181,6 +183,7 @@ private data class MessageActionTarget(
     val id: String,
     val text: String,
     val canEdit: Boolean,
+    val canReport: Boolean = false,
 )
 
 private const val DRAFT_SAVE_DEBOUNCE_MS = 400L
@@ -275,6 +278,9 @@ fun ChatHomeScreen(
     onOpenRemoteSetup: () -> Unit,
     onRefreshCatalog: () -> Unit = {},
     onOpenProviderSettings: (() -> Unit)? = null,
+    onSubmitAiReport: (suspend (AiReportReason, String) -> Result<Unit>)? = null,
+    hasReportAccount: Boolean = false,
+    reportAccountName: String? = null,
     onOpenDrawer: () -> Unit,
     subagents: List<SubagentInfo> = emptyList(),
     onSubagentClick: (String) -> Unit = {},
@@ -328,6 +334,7 @@ fun ChatHomeScreen(
     val runtimeNotReady = errorKind == ChatErrorKind.RUNTIME_NOT_READY && state.messages.isEmpty()
     val isAtBottom = remember { mutableStateOf(true) }
     var showActionSheet by remember { mutableStateOf<MessageActionTarget?>(null) }
+    var showAiContentReport by remember { mutableStateOf(false) }
     var activityGroupId by remember { mutableStateOf<String?>(null) }
     var selectedImage by remember { mutableStateOf<ChatImageSource?>(null) }
     var legacyDownload by remember { mutableStateOf<ChatImageSource?>(null) }
@@ -564,7 +571,7 @@ fun ChatHomeScreen(
                                                         entry.message.id == lastUserMessageId,
                                             )
                                         is TimelineEntry.Body ->
-                                            MessageActionTarget(entry.messageId, entry.part.text, canEdit = false)
+                                            MessageActionTarget(entry.messageId, entry.part.text, canEdit = false, canReport = true)
                                         is TimelineEntry.Image -> null
                                         is TimelineEntry.Activity -> null
                                         is TimelineEntry.Todo -> null
@@ -948,8 +955,26 @@ fun ChatHomeScreen(
                         },
                     )
                 }
+                if (target.canReport && onSubmitAiReport != null) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.ai_report_action)) },
+                        onClick = {
+                            showActionSheet = null
+                            showAiContentReport = true
+                        },
+                    )
+                }
             }
         }
+    }
+
+    if (showAiContentReport && onSubmitAiReport != null) {
+        AiContentReportDialog(
+            hasGitHubAccount = hasReportAccount,
+            gitHubAccountName = reportAccountName,
+            onSubmit = onSubmitAiReport,
+            onDismiss = { showAiContentReport = false },
+        )
     }
 
     selectedImage?.let { source ->

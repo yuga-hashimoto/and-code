@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="install_step_preparing_bundled_alpine">Preparando o ambiente Alpine incluído</string>
+    <string name="install_step_preparing_bundled_opencode">Preparando o OpenCode incluído</string>
+    <string name="setup_agent_opencode_desc_play">O OpenCode está incluído. Ferramentas Linux adicionais são baixadas durante a configuração.</string>
+    <string name="opencode_play_update_note">Esta versão está incluída no aplicativo. Atualize o AndCode pelo Google Play para obter uma versão mais recente.</string>
+</resources>

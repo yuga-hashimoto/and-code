@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_report_action">AI応答を報告</string>
+    <string name="ai_report_title">AI応答を報告</string>
+    <string name="ai_report_warning">GitHubの公開Issueとして、あなたのアカウントから投稿されます。確認済みの文章だけを入力し、ソースコード、認証情報、個人情報を含めないでください。</string>
+    <string name="ai_report_account">報告する前に、設定からGitHubに接続してください。</string>
+    <string name="ai_report_excerpt">公開可能な抜粋（必須）</string>
+    <string name="ai_report_reason">報告理由</string>
+    <string name="ai_report_harmful">有害・危険</string>
+    <string name="ai_report_harassment">嫌がらせ・ヘイト</string>
+    <string name="ai_report_deceptive">誤解を招く内容</string>
+    <string name="ai_report_other">その他</string>
+    <string name="ai_report_send">公開報告を投稿</string>
+    <string name="ai_report_sending">送信中…</string>
+    <string name="ai_report_success">報告を送信しました</string>
+    <string name="ai_report_failure">送信できませんでした。通信、GitHub接続、入力内の認証情報を確認してください。</string>
+    <string name="ai_report_account_name">投稿アカウント: %1$s</string>
+</resources>

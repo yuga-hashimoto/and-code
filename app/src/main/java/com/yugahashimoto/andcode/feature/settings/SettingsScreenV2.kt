@@ -76,6 +76,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.yugahashimoto.andcode.BuildConfig
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
 import com.yugahashimoto.andcode.ui.theme.AppShapes
@@ -386,13 +387,15 @@ fun SettingsScreenV2(
                     onCheckedChange = onToggleNotifications,
                 )
                 SettingsDivider()
-                SettingsToggleRow(
-                    icon = Icons.Default.Insights,
-                    title = stringResource(R.string.analytics_row),
-                    checked = analyticsEnabled,
-                    onCheckedChange = onToggleAnalytics,
-                )
-                SettingsDivider()
+                if (BuildConfig.FLAVOR != "play") {
+                    SettingsToggleRow(
+                        icon = Icons.Default.Insights,
+                        title = stringResource(R.string.analytics_row),
+                        checked = analyticsEnabled,
+                        onCheckedChange = onToggleAnalytics,
+                    )
+                    SettingsDivider()
+                }
                 SettingsToggleRow(
                     icon = Icons.Default.PowerSettingsNew,
                     title = stringResource(R.string.local_runtime_idle_stop_row),

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="install_step_preparing_bundled_alpine">Preparing the bundled Alpine environment</string>
+    <string name="install_step_preparing_bundled_opencode">Preparing the bundled OpenCode</string>
+    <string name="setup_agent_opencode_desc_play">OpenCode is included. Additional Linux tools are downloaded during setup.</string>
+    <string name="opencode_play_update_note">This version is included with the app. Update AndCode through Google Play to get a newer version.</string>
+</resources>
