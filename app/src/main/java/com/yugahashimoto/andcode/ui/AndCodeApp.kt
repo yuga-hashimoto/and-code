@@ -792,7 +792,12 @@ fun AndCodeApp(
         chatViewModel.setAutoAcceptPermissions(preferences.autoAcceptPermissions)
     }
 
-    LaunchedEffect(selectedRuntime?.id, workspaceState.workspaces, chatState.sessionId) {
+    LaunchedEffect(
+        selectedRuntime?.id,
+        workspaceState.workspaces,
+        chatState.sessionId,
+        chatState.selectedWorkspacePath,
+    ) {
         if (chatState.sessionId != null) return@LaunchedEffect
         val currentPath = chatState.selectedWorkspacePath
         val available = workspaceState.workspaces
@@ -1287,7 +1292,12 @@ fun AndCodeApp(
                             LaunchedEffect(pendingSession, selectedRuntime?.id) {
                                 val pending = pendingSession ?: return@LaunchedEffect
                                 if (selectedRuntime == null) return@LaunchedEffect
-                                chatViewModel.openSession(pending.first, pending.second)
+                                val knownDirectory =
+                                    app.catalogRepository.allSessions.value
+                                        .firstOrNull { it.session.id == pending.first }
+                                        ?.session
+                                        ?.directory
+                                chatViewModel.openSession(pending.first, pending.second, directory = knownDirectory)
                                 pendingSession = null
                             }
                             LaunchedEffect(pendingHandoffPrompt, selectedRuntime?.id, handoffReady) {
@@ -1464,6 +1474,8 @@ fun AndCodeApp(
                                         }
                                     }
                                 },
+                                workspaces = workspaceState.workspaces,
+                                onSelectWorkspace = chatViewModel::selectWorkspace,
                                 onMic = requestVoiceInput,
                                 onNewChat = {
                                     pendingSession = null
@@ -1491,6 +1503,7 @@ fun AndCodeApp(
                                     chatViewModel.openSubagentSession(
                                         childSessionId,
                                         childSession?.title ?: childSessionId,
+                                        directory = childSession?.directory,
                                     )
                                 },
                                 onReturnToParentSession = {

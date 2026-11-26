@@ -491,6 +491,7 @@ private fun extractPatchFiles(state: Map<String, JsonElement>): List<String> {
 data class ParentSessionRef(
     val id: String,
     val title: String = "",
+    val directory: String? = null,
 )
 
 data class ChatUiState(
@@ -1116,6 +1117,7 @@ class ChatViewModel(
         sessionId: String,
         title: String = "",
         parent: ParentSessionRef? = null,
+        directory: String? = null,
     ) {
         val currentBackend = backend ?: return
         // A blank id is not a session: loading it would ask the runtime for `session//message` and
@@ -1151,7 +1153,7 @@ class ChatViewModel(
                 messages = emptyList(),
                 permissions = emptyList(),
                 pendingQuestions = emptyList(),
-                sessionDirectory = null,
+                sessionDirectory = directory?.takeIf { dir -> dir.isNotBlank() },
                 isRunning = if (switchingSession) alreadyRunning else it.isRunning,
                 isThinking = if (switchingSession) alreadyRunning else it.isThinking,
                 dismissedTodoBarId = null,
@@ -1194,16 +1196,17 @@ class ChatViewModel(
     fun openSubagentSession(
         sessionId: String,
         title: String = "",
+        directory: String? = null,
     ) {
         val current = _uiState.value
-        val parent = current.sessionId?.let { ParentSessionRef(it, current.sessionTitle) }
-        openSession(sessionId, title, parent)
+        val parent = current.sessionId?.let { ParentSessionRef(it, current.sessionTitle, current.sessionDirectory) }
+        openSession(sessionId, title, parent, directory)
     }
 
     /** Returns from a subagent session to the session that spawned it. */
     fun openParentSession() {
         val parent = _uiState.value.parentSession ?: return
-        openSession(parent.id, parent.title)
+        openSession(parent.id, parent.title, directory = parent.directory)
     }
 
     /**
@@ -1216,13 +1219,15 @@ class ChatViewModel(
             val parentId =
                 runCatching { currentBackend.session(sessionId) }.getOrNull()?.parentId
                     ?: return@launch
-            val parentTitle =
-                runCatching { currentBackend.session(parentId) }.getOrNull()?.title.orEmpty()
+            val parentSession = runCatching { currentBackend.session(parentId) }.getOrNull()
+            val parentTitle = parentSession?.title.orEmpty()
             _uiState.update { state ->
                 if (state.sessionId != sessionId) {
                     state
                 } else {
-                    state.copy(parentSession = ParentSessionRef(parentId, parentTitle))
+                    state.copy(
+                        parentSession = ParentSessionRef(parentId, parentTitle, parentSession?.directory),
+                    )
                 }
             }
         }
@@ -1614,7 +1619,11 @@ class ChatViewModel(
                 if (session != null) {
                     applyDraftSystemPrompt(session.id, draftGeneration)
                     _uiState.update {
-                        it.copy(sessionId = session.id, sessionTitle = session.title)
+                        it.copy(
+                            sessionId = session.id,
+                            sessionTitle = session.title,
+                            sessionDirectory = session.directory?.takeIf { dir -> dir.isNotBlank() } ?: it.selectedWorkspacePath,
+                        )
                     }
                     onSessionCreated()
                 }
@@ -1844,7 +1853,11 @@ class ChatViewModel(
                 if (session != null) {
                     applyDraftSystemPrompt(session.id, draftGeneration)
                     _uiState.update {
-                        it.copy(sessionId = session.id, sessionTitle = session.title)
+                        it.copy(
+                            sessionId = session.id,
+                            sessionTitle = session.title,
+                            sessionDirectory = session.directory?.takeIf { dir -> dir.isNotBlank() } ?: it.selectedWorkspacePath,
+                        )
                     }
                     onSessionCreated()
                 }
@@ -2162,13 +2175,14 @@ class ChatViewModel(
     private fun refreshPendingQuestions(sessionId: String) {
         val currentBackend = backend ?: return
         viewModelScope.launch {
-            val directory =
+            val sessionDirectory =
                 runCatching { currentBackend.session(sessionId).directory }
                     .getOrNull()
-                    ?: _uiState.value.selectedWorkspacePath
-            if (directory != null && _uiState.value.sessionId == sessionId) {
-                _uiState.update { it.copy(sessionDirectory = directory) }
+                    ?.takeIf { it.isNotBlank() }
+            if (sessionDirectory != null && _uiState.value.sessionId == sessionId) {
+                _uiState.update { it.copy(sessionDirectory = sessionDirectory) }
             }
+            val directory = sessionDirectory ?: _uiState.value.sessionDirectory ?: _uiState.value.selectedWorkspacePath
             var fetched: List<QuestionRequest>? = null
             for (attempt in 0 until PENDING_QUESTION_REFRESH_ATTEMPTS) {
                 if (_uiState.value.sessionId != sessionId) return@launch
