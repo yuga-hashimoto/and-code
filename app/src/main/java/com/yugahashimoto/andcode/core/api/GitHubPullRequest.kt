@@ -79,7 +79,7 @@ fun parsePullRequestRefs(text: String): List<PullRequestRef> {
     return PULL_REQUEST_URL.findAll(text)
         .mapNotNull { match ->
             val (owner, repo, number) = match.destructured
-            number.toIntOrNull()?.let { PullRequestRef(owner, repo, number) }
+            number.toIntOrNull()?.let { PullRequestRef(owner, repo, it) }
         }
         .distinct()
         .toList()
@@ -127,4 +127,5 @@ private fun OpenCodePart.openedPullRequest(): PullRequestRef? =
         else -> null
     }
 
-private fun JsonElement.jsonPrimitiveOrNull(): String? = (this as? JsonPrimitive)?.contentOrNull
+private fun JsonElement.jsonPrimitiveOrNull(): String? =
+    (this as? JsonPrimitive)?.contentOrNull ?: (this as? JsonPrimitive)?.content

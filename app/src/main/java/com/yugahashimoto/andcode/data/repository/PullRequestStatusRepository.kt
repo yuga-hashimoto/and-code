@@ -71,8 +71,6 @@ class PullRequestStatusRepository(
     private val fetchedAt = ConcurrentHashMap<String, Long>()
     private val inFlight = ConcurrentHashMap.newKeySet<String>()
 
-    /** Serializes the read-modify-write of the session map across callers on different threads. */
-    private val sessionWriteLock = Any()
 
     init {
         // A chat remembered from an earlier run has its badge ready the moment the drawer opens.
@@ -144,6 +142,15 @@ class PullRequestStatusRepository(
                 else -> REFRESH_INTERVAL_MILLIS
             }
         return clock() - last >= interval
+    }
+
+    private companion object {
+        /**
+         * Serializes the session map's read-modify-write across every repository instance in the
+         * process: the app builds one for the drawer and Koin another for a chat view model, and
+         * both write the same settings store.
+         */
+        val sessionWriteLock = Any()
     }
 }
 
