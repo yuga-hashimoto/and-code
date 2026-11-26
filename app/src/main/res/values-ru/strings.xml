@@ -649,6 +649,14 @@
     <string name="send_behavior_interrupt">Прервать</string>
     <string name="send_behavior_queue">В очередь</string>
     <string name="enter_to_send_row">Enter отправляет сообщение</string>
+    <string name="agent_instructions_row">Общие правила для агентов</string>
+    <string name="agent_instructions_title">Общие правила для агентов</string>
+    <string name="agent_instructions_description">Эти инструкции передаются OpenCode, Claude Code, Antigravity и Codex одновременно. Они вступят в силу при следующем запуске агента.</string>
+    <string name="agent_instructions_label">Ваши инструкции</string>
+    <string name="agent_instructions_hint">Например: отвечать кратко и запускать тесты перед завершением.</string>
+    <string name="agent_instructions_save">Сохранить</string>
+    <string name="agent_instructions_builtin_title">Встроенный контекст AndCode (только чтение)</string>
+    <string name="agent_instructions_saved">Сохранено. Новые правила вступят в силу при следующем запуске агента.</string>
 
     <string name="section_sessions_settings">Сеансы</string>
     <string name="auto_archive_stale_row">Автоархивация неактивных чатов</string>

@@ -1162,6 +1162,82 @@ class ChatViewModelTest {
         }
 
     /**
+     * A queued prompt used to vanish from the screen entirely, which read as if the send had been
+     * swallowed. It has to be visible while it waits, and the drain must not draw it a second time.
+     */
+    @Test
+    fun `a forced-queue prompt is shown while it waits and is not duplicated when it drains`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(forcesQueue = true))
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.sendMessage("first")
+            advanceUntilIdle()
+            viewModel.sendMessage("second")
+            advanceUntilIdle()
+
+            assertEquals(listOf("first", "second"), viewModel.uiState.value.messages.filter { it.isUser }.map { it.text })
+            assertEquals(listOf("first"), backend.sentPrompts.map { it.second.text })
+
+            backend.events.tryEmit(OpenCodeEvent.SessionIdle("s1"))
+            advanceUntilIdle()
+
+            assertEquals(listOf("first", "second"), backend.sentPrompts.map { it.second.text })
+            assertEquals(listOf("first", "second"), viewModel.uiState.value.messages.filter { it.isUser }.map { it.text })
+        }
+
+    /**
+     * A chat opened while its run is still in flight (started before this client opened it) looked
+     * idle, so a send there went straight through as an interrupt. On Antigravity that kills the
+     * one-shot process of the turn the user was watching, and both prompts are lost.
+     */
+    @Test
+    fun `a send in a chat whose run is already in flight is queued, not interrupted`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(forcesQueue = true))
+            val viewModel = ChatViewModel(backend, isSessionRunning = { it == "s1" })
+            advanceUntilIdle()
+
+            viewModel.openSession("s1")
+            advanceUntilIdle()
+            assertTrue(viewModel.uiState.value.isRunning)
+
+            viewModel.sendMessage("follow-up")
+            advanceUntilIdle()
+
+            assertTrue(backend.sentPrompts.isEmpty())
+            assertEquals(listOf("follow-up"), viewModel.uiState.value.messages.filter { it.isUser }.map { it.text })
+        }
+
+    /**
+     * Navigating away is not as strong as a run ending: the drawer keeps the spinner because the
+     * runtime still reports the session as active (and its own idle settles it later). Clearing it
+     * on navigation made an Antigravity run look idle until the next streamed token.
+     */
+    @Test
+    fun `navigating away from a running chat does not report it finished`() =
+        runTest(dispatcher) {
+            val backend = FakeRuntimeTargetBackend(RuntimeCapabilities(forcesQueue = true))
+            val runs = mutableListOf<Pair<String, Boolean>>()
+            val viewModel =
+                ChatViewModel(
+                    backend,
+                    onRunStateChanged = { id, running -> runs += id to running },
+                )
+            advanceUntilIdle()
+
+            viewModel.sendMessage("long task")
+            advanceUntilIdle()
+            assertEquals(listOf("s1" to true), runs)
+
+            viewModel.openSession("s2", "Another chat")
+            advanceUntilIdle()
+
+            assertEquals(listOf("s1" to true), runs)
+        }
+
+    /**
      * OpenCode drops a prompt that arrives while a turn is still in flight: it stores the message
      * and hands it to a session runner that is already running, which attaches to the run instead of
      * starting one for the new message. A wedged turn - a tool that never returns - therefore

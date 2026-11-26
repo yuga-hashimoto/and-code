@@ -349,6 +349,10 @@ fun AndCodeApp(
                         },
                         onCodexFastModeChanged = app.preferences::setCodexFastMode,
                         initialCodexFastMode = app.settings.codexFastMode,
+                        initialSendBehavior = preferences.sendBehavior,
+                        // A chat opened while its run is still in flight must look running, or the
+                        // next send is treated as idle and interrupts (kills) that run.
+                        isSessionRunning = { id -> id in app.activityRepository.state.value.activeSessionIds },
                         onSessionAborted = { sessionId ->
                             app.activityRepository.markSessionAborted(sessionId)
                             // Stopping the run answers the "this run has gone quiet" notice.
@@ -387,6 +391,12 @@ fun AndCodeApp(
                 },
         )
     val chatState by chatViewModel.uiState.collectAsState()
+    val sendBehavior by chatViewModel.sendBehavior.collectAsState()
+    // The setting is read once as the ViewModel starts, so a change made in Settings while the chat
+    // is alive has to be pushed in rather than waiting for the ViewModel to be recreated.
+    LaunchedEffect(preferences.sendBehavior) {
+        chatViewModel.setSendBehavior(preferences.sendBehavior)
+    }
     val appForeground by app.appForeground.foreground.collectAsState()
 
     // Where the live-reload watcher and the static preview read files from. Null on remote runtimes,
@@ -1407,6 +1417,8 @@ fun AndCodeApp(
                                 onDismissPullRequest = chatViewModel::dismissPullRequest,
                                 autoAcceptPermissions = settingsState.autoAcceptPermissions,
                                 onToggleAutoAccept = settingsViewModel::setAutoAcceptPermissions,
+                                sendBehavior = sendBehavior,
+                                forcesQueue = selectedRuntime?.capabilities?.forcesQueue == true,
                                 enterToSend = preferences.enterToSend,
                                 autoExpandReasoning = preferences.autoExpandReasoning,
                                 onSendMessage = chatViewModel::sendMessage,

@@ -250,6 +250,12 @@ fun ChatHomeScreen(
     supportsPermissions: Boolean = true,
     onToggleAutoAccept: (Boolean) -> Unit = {},
     sendBehavior: String = "interrupt",
+    /**
+     * True for a runtime that always queues a send behind a running turn instead of interrupting it
+     * (Antigravity), so the composer offers send-while-running the same way the "queue" setting
+     * does rather than hiding the send action behind the stop button.
+     */
+    forcesQueue: Boolean = false,
     enterToSend: Boolean = false,
     /** Whether reasoning/thinking cards should start expanded when the activity sheet opens. */
     autoExpandReasoning: Boolean = false,
@@ -769,6 +775,7 @@ fun ChatHomeScreen(
                     onSelectSystemPrompt = onSelectSystemPrompt,
                     onToggleAutoAccept = onToggleAutoAccept,
                     sendBehavior = sendBehavior,
+                    forcesQueue = forcesQueue,
                     enterToSend = enterToSend,
                     contextTokensUsed = state.contextTokensUsed,
                     contextLimit =
@@ -1438,6 +1445,7 @@ private fun ChatComposer(
     selectedSystemPromptId: String?,
     onSelectSystemPrompt: (String?) -> Unit,
     sendBehavior: String,
+    forcesQueue: Boolean,
     enterToSend: Boolean,
     contextTokensUsed: Long,
     contextLimit: Long,
@@ -1748,7 +1756,11 @@ private fun ChatComposer(
                         }
                     }
                     if (isRunning) {
-                        if (sendBehavior == "queue") {
+                        // A queueing runtime (the "queue" setting, or Antigravity which always
+                        // queues) keeps the send action available mid-turn: the prompt waits behind
+                        // the running turn instead of interrupting it, and rejecting it here left
+                        // the user with no way to add to a long-running turn at all.
+                        if (sendBehavior == "queue" || forcesQueue) {
                             Surface(
                                 shape = RoundedCornerShape(100.dp),
                                 color = MaterialTheme.colorScheme.tertiaryContainer,
@@ -1758,6 +1770,17 @@ private fun ChatComposer(
                                     text = stringResource(R.string.status_queued),
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                     style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
+                            FilledIconButton(
+                                onClick = onSend,
+                                enabled = input.isNotBlank() || attachments.isNotEmpty(),
+                                modifier = Modifier.size(38.dp),
+                            ) {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Send,
+                                    contentDescription = stringResource(R.string.send_description),
+                                    modifier = Modifier.size(20.dp),
                                 )
                             }
                         }

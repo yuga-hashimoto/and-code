@@ -653,6 +653,14 @@
     <string name="send_behavior_interrupt">مقاطعة</string>
     <string name="send_behavior_queue">قائمة انتظار</string>
     <string name="enter_to_send_row">الإدخال يرسل الرسالة</string>
+    <string name="agent_instructions_row">قواعد الوكلاء المشتركة</string>
+    <string name="agent_instructions_title">قواعد الوكلاء المشتركة</string>
+    <string name="agent_instructions_description">تُمرَّر هذه التعليمات إلى OpenCode وClaude Code وAntigravity وCodex معًا. وتُطبَّق في المرة التالية التي يبدأ فيها الوكيل.</string>
+    <string name="agent_instructions_label">تعليماتك</string>
+    <string name="agent_instructions_hint">مثال: إجابات قصيرة، وتشغيل الاختبارات قبل الانتهاء.</string>
+    <string name="agent_instructions_save">حفظ</string>
+    <string name="agent_instructions_builtin_title">سياق AndCode المدمج (للقراءة فقط)</string>
+    <string name="agent_instructions_saved">تم الحفظ. تُطبَّق القواعد الجديدة في المرة التالية التي يبدأ فيها الوكيل.</string>
 
     <string name="section_sessions_settings">الجلسات</string>
     <string name="auto_archive_stale_row">أرشفة المحادثات غير النشطة تلقائيًا</string>

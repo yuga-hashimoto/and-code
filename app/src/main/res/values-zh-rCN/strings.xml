@@ -643,6 +643,14 @@
     <string name="send_behavior_interrupt">中断</string>
     <string name="send_behavior_queue">排队</string>
     <string name="enter_to_send_row">回车键发送消息</string>
+    <string name="agent_instructions_row">共享智能体规则</string>
+    <string name="agent_instructions_title">共享智能体规则</string>
+    <string name="agent_instructions_description">这些指令会同时提供给 OpenCode、Claude Code、Antigravity 和 Codex。将在下次启动智能体时生效。</string>
+    <string name="agent_instructions_label">你的指令</string>
+    <string name="agent_instructions_hint">例如：回答要简短，并在完成前运行测试。</string>
+    <string name="agent_instructions_save">保存</string>
+    <string name="agent_instructions_builtin_title">AndCode 内置上下文（只读）</string>
+    <string name="agent_instructions_saved">已保存。新规则将在下次启动智能体时生效。</string>
 
     <string name="section_sessions_settings">会话</string>
     <string name="auto_archive_stale_row">自动归档不活跃的聊天</string>

@@ -53,6 +53,8 @@ data class AppPreferences(
     val language: String = "system",
     val liveTranscriptEnabled: Boolean = false,
     val analyticsEnabled: Boolean = false,
+    /** Extra instructions appended to every agent's shared AndCode context. */
+    val agentInstructions: String = "",
     val guestBrowserAgentControlEnabled: Boolean = false,
     val localRuntimeIdleStopEnabled: Boolean = true,
     val autoArchiveStaleEnabled: Boolean = false,
@@ -106,6 +108,7 @@ class AppPreferencesRepository(
                 language = settings.language,
                 liveTranscriptEnabled = settings.liveTranscriptEnabled,
                 analyticsEnabled = settings.analyticsEnabled,
+                agentInstructions = settings.agentInstructions,
                 guestBrowserAgentControlEnabled = settings.guestBrowserAgentControlEnabled,
                 localRuntimeIdleStopEnabled = settings.localRuntimeIdleStopEnabled,
                 autoArchiveStaleEnabled = settings.autoArchiveStaleEnabled,
@@ -358,6 +361,11 @@ class AppPreferencesRepository(
         com.yugahashimoto.andcode.core.diagnostics.AnalyticsReporter.setEnabled(enabled)
         com.yugahashimoto.andcode.core.diagnostics.CrashReporter.setEnabled(enabled)
         mutableState.update { it.copy(analyticsEnabled = enabled) }
+    }
+
+    fun setAgentInstructions(instructions: String) {
+        settings.agentInstructions = instructions
+        mutableState.update { it.copy(agentInstructions = instructions) }
     }
 
     fun setGuestBrowserAgentControlEnabled(enabled: Boolean) {

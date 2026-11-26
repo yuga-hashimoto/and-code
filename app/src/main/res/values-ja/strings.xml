@@ -655,6 +655,14 @@
     <string name="send_behavior_interrupt">割り込み</string>
     <string name="send_behavior_queue">キュー</string>
     <string name="enter_to_send_row">Enter で送信</string>
+    <string name="agent_instructions_row">共通ルール</string>
+    <string name="agent_instructions_title">共通ルール</string>
+    <string name="agent_instructions_description">ここに書いた指示は OpenCode / Claude Code / Antigravity / Codex のすべてに渡されます。次回エージェント起動時に反映されます。</string>
+    <string name="agent_instructions_label">追加の指示</string>
+    <string name="agent_instructions_hint">例: 回答は短く。終了前にテストを実行する。</string>
+    <string name="agent_instructions_save">保存</string>
+    <string name="agent_instructions_builtin_title">AndCode の共通コンテキスト（読み取り専用）</string>
+    <string name="agent_instructions_saved">保存しました。次回エージェント起動時に反映されます。</string>
 
     <string name="section_sessions_settings">セッション</string>
     <string name="auto_archive_stale_row">未更新のチャットを自動アーカイブ</string>

@@ -21,6 +21,13 @@ class LocalRuntimeInstaller(
     private val manifestReader: LocalRuntimeManifestReader = LocalRuntimeManifestReader(context),
     private val downloader: VerifiedRuntimeDownloader = VerifiedRuntimeDownloader(httpClient),
     private val accessCoordinator: LocalRuntimeAccessCoordinator = LocalRuntimeAccessCoordinator(),
+    /**
+     * The user's own addition to the shared agent context, read when the files are written.
+     *
+     * A provider rather than a value so a change made in Settings takes effect on the next
+     * runtime start without rebuilding the installer.
+     */
+    private val userAgentInstructions: () -> String = { "" },
 ) {
     private val json: Json =
         Json {
@@ -143,7 +150,7 @@ class LocalRuntimeInstaller(
                         null
                     }
                 if (antigravityRootfs != null) {
-                    ensureAndCodeAgentContext(antigravityRootfs, context)
+                    ensureAndCodeAgentContext(antigravityRootfs, context, userAgentInstructions())
                     copyCaCertificates(rootfs, antigravityRootfs)
                     // Keep the Android-vision tool surface added for Claude/OpenCode available
                     // to agy's Debian tool runner as well. The scripts still fail closed when adb
@@ -156,7 +163,7 @@ class LocalRuntimeInstaller(
                 // the whole environment directory, so without this the user is signed out of every
                 // agent whenever another one is added or the runtime is reinstalled.
                 carryOverHomeDirectory(File(active, "rootfs"), rootfs)
-                ensureAndCodeAgentContext(rootfs, context)
+                ensureAndCodeAgentContext(rootfs, context, userAgentInstructions())
                 onShared(
                     0.91f,
                     context.getString(
@@ -278,8 +285,8 @@ class LocalRuntimeInstaller(
                 File(active, "antigravity-rootfs").takeIf { metadata.has(LocalAgent.ANTIGRAVITY) && it.isDirectory },
             )
         }?.also { installed ->
-            ensureAndCodeAgentContext(installed.rootfs, context)
-            installed.antigravityRootfs?.let { ensureAndCodeAgentContext(it, context) }
+            ensureAndCodeAgentContext(installed.rootfs, context, userAgentInstructions())
+            installed.antigravityRootfs?.let { ensureAndCodeAgentContext(it, context, userAgentInstructions()) }
         }
 
     /** Metadata of the active install, without requiring the command suite to be extractable. */

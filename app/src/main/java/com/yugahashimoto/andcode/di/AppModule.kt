@@ -77,11 +77,13 @@ val appModule =
         single {
             val runtimeDirectory: File = get()
             val abi = Build.SUPPORTED_ABIS.firstOrNull().orEmpty()
+            val settings: SecureSettingsRepository = get()
             LocalRuntimeInstaller(
                 context = androidContext(),
                 runtimeDirectory = runtimeDirectory,
                 abi = abi,
                 accessCoordinator = get(),
+                userAgentInstructions = { settings.agentInstructions },
             )
         }
 

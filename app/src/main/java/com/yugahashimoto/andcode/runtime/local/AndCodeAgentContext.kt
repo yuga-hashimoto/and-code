@@ -30,22 +30,41 @@ private val AGENT_CONTEXT_PATHS =
         "root/.config/opencode/and-code-context.md",
         "root/.claude/CLAUDE.md",
         "root/.gemini/GEMINI.md",
+        // Codex reads AGENTS.md from its home (CODEX_HOME, /root/.codex here) as global guidance.
+        "root/.codex/AGENTS.md",
     )
 
 internal fun ensureAndCodeAgentContext(
     rootfs: File,
     context: Context,
+    userInstructions: String = "",
 ) {
     val agentContext =
         context.assets.open(AND_CODE_AGENT_CONTEXT_ASSET).use { input ->
             input.readBytes()
         }
-    installAndCodeAgentContext(rootfs, agentContext)
+    installAndCodeAgentContext(rootfs, agentContext, userInstructions)
 }
 
 /**
- * Writes the AndCode environment blurb into each coding agent's instructions file (Claude Code's
- * CLAUDE.md, Gemini's GEMINI.md, and OpenCode's instructions file).
+ * Appends the user's own instructions to the bundled blurb, so one rule applies to every agent.
+ *
+ * The user text is kept after the bundled part and under its own heading: the bundled blurb is
+ * AndCode's, and mixing the two made later edits to either one unreadable. Blank/whitespace-only
+ * text means "no addition" and leaves the bundled bytes untouched.
+ */
+internal fun composeAgentContext(
+    agentContext: ByteArray,
+    userInstructions: String,
+): ByteArray {
+    val addition = userInstructions.trim()
+    if (addition.isEmpty()) return agentContext
+    return agentContext + "\n\n## User instructions\n\n$addition\n".toByteArray(Charsets.UTF_8)
+}
+
+/**
+ * Writes the AndCode environment blurb into each coding agent's instructions file (OpenCode's
+ * instructions file, Claude Code's CLAUDE.md, Gemini's GEMINI.md and Codex's AGENTS.md).
  *
  * These are the exact files users write their own custom instructions into, and this runs on
  * every runtime start, so it must never clobber content the user has added. A path is only
@@ -61,34 +80,37 @@ internal fun ensureAndCodeAgentContext(
  * This function is best-effort from top to bottom: it must never abort or throw out of runtime
  * startup, which calls it on every launch (four call sites in `LocalRuntimeInstaller`). Every
  * filesystem-touching step -- canonicalizing `rootfs` itself, the staging copy, the written-hashes
- * sidecar, and each of the three instruction files -- is handled independently, and a filesystem
+ * sidecar, and each instruction file -- is handled independently, and a filesystem
  * problem on any single one of them is skipped rather than propagated:
  * - Canonicalizing `rootfs` can itself throw; that falls back to its absolute path rather than
  *   aborting before any guard below even runs (see the fallback comment at the call site).
  * - The staging copy at [RUNTIME_CONTEXT_PATH] is only a convenience artifact nothing else reads,
  *   so an unmanageable or unwritable path there is simply skipped.
  * - The written-hashes sidecar being unmanageable, unreadable, oversized, or unwritable does not
- *   stop the three instruction files below from being (re)installed. Any of those is treated as
+ *   stop the instruction files below from being (re)installed. Any of those is treated as
  *   an empty history: a target that already exists and differs from the current blurb is then
  *   treated as user-edited and left alone, which is the safe direction. A sidecar that can't be
  *   persisted afterwards simply means the write is retried on the next run; the install itself
  *   still succeeds.
- * - Each of the three instruction files is handled independently: hashing or writing one target
- *   can throw (an unreadable file, a parent path replaced with a file, permission errors) without
- *   affecting the other two, and without recording that target's hash as successfully written.
+ * - Each instruction file is handled independently: hashing or writing one target can throw
+ *   (an unreadable file, a parent path replaced with a file, permission errors) without affecting
+ *   the others, and without recording that target's hash as successfully written.
  *
  * The trade-off is that a failed install is silent: there is no signal back to the caller when a
  * path was skipped, by design, since surfacing or retrying failures is not worth risking runtime
  * startup over a best-effort convenience file.
  *
- * The blurb's hash is computed directly from [agentContext] (see [sha256Hex]) rather than from
+ * The composed blurb's hash is computed directly from [agentContext] plus any user addition
+ * (see [composeAgentContext] and [sha256Hex]) rather than from
  * the staging file, so installing the instruction files never depends on that staging copy
  * existing.
  */
 internal fun installAndCodeAgentContext(
     rootfs: File,
     agentContext: ByteArray,
+    userInstructions: String = "",
 ) {
+    val composedContext = composeAgentContext(agentContext, userInstructions)
     // Best-effort: File.canonicalFile can throw IOException on a filesystem loop or I/O error
     // around rootfs itself, which must not crash runtime startup before any guard below even
     // runs. Falling back to absoluteFile only ever makes manageablePathOrNull's rootfs-prefix
@@ -102,7 +124,7 @@ internal fun installAndCodeAgentContext(
         } catch (e: IOException) {
             rootfs.absoluteFile
         }
-    val agentContextHash = sha256Hex(agentContext)
+    val agentContextHash = sha256Hex(composedContext)
 
     // Best-effort: this is only the app's own staging copy of the blurb; nothing below depends on
     // it existing, so neither an unmanageable path nor a failing write here may stop the real
@@ -112,7 +134,7 @@ internal fun installAndCodeAgentContext(
     manageablePathOrNull(rootfsCanonical, File(rootfs, RUNTIME_CONTEXT_PATH))?.let { source ->
         try {
             source.parentFile?.mkdirs()
-            source.writeBytes(agentContext)
+            source.writeBytes(composedContext)
         } catch (e: IOException) {
             // Skip the staging copy -- see the comment above.
         }
@@ -128,7 +150,7 @@ internal fun installAndCodeAgentContext(
         val target = manageablePathOrNull(rootfsCanonical, File(rootfs, relativePath)) ?: return@forEach
         // Best-effort per target: hashing or writing this one path can still throw (unreadable
         // file, a parent replaced with a file, permission errors) even though manageablePathOrNull
-        // passed moments ago. That must skip only this target, not abort the other two or runtime
+        // passed moments ago. That must skip only this target, not abort the others or runtime
         // startup, which is what the KDoc promises. If the write below fails partway, currentHash
         // is left null/stale and writtenHashes is never touched, so this target's hash is not
         // recorded as successfully written -- a later run will not mistake a failed write for
@@ -149,7 +171,7 @@ internal fun installAndCodeAgentContext(
             }
             if (currentHash != agentContextHash) {
                 target.parentFile?.mkdirs()
-                target.writeBytes(agentContext)
+                target.writeBytes(composedContext)
             }
             if (writtenHashes[relativePath] != agentContextHash) {
                 writtenHashes[relativePath] = agentContextHash
