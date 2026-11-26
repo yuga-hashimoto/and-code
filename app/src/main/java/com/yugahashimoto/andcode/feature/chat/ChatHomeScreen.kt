@@ -58,10 +58,12 @@ import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CameraAlt
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.PendingActions
@@ -163,9 +165,11 @@ import com.yugahashimoto.andcode.feature.report.AiContentReportDialog
 import com.yugahashimoto.andcode.feature.report.AiReportReason
 import com.yugahashimoto.andcode.feature.workspace.GitHubAutoAttachChips
 import com.yugahashimoto.andcode.feature.workspace.GitHubReference
+import com.yugahashimoto.andcode.feature.workspace.WorkspaceFolders
 import com.yugahashimoto.andcode.runtime.PermissionResponse
 import com.yugahashimoto.andcode.runtime.RuntimeTarget
 import com.yugahashimoto.andcode.runtime.SubscriptionRateLimit
+import com.yugahashimoto.andcode.runtime.WorkspaceRef
 import com.yugahashimoto.andcode.runtime.local.AntigravityPermissionMode
 import com.yugahashimoto.andcode.runtime.local.ClaudePermissionMode
 import com.yugahashimoto.andcode.runtime.local.SystemPromptPreset
@@ -173,6 +177,7 @@ import com.yugahashimoto.andcode.ui.components.StatusChip
 import com.yugahashimoto.andcode.ui.components.VolumeMeter
 import com.yugahashimoto.andcode.ui.components.systemPromptPresetLabel
 import com.yugahashimoto.andcode.ui.theme.AndCodeTheme
+import com.yugahashimoto.andcode.ui.theme.CodeFontFamily
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonPrimitive
@@ -319,6 +324,8 @@ fun ChatHomeScreen(
     canRefreshRateLimits: Boolean = false,
     rateLimitsRefreshing: Boolean = false,
     onRefreshRateLimits: () -> Unit = {},
+    workspaces: List<WorkspaceRef> = emptyList(),
+    onSelectWorkspace: (String) -> Unit = {},
 ) {
     // Saved state, not plain remember: the Activity is recreated on rotation and other
     // configuration changes, and a remembered field would come back empty. The TextFieldValue
@@ -500,14 +507,20 @@ fun ChatHomeScreen(
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background),
         ) {
+            val projectLabel =
+                remember(state.sessionId, state.sessionDirectory, state.selectedWorkspacePath, workspaces) {
+                    resolveChatProjectLabel(state, workspaces)
+                }
+            val canSwitchProject = state.sessionId == null && workspaces.size > 1
             CenterAlignedTopAppBar(
                 title = {
-                    Text(
-                        text = state.sessionTitle.ifBlank { stringResource(R.string.chat_home_title) },
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
+                    ChatTopBarTitle(
+                        title = state.sessionTitle.ifBlank { stringResource(R.string.chat_home_title) },
+                        projectLabel = projectLabel,
+                        workspaces = workspaces,
+                        selectedWorkspacePath = state.selectedWorkspacePath,
+                        canSwitchProject = canSwitchProject,
+                        onSelectWorkspace = onSelectWorkspace,
                     )
                 },
                 navigationIcon = {
@@ -997,6 +1010,153 @@ fun ChatHomeScreen(
                 }
             },
         )
+    }
+}
+
+/**
+ * Resolves the active project's short display name for the chat header.
+ *
+ * An open session is bound to its own [ChatUiState.sessionDirectory], never to whatever workspace
+ * the composer last happened to select for blank chats. Before the first message creates a
+ * session, [ChatUiState.selectedWorkspacePath] is the project that will own it.
+ */
+internal fun resolveChatProjectLabel(
+    state: ChatUiState,
+    workspaces: List<WorkspaceRef>,
+): String? {
+    val activePath =
+        if (state.sessionId != null) {
+            state.sessionDirectory?.takeIf { it.isNotBlank() }
+        } else {
+            state.selectedWorkspacePath?.takeIf { it.isNotBlank() }
+        } ?: return null
+    val normalized = WorkspaceFolders.normalize(activePath)
+    val matched = workspaces.firstOrNull { WorkspaceFolders.normalize(it.path) == normalized }
+    return matched?.name?.takeIf { it.isNotBlank() } ?: WorkspaceFolders.displayName(normalized)
+}
+
+@Composable
+private fun ChatTopBarTitle(
+    title: String,
+    projectLabel: String?,
+    workspaces: List<WorkspaceRef>,
+    selectedWorkspacePath: String?,
+    canSwitchProject: Boolean,
+    onSelectWorkspace: (String) -> Unit,
+) {
+    var projectMenuExpanded by remember { mutableStateOf(false) }
+    LaunchedEffect(canSwitchProject) {
+        if (!canSwitchProject) projectMenuExpanded = false
+    }
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(
+            text = title,
+            style =
+                if (projectLabel != null) {
+                    MaterialTheme.typography.titleMedium
+                } else {
+                    MaterialTheme.typography.titleLarge
+                },
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (projectLabel != null) {
+            Box {
+                Row(
+                    modifier =
+                        Modifier
+                            .clip(RoundedCornerShape(100.dp))
+                            .then(
+                                if (canSwitchProject) {
+                                    Modifier.clickable { projectMenuExpanded = true }
+                                } else {
+                                    Modifier
+                                },
+                            )
+                            .padding(horizontal = 6.dp, vertical = 1.dp)
+                            .testTag("chat-project-label"),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Folder,
+                        contentDescription = stringResource(R.string.cd_folder),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(12.dp),
+                    )
+                    Text(
+                        text = projectLabel,
+                        modifier = Modifier.weight(1f, fill = false),
+                        style = MaterialTheme.typography.labelSmall,
+                        fontFamily = CodeFontFamily,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (canSwitchProject) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowDropDown,
+                            contentDescription = stringResource(R.string.cd_expand_dropdown),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(14.dp),
+                        )
+                    }
+                }
+                if (canSwitchProject) {
+                    DropdownMenu(
+                        expanded = projectMenuExpanded,
+                        onDismissRequest = { projectMenuExpanded = false },
+                    ) {
+                        val normalizedSelected = selectedWorkspacePath?.let(WorkspaceFolders::normalize)
+                        workspaces.forEach { workspace ->
+                            val selected =
+                                normalizedSelected != null &&
+                                    WorkspaceFolders.normalize(workspace.path) == normalizedSelected
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        text = workspace.name,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Folder,
+                                        contentDescription = null,
+                                        tint =
+                                            if (selected) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                            },
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                },
+                                trailingIcon =
+                                    if (selected) {
+                                        {
+                                            Icon(
+                                                imageVector = Icons.Default.Check,
+                                                contentDescription = null,
+                                                tint = MaterialTheme.colorScheme.primary,
+                                                modifier = Modifier.size(16.dp),
+                                            )
+                                        }
+                                    } else {
+                                        null
+                                    },
+                                onClick = {
+                                    projectMenuExpanded = false
+                                    onSelectWorkspace(workspace.path)
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
     }
 }
 

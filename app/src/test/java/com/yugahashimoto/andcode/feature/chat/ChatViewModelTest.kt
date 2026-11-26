@@ -2133,6 +2133,46 @@ class ChatViewModelTest {
             assertEquals("look", request.text)
         }
 
+    @Test
+    fun `creating a session records its directory on uiState`() =
+        runTest(dispatcher) {
+            val backend = FakeBackend()
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+
+            viewModel.selectWorkspace("/workspace/and-code")
+            viewModel.sendMessage("hello")
+            advanceUntilIdle()
+
+            assertEquals("/workspace/and-code", viewModel.uiState.value.sessionDirectory)
+        }
+
+    @Test
+    fun `opening a session preserves caller directory until backend confirms it`() =
+        runTest(dispatcher) {
+            val backend =
+                FakeBackend().apply {
+                    sessionsById =
+                        mapOf(
+                            "s-parent" to
+                                OpenCodeSession(
+                                    id = "s-parent",
+                                    title = "Parent",
+                                    directory = "/workspace/alpha",
+                                ),
+                        )
+                }
+            val viewModel = ChatViewModel(backend)
+            advanceUntilIdle()
+            viewModel.selectWorkspace("/workspace/beta")
+
+            viewModel.openSession("s-parent", "Parent", directory = "/workspace/alpha")
+            assertEquals("/workspace/alpha", viewModel.uiState.value.sessionDirectory)
+
+            advanceUntilIdle()
+            assertEquals("/workspace/alpha", viewModel.uiState.value.sessionDirectory)
+        }
+
     private class InMemoryDraftStore : DraftStore {
         private val drafts = mutableMapOf<String, Draft>()
 

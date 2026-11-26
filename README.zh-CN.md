@@ -11,6 +11,10 @@
 
 AndCode 是一款原生 Android 图形界面应用，将 AI 编程智能体带到你的手机上。你可以通过以触控为核心的界面与 [OpenCode](https://github.com/sst/opencode)、[Claude Code](https://github.com/anthropics/claude-code)、[Google Antigravity](https://github.com/google-antigravity/antigravity-cli) 和 [OpenAI Codex](https://github.com/openai/codex) 对话——在设备上使用时无需终端、SSH 或 PC。它通过 PRoot 在设备上运行智能体运行时，或远程连接到你在 PC/Mac/Linux 上现有的 OpenCode 服务器。
 
+<p align="center">
+  <a href="https://f-droid.org/packages/com.yugahashimoto.andcode/"><img src="https://f-droid.org/badge/get-it-on-zh-cn.png" alt="在 F-Droid 获取" height="80" /></a>
+</p>
+
 [Releases](https://github.com/yuga-hashimoto/and-code/releases/latest)
 
 [English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (Brasil)](README.pt-BR.md) | [Русский](README.ru.md) | [العربية](README.ar.md)
