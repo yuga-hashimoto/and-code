@@ -20,7 +20,7 @@ ELFs, package installation, and PRoot. If that fails, evaluate E before F. Do no
 
 The scaffold uses `com.yugahashimoto.andcode.play`, retaining minSdk 26 and targetSdk 36 only for
 Play. A separate ID prevents in-place updates and data migration across distributions; users can
-install both side by side. Data transfer needs an explicit, tested export/import workflow. Existing
+install both side by side. The Play manifest assigns local OpenCode port 4107 rather than 4097 so both distributions can run side by side; arbitrary port collisions and live coexistence still require testing. Data transfer needs an explicit, tested export/import workflow. Existing
 GitHub and official F-Droid signing certificate fingerprints, Play application ID availability,
 upgrade expectations, and app-signing key custody have not been verified. Same ID would require
 compatible signer lineage and coordinated version codes, and could replace features across stores.

@@ -14,7 +14,7 @@ Do not submit the experimental Play flavor.
    Antigravity download source. Audit browser automation, secrets and all data transfers.
 6. Verify GitHub/F-Droid signing certificates and choose final Play ID and dedicated upload-key
    config. Implement explicit export/import and ensure no unintentional cross-store upgrades.
-7. Fix the currently failing 32-bit loader alignment check and make the manually dispatched CI job a PR gate; run regression and
+7. Resolve the 32-bit loader alignment findings and make the manually dispatched investigation job an appropriate PR gate; run regression and
    end-to-end device tests in TEST_REPORT.md. Fix AGP/API 36 compatibility warning.
 8. Update Play-specific privacy policy, Data safety and permissions declarations based on actual
    artifacts; fill REVIEW_GUIDE after the implementation is final.
