@@ -71,7 +71,6 @@ class PullRequestStatusRepository(
     private val fetchedAt = ConcurrentHashMap<String, Long>()
     private val inFlight = ConcurrentHashMap.newKeySet<String>()
 
-
     init {
         // A chat remembered from an earlier run has its badge ready the moment the drawer opens.
         track(sessionRefs.value.values.flatten())
