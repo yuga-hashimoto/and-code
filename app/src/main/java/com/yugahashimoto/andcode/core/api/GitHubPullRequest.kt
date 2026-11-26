@@ -127,5 +127,4 @@ private fun OpenCodePart.openedPullRequest(): PullRequestRef? =
         else -> null
     }
 
-private fun JsonElement.jsonPrimitiveOrNull(): String? =
-    (this as? JsonPrimitive)?.contentOrNull ?: (this as? JsonPrimitive)?.content
+private fun JsonElement.jsonPrimitiveOrNull(): String? = (this as? JsonPrimitive)?.contentOrNull ?: (this as? JsonPrimitive)?.content
