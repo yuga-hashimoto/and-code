@@ -28,6 +28,7 @@ import com.yugahashimoto.andcode.data.repository.PullRequestStatusRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeActivityRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeCatalogRepository
 import com.yugahashimoto.andcode.data.repository.SessionAutoArchiver
+import com.yugahashimoto.andcode.data.repository.SessionPullRequestDiscovery
 import com.yugahashimoto.andcode.data.schedule.ScheduleRepository
 import com.yugahashimoto.andcode.data.settings.AppPreferencesRepository
 import com.yugahashimoto.andcode.di.appModule
@@ -234,6 +235,9 @@ class AndCodeApplication : Application() {
         private set
 
     lateinit var pullRequestStatusRepository: PullRequestStatusRepository
+        private set
+
+    lateinit var sessionPullRequestDiscovery: SessionPullRequestDiscovery
         private set
 
     lateinit var deviceStorageAccess: DeviceStorageAccess
@@ -543,6 +547,14 @@ class AndCodeApplication : Application() {
                             },
                     ),
                 messages = AndroidRuntimeCatalogMessages(this),
+            )
+        // Learns each recent chat's pull requests from its transcript, so the drawer can badge a
+        // chat the user has never opened. Built after the registry it reads targets from.
+        sessionPullRequestDiscovery =
+            SessionPullRequestDiscovery(
+                scope = applicationScope,
+                loadMessages = { ref -> runtimeRegistry.target(ref.runtimeId)?.listMessages(ref.session.id) },
+                onDiscovered = pullRequestStatusRepository::trackSession,
             )
         activityRepository =
             RuntimeActivityRepository(
