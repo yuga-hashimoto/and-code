@@ -13,13 +13,13 @@ compatibility approval. SDK location was set via `ANDROID_HOME`; Java 21 was use
 | AAB | ~16 MiB; unsigned (`jarsigner -verify`); bundletool 1.18.2 `validate` PASS; config reports `PAGE_ALIGNMENT_16K`. |
 | Debug APK zip alignment | `zipalign -c -P 16 -v 4` PASS; compressed libraries are not proof of ELF alignment. |
 | APK and AAB ELF LOAD alignment | All inspected 64-bit objects report >= 0x4000. Both packaged `libopencode_android_proot_loader32.so` ELF32 executables report 0x1000. The strict script fails. Impact on 16 KB devices and applicable 32-bit behavior remain unverified; do not declare compatibility. |
-| 16 KB emulator smoke test | Android API 36 Google APIs arm64 image, `getconf PAGE_SIZE` = 16384: Play debug install, Activity launch and onboarding start PASS. Full runtime install/execution results must be recorded separately. |
+| 16 KB emulator smoke test | Android API 36 Google APIs arm64 image, `getconf PAGE_SIZE` = 16384: Play debug install and Activity launch PASS; Alpine/OpenCode 1.19.6 setup reached ready, and PRoot plus OpenCode processes and a listener on 127.0.0.1:4107 were observed. Agent authentication/chat and 32-bit loader execution were not tested. |
 | Physical device smoke test | Android API 36, arm64, 4096-byte pages: new debug APK installation and Activity launch succeeded; permission prompt appeared. Experimental package was then removed. No setup or agent test was run. |
 
 The automated workflow `.github/workflows/play-validation.yml` is manually dispatched during this
 investigation. It records ELF findings as warnings and artifacts; the standalone strict checker fails on the two 32-bit loaders. A successful investigation job is not release approval. The workflow has not been run on GitHub Actions.
 
-Not yet verified: complete fresh setup, all agent installs/auth/chat, sessions, edits, Git, diffs, MCP,
+Not yet verified: complete onboarding, other agent installs, all provider auth/chat, sessions, edits, Git, diffs, MCP,
 terminal, browser/automation, remote access, schedules, background/permission denial, app/device
 restart, offline recovery, downloads and updates, data migration, 16 KB execution and x86_64
 device operation. No Play submission or signing-key operation performed.
