@@ -457,7 +457,6 @@
 
     <string name="menu_description">القائمة</string>
     <string name="drawer_search_description">بحث</string>
-    <string name="drawer_recent_chats">الدردشات الأخيرة</string>
     <string name="drawer_project_default">افتراضي</string>
     <string name="drawer_projects_title">المشاريع</string>
     <string name="drawer_agents_title">الوكلاء</string>

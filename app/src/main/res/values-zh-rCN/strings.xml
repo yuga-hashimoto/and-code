@@ -447,7 +447,6 @@
 
     <string name="menu_description">菜单</string>
     <string name="drawer_search_description">搜索</string>
-    <string name="drawer_recent_chats">最近的聊天</string>
     <string name="drawer_project_default">默认</string>
     <string name="drawer_projects_title">项目</string>
     <string name="drawer_agents_title">智能体</string>

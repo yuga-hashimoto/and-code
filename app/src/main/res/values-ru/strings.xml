@@ -453,7 +453,6 @@
 
     <string name="menu_description">Меню</string>
     <string name="drawer_search_description">Поиск</string>
-    <string name="drawer_recent_chats">Недавние чаты</string>
     <string name="drawer_project_default">По умолчанию</string>
     <string name="drawer_projects_title">Проекты</string>
     <string name="drawer_agents_title">Агенты</string>
