@@ -1,0 +1,64 @@
+name: Experimental Play validation
+
+# The Play variant is not submission-ready. Once its known release blockers are fixed,
+# add this job to pull_request checks; until then it can be run explicitly for investigation.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Static analysis, tests, lint, APK and AAB
+        run: >-
+          ./gradlew detekt spotlessCheck
+          :app:assemblePlayDebug :app:assemblePlayRelease :app:bundlePlayRelease
+          :app:testPlayDebugUnitTest :app:lintPlayDebug
+          :app:testGithubDebugUnitTest :app:testFdroidDebugUnitTest
+      - name: Inspect merged Play manifest
+        run: |
+          python3 - <<'PY'
+          import xml.etree.ElementTree as ET
+          path = 'app/build/intermediates/merged_manifests/playDebug/processPlayDebugManifest/AndroidManifest.xml'
+          root = ET.parse(path).getroot()
+          android = '{http://schemas.android.com/apk/res/android}'
+          assert root.attrib['package'] == 'com.yugahashimoto.andcode.play'
+          assert int(root.find('uses-sdk').attrib[android + 'targetSdkVersion']) >= 36
+          PY
+      - name: Validate bundle with pinned bundletool
+        run: |
+          curl -fsSL --retry 3 -o "$RUNNER_TEMP/bundletool.jar" https://github.com/google/bundletool/releases/download/1.18.2/bundletool-all-1.18.2.jar
+          echo '378b5434cd1378bef6b2bc527b8c7f0ff2584b273830335bce54d6d0813c8584  '"$RUNNER_TEMP/bundletool.jar" | sha256sum -c -
+          java -jar "$RUNNER_TEMP/bundletool.jar" validate --bundle=app/build/outputs/bundle/playRelease/app-play-release.aab
+      - name: Check APK ZIP alignment
+        run: |
+          build_tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
+          "$build_tools/zipalign" -c -P 16 -v 4 app/build/outputs/apk/play/debug/app-play-debug.apk
+      - name: Check all ELF LOAD alignments
+        run: |
+          python3 -m unittest discover -s scripts/tests -p 'test_check_android_elf_alignment.py'
+          status=0
+          python3 scripts/check_android_elf_alignment.py app/build/outputs/apk/play/debug/app-play-debug.apk || status=1
+          python3 scripts/check_android_elf_alignment.py app/build/outputs/bundle/playRelease/app-play-release.aab || status=1
+          exit "$status"
+      - name: Save experimental artifacts and reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: experimental-play-validation
+          path: |
+            app/build/outputs/apk/play/
+            app/build/outputs/bundle/playRelease/
+            app/build/reports/
+            app/build/intermediates/merged_manifests/playDebug/
+          if-no-files-found: warn

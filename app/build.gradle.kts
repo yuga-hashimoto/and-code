@@ -121,7 +121,8 @@ val hasReleaseSigning =
 
 android {
     namespace = "com.yugahashimoto.andcode"
-    compileSdk = 35
+    // The Play variant targets API 36; the other distributions keep their existing target.
+    compileSdk = 36
 
     // F-Droid's scanner rejects the encrypted "Dependency metadata" signing block AGP adds.
     dependenciesInfo {
@@ -162,6 +163,13 @@ android {
         // "githubImplementation" dependencies below.
         create("fdroid") {
             dimension = "distribution"
+        }
+        // Experimental only: this variant is not yet eligible for Play submission. See
+        // docs/play-store/REMAINING_TASKS.md before distributing it.
+        create("play") {
+            dimension = "distribution"
+            applicationIdSuffix = ".play"
+            targetSdk = 36
         }
     }
 
@@ -233,6 +241,8 @@ android {
     }
     sourceSets {
         getByName("main").jniLibs.srcDir(generatedRuntimeJni)
+        // Reuse the no-op diagnostics implementations; Play does not include Firebase.
+        getByName("play").java.srcDir("src/fdroid/java")
     }
     packaging {
         resources {
@@ -244,6 +254,16 @@ android {
     }
     androidResources {
         noCompress += "tflite"
+    }
+}
+
+// These plugins are applied project-wide for GitHub. Play has no Firebase dependencies or
+// Firebase project; prevent the plugins from requiring a matching google-services client.
+tasks.configureEach {
+    if (name.contains("Play") &&
+        (name.startsWith("process") && name.endsWith("GoogleServices") || name.contains("Crashlytics"))
+    ) {
+        enabled = false
     }
 }
 
