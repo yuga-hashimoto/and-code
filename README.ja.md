@@ -11,6 +11,10 @@
 
 AndCodeはAIコーディングエージェントをスマートフォンで使えるようにするネイティブAndroid GUIアプリです。[OpenCode](https://github.com/sst/opencode)、[Claude Code](https://github.com/anthropics/claude-code)、[Google Antigravity](https://github.com/google-antigravity/antigravity-cli)、[OpenAI Codex](https://github.com/openai/codex)とタッチ操作中心のインターフェースで対話できます — 端末エミュレータもSSHもPCも、オンデバイス実行には一切不要です。PRootによるオンデバイスランタイムか、PC/Mac/Linux上の既存OpenCodeサーバーへのリモート接続で動作します。
 
+<p align="center">
+  <a href="https://f-droid.org/packages/com.yugahashimoto.andcode/"><img src="https://f-droid.org/badge/get-it-on-ja.png" alt="F-Droidで手に入れよう" height="80" /></a>
+</p>
+
 [Releases](https://github.com/yuga-hashimoto/and-code/releases/latest)
 
 [English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md) | [Español](README.es.md) | [Français](README.fr.md) | [Português (Brasil)](README.pt-BR.md) | [Русский](README.ru.md) | [العربية](README.ar.md)
