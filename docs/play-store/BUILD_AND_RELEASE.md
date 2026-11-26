@@ -9,6 +9,13 @@ The Play flavor is experimental and must not be uploaded or published. From the 
 ./gradlew :app:testGithubDebugUnitTest :app:testFdroidDebugUnitTest
 ```
 
+For artifacts that need GitHub sign-in, set the public OAuth App client ID as `GITHUB_CLIENT_ID`
+in the build environment (or as an untracked Gradle property) before building. The Play workflow
+uses the repository variable `AND_CODE_GITHUB_CLIENT_ID`, as the existing GitHub release workflow
+does. If it is absent, the build still works for experimentation but GitHub sign-in and the
+current GitHub-based reporting flow are unavailable; CI emits a warning. Verify the chosen OAuth
+application and device-flow authorization for the Play distribution before release.
+
 Set `ANDROID_HOME` to the installed SDK if necessary. The existing GitHub/F-Droid signing configuration uses `AND_CODE_STORE_FILE`,
 `AND_CODE_STORE_PASSWORD`, `AND_CODE_KEY_ALIAS`, and `AND_CODE_KEY_PASSWORD`. The Play release
 uses only `AND_CODE_PLAY_STORE_FILE`, `AND_CODE_PLAY_STORE_PASSWORD`, `AND_CODE_PLAY_KEY_ALIAS`,

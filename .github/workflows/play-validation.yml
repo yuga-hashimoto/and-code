@@ -22,11 +22,29 @@ jobs:
       - name: Test bundled runtime asset verification
         run: python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_runtime_assets.py'
       - name: Static analysis, tests, lint, APK and AAB
-        run: >-
-          ./gradlew detekt spotlessCheck
-          :app:assemblePlayDebug :app:assemblePlayRelease :app:bundlePlayRelease
-          :app:testPlayDebugUnitTest :app:lintPlayDebug
-          :app:testGithubDebugUnitTest :app:testFdroidDebugUnitTest
+        env:
+          GITHUB_CLIENT_ID: ${{ vars.AND_CODE_GITHUB_CLIENT_ID }}
+        run: |
+          if [ -z "$GITHUB_CLIENT_ID" ]; then
+            echo '::warning::AND_CODE_GITHUB_CLIENT_ID is not set; GitHub sign-in and AI reports are unavailable in these artifacts.'
+          fi
+          ./gradlew detekt spotlessCheck \
+            :app:assemblePlayDebug :app:assemblePlayRelease :app:bundlePlayRelease \
+            :app:testPlayDebugUnitTest :app:lintPlayDebug \
+            :app:testGithubDebugUnitTest :app:testFdroidDebugUnitTest \
+            :app:assemblePlayDebugAndroidTest :app:assembleGithubDebugAndroidTest :app:assembleFdroidDebugAndroidTest
+      - name: Verify Play-only instrumented test isolation
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          for flavor in ('play', 'github', 'fdroid'):
+              apk = Path(f'app/build/outputs/apk/androidTest/{flavor}/debug/app-{flavor}-debug-androidTest.apk')
+              with ZipFile(apk) as archive:
+                  found = any(b'PlayBundledAssetsInstrumentedTest' in archive.read(name)
+                              for name in archive.namelist() if name.endswith('.dex'))
+              assert found == (flavor == 'play'), (flavor, found)
+          PY
       - name: Inspect merged Play manifest
         run: |
           python3 - <<'PY'

@@ -38,6 +38,9 @@ device operation. No Play submission or signing-key operation performed.
 - After incorporating `origin/main` at `adfcfb70`, the same build, Play lint and format gates passed
   again; each flavor reported 1,886 unit tests with zero failures or errors. The generated Play
   assets were rebuilt from an absent directory and validated, and bundletool validated the new AAB.
+- `:app:assembleFdroidRelease -Pandcode.fdroidBuild=true` passed without a GitHub client ID, using
+  the normal pinned-mirror native assets. This does not test the separate source-built native
+  dependencies or reproduce an F-Droid build server artifact.
 - Play report dialog: two Android 16 arm64 emulator UI tests passed with a mocked submit callback.
   This is not a live GitHub report and does not establish accountless reporting.
 - Play Alpine: after packaging, both `.tgz` assets matched the manifest SHA-256. On an Android 16
@@ -58,4 +61,6 @@ device operation. No Play submission or signing-key operation performed.
   and PRoot plus OpenCode 1.19.6 started. This does not establish full offline setup or Play policy
   compliance for downloaded executable packages.
 - Three instrumented tests passed on the 16 KB emulator: two report-dialog tests and one test
-  opening and hashing all four bundled ABI/archive assets. Report submission was mocked.
+  opening and hashing all four bundled ABI/archive assets. Report submission was mocked. After
+  moving the bundle test to `androidTestPlay`, the same three tests passed again, all three flavor
+  test APKs built, and their dex files confirmed that the bundle test exists only in Play.
