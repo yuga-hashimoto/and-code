@@ -25,9 +25,37 @@ from urllib.parse import urlparse
 
 COMMAND_FILE = Path(".and-code") / "browser-command.json"
 STATUS_FILE = Path(".and-code") / "browser-status.json"
+# The app publishes its devtools socket name here: /proc/net/unix is unreadable from the guest on
+# current Android (SELinux denies it to untrusted_app), so the socket cannot be found by scanning.
+DEVTOOLS_FILE = Path(".and-code") / "browser-devtools.txt"
+DEVTOOLS_PREFIX = "webview_devtools_remote_"
+
+
+def _published_devtools_socket() -> str | None:
+    """The socket name the app published, if something is actually listening on it."""
+    try:
+        name = DEVTOOLS_FILE.read_text(encoding="ascii").strip()
+    except (OSError, UnicodeDecodeError):
+        return None
+    if not name.startswith(DEVTOOLS_PREFIX):
+        return None
+    probe = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    probe.settimeout(2)
+    try:
+        probe.connect("\0" + name)
+    except OSError:
+        return None
+    finally:
+        probe.close()
+    return name
 
 
 def _find_devtools_socket() -> str | None:
+    # The published name is this app's own socket; prefer it so a scan can never pick another
+    # app's WebView (several processes use the same ``webview_devtools_remote_<pid>`` prefix).
+    published = _published_devtools_socket()
+    if published is not None:
+        return published
     try:
         with open("/proc/net/unix", encoding="ascii") as fh:
             lines = fh.readlines()
@@ -48,6 +76,52 @@ def _find_devtools_socket() -> str | None:
 
 class CdpError(RuntimeError):
     pass
+
+
+def _read_http_body(sock: socket.socket) -> bytes:
+    """Reads one HTTP response body, honouring Content-Length or chunked encoding.
+
+    The WebView's ``/json`` endpoint keeps the connection open after the body and may end it with
+    whitespace, so waiting for the socket to close (or for the text to end with ``]``) blocks until
+    the timeout on every call. Read exactly what the headers promise instead.
+    """
+    data = b""
+    while b"\r\n\r\n" not in data:
+        chunk = sock.recv(65536)
+        if not chunk:
+            raise CdpError("socket closed while reading the CDP response head")
+        data += chunk
+    head, body = data.split(b"\r\n\r\n", 1)
+    headers: dict[str, str] = {}
+    for line in head.split(b"\r\n")[1:]:
+        key, _, value = line.partition(b":")
+        headers[key.strip().lower().decode("ascii", "replace")] = value.strip().decode("ascii", "replace")
+    if "chunked" in headers.get("transfer-encoding", "").lower():
+        decoded = b""
+        while True:
+            while b"\r\n" not in body:
+                chunk = sock.recv(65536)
+                if not chunk:
+                    raise CdpError("socket closed inside a chunked CDP response")
+                body += chunk
+            size_line, body = body.split(b"\r\n", 1)
+            size = int(size_line.split(b";", 1)[0], 16)
+            while len(body) < size + 2:
+                chunk = sock.recv(65536)
+                if not chunk:
+                    raise CdpError("socket closed inside a chunked CDP response")
+                body += chunk
+            decoded += body[:size]
+            body = body[size + 2:]
+            if size == 0:
+                return decoded
+    length = int(headers.get("content-length", "0"))
+    while len(body) < length:
+        chunk = sock.recv(65536)
+        if not chunk:
+            raise CdpError("socket closed before the CDP response body was complete")
+        body += chunk
+    return body[:length]
 
 
 class _UnixWs:
@@ -145,28 +219,9 @@ class CdpSession:
         sock = self._connect()
         try:
             sock.sendall(b"GET /json HTTP/1.1\r\nHost: localhost\r\n\r\n")
-            data = b""
-            while not data.endswith(b"]"):
-                chunk = sock.recv(65536)
-                if not chunk:
-                    break
-                data += chunk
+            body = _read_http_body(sock)
         finally:
             sock.close()
-        body = data.split(b"\r\n\r\n", 1)[1] if b"\r\n\r\n" in data else data
-        if b"\r\n0\r\n\r\n" in body:
-            chunks = []
-            rest = body
-            while rest:
-                size_end = rest.find(b"\r\n")
-                if size_end < 0:
-                    break
-                size = int(rest[:size_end], 16)
-                if size == 0:
-                    break
-                chunks.append(rest[size_end + 2 : size_end + 2 + size])
-                rest = rest[size_end + 2 + size + 2 :]
-            body = b"".join(chunks)
         return json.loads(body)
 
     def open_page_session(self) -> "_PageSession":

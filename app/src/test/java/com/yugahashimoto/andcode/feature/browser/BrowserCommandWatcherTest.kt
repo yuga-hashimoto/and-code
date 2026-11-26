@@ -38,6 +38,17 @@ class BrowserCommandWatcherTest {
     }
 
     @Test
+    fun `devtools socket name is published only after the agent-control opt-in`() {
+        val devtools = File(File(runtimeDirectory, "environment/rootfs/root/project").apply { mkdirs() }, BROWSER_DEVTOOLS_FILE)
+
+        consume("/root/project", LocalAgent.OPEN_CODE)
+        assertFalse(devtools.exists())
+
+        consume("/root/project", LocalAgent.OPEN_CODE, allowRemotePreview = true)
+        assertTrue(devtools.readText().startsWith("webview_devtools_remote_"))
+    }
+
+    @Test
     fun `nested workspace commands are read from the bind mount`() {
         val file = command("workspace/team/project")
         val decoy = command("environment/rootfs/workspace/team/project", "https://example.com/decoy")
