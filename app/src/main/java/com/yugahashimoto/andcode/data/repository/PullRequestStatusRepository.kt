@@ -71,6 +71,9 @@ class PullRequestStatusRepository(
     private val fetchedAt = ConcurrentHashMap<String, Long>()
     private val inFlight = ConcurrentHashMap.newKeySet<String>()
 
+    /** Serializes the read-modify-write of the session map across callers on different threads. */
+    private val sessionWriteLock = Any()
+
     init {
         // A chat remembered from an earlier run has its badge ready the moment the drawer opens.
         track(sessionRefs.value.values.flatten())
@@ -109,16 +112,17 @@ class PullRequestStatusRepository(
     ) {
         if (sessionId.isBlank() || refs.isEmpty()) return
         val tracked = refs.distinct().take(MAX_TRACKED_PULL_REQUESTS)
-        if (sessionRefs.value[sessionId] == tracked) {
-            track(tracked)
-            return
+        // Merge with what is on disk: the chat screen, the drawer and the drawer's transcript
+        // scan can each record a chat on a different thread, and none may drop a chat another
+        // just remembered.
+        synchronized(sessionWriteLock) {
+            if (sessionRefs.value[sessionId] != tracked) {
+                val remembered = sessionStore?.sessionPullRequests ?: sessionRefs.value
+                val updated = remembered + (sessionId to tracked)
+                sessionRefs.value = updated
+                sessionStore?.sessionPullRequests = updated
+            }
         }
-        // Merge with what is on disk: the chat screen and the drawer can each hold a repository
-        // instance in the same process, and neither may drop a chat the other just remembered.
-        val remembered = sessionStore?.sessionPullRequests ?: sessionRefs.value
-        val updated = remembered + (sessionId to tracked)
-        sessionRefs.value = updated
-        sessionStore?.sessionPullRequests = updated
         track(tracked)
     }
 
@@ -126,7 +130,9 @@ class PullRequestStatusRepository(
     fun refreshTrackedSessions() {
         // Another repository instance in the same process may have remembered a chat since this
         // one was built, so take the store's copy before refreshing it.
-        sessionStore?.let { sessionRefs.value = it.sessionPullRequests }
+        synchronized(sessionWriteLock) {
+            sessionStore?.let { sessionRefs.value = it.sessionPullRequests }
+        }
         track(sessionRefs.value.values.flatten())
     }
 

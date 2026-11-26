@@ -1,5 +1,9 @@
 package com.yugahashimoto.andcode.core.api
 
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
+
 /** Highest number of pull requests kept from one conversation, newest first. */
 const val MAX_TRACKED_PULL_REQUESTS = 5
 
@@ -75,8 +79,52 @@ fun parsePullRequestRefs(text: String): List<PullRequestRef> {
     return PULL_REQUEST_URL.findAll(text)
         .mapNotNull { match ->
             val (owner, repo, number) = match.destructured
-            number.toIntOrNull()?.let { PullRequestRef(owner, repo, it) }
+            number.toIntOrNull()?.let { PullRequestRef(owner, repo, number) }
         }
         .distinct()
         .toList()
 }
+
+/**
+ * The one pull request [text] names, or null when it names none - or several.
+ *
+ * A piece of text that links several at once is listing them (release notes, `gh pr list`), not
+ * reporting one, so only a lone link counts as "this part opened a pull request".
+ */
+fun singlePullRequestIn(text: String): PullRequestRef? = parsePullRequestRefs(text).singleOrNull()
+
+/** The one pull request a tool call reports in its output or error, or null when it reports none. */
+fun singlePullRequestInTool(
+    output: String?,
+    error: String?,
+): PullRequestRef? =
+    (parsePullRequestRefs(output.orEmpty()) + parsePullRequestRefs(error.orEmpty()))
+        .distinct()
+        .singleOrNull()
+
+/**
+ * Every distinct pull request linked in [messages]' transcript, newest first.
+ *
+ * This is the same rule the chat's own badge uses, applied to a transcript that was never opened:
+ * the drawer scans recent chats so a badge does not have to wait for the user to visit one.
+ */
+fun pullRequestRefsIn(messages: List<OpenCodeMessage>): List<PullRequestRef> {
+    val refs = LinkedHashSet<PullRequestRef>()
+    messages.forEach { message ->
+        message.parts.forEach { part -> part.openedPullRequest()?.let(refs::add) }
+    }
+    return refs.toList().takeLast(MAX_TRACKED_PULL_REQUESTS).reversed()
+}
+
+private fun OpenCodePart.openedPullRequest(): PullRequestRef? =
+    when (type) {
+        "text" -> singlePullRequestIn(text.orEmpty())
+        "tool" ->
+            singlePullRequestInTool(
+                output = state?.get("output")?.jsonPrimitiveOrNull(),
+                error = state?.get("error")?.jsonPrimitiveOrNull(),
+            )
+        else -> null
+    }
+
+private fun JsonElement.jsonPrimitiveOrNull(): String? = (this as? JsonPrimitive)?.contentOrNull

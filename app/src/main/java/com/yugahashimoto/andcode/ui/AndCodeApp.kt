@@ -943,6 +943,21 @@ fun AndCodeApp(
             )
         }
 
+    // The chats the drawer is about to show. Their transcripts are scanned so a badge does not
+    // depend on the chat having been opened at least once. Keyed by identity and revision rather
+    // than by the list itself: a badge arriving rebuilds the list but must not restart the scan.
+    val discoverySessions =
+        remember(allSessions, recentSessions) {
+            val visibleIds = browsableSessions(recentSessions).mapTo(HashSet()) { it.id }
+            allSessions.filter { it.session.id in visibleIds }
+        }
+    val discoveryKey =
+        remember(discoverySessions) {
+            discoverySessions.map { ref ->
+                "${ref.runtimeId}:${ref.session.id}:${ref.session.time.updated ?: ref.session.time.created}"
+            }
+        }
+
     // Local agents that are actually provisioned. A target reports Unavailable while its agent is
     // missing, which is exactly the case the switcher must not offer.
     //
@@ -994,9 +1009,6 @@ fun AndCodeApp(
 
     fun openDrawer() {
         keyboardController?.hide()
-        // A pull request merged or closed elsewhere since the last look should be current when the
-        // list with its badges appears.
-        app.pullRequestStatusRepository.refreshTrackedSessions()
         drawerScope.launch { drawerState.open() }
     }
 
@@ -1020,8 +1032,15 @@ fun AndCodeApp(
         navController.navigate(ROUTE_CHAT) { launchSingleTop = true }
     }
 
-    LaunchedEffect(drawerState.isOpen) {
-        if (drawerState.isOpen) keyboardController?.hide()
+    LaunchedEffect(drawerState.isOpen, discoveryKey, chatState.sessionId) {
+        if (!drawerState.isOpen) return@LaunchedEffect
+        keyboardController?.hide()
+        // A pull request merged or closed elsewhere since the last look should be current when the
+        // list with its badges appears.
+        app.pullRequestStatusRepository.refreshTrackedSessions()
+        // Chats never opened in this run have no remembered pull request yet; read their
+        // transcripts so the badges do not wait for the user to visit each one.
+        app.sessionPullRequestDiscovery.discover(discoverySessions, chatState.sessionId)
     }
 
     val drawerGesturesEnabled = currentRoute in DRAWER_ROOT_ROUTES

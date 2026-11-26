@@ -3,7 +3,8 @@ package com.yugahashimoto.andcode.feature.chat
 import com.yugahashimoto.andcode.core.api.MAX_TRACKED_PULL_REQUESTS
 import com.yugahashimoto.andcode.core.api.PullRequestRef
 import com.yugahashimoto.andcode.core.api.PullRequestStatus
-import com.yugahashimoto.andcode.core.api.parsePullRequestRefs
+import com.yugahashimoto.andcode.core.api.singlePullRequestIn
+import com.yugahashimoto.andcode.core.api.singlePullRequestInTool
 
 /** A pull request linked in the open chat, paired with its state once GitHub has answered. */
 data class ChatPullRequest(
@@ -36,16 +37,11 @@ fun pullRequestRefsIn(messages: List<ChatMessage>): List<PullRequestRef> {
  * opens one names one - `gh pr create` prints a single link, and an agent announces its work as it
  * lands - so a lone link is the signal, and anything longer is a list to be read, not a badge.
  */
-private fun ChatPart.openedPullRequest(): PullRequestRef? {
-    val refs =
-        when (this) {
-            is ChatPart.Text -> parsePullRequestRefs(text)
-            // A retried command can report the same pull request twice, once as output and once as
-            // the error of the attempt before it, and that is still a single pull request.
-            is ChatPart.Tool ->
-                (parsePullRequestRefs(output.orEmpty()) + parsePullRequestRefs(error.orEmpty()))
-                    .distinct()
-            else -> return null
-        }
-    return refs.singleOrNull()
-}
+private fun ChatPart.openedPullRequest(): PullRequestRef? =
+    when (this) {
+        is ChatPart.Text -> singlePullRequestIn(text)
+        // A retried command can report the same pull request twice, once as output and once as
+        // the error of the attempt before it, and that is still a single pull request.
+        is ChatPart.Tool -> singlePullRequestInTool(output = output, error = error)
+        else -> null
+    }
