@@ -451,7 +451,6 @@
 
     <string name="menu_description">Menu</string>
     <string name="drawer_search_description">Pesquisar</string>
-    <string name="drawer_recent_chats">Chats recentes</string>
     <string name="drawer_project_default">Padrão</string>
     <string name="drawer_projects_title">Projetos</string>
     <string name="drawer_agents_title">Agentes</string>

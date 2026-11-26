@@ -436,7 +436,6 @@
     <!-- Redesign: drawer -->
     <string name="menu_description">Menu</string>
     <string name="drawer_search_description">Search</string>
-    <string name="drawer_recent_chats">Recent chats</string>
     <string name="drawer_project_default">Default</string>
     <string name="drawer_projects_title">Projects</string>
     <string name="drawer_agents_title">Agents</string>

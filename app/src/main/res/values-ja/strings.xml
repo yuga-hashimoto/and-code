@@ -448,7 +448,6 @@
     <!-- Redesign: drawer -->
     <string name="menu_description">メニュー</string>
     <string name="drawer_search_description">検索</string>
-    <string name="drawer_recent_chats">最近のチャット</string>
     <string name="drawer_project_default">デフォルト</string>
     <string name="drawer_projects_title">プロジェクト</string>
     <string name="drawer_agents_title">エージェント</string>

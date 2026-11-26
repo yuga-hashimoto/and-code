@@ -129,16 +129,6 @@ fun AppDrawerContent(
                         .padding(top = 6.dp),
             ) {
                 DrawerHeader()
-                NewChatRow(onClick = onNewChat)
-
-                // Only worth a switcher when there is something to switch between.
-                if (agents.size > 1) {
-                    DrawerAgentChips(
-                        agents = agents,
-                        selectedRuntimeId = selectedRuntimeId,
-                        onSelectAgent = onSelectAgent,
-                    )
-                }
 
                 DrawerProjectsSection(
                     workspaces = workspaces,
@@ -155,6 +145,17 @@ fun AppDrawerContent(
                     projectQuery = projectQuery,
                     onProjectQueryChange = { projectQuery = it },
                 )
+
+                // Only worth a switcher when there is something to switch between.
+                if (agents.size > 1) {
+                    DrawerAgentChips(
+                        agents = agents,
+                        selectedRuntimeId = selectedRuntimeId,
+                        onSelectAgent = onSelectAgent,
+                    )
+                }
+
+                NewChatRow(onClick = onNewChat)
 
                 if (recentSessions.isNotEmpty()) {
                     DrawerSearchField(
@@ -347,34 +348,28 @@ private fun DrawerChatList(
     if (unpinned.isEmpty()) return
 
     val defaultLabel = stringResource(R.string.drawer_project_default)
-    DrawerSectionHeader(
-        text = stringResource(R.string.drawer_recent_chats),
-        collapsed = collapsedSections.contains("recent"),
-        onToggle = { onToggleSection("recent") },
-    )
-    AnimatedVisibility(visible = !collapsedSections.contains("recent")) {
-        Column {
-            // Grouped by project, always. The project/status switch that used to sit here made
-            // the drawer ask a question before it answered one, and the status a chat is in
-            // already shows on its own row.
-            groupedByProject(unpinned).forEach { (key, sessions) ->
-                val sectionKey = "project_$key"
-                DrawerRecentProjectHeader(
-                    label = sessions.first().projectLabel(defaultLabel),
-                    collapsed = collapsedSections.contains(sectionKey),
-                    onToggle = { onToggleSection(sectionKey) },
+    Column {
+        // Grouped by project, always. The project/status switch that used to sit here made
+        // the drawer ask a question before it answered one, and the status a chat is in
+        // already shows on its own row. There is no "Recent chats" heading above the list:
+        // it is the drawer's main content, so the heading only cost height.
+        groupedByProject(unpinned).forEach { (key, sessions) ->
+            val sectionKey = "project_$key"
+            DrawerRecentProjectHeader(
+                label = sessions.first().projectLabel(defaultLabel),
+                collapsed = collapsedSections.contains(sectionKey),
+                onToggle = { onToggleSection(sectionKey) },
+            )
+            AnimatedVisibility(visible = !collapsedSections.contains(sectionKey)) {
+                DrawerChatRows(
+                    sessions = sessions,
+                    selectedSessionIds = selectedSessionIds,
+                    selectionMode = selectionMode,
+                    indented = true,
+                    onOpenSession = onOpenSession,
+                    menuActions = menuActions,
+                    onToggleSelection = onToggleSelection,
                 )
-                AnimatedVisibility(visible = !collapsedSections.contains(sectionKey)) {
-                    DrawerChatRows(
-                        sessions = sessions,
-                        selectedSessionIds = selectedSessionIds,
-                        selectionMode = selectionMode,
-                        indented = true,
-                        onOpenSession = onOpenSession,
-                        menuActions = menuActions,
-                        onToggleSelection = onToggleSelection,
-                    )
-                }
             }
         }
     }
