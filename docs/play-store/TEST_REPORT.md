@@ -6,7 +6,7 @@ compatibility approval. SDK location was set via `ANDROID_HOME`; Java 21 was use
 
 | Check | Result |
 |---|---|
-| `./gradlew detekt spotlessCheck --offline --no-daemon` | PASS |
+| `./gradlew detekt spotlessCheck --offline --no-daemon` | `spotlessCheck` PASS; root `detekt` was `NO-SOURCE` and did not analyze app code. |
 | `:app:assemblePlayDebug :app:assemblePlayRelease :app:bundlePlayRelease :app:testPlayDebugUnitTest :app:lintPlayDebug` | PASS together (5m 18s); AGP 8.5.2 warns compileSdk 36 is beyond its tested range. |
 | `:app:testGithubDebugUnitTest :app:testFdroidDebugUnitTest --offline` | PASS; this does not prove release builds, reproducibility, or device behavior. |
 | `python3 -m unittest discover -s scripts/tests -p 'test_check_android_elf_alignment.py'` | PASS (4 tests) |
@@ -30,10 +30,14 @@ device operation. No Play submission or signing-key operation performed.
 ## Additional work (2026-11-27)
 
 - After upgrading to AGP 8.11.1 and Gradle 8.13, the combined Play release APK/AAB, GitHub and
-  F-Droid debug APK, three debug unit-test suites, Play lint, detekt and spotless checks passed.
+  F-Droid debug APK, three debug unit-test suites, Play lint and spotless checks passed. The root
+  `detekt` task was `NO-SOURCE`; it is not evidence of app static analysis.
   Each flavor reported 1,879 unit tests with zero failures or errors. The unsigned Play AAB was
   approximately 174 MiB and passed bundletool validation. All checked 64-bit release APK ELF LOAD
   segments met 16 KB alignment; both 32-bit loaders remained warnings.
+- After incorporating `origin/main` at `adfcfb70`, the same build, Play lint and format gates passed
+  again; each flavor reported 1,886 unit tests with zero failures or errors. The generated Play
+  assets were rebuilt from an absent directory and validated, and bundletool validated the new AAB.
 - Play report dialog: two Android 16 arm64 emulator UI tests passed with a mocked submit callback.
   This is not a live GitHub report and does not establish accountless reporting.
 - Play Alpine: after packaging, both `.tgz` assets matched the manifest SHA-256. On an Android 16

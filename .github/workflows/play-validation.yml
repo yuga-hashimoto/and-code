@@ -49,7 +49,9 @@ jobs:
           with zipfile.ZipFile('app/build/outputs/apk/play/debug/app-play-debug.apk') as apk:
               for abi in ('arm64-v8a', 'x86_64'):
                   for name, key in (('alpine', 'alpineSha256'), ('opencode', 'openCodeSha256')):
-                      data = apk.read(f'assets/play-runtime/{abi}/{name}.tgz')
+                      path = f'assets/play-runtime/{abi}/{name}.tgz'
+                      assert apk.getinfo(path).compress_type == zipfile.ZIP_STORED
+                      data = apk.read(path)
                       assert hashlib.sha256(data).hexdigest() == manifest['architectures'][abi][key]
           PY
       - name: Verify release signing isolation

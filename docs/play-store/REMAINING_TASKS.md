@@ -19,8 +19,11 @@ Do not submit the experimental Play flavor.
 7. Verify GitHub/F-Droid signing certificates and choose final Play ID and upload-key custody. The separate upload-key
    configuration is implemented, but no production key has been selected. Implement explicit export/import and ensure no unintentional cross-store upgrades.
 8. Resolve the 32-bit loader alignment findings and make the ELF investigation a strict PR gate once the loader findings are resolved; run regression and
-   end-to-end device tests in TEST_REPORT.md. Fix AGP/API 36 compatibility warning.
+   end-to-end device tests in TEST_REPORT.md. AGP 8.11.1 supports API 36; the impact of its upgrade
+   on source-built F-Droid reproducibility still needs verification.
 9. Update Play-specific privacy policy, Data safety and permissions declarations based on actual
    artifacts; fill REVIEW_GUIDE after the implementation is final.
 10. Complete required independent pre-PR review, CI, and PR workflow. Play Console registration,
    review submission and release are explicitly outside this task.
+11. Configure the existing root `detekt` task to analyze app sources without breaking existing
+    distribution builds. It currently reports `NO-SOURCE`; Android Lint does analyze Play code.

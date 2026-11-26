@@ -312,6 +312,17 @@ tasks.configureEach {
     ) {
         enabled = false
     }
+    // Android's sourceSets asset directory does not retain FileCollection task dependencies.
+    // Asset merges and lint tasks consume the generated directory in a clean build.
+    if (name.contains("Play") &&
+        (
+            (name.startsWith("merge") && name.endsWith("Assets")) ||
+                name.startsWith("lint") ||
+                (name.startsWith("generate") && name.contains("Lint") && name.endsWith("Model"))
+        )
+    ) {
+        dependsOn(preparePlayRuntimeAssets)
+    }
 }
 
 tasks.named("preBuild").configure {
