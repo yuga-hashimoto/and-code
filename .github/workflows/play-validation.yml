@@ -28,7 +28,8 @@ jobs:
           if [ -z "$GITHUB_CLIENT_ID" ]; then
             echo '::warning::AND_CODE_GITHUB_CLIENT_ID is not set; GitHub sign-in and AI reports are unavailable in these artifacts.'
           fi
-          ./gradlew detekt spotlessCheck \
+          # Concurrent Kotlin compilation of several flavors exhausted the hosted runner's heap.
+          ./gradlew --max-workers=1 --no-parallel detekt spotlessCheck \
             :app:assemblePlayDebug :app:assemblePlayRelease :app:bundlePlayRelease \
             :app:testPlayDebugUnitTest :app:lintPlayDebug \
             :app:testGithubDebugUnitTest :app:testFdroidDebugUnitTest \
