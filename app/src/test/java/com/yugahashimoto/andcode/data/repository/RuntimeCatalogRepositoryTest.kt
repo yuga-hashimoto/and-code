@@ -588,6 +588,24 @@ class RuntimeCatalogRepositoryTest {
             assertEquals(listOf("orchestrator"), cache.read("mac")?.map { it.name })
         }
 
+    @Test
+    fun `a failed connect keeps the cached agents`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val cache = agentCache()
+            cache.write("mac", listOf(OpenCodeAgent("orchestrator", mode = "primary")))
+            val target = FakeTarget("mac", connectError = IllegalStateException("offline"))
+            val repository = repositoryWithAgentCache(target, cache, TestScope(dispatcher))
+
+            advanceUntilIdle()
+
+            // A stopped runtime must not empty the mode chip and make the user wait for a connect.
+            assertEquals(listOf("orchestrator"), repository.state.value.agents.map { it.name })
+            assertFalse(repository.state.value.agentsLoading)
+            assertNull(repository.state.value.agentsError)
+            assertEquals("offline", repository.state.value.error)
+        }
+
     private class FakeStore(
         profiles: List<ConnectionProfile> = listOf(profileStatic("mac")),
         override var selectedRuntimeId: String? = null,
