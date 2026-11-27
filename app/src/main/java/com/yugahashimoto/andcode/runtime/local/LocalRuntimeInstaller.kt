@@ -2,6 +2,7 @@ package com.yugahashimoto.andcode.runtime.local
 
 import android.content.Context
 import android.system.Os
+import com.yugahashimoto.andcode.BuildConfig
 import com.yugahashimoto.andcode.R
 import com.yugahashimoto.andcode.runtime.LocalAgent
 import kotlinx.coroutines.Dispatchers
@@ -104,27 +105,49 @@ class LocalRuntimeInstaller(
 
             try {
                 val alpineArchive = File(cache, "alpine-${manifest.alpineVersion}-$abi.tar.gz")
-                download(
-                    architecture.alpineUrl,
-                    alpineArchive,
-                    architecture.alpineSha256,
-                    0.05f,
-                    0.22f,
-                    context.getString(R.string.install_step_downloading_alpine),
-                    onShared,
-                )
+                if (BuildConfig.FLAVOR == "play") {
+                    val label = context.getString(R.string.install_step_preparing_bundled_alpine)
+                    onShared(0.05f, label)
+                    BundledRuntimeArchive.copyVerified(
+                        openAsset = { context.assets.open("play-runtime/$abi/alpine.tgz") },
+                        destination = alpineArchive,
+                        expectedSha256 = architecture.alpineSha256,
+                    )
+                    onShared(0.22f, label)
+                } else {
+                    download(
+                        architecture.alpineUrl,
+                        alpineArchive,
+                        architecture.alpineSha256,
+                        0.05f,
+                        0.22f,
+                        context.getString(R.string.install_step_downloading_alpine),
+                        onShared,
+                    )
+                }
                 val withOpenCode = LocalAgent.OPEN_CODE in requestedAgents
                 val openCodeArchive =
                     File(cache, "opencode-${manifest.openCodeVersion}-$abi.tar.gz").takeIf { withOpenCode }?.also { archive ->
-                        download(
-                            architecture.openCodeUrl,
-                            archive,
-                            architecture.openCodeSha256,
-                            0.24f,
-                            0.72f,
-                            context.getString(R.string.install_step_downloading_opencode),
-                            onShared,
-                        )
+                        if (BuildConfig.FLAVOR == "play") {
+                            val label = context.getString(R.string.install_step_preparing_bundled_opencode)
+                            onShared(0.24f, label)
+                            BundledRuntimeArchive.copyVerified(
+                                openAsset = { context.assets.open("play-runtime/$abi/opencode.tgz") },
+                                destination = archive,
+                                expectedSha256 = architecture.openCodeSha256,
+                            )
+                            onShared(0.72f, label)
+                        } else {
+                            download(
+                                architecture.openCodeUrl,
+                                archive,
+                                architecture.openCodeSha256,
+                                0.24f,
+                                0.72f,
+                                context.getString(R.string.install_step_downloading_opencode),
+                                onShared,
+                            )
+                        }
                     }
 
                 val rootfs = File(staging, "rootfs").apply { mkdirs() }
@@ -174,16 +197,21 @@ class LocalRuntimeInstaller(
                         },
                     ),
                 )
-                installPackages(
-                    rootfs = rootfs,
-                    suite = commandSuite,
-                    packages =
-                        if (includeFullDevelopmentTools) {
-                            REQUIRED_RUNTIME_PACKAGES + OPTIONAL_DEVELOPMENT_PACKAGES
-                        } else {
-                            REQUIRED_RUNTIME_PACKAGES
-                        },
-                )
+                if (BuildConfig.FLAVOR == "play") {
+                    installPackages(rootfs, commandSuite, REQUIRED_RUNTIME_PACKAGES, bundled = true)
+                    if (includeFullDevelopmentTools) installPackages(rootfs, commandSuite, OPTIONAL_DEVELOPMENT_PACKAGES)
+                } else {
+                    installPackages(
+                        rootfs = rootfs,
+                        suite = commandSuite,
+                        packages =
+                            if (includeFullDevelopmentTools) {
+                                REQUIRED_RUNTIME_PACKAGES + OPTIONAL_DEVELOPMENT_PACKAGES
+                            } else {
+                                REQUIRED_RUNTIME_PACKAGES
+                            },
+                    )
+                }
                 if (LocalAgent.CLAUDE_CODE in requestedAgents) {
                     onClaude(0.93f, context.getString(R.string.install_step_installing_claude_code))
                     ClaudeCodeInstaller.installInto(rootfs, commandSuite, runtimeDirectory)
@@ -441,9 +469,22 @@ class LocalRuntimeInstaller(
         rootfs: File,
         suite: EmbeddedCommandSuite.Paths,
         packages: List<String>,
+        bundled: Boolean = false,
     ) {
         val prootTmp = File(runtimeDirectory, "proot-tmp").apply { mkdirs() }
-        val apkCache = File(runtimeDirectory, "cache/apk").apply { mkdirs() }
+        val apkCache =
+            if (bundled) {
+                val hashes = context.assets.open("play-runtime/apk-cache-hashes.json").bufferedReader().use { it.readText() }
+                File(runtimeDirectory, "cache/play-apk-$abi").also {
+                    PlayApkCache.prepare(
+                        openAsset = { context.assets.open("play-runtime/$abi/apk-cache.tgz") },
+                        expectedSha256 = JSONObject(hashes).getString(abi),
+                        destination = it,
+                    )
+                }
+            } else {
+                File(runtimeDirectory, "cache/apk").apply { mkdirs() }
+            }
         File(rootfs, "var/cache/apk").mkdirs()
         val command =
             listOf(
@@ -468,7 +509,7 @@ class LocalRuntimeInstaller(
                 "/bin/sh",
                 "-lc",
                 "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin " +
-                    "/sbin/apk --cache-dir /var/cache/apk add ${packages.joinToString(" ")} && " +
+                    "/sbin/apk ${if (bundled) "--no-network " else ""}--cache-dir /var/cache/apk add ${packages.joinToString(" ")} && " +
                     "/usr/sbin/update-ca-certificates",
             )
         val installLog =

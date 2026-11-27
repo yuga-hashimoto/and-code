@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="install_step_preparing_bundled_alpine">同梱のAlpine環境を準備中</string>
+    <string name="install_step_preparing_bundled_opencode">同梱のOpenCodeを準備中</string>
+    <string name="setup_agent_opencode_desc_play">OpenCodeと必須のLinuxツールは同梱されています。追加ツールは別途ダウンロードします。</string>
+    <string name="opencode_play_update_note">このバージョンはアプリに同梱されています。新しいバージョンはGoogle PlayでAndCodeを更新すると利用できます。</string>
+</resources>

@@ -1,7 +1,7 @@
 # Third-Party Services
 
-AndCode integrates with the third-party services below. AndCode does not operate a server that
-sits between you and these services — each row states who actually handles authentication and
+AndCode integrates with the third-party services below. AndCode does not proxy your AI provider
+connections through an AndCode server — each row states who actually handles authentication and
 network traffic, and where any credential is stored. See [PRIVACY.md](PRIVACY.md) and
 [docs/AUTHENTICATION_AND_DATA_FLOW.md](docs/AUTHENTICATION_AND_DATA_FLOW.md) for more detail on
 Claude Code, Codex, Antigravity, and OpenCode specifically.
@@ -61,3 +61,14 @@ you use it:
 - If a service you use with AndCode is not listed here (for example, a different MCP server or
   model provider you connected through OpenCode), it is still subject to its own terms, not
   AndCode's.
+
+## Optional private Play report receiver
+
+When configured by an operator, the experimental Play flavor sends user-entered AI report excerpts
+and reasons to the operator through Cloudflare Workers and D1, without an account. Cloudflare
+processes connection metadata including IP addresses. The report database deletes entries after
+approximately 90 days; provider logs and backups can have different retention. See
+[Cloudflare's privacy policy](https://www.cloudflare.com/privacypolicy/) and [PRIVACY.md](PRIVACY.md).
+This optional receiver is not an AI provider proxy, does not automatically collect conversations or
+credentials, and is not deployed or configured in the default build. If unconfigured, the app
+clearly offers the separate public GitHub issue flow instead.

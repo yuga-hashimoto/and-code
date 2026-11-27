@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="install_step_preparing_bundled_alpine">正在准备随附的 Alpine 环境</string>
+    <string name="install_step_preparing_bundled_opencode">正在准备随附的 OpenCode</string>
+    <string name="setup_agent_opencode_desc_play">应用已包含 OpenCode 和必需的 Linux 工具。可选工具需另行下载。</string>
+    <string name="opencode_play_update_note">此版本随应用提供。通过 Google Play 更新 AndCode 可获取新版本。</string>
+</resources>

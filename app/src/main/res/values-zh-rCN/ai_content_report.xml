@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_report_action">举报 AI 回复</string>
+    <string name="ai_report_title">举报 AI 回复</string>
+    <string name="ai_report_warning">将使用您的账号创建公开的 GitHub 问题。只输入已检查的片段，不要包含源代码、凭据或个人信息。</string>
+    <string name="ai_report_account">举报前请在设置中连接 GitHub。</string>
+    <string name="ai_report_excerpt">可公开的片段（必填）</string>
+    <string name="ai_report_reason">原因</string>
+    <string name="ai_report_harmful">有害或危险</string>
+    <string name="ai_report_harassment">骚扰或仇恨</string>
+    <string name="ai_report_deceptive">误导性内容</string>
+    <string name="ai_report_other">其他</string>
+    <string name="ai_report_send">发布公开举报</string>
+    <string name="ai_report_sending">正在发送…</string>
+    <string name="ai_report_success">举报已发送</string>
+    <string name="ai_report_failure">发送失败。请检查网络、GitHub 账号及文本中的凭据。</string>
+    <string name="ai_report_account_name">发布账号：%1$s</string>
+    <string name="ai_report_private_warning">举报通过 Cloudflare 私下发送给运营方。Cloudflare 会处理您的 IP 地址；举报将在约 90 天后删除。请仅输入已检查的文字，不要包含源代码、凭据或个人信息。</string>
+    <string name="ai_report_private_excerpt">已检查的摘录（必填）</string>
+    <string name="ai_report_private_send">发送举报</string>
+    <string name="ai_report_private_failure">无法发送。请检查网络连接并移除文字中的凭据。</string>
+</resources>

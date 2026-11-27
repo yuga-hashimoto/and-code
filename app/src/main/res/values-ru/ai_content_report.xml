@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_report_action">Пожаловаться на ответ ИИ</string>
+    <string name="ai_report_title">Пожаловаться на ответ ИИ</string>
+    <string name="ai_report_warning">От вашего имени будет создана ПУБЛИЧНАЯ задача на GitHub. Введите только проверенный фрагмент без исходного кода, ключей и личных данных.</string>
+    <string name="ai_report_account">Перед отправкой подключите GitHub в настройках.</string>
+    <string name="ai_report_excerpt">Фрагмент для публикации (обязательно)</string>
+    <string name="ai_report_reason">Причина</string>
+    <string name="ai_report_harmful">Вредный или опасный ответ</string>
+    <string name="ai_report_harassment">Травля или ненависть</string>
+    <string name="ai_report_deceptive">Вводящий в заблуждение ответ</string>
+    <string name="ai_report_other">Другое</string>
+    <string name="ai_report_send">Опубликовать жалобу</string>
+    <string name="ai_report_sending">Отправка…</string>
+    <string name="ai_report_success">Жалоба отправлена</string>
+    <string name="ai_report_failure">Не удалось отправить. Проверьте сеть, аккаунт GitHub и наличие ключей в тексте.</string>
+    <string name="ai_report_account_name">Публикация от имени %1$s</string>
+    <string name="ai_report_private_warning">Жалоба отправляется команде конфиденциально через Cloudflare, который обрабатывает ваш IP-адрес. Она удаляется примерно через 90 дней. Введите только проверенный текст без исходного кода, учётных данных и личной информации.</string>
+    <string name="ai_report_private_excerpt">Проверенный фрагмент (обязательно)</string>
+    <string name="ai_report_private_send">Отправить жалобу</string>
+    <string name="ai_report_private_failure">Не удалось отправить. Проверьте соединение и удалите учётные данные из текста.</string>
+</resources>

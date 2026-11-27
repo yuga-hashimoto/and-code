@@ -1,4 +1,5 @@
 import java.io.File
+import java.net.URI
 import java.util.zip.ZipFile
 
 plugins {
@@ -41,6 +42,64 @@ val githubClientId =
     ).trim()
 val generatedRuntimeAssets = rootProject.layout.buildDirectory.dir("generated/runtime-assets")
 val generatedRuntimeJni = rootProject.layout.buildDirectory.dir("generated/runtime-jni")
+val generatedPlayRuntimeAssets = rootProject.layout.buildDirectory.dir("generated/play-runtime-assets")
+val generatedPlayApkCacheAssets = rootProject.layout.buildDirectory.dir("generated/play-apk-cache-assets")
+val playReportEndpoint =
+    (
+        System.getenv(
+            "AND_CODE_PLAY_REPORT_ENDPOINT",
+        ) ?: findProperty("AND_CODE_PLAY_REPORT_ENDPOINT")?.toString() ?: ""
+    ).trim()
+if (playReportEndpoint.isNotEmpty()) {
+    val endpoint = URI(playReportEndpoint)
+    require(
+        endpoint.scheme == "https" && !endpoint.host.isNullOrBlank() && endpoint.userInfo == null && endpoint.query == null && endpoint.fragment == null && endpoint.path == "/v1/reports",
+    ) {
+        "AND_CODE_PLAY_REPORT_ENDPOINT must be an HTTPS URL ending in /v1/reports without credentials, query, or fragment"
+    }
+}
+
+val preparePlayRuntimeAssets =
+    tasks.register<Exec>("preparePlayRuntimeAssets") {
+        val manifest = repoRoot.resolve("app/src/play/assets/local-runtime-manifest.json")
+        inputs.file(manifest)
+        inputs.file(repoRoot.resolve("scripts/prepare_play_runtime_assets.py"))
+        outputs.dir(generatedPlayRuntimeAssets)
+        commandLine(
+            "python3",
+            repoRoot.resolve("scripts/prepare_play_runtime_assets.py").absolutePath,
+            "--manifest",
+            manifest.absolutePath,
+            "--output-dir",
+            generatedPlayRuntimeAssets.get().asFile.absolutePath,
+        )
+    }
+
+val preparePlayApkCache =
+    tasks.register<Exec>("preparePlayApkCache") {
+        val lock = repoRoot.resolve("runtime_tools/play-apk-cache.lock.json")
+        val indexes = repoRoot.resolve("runtime_tools/play-apk-indexes")
+        dependsOn(preparePlayRuntimeAssets)
+        inputs.file(lock)
+        inputs.dir(indexes)
+        inputs.dir(generatedPlayRuntimeAssets)
+        inputs.file(repoRoot.resolve("scripts/prepare_play_apk_cache.py"))
+        outputs.dir(generatedPlayApkCacheAssets)
+        commandLine(
+            "python3",
+            repoRoot.resolve("scripts/prepare_play_apk_cache.py").absolutePath,
+            "--lock",
+            lock.absolutePath,
+            "--indexes",
+            indexes.absolutePath,
+            "--base-assets",
+            generatedPlayRuntimeAssets.get().asFile.absolutePath,
+            "--output-dir",
+            generatedPlayApkCacheAssets.get().asFile.absolutePath,
+            "--cache-dir",
+            rootProject.layout.buildDirectory.dir("play-apk-downloads").get().asFile.absolutePath,
+        )
+    }
 
 val prepareOpenCodeRuntimeAssets =
     tasks.register<Exec>("prepareOpenCodeRuntimeAssets") {
@@ -118,10 +177,33 @@ val hasReleaseSigning =
                 }
             resolved.isFile
         }
+val playStoreFile =
+    (System.getenv("AND_CODE_PLAY_STORE_FILE") ?: findProperty("AND_CODE_PLAY_STORE_FILE")?.toString())?.takeIf {
+        it.isNotBlank()
+    }
+val playStorePassword =
+    (System.getenv("AND_CODE_PLAY_STORE_PASSWORD") ?: findProperty("AND_CODE_PLAY_STORE_PASSWORD")?.toString())?.takeIf { it.isNotBlank() }
+val playKeyAlias =
+    (System.getenv("AND_CODE_PLAY_KEY_ALIAS") ?: findProperty("AND_CODE_PLAY_KEY_ALIAS")?.toString())?.takeIf {
+        it.isNotBlank()
+    }
+val playKeyPassword =
+    (System.getenv("AND_CODE_PLAY_KEY_PASSWORD") ?: findProperty("AND_CODE_PLAY_KEY_PASSWORD")?.toString())?.takeIf { it.isNotBlank() }
+val playSigningValues = listOf(playStoreFile, playStorePassword, playKeyAlias, playKeyPassword)
+require(playSigningValues.all { it == null } || playSigningValues.all { it != null }) {
+    "Incomplete Play signing configuration: provide all four AND_CODE_PLAY_* signing values or none."
+}
+val hasPlaySigning =
+    playSigningValues.all { it != null }.also { configured ->
+        require(!configured || rootProject.file(playStoreFile!!).isFile) {
+            "Play signing keystore does not exist."
+        }
+    }
 
 android {
     namespace = "com.yugahashimoto.andcode"
-    compileSdk = 35
+    // The Play variant targets API 36; the other distributions keep their existing target.
+    compileSdk = 36
 
     // F-Droid's scanner rejects the encrypted "Dependency metadata" signing block AGP adds.
     dependenciesInfo {
@@ -136,6 +218,7 @@ android {
         versionCode = 70
         versionName = "1.2.31"
         buildConfigField("String", "GITHUB_CLIENT_ID", "\"$githubClientId\"")
+        buildConfigField("String", "PLAY_REPORT_ENDPOINT", "\"\"")
 
         // The on-device runtime (see ANDROID_ABIS in scripts/prepare_android_runtime_native_libs.py)
         // only exists for these two ABIs. Without the filter JNA and Vosk drag in libraries for
@@ -147,21 +230,6 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
             useSupportLibrary = true
-        }
-    }
-
-    flavorDimensions += "distribution"
-    productFlavors {
-        // Distributed via GitHub Releases (and the self-hosted F-Droid repo built from those
-        // release APKs). Includes Firebase Analytics/Crashlytics.
-        create("github") {
-            dimension = "distribution"
-        }
-        // Built from source by F-Droid's own build server for the official F-Droid catalog.
-        // Firebase is excluded entirely; see the isFdroidBuild guard above and the
-        // "githubImplementation" dependencies below.
-        create("fdroid") {
-            dimension = "distribution"
         }
     }
 
@@ -187,6 +255,38 @@ android {
             }
         }
     }
+    if (hasPlaySigning) {
+        signingConfigs {
+            create("playRelease") {
+                storeFile = rootProject.file(playStoreFile!!)
+                storePassword = playStorePassword
+                keyAlias = playKeyAlias
+                keyPassword = playKeyPassword
+            }
+        }
+    }
+
+    flavorDimensions += "distribution"
+    productFlavors {
+        // Debug builds retain the debug signing config from their build type. Release signing
+        // belongs to each distribution so the Play build cannot inherit an existing store key.
+        create("github") {
+            dimension = "distribution"
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
+        }
+        create("fdroid") {
+            dimension = "distribution"
+            if (hasReleaseSigning) signingConfig = signingConfigs.getByName("release")
+        }
+        // Experimental only: not yet eligible for Play submission.
+        create("play") {
+            dimension = "distribution"
+            applicationIdSuffix = ".play"
+            targetSdk = 36
+            buildConfigField("String", "PLAY_REPORT_ENDPOINT", "\"$playReportEndpoint\"")
+            if (hasPlaySigning) signingConfig = signingConfigs.getByName("playRelease")
+        }
+    }
 
     buildTypes {
         release {
@@ -196,9 +296,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            if (hasReleaseSigning) {
-                signingConfig = signingConfigs.getByName("release")
-            }
         }
     }
     testOptions {
@@ -233,6 +330,10 @@ android {
     }
     sourceSets {
         getByName("main").jniLibs.srcDir(generatedRuntimeJni)
+        // Reuse the no-op diagnostics implementations; Play does not include Firebase.
+        getByName("play").java.srcDir("src/fdroid/java")
+        getByName("play").assets.srcDir(files(generatedPlayRuntimeAssets).builtBy(preparePlayRuntimeAssets))
+        getByName("play").assets.srcDir(files(generatedPlayApkCacheAssets).builtBy(preparePlayApkCache))
     }
     packaging {
         resources {
@@ -244,6 +345,28 @@ android {
     }
     androidResources {
         noCompress += "tflite"
+        noCompress += "tgz"
+    }
+}
+
+// These plugins are applied project-wide for GitHub. Play has no Firebase dependencies or
+// Firebase project; prevent the plugins from requiring a matching google-services client.
+tasks.configureEach {
+    if (name.contains("Play") &&
+        (name.startsWith("process") && name.endsWith("GoogleServices") || name.contains("Crashlytics"))
+    ) {
+        enabled = false
+    }
+    // Android's sourceSets asset directory does not retain FileCollection task dependencies.
+    // Asset merges and lint tasks consume the generated directory in a clean build.
+    if (name.contains("Play") &&
+        (
+            (name.startsWith("merge") && name.endsWith("Assets")) ||
+                name.startsWith("lint") ||
+                (name.startsWith("generate") && name.contains("Lint") && name.endsWith("Model"))
+        )
+    ) {
+        dependsOn(preparePlayRuntimeAssets, preparePlayApkCache)
     }
 }
 

@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="ai_report_action">Report AI response</string>
+    <string name="ai_report_title">Report AI response</string>
+    <string name="ai_report_warning">This creates a PUBLIC GitHub issue under your account. Enter only an excerpt you have reviewed. Do not include source code, credentials, or personal information.</string>
+    <string name="ai_report_account">Connect GitHub in Settings before reporting.</string>
+    <string name="ai_report_excerpt">Public-safe excerpt (required)</string>
+    <string name="ai_report_reason">Reason</string>
+    <string name="ai_report_harmful">Harmful or dangerous</string>
+    <string name="ai_report_harassment">Harassment or hate</string>
+    <string name="ai_report_deceptive">Deceptive content</string>
+    <string name="ai_report_other">Other</string>
+    <string name="ai_report_send">Post public report</string>
+    <string name="ai_report_sending">Sending…</string>
+    <string name="ai_report_success">Report sent</string>
+    <string name="ai_report_failure">Could not send. Check your connection, GitHub account and excerpt for credentials.</string>
+    <string name="ai_report_account_name">Posting as %1$s</string>
+    <string name="ai_report_private_warning">The report is sent privately to the operator using Cloudflare. Cloudflare processes your IP address; reports are deleted after approximately 90 days. Enter only reviewed text without source code, credentials, or personal information.</string>
+    <string name="ai_report_private_excerpt">Reviewed excerpt (required)</string>
+    <string name="ai_report_private_send">Send report</string>
+    <string name="ai_report_private_failure">Could not send. Check your connection and remove any credentials from the text.</string>
+</resources>

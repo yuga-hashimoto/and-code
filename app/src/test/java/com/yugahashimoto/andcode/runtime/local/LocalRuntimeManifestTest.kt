@@ -61,6 +61,23 @@ class LocalRuntimeManifestTest {
     }
 
     @Test
+    fun `play manifest uses a distinct port while keeping runtime assets in sync`() {
+        val json = Json { ignoreUnknownKeys = true }
+        val main =
+            json.decodeFromString<LocalRuntimeManifest>(
+                repositoryRoot().resolve("app/src/main/assets/local-runtime-manifest.json").readText(),
+            )
+        val play =
+            json.decodeFromString<LocalRuntimeManifest>(
+                repositoryRoot().resolve("app/src/play/assets/local-runtime-manifest.json").readText(),
+            )
+        play.validate()
+        assertEquals(4107, play.port)
+        assertTrue(play.port != main.port)
+        assertEquals(main, play.copy(port = main.port))
+    }
+
+    @Test
     fun `the bundled manifest pins the expected OpenCode release and URLs`() {
         val manifestFile = repositoryRoot().resolve("app/src/main/assets/local-runtime-manifest.json")
         val manifest =

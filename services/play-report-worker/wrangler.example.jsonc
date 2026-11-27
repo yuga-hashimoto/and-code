@@ -1,0 +1,19 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "andcode-ai-content-report",
+  "main": "src/worker.mjs",
+  "compatibility_date": "2026-11-27",
+  "compatibility_flags": ["nodejs_compat"],
+  "upload_source_maps": true,
+  // Replace the placeholder only in an untracked deployment config after creating the database.
+  "d1_databases": [{
+    "binding": "REPORTS",
+    "database_name": "andcode-ai-reports",
+    "database_id": "00000000-0000-0000-0000-000000000000",
+    "migrations_dir": "migrations"
+  }],
+  // Select an account-unique namespace ID before deployment.
+  "ratelimits": [{ "name": "REPORT_RATE_LIMIT", "namespace_id": "1001", "simple": { "limit": 5, "period": 60 } }],
+  "triggers": { "crons": ["0 3 * * *"] },
+  "observability": { "enabled": true, "head_sampling_rate": 0.05 }
+}

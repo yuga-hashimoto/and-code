@@ -1,7 +1,7 @@
 plugins {
-    id("com.android.application") version "8.5.2" apply false
-    id("com.android.library") version "8.5.2" apply false
-    id("com.android.test") version "8.5.2" apply false
+    id("com.android.application") version "8.11.1" apply false
+    id("com.android.library") version "8.11.1" apply false
+    id("com.android.test") version "8.11.1" apply false
     id("org.jetbrains.kotlin.android") version "2.0.21" apply false
     id("org.jetbrains.kotlin.multiplatform") version "2.0.21" apply false
     id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false
@@ -27,6 +27,16 @@ tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
         html.required.set(true)
         sarif.required.set(true)
     }
+}
+
+// Play CI checks application sources against the existing main-branch debt separately from
+// the root task, preserving the existing GitHub and F-Droid build configuration.
+tasks.register<io.gitlab.arturbosch.detekt.Detekt>("detektPlaySources") {
+    setSource(files("app/src/main/java", "app/src/play/java", "app/src/play/kotlin"))
+    include("**/*.kt", "**/*.kts")
+    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+    baseline.set(file("$rootDir/config/detekt/play-baseline.xml"))
+    buildUponDefaultConfig = true
 }
 
 spotless {

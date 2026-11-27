@@ -1,0 +1,13 @@
+{
+  "name": "andcode-play-report-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "check:deploy": "wrangler deploy --dry-run --config wrangler.example.jsonc --outdir ../../build/play-report-worker-dry-run",
+    "test:integration": "bash scripts/test-local-integration.sh"
+  },
+  "devDependencies": {
+    "wrangler": "4.168.0"
+  }
+}
