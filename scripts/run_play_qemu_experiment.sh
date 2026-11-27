@@ -50,7 +50,7 @@ adb shell sh "$base/install.sh" "$base" > "$result_dir/qemu-experiment-install.t
 grep -q '^OK:' "$result_dir/qemu-experiment-install.txt"
 adb shell "export LD_LIBRARY_PATH='$base/lib'; '$base/qemu-x86_64' -U LD_LIBRARY_PATH -E HOME='$base/home' -E BUN_JSC_useJIT=false -L '$base/rootfs' '$base/rootfs/opencode' --version" > "$result_dir/qemu-experiment-version.txt" 2>&1
 grep -Fx '1.19.6' "$result_dir/qemu-experiment-version.txt"
-adb shell "echo \$\$ > '$base/server.pid'; export LD_LIBRARY_PATH='$base/lib'; exec '$base/qemu-x86_64' -U LD_LIBRARY_PATH -E HOME='$base/home' -E BUN_JSC_useJIT=false -E OPENCODE_SERVER_PASSWORD=synthetic-test-only -L '$base/rootfs' '$base/rootfs/opencode' serve --hostname 127.0.0.1 --port '$port'" > "$result_dir/qemu-experiment-server.txt" 2>&1 &
+adb shell "echo \$\$ > '$base/server.pid'; export LD_LIBRARY_PATH='$base/lib'; exec '$base/qemu-x86_64' -U LD_LIBRARY_PATH -E HOME='$base/home' -E BUN_JSC_useJIT=false -E MIMALLOC_PURGE_HOLES=0 -E MIMALLOC_PURGE_DELAY=-1 -E BUN_JSC_useConcurrentGC=false -E BUN_JSC_useConcurrentJIT=false -E OPENCODE_SERVER_PASSWORD=synthetic-test-only -L '$base/rootfs' '$base/rootfs/opencode' serve --hostname 127.0.0.1 --port '$port'" > "$result_dir/qemu-experiment-server.txt" 2>&1 &
 server_pid=$!
 response=''
 for attempt in $(seq 1 60); do
@@ -61,6 +61,10 @@ for attempt in $(seq 1 60); do
 done
 printf '%s\n' "$response" > "$result_dir/qemu-experiment-health.txt"
 if ! printf '%s' "$response" | grep -q '200 OK'; then echo 'QEMU server health probe failed' >&2; exit 1; fi
-sleep 10
-if ! kill -0 "$server_pid" 2>/dev/null; then echo 'QEMU server exited after health probe' >&2; exit 1; fi
-printf '%s\n' 'QEMU research server answered a health probe and remained running for 10 seconds.'
+for attempt in $(seq 1 12); do
+  sleep 5
+  probe="$(adb shell "printf 'GET /global/health HTTP/1.0\\r\\nHost: 127.0.0.1\\r\\nAuthorization: Basic b3BlbmNvZGU6c3ludGhldGljLXRlc3Qtb25seQ==\\r\\n\\r\\n' | timeout 2 nc 127.0.0.1 '$port'" 2>/dev/null || true)"
+  if ! printf '%s' "$probe" | grep -q '200 OK'; then echo "QEMU health probe $attempt failed" >&2; exit 1; fi
+  if ! kill -0 "$server_pid" 2>/dev/null; then echo "QEMU server exited on probe $attempt" >&2; exit 1; fi
+done
+printf '%s\n' 'QEMU research server answered repeated health probes over 60 seconds.'
