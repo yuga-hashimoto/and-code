@@ -29,6 +29,21 @@ device operation. No Play submission or signing-key operation performed.
 
 ## Additional work (2026-11-27)
 
+- A Play debug APK with bundled mandatory Alpine caches was installed on a fresh API 36 arm64
+  16 KB emulator. With airplane mode enabled and `Active default network: none`, OpenCode 1.19.6,
+  the Alpine rootfs, and 134 required package installation operations succeeded without pre-seeding
+  app storage. PRoot and OpenCode processes started. An instrumented test independently verified
+  offline installation and ran `git --version` and `opencode --version`.
+- For each ABI, the lock records 142 package archives and two signed repository indexes. All 284
+  package archives passed Alpine `apk verify`; a separate clean download produced identical cache
+  archive SHA-256 values. The base-package and package metadata are checked against the pinned
+  rootfs and indexes. The app's Play-only OSS notices include the generated source-recipe inventory.
+- The optional full developer toolchain was simulated separately on arm64: 111 additional package
+  operations require about 628.6 MiB compressed and 1,436.4 MiB installed. It is not bundled and
+  its external download remains a Play policy blocker. Codex 0.172.0 archives were separately
+  downloaded from npm and verified against npm SHA-512; extracting only the two binaries still
+  produced about 147.1 MiB for arm64 and 145.3 MiB for x86_64. These are measurements, not a
+  decision or license clearance to redistribute those binaries.
 - After upgrading to AGP 8.11.1 and Gradle 8.13, the combined Play release APK/AAB, GitHub and
   F-Droid debug APK, three debug unit-test suites, Play lint and spotless checks passed. The root
   `detekt` task was `NO-SOURCE`; it is not evidence of app static analysis.
@@ -64,3 +79,20 @@ device operation. No Play submission or signing-key operation performed.
   opening and hashing all four bundled ABI/archive assets. Report submission was mocked. After
   moving the bundle test to `androidTestPlay`, the same three tests passed again, all three flavor
   test APKs built, and their dex files confirmed that the bundle test exists only in Play.
+
+## Continuation: private report and offline cache (2026-11-27)
+
+- On the API 36 arm64 16 KB emulator, five Play instrumented tests passed with no default network:
+  bundled asset integrity, full mandatory-package offline installation with Git/OpenCode execution,
+  and three report-dialog tests including the accountless private mode. Report submission was mocked.
+- The optional receiver passed six unit tests, a Wrangler dry run, and a local workerd/D1 integration
+  test covering report insertion, read denial and scheduled deletion of an expired synthetic report.
+  No external receiver has been deployed or configured; actual moderation and deployed end-to-end
+  operation remain open. Cloudflare processes connection metadata, and provider logs/backups can
+  outlive report table entries.
+- The Play debug APK, Play unit tests and Play lint passed after adding the report client. Three
+  dummy-key tests confirmed that Play and existing-distribution signing remain isolated. The latest
+  unsigned Play AAB with both mandatory package caches measured approximately 273 MiB; the earlier
+  174 MiB measurement above predates those caches.
+- The x86_64 16 KB emulator job has been added to CI; its result is not established by the arm64
+  device tests above. The 32-bit PRoot loader and source/license completeness remain open.

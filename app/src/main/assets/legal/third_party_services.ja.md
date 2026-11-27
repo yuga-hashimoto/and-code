@@ -1,6 +1,6 @@
 # 第三者サービス
 
-AndCodeは以下の第三者サービスと連携します。AndCodeは利用者とこれらのサービスの間に独自サーバーを置いていません。各行では、実際に認証と通信を処理する主体、および資格情報の保存場所を示します。Claude Code、Codex、Antigravity、OpenCodeそれぞれの詳細については、[PRIVACY.md](PRIVACY.md)と[docs/AUTHENTICATION_AND_DATA_FLOW.md](docs/AUTHENTICATION_AND_DATA_FLOW.md)を参照してください。
+AndCodeは以下の第三者サービスと連携します。AndCodeはAIプロバイダーへの通信を独自サーバーで中継しません。各行では、実際に認証と通信を処理する主体、および資格情報の保存場所を示します。Claude Code、Codex、Antigravity、OpenCodeそれぞれの詳細については、[PRIVACY.md](PRIVACY.md)と[docs/AUTHENTICATION_AND_DATA_FLOW.md](docs/AUTHENTICATION_AND_DATA_FLOW.md)を参照してください。
 
 | サービス | AndCodeでの用途 | 認証主体 | 通信主体 | 資格情報の保存場所 | AndCode独自サーバーを経由するか | 適用される規約 | 無効化または削除方法 | 非提携表示 |
 |---|---|---|---|---|---|---|---|---|
@@ -34,3 +34,7 @@ AndCodeは以下の第三者サービスと連携します。AndCodeは利用者
 - Claude Code、Codex、Antigravity、OpenCodeの各行は、AndCodeが再実装したものではなく、*公式*CLI自身のネットワークおよび資格情報の挙動を説明したものです。詳細は[docs/AUTHENTICATION_AND_DATA_FLOW.md](docs/AUTHENTICATION_AND_DATA_FLOW.md)を参照してください。
 - **GitHubのリリースダウンロード**、**npmレジストリ**、**Anthropicパッケージリポジトリ**の各行は性質が異なります。これらは、新しいエージェントCLIを見つけてダウンロードするために、AndCode自身（またはAndCodeがサンドボックス内で実行するインストール用ツール）が行う問い合わせです。プロンプト、コード、トークン、アカウントのデータは含まれません。送信される内容と実行のタイミングの詳細は、[リリースと更新の問い合わせ](docs/AUTHENTICATION_AND_DATA_FLOW.md#release-and-update-lookups)を参照してください。
 - AndCodeとともに利用しているサービスがここに記載されていない場合（例：OpenCode経由で接続した別のMCPサーバーやモデルプロバイダー）でも、そのサービスにはAndCodeの規約ではなく、そのサービス自身の規約が適用されます。
+
+## Play版の任意の非公開報告先
+
+運営者が設定した場合、試験中のPlay版は利用者が入力したAI報告の抜粋と理由をCloudflare WorkersおよびD1を通じて運営者に送信します。アカウントは不要です。CloudflareはIPアドレスなどの接続情報を処理します。報告データベースからは約90日後に削除されますが、プロバイダーのログやバックアップの保持期間は異なる場合があります。[Cloudflareのプライバシーポリシー](https://www.cloudflare.com/privacypolicy/)と[PRIVACY.md](PRIVACY.md)を参照してください。この報告先はAIプロバイダーの中継ではなく、会話や認証情報を自動収集しません。既定のビルドでは未デプロイ・未設定で、その場合は公開GitHub Issueによる別の方法が明示されます。

@@ -2,6 +2,7 @@ package com.yugahashimoto.andcode.runtime.local
 
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -14,9 +15,18 @@ class PlayBundledAssetsInstrumentedTest {
     fun bundledArchivesAreAvailableUncompressedAndMatchTheManifest() {
         val context = InstrumentationRegistry.getInstrumentation().targetContext
         val manifest = LocalRuntimeManifestReader(context).read()
+        val apkCacheHashes =
+            context.assets.open("play-runtime/apk-cache-hashes.json").bufferedReader().use { JSONObject(it.readText()) }
         for (abi in listOf("arm64-v8a", "x86_64")) {
             val architecture = manifest.architecture(abi)
-            for ((name, expected) in listOf("alpine" to architecture.alpineSha256, "opencode" to architecture.openCodeSha256)) {
+            for (
+            (name, expected) in
+            listOf(
+                "alpine" to architecture.alpineSha256,
+                "opencode" to architecture.openCodeSha256,
+                "apk-cache" to apkCacheHashes.getString(abi),
+            )
+            ) {
                 val path = "play-runtime/$abi/$name.tgz"
                 context.assets.openFd(path).use { assertTrue(it.length > 0) }
                 val digest = MessageDigest.getInstance("SHA-256")

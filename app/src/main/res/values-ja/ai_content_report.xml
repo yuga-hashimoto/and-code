@@ -15,4 +15,8 @@
     <string name="ai_report_success">報告を送信しました</string>
     <string name="ai_report_failure">送信できませんでした。通信、GitHub接続、入力内の認証情報を確認してください。</string>
     <string name="ai_report_account_name">投稿アカウント: %1$s</string>
+    <string name="ai_report_private_warning">報告は Cloudflare を利用して運営者に非公開で送信されます。Cloudflare は IP アドレスを処理し、報告は約 90 日後に削除されます。ソースコード、認証情報、個人情報を含めず、確認した文章だけを入力してください。</string>
+    <string name="ai_report_private_excerpt">確認済みの抜粋（必須）</string>
+    <string name="ai_report_private_send">報告を送信</string>
+    <string name="ai_report_private_failure">送信できませんでした。通信と入力内の認証情報を確認してください。</string>
 </resources>

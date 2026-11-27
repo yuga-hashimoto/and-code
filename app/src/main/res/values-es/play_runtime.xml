@@ -2,6 +2,6 @@
 <resources>
     <string name="install_step_preparing_bundled_alpine">Preparando el entorno Alpine incluido</string>
     <string name="install_step_preparing_bundled_opencode">Preparando OpenCode incluido</string>
-    <string name="setup_agent_opencode_desc_play">OpenCode está incluido. Durante la configuración se descargan herramientas Linux adicionales.</string>
+    <string name="setup_agent_opencode_desc_play">OpenCode y las herramientas Linux necesarias están incluidos. Las herramientas opcionales se descargan por separado.</string>
     <string name="opencode_play_update_note">Esta versión se incluye en la aplicación. Actualiza AndCode desde Google Play para obtener una versión nueva.</string>
 </resources>

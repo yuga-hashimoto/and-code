@@ -15,4 +15,8 @@
     <string name="ai_report_success">Signalement envoyé</string>
     <string name="ai_report_failure">Envoi impossible. Vérifiez la connexion, le compte GitHub et les identifiants dans le texte.</string>
     <string name="ai_report_account_name">Publier sous %1$s</string>
+    <string name="ai_report_private_warning">Le signalement est envoyé en privé à l’équipe via Cloudflare, qui traite votre adresse IP. Il est supprimé après environ 90 jours. Saisissez uniquement un extrait vérifié, sans code source, identifiants ni données personnelles.</string>
+    <string name="ai_report_private_excerpt">Extrait vérifié (obligatoire)</string>
+    <string name="ai_report_private_send">Envoyer le signalement</string>
+    <string name="ai_report_private_failure">Envoi impossible. Vérifiez la connexion et retirez les identifiants du texte.</string>
 </resources>

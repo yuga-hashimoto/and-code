@@ -22,11 +22,15 @@ execution during investigation; never claim PRoot is a VM exemption.
 | F | Remote execution changes trust, data-transfer, authentication and provider terms; it does not eliminate those obligations. | Small local footprint but requires a server and network, losing the product's offline local-execution advantage. |
 
 The `play` flavor is an investigation scaffold combining A and B, **not the final design**. It
-ships pinned Alpine minirootfs and OpenCode archives for each ABI as Play-delivered assets,
-verifies SHA-256 before use, and limits OpenCode updates to the app-bundled version. Both ABI
-archives currently ship to every device, adding approximately 160 MiB; per-ABI delivery remains an
-optimization. The Debian rootfs, other native CLI binaries and package-manager packages still come
-from outside Play. Their distribution is unresolved.
+ships pinned Alpine minirootfs, mandatory Alpine package caches and OpenCode archives for each ABI
+as Play-delivered assets, verifies SHA-256 before use, and limits OpenCode updates to the app-bundled
+version. The mandatory package installation uses `apk --no-network`, with Alpine-signed indexes and
+package signatures. Both ABI archives currently ship to every device; the two mandatory package
+caches add approximately 87 MiB. Optional developer tools, the Debian rootfs, other native CLI
+binaries and user-invoked package-manager packages still come from outside Play. Their distribution
+is unresolved. Alpine mirrors can remove old package builds, so maintainers must preserve a trusted
+source of every pinned archive or refresh and reverify the lock; a future clean build may otherwise
+fail even though existing APKs continue to work offline.
 Continue B/C feasibility experiments and seek a policy interpretation for native ELFs, package
 installation, and PRoot. If those approaches fail, evaluate E before F. Do not submit this scaffold.
 

@@ -15,4 +15,8 @@
     <string name="ai_report_success">تم إرسال البلاغ</string>
     <string name="ai_report_failure">تعذر الإرسال. تحقق من الاتصال وحساب GitHub وبيانات الاعتماد في النص.</string>
     <string name="ai_report_account_name">النشر باسم %1$s</string>
+    <string name="ai_report_private_warning">يُرسل البلاغ بشكل خاص إلى المشغل عبر Cloudflare الذي يعالج عنوان IP الخاص بك. يُحذف البلاغ بعد نحو 90 يوماً. أدخل نصاً راجعته فقط دون شفرة المصدر أو بيانات الاعتماد أو المعلومات الشخصية.</string>
+    <string name="ai_report_private_excerpt">مقتطف تمت مراجعته (مطلوب)</string>
+    <string name="ai_report_private_send">إرسال البلاغ</string>
+    <string name="ai_report_private_failure">تعذر الإرسال. تحقق من الاتصال وأزل بيانات الاعتماد من النص.</string>
 </resources>

@@ -2,6 +2,6 @@
 <resources>
     <string name="install_step_preparing_bundled_alpine">جارٍ إعداد بيئة Alpine المضمنة</string>
     <string name="install_step_preparing_bundled_opencode">جارٍ إعداد OpenCode المضمن</string>
-    <string name="setup_agent_opencode_desc_play">يتضمن التطبيق OpenCode. يتم تنزيل أدوات Linux إضافية أثناء الإعداد.</string>
+    <string name="setup_agent_opencode_desc_play">يتضمن التطبيق OpenCode وأدوات Linux المطلوبة. تُنزّل الأدوات الاختيارية بشكل منفصل.</string>
     <string name="opencode_play_update_note">هذا الإصدار مضمن في التطبيق. حدّث AndCode عبر Google Play للحصول على إصدار أحدث.</string>
 </resources>

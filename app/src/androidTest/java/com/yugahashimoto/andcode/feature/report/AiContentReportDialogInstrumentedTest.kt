@@ -66,4 +66,28 @@ class AiContentReportDialogInstrumentedTest {
         composeRule.onNodeWithText(composeRule.activity.getString(R.string.ai_report_account)).assertExists()
         assertNull(sent)
     }
+
+    @Test
+    fun privateReportingWorksWithoutGithubAccount() {
+        var sent: String? = null
+        composeRule.setContent {
+            MaterialTheme {
+                AiContentReportDialog(
+                    hasGitHubAccount = false,
+                    privateReportingEnabled = true,
+                    onSubmit = { _, excerpt ->
+                        sent = excerpt
+                        Result.success(Unit)
+                    },
+                    onDismiss = {},
+                )
+            }
+        }
+        composeRule.onNodeWithText(composeRule.activity.getString(R.string.ai_report_private_warning)).assertExists()
+        composeRule.onNode(hasSetTextAction()).performTextInput("reviewed private excerpt")
+        composeRule.onNodeWithText(composeRule.activity.getString(R.string.ai_report_private_send)).performClick()
+        composeRule.waitForIdle()
+        assertEquals("reviewed private excerpt", sent)
+        composeRule.onNodeWithText(composeRule.activity.getString(R.string.ai_report_success)).assertExists()
+    }
 }

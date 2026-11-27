@@ -1,4 +1,5 @@
 import java.io.File
+import java.net.URI
 import java.util.zip.ZipFile
 
 plugins {
@@ -42,6 +43,21 @@ val githubClientId =
 val generatedRuntimeAssets = rootProject.layout.buildDirectory.dir("generated/runtime-assets")
 val generatedRuntimeJni = rootProject.layout.buildDirectory.dir("generated/runtime-jni")
 val generatedPlayRuntimeAssets = rootProject.layout.buildDirectory.dir("generated/play-runtime-assets")
+val generatedPlayApkCacheAssets = rootProject.layout.buildDirectory.dir("generated/play-apk-cache-assets")
+val playReportEndpoint =
+    (
+        System.getenv(
+            "AND_CODE_PLAY_REPORT_ENDPOINT",
+        ) ?: findProperty("AND_CODE_PLAY_REPORT_ENDPOINT")?.toString() ?: ""
+    ).trim()
+if (playReportEndpoint.isNotEmpty()) {
+    val endpoint = URI(playReportEndpoint)
+    require(
+        endpoint.scheme == "https" && !endpoint.host.isNullOrBlank() && endpoint.userInfo == null && endpoint.query == null && endpoint.fragment == null && endpoint.path == "/v1/reports",
+    ) {
+        "AND_CODE_PLAY_REPORT_ENDPOINT must be an HTTPS URL ending in /v1/reports without credentials, query, or fragment"
+    }
+}
 
 val preparePlayRuntimeAssets =
     tasks.register<Exec>("preparePlayRuntimeAssets") {
@@ -56,6 +72,32 @@ val preparePlayRuntimeAssets =
             manifest.absolutePath,
             "--output-dir",
             generatedPlayRuntimeAssets.get().asFile.absolutePath,
+        )
+    }
+
+val preparePlayApkCache =
+    tasks.register<Exec>("preparePlayApkCache") {
+        val lock = repoRoot.resolve("runtime_tools/play-apk-cache.lock.json")
+        val indexes = repoRoot.resolve("runtime_tools/play-apk-indexes")
+        dependsOn(preparePlayRuntimeAssets)
+        inputs.file(lock)
+        inputs.dir(indexes)
+        inputs.dir(generatedPlayRuntimeAssets)
+        inputs.file(repoRoot.resolve("scripts/prepare_play_apk_cache.py"))
+        outputs.dir(generatedPlayApkCacheAssets)
+        commandLine(
+            "python3",
+            repoRoot.resolve("scripts/prepare_play_apk_cache.py").absolutePath,
+            "--lock",
+            lock.absolutePath,
+            "--indexes",
+            indexes.absolutePath,
+            "--base-assets",
+            generatedPlayRuntimeAssets.get().asFile.absolutePath,
+            "--output-dir",
+            generatedPlayApkCacheAssets.get().asFile.absolutePath,
+            "--cache-dir",
+            rootProject.layout.buildDirectory.dir("play-apk-downloads").get().asFile.absolutePath,
         )
     }
 
@@ -176,6 +218,7 @@ android {
         versionCode = 70
         versionName = "1.2.31"
         buildConfigField("String", "GITHUB_CLIENT_ID", "\"$githubClientId\"")
+        buildConfigField("String", "PLAY_REPORT_ENDPOINT", "\"\"")
 
         // The on-device runtime (see ANDROID_ABIS in scripts/prepare_android_runtime_native_libs.py)
         // only exists for these two ABIs. Without the filter JNA and Vosk drag in libraries for
@@ -240,6 +283,7 @@ android {
             dimension = "distribution"
             applicationIdSuffix = ".play"
             targetSdk = 36
+            buildConfigField("String", "PLAY_REPORT_ENDPOINT", "\"$playReportEndpoint\"")
             if (hasPlaySigning) signingConfig = signingConfigs.getByName("playRelease")
         }
     }
@@ -289,6 +333,7 @@ android {
         // Reuse the no-op diagnostics implementations; Play does not include Firebase.
         getByName("play").java.srcDir("src/fdroid/java")
         getByName("play").assets.srcDir(files(generatedPlayRuntimeAssets).builtBy(preparePlayRuntimeAssets))
+        getByName("play").assets.srcDir(files(generatedPlayApkCacheAssets).builtBy(preparePlayApkCache))
     }
     packaging {
         resources {
@@ -321,7 +366,7 @@ tasks.configureEach {
                 (name.startsWith("generate") && name.contains("Lint") && name.endsWith("Model"))
         )
     ) {
-        dependsOn(preparePlayRuntimeAssets)
+        dependsOn(preparePlayRuntimeAssets, preparePlayApkCache)
     }
 }
 

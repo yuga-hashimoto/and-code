@@ -9,6 +9,21 @@ permissions:
   contents: read
 
 jobs:
+  private-report-receiver:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/play-report-worker
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - run: npm test
+      - run: npm run check:deploy
+      - run: npm run test:integration
+
   validate:
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -20,7 +35,11 @@ jobs:
           java-version: '17'
       - uses: gradle/actions/setup-gradle@v4
       - name: Test bundled runtime asset verification
-        run: python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_runtime_assets.py'
+        run: |
+          python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_runtime_assets.py'
+          python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_apk_cache.py'
+          python3 -m unittest discover -s scripts/tests -p 'test_generate_play_apk_inventory.py'
+          python3 scripts/generate_play_apk_inventory.py --check
       - name: Static analysis, tests, lint, APK and AAB
         env:
           GITHUB_CLIENT_ID: ${{ vars.AND_CODE_GITHUB_CLIENT_ID }}
@@ -42,9 +61,10 @@ jobs:
           for flavor in ('play', 'github', 'fdroid'):
               apk = Path(f'app/build/outputs/apk/androidTest/{flavor}/debug/app-{flavor}-debug-androidTest.apk')
               with ZipFile(apk) as archive:
-                  found = any(b'PlayBundledAssetsInstrumentedTest' in archive.read(name)
-                              for name in archive.namelist() if name.endswith('.dex'))
-              assert found == (flavor == 'play'), (flavor, found)
+                  dex_files = [archive.read(name) for name in archive.namelist() if name.endswith('.dex')]
+                  for test in (b'PlayBundledAssetsInstrumentedTest', b'PlayOfflineInstallInstrumentedTest'):
+                      found = any(test in dex for dex in dex_files)
+                      assert found == (flavor == 'play'), (flavor, test, found)
           PY
       - name: Inspect merged Play manifest
         run: |
@@ -62,16 +82,21 @@ jobs:
           grep -Fx 'assets/play-runtime/x86_64/alpine.tgz' "$RUNNER_TEMP/play-apk-files.txt"
           grep -Fx 'assets/play-runtime/arm64-v8a/opencode.tgz' "$RUNNER_TEMP/play-apk-files.txt"
           grep -Fx 'assets/play-runtime/x86_64/opencode.tgz' "$RUNNER_TEMP/play-apk-files.txt"
+          grep -Fx 'assets/play-runtime/arm64-v8a/apk-cache.tgz' "$RUNNER_TEMP/play-apk-files.txt"
+          grep -Fx 'assets/play-runtime/x86_64/apk-cache.tgz' "$RUNNER_TEMP/play-apk-files.txt"
           python3 - <<'PY'
           import hashlib, json, zipfile
           manifest = json.load(open('app/src/play/assets/local-runtime-manifest.json'))
           with zipfile.ZipFile('app/build/outputs/apk/play/debug/app-play-debug.apk') as apk:
+              apk_cache_hashes = json.loads(apk.read('assets/play-runtime/apk-cache-hashes.json'))
               for abi in ('arm64-v8a', 'x86_64'):
-                  for name, key in (('alpine', 'alpineSha256'), ('opencode', 'openCodeSha256')):
+                  for name, expected in (('alpine', manifest['architectures'][abi]['alpineSha256']),
+                                         ('opencode', manifest['architectures'][abi]['openCodeSha256']),
+                                         ('apk-cache', apk_cache_hashes[abi])):
                       path = f'assets/play-runtime/{abi}/{name}.tgz'
                       assert apk.getinfo(path).compress_type == zipfile.ZIP_STORED
                       data = apk.read(path)
-                      assert hashlib.sha256(data).hexdigest() == manifest['architectures'][abi][key]
+                      assert hashlib.sha256(data).hexdigest() == expected
           PY
       - name: Verify release signing isolation
         run: python3 -m unittest discover -s scripts/tests -p 'test_play_signing_isolation.py'
@@ -108,3 +133,41 @@ jobs:
             app/build/intermediates/merged_manifests/playDebug/
             ${{ runner.temp }}/*.elf.txt
           if-no-files-found: warn
+
+  offline-runtime-x86-16k:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build Play APKs before disabling device networking
+        run: ./gradlew --max-workers=1 --no-parallel :app:assemblePlayDebug :app:assemblePlayDebugAndroidTest
+      - name: Enable KVM access
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Run offline setup on 16 KB x86_64 Android
+        uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
+        with:
+          api-level: 35
+          target: google_apis_ps16k
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim
+          script: |
+            adb shell getconf PAGE_SIZE | tr -d '\r' | grep -Fx 16384
+            adb shell cmd connectivity airplane-mode enable
+            adb shell svc wifi disable
+            adb shell svc data disable
+            for attempt in $(seq 1 30); do
+              if adb shell dumpsys connectivity | grep -q 'Active default network: none'; then break; fi
+              sleep 1
+            done
+            adb shell dumpsys connectivity | grep -q 'Active default network: none'
+            ./gradlew --max-workers=1 --no-parallel :app:connectedPlayDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.yugahashimoto.andcode.runtime.local.PlayOfflineInstallInstrumentedTest,com.yugahashimoto.andcode.runtime.local.PlayBundledAssetsInstrumentedTest

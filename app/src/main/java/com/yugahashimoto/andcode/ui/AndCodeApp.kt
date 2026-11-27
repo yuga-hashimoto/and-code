@@ -1346,18 +1346,27 @@ fun AndCodeApp(
                                 remember(app) {
                                     com.yugahashimoto.andcode.feature.report.AiContentReportClient(token = { app.settings.githubToken })
                                 }
+                            val privateAiReportClient =
+                                remember {
+                                    BuildConfig.PLAY_REPORT_ENDPOINT.takeIf { it.isNotBlank() }?.let {
+                                        com.yugahashimoto.andcode.feature.report.PrivateAiContentReportClient(
+                                            it,
+                                        ) { app.settings.githubToken }
+                                    }
+                                }
                             ChatHomeScreen(
                                 state = chatState,
                                 onSubmitAiReport =
                                     if (BuildConfig.FLAVOR == "play") {
                                         { reason, excerpt ->
-                                            aiContentReportClient.submit(reason, excerpt)
+                                            privateAiReportClient?.submit(reason, excerpt) ?: aiContentReportClient.submit(reason, excerpt)
                                         }
                                     } else {
                                         null
                                     },
                                 hasReportAccount = !app.settings.githubToken.isNullOrBlank(),
                                 reportAccountName = app.settings.githubLogin,
+                                privateReportingEnabled = privateAiReportClient != null,
                                 providers = settingsState.providers,
                                 agents = settingsState.agents,
                                 agentsLoading = settingsState.agentsLoading,

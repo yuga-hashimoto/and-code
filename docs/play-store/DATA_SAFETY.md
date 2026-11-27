@@ -8,7 +8,7 @@
 | Voice / camera | Voice recognition and QR capture when used; audit system/third-party services and in-app disclosure. |
 | Browser pages, screenshots, cookies | Guest browser/agent access and handoff need a full sensitive-data review. |
 | Analytics/crashes | Play scaffold uses no-op reporters and does not declare Firebase dependencies; verify merged artifact and transitive SDKs. GitHub behavior differs. |
-| Reporting | The experimental Play UI posts a public GitHub issue under the connected account. The user manually enters the excerpt and selects a reason; GitHub username, reason and excerpt are public. No transcript or attachments are automatically sent. Common credentials are rejected, but detection is incomplete. A GitHub account is required; availability to users without one and Play review remain open. |
+| Reporting | If configured, the private endpoint receives the manually entered excerpt and reason without an account; Cloudflare processes IP addresses and the operator retains reports approximately 90 days. Without it, the UI clearly identifies the existing public GitHub issue flow. No transcript or attachments are automatically sent. Credential detection is incomplete. The private service is not deployed or configured yet. |
 
 Use `docs/AUTHENTICATION_AND_DATA_FLOW.md`, `PRIVACY.md` and an artifact/network audit to complete
 actual Data safety answers. Update the published privacy policy before any Play submission.

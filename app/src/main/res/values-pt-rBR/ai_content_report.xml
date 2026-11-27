@@ -15,4 +15,8 @@
     <string name="ai_report_success">Denúncia enviada</string>
     <string name="ai_report_failure">Não foi possível enviar. Verifique a conexão, a conta do GitHub e credenciais no texto.</string>
     <string name="ai_report_account_name">Publicar como %1$s</string>
+    <string name="ai_report_private_warning">A denúncia é enviada em particular à equipe pelo Cloudflare, que processa seu endereço IP. Ela é excluída após cerca de 90 dias. Insira apenas texto revisado, sem código-fonte, credenciais ou dados pessoais.</string>
+    <string name="ai_report_private_excerpt">Trecho revisado (obrigatório)</string>
+    <string name="ai_report_private_send">Enviar denúncia</string>
+    <string name="ai_report_private_failure">Não foi possível enviar. Verifique a conexão e remova credenciais do texto.</string>
 </resources>

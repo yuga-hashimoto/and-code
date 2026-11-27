@@ -15,4 +15,8 @@
     <string name="ai_report_success">Denuncia enviada</string>
     <string name="ai_report_failure">No se pudo enviar. Revisa la conexión, la cuenta de GitHub y las credenciales en el texto.</string>
     <string name="ai_report_account_name">Publicar como %1$s</string>
+    <string name="ai_report_private_warning">El informe se envía de forma privada al equipo mediante Cloudflare, que procesa su dirección IP. Se elimina después de aproximadamente 90 días. Escriba solo texto revisado, sin código fuente, credenciales ni datos personales.</string>
+    <string name="ai_report_private_excerpt">Fragmento revisado (obligatorio)</string>
+    <string name="ai_report_private_send">Enviar informe</string>
+    <string name="ai_report_private_failure">No se pudo enviar. Compruebe la conexión y quite las credenciales del texto.</string>
 </resources>

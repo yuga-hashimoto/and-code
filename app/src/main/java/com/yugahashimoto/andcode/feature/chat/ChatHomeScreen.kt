@@ -286,6 +286,7 @@ fun ChatHomeScreen(
     onSubmitAiReport: (suspend (AiReportReason, String) -> Result<Unit>)? = null,
     hasReportAccount: Boolean = false,
     reportAccountName: String? = null,
+    privateReportingEnabled: Boolean = false,
     onOpenDrawer: () -> Unit,
     subagents: List<SubagentInfo> = emptyList(),
     onSubagentClick: (String) -> Unit = {},
@@ -985,6 +986,7 @@ fun ChatHomeScreen(
         AiContentReportDialog(
             hasGitHubAccount = hasReportAccount,
             gitHubAccountName = reportAccountName,
+            privateReportingEnabled = privateReportingEnabled,
             onSubmit = onSubmitAiReport,
             onDismiss = { showAiContentReport = false },
         )

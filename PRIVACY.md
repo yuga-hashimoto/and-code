@@ -216,13 +216,16 @@ service's terms.
 
 ## 12. Contact
 
-The experimental Play flavor offers an optional in-app report for an AI response. It creates a
-public issue in the AndCode GitHub repository using your connected GitHub account. Your GitHub
-username, selected reason, and the excerpt you explicitly enter are public. No conversation text,
-source files, attachments, or credentials are automatically included. The app blocks some common
-credential patterns, but detection is incomplete: review the excerpt and do not include personal
-information or secrets. GitHub processes the report under its own privacy terms; the repository
-maintainer reviews reports and may use them to improve safety. Reporting requires a GitHub account.
+The experimental Play flavor offers an optional in-app report for an AI response. When an operator
+configures the private report endpoint, the selected reason and the excerpt you explicitly enter are
+sent to the operator through Cloudflare Workers and D1. The operator's report database deletes entries
+approximately 90 days after receipt; Cloudflare may process the IP address and retain service or backup
+records under its own terms. Reports are reviewed by the operator to improve safety. No account is
+required. If the endpoint is not configured, the app instead offers a clearly labeled public GitHub
+issue using your connected account; your GitHub username, reason and entered excerpt are public.
+No conversation text, source files, attachments, or credentials are automatically included in either
+mode. The app blocks some common credential patterns, but detection is incomplete: review the excerpt
+and do not include personal information or secrets.
 
 This project is maintained on GitHub at
 [yuga-hashimoto/and-code](https://github.com/yuga-hashimoto/and-code). Open an issue there with

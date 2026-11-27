@@ -15,4 +15,8 @@
     <string name="ai_report_success">Report sent</string>
     <string name="ai_report_failure">Could not send. Check your connection, GitHub account and excerpt for credentials.</string>
     <string name="ai_report_account_name">Posting as %1$s</string>
+    <string name="ai_report_private_warning">The report is sent privately to the operator using Cloudflare. Cloudflare processes your IP address; reports are deleted after approximately 90 days. Enter only reviewed text without source code, credentials, or personal information.</string>
+    <string name="ai_report_private_excerpt">Reviewed excerpt (required)</string>
+    <string name="ai_report_private_send">Send report</string>
+    <string name="ai_report_private_failure">Could not send. Check your connection and remove any credentials from the text.</string>
 </resources>

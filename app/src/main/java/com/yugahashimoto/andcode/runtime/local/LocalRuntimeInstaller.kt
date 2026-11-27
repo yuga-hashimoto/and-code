@@ -197,16 +197,21 @@ class LocalRuntimeInstaller(
                         },
                     ),
                 )
-                installPackages(
-                    rootfs = rootfs,
-                    suite = commandSuite,
-                    packages =
-                        if (includeFullDevelopmentTools) {
-                            REQUIRED_RUNTIME_PACKAGES + OPTIONAL_DEVELOPMENT_PACKAGES
-                        } else {
-                            REQUIRED_RUNTIME_PACKAGES
-                        },
-                )
+                if (BuildConfig.FLAVOR == "play") {
+                    installPackages(rootfs, commandSuite, REQUIRED_RUNTIME_PACKAGES, bundled = true)
+                    if (includeFullDevelopmentTools) installPackages(rootfs, commandSuite, OPTIONAL_DEVELOPMENT_PACKAGES)
+                } else {
+                    installPackages(
+                        rootfs = rootfs,
+                        suite = commandSuite,
+                        packages =
+                            if (includeFullDevelopmentTools) {
+                                REQUIRED_RUNTIME_PACKAGES + OPTIONAL_DEVELOPMENT_PACKAGES
+                            } else {
+                                REQUIRED_RUNTIME_PACKAGES
+                            },
+                    )
+                }
                 if (LocalAgent.CLAUDE_CODE in requestedAgents) {
                     onClaude(0.93f, context.getString(R.string.install_step_installing_claude_code))
                     ClaudeCodeInstaller.installInto(rootfs, commandSuite, runtimeDirectory)
@@ -464,9 +469,22 @@ class LocalRuntimeInstaller(
         rootfs: File,
         suite: EmbeddedCommandSuite.Paths,
         packages: List<String>,
+        bundled: Boolean = false,
     ) {
         val prootTmp = File(runtimeDirectory, "proot-tmp").apply { mkdirs() }
-        val apkCache = File(runtimeDirectory, "cache/apk").apply { mkdirs() }
+        val apkCache =
+            if (bundled) {
+                val hashes = context.assets.open("play-runtime/apk-cache-hashes.json").bufferedReader().use { it.readText() }
+                File(runtimeDirectory, "cache/play-apk-$abi").also {
+                    PlayApkCache.prepare(
+                        openAsset = { context.assets.open("play-runtime/$abi/apk-cache.tgz") },
+                        expectedSha256 = JSONObject(hashes).getString(abi),
+                        destination = it,
+                    )
+                }
+            } else {
+                File(runtimeDirectory, "cache/apk").apply { mkdirs() }
+            }
         File(rootfs, "var/cache/apk").mkdirs()
         val command =
             listOf(
@@ -491,7 +509,7 @@ class LocalRuntimeInstaller(
                 "/bin/sh",
                 "-lc",
                 "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin " +
-                    "/sbin/apk --cache-dir /var/cache/apk add ${packages.joinToString(" ")} && " +
+                    "/sbin/apk ${if (bundled) "--no-network " else ""}--cache-dir /var/cache/apk add ${packages.joinToString(" ")} && " +
                     "/usr/sbin/update-ca-certificates",
             )
         val installLog =

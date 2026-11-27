@@ -15,4 +15,8 @@
     <string name="ai_report_success">Жалоба отправлена</string>
     <string name="ai_report_failure">Не удалось отправить. Проверьте сеть, аккаунт GitHub и наличие ключей в тексте.</string>
     <string name="ai_report_account_name">Публикация от имени %1$s</string>
+    <string name="ai_report_private_warning">Жалоба отправляется команде конфиденциально через Cloudflare, который обрабатывает ваш IP-адрес. Она удаляется примерно через 90 дней. Введите только проверенный текст без исходного кода, учётных данных и личной информации.</string>
+    <string name="ai_report_private_excerpt">Проверенный фрагмент (обязательно)</string>
+    <string name="ai_report_private_send">Отправить жалобу</string>
+    <string name="ai_report_private_failure">Не удалось отправить. Проверьте соединение и удалите учётные данные из текста.</string>
 </resources>

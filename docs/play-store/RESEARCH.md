@@ -30,9 +30,9 @@ approval of the same implementation in AndCode.
   android-shmem via `prepare_android_runtime_native_libs.py`. GitHub includes Firebase;
   F-Droid has no-op reporters. `app/src/main/AndroidManifest.xml` declares all-files access,
   microphone, camera, notification, boot, exact alarm, wake lock and special-use services.
-* `LocalRuntimeInstaller` uses Play-bundled verified Alpine and OpenCode archives (other flavors
-  download them), installs additional
-  tools, and invokes agent installers. `DebianRootfsInstaller`, `ClaudeCodeInstaller`,
+* `LocalRuntimeInstaller` uses Play-bundled verified Alpine, mandatory packages and OpenCode
+  archives (other flavors download them). Optional tools and other agent installers still download
+  executable content. `DebianRootfsInstaller`, `ClaudeCodeInstaller`,
   `CodexInstaller`, `AntigravityInstaller` and the update controllers introduce other executable
   sources. Some are version-resolved dynamically. See `docs/AUTHENTICATION_AND_DATA_FLOW.md`.
 * `VerifiedRuntimeDownloader` and `RuntimeArchive` verify and extract many assets; Codex uses npm
@@ -44,7 +44,7 @@ approval of the same implementation in AndCode.
   `RuntimeAutoStartReceiver` and `ScheduleAlarmReceiver` require Android 16 device testing.
 * Existing GitHub auth uses device flow; app-managed provider keys can be copied into the local
   OpenCode rootfs as plaintext for the CLI. `SecretRedaction` exists but a complete log audit is
-  still needed. Existing `PRIVACY.md` describes GitHub Firebase opt-in, not this Play variant.
+  still needed. `PRIVACY.md` and the in-app copy describe the separate Play reporting flow.
 * No direct app APK installer was found in the inspected paths; a complete self-update/link audit is
   still required. Runtime updates are separate from app updates.
 

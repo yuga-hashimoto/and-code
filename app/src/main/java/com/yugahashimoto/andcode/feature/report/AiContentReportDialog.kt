@@ -33,6 +33,7 @@ import kotlinx.coroutines.launch
 fun AiContentReportDialog(
     hasGitHubAccount: Boolean,
     gitHubAccountName: String? = null,
+    privateReportingEnabled: Boolean = false,
     onSubmit: suspend (AiReportReason, String) -> Result<Unit>,
     onDismiss: () -> Unit,
 ) {
@@ -50,10 +51,13 @@ fun AiContentReportDialog(
                 if (submitted) {
                     Text(stringResource(R.string.ai_report_success))
                 } else {
-                    Text(stringResource(R.string.ai_report_warning), color = MaterialTheme.colorScheme.error)
-                    if (!hasGitHubAccount) {
+                    Text(
+                        stringResource(if (privateReportingEnabled) R.string.ai_report_private_warning else R.string.ai_report_warning),
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                    if (!privateReportingEnabled && !hasGitHubAccount) {
                         Text(stringResource(R.string.ai_report_account), modifier = Modifier.padding(top = 8.dp))
-                    } else if (!gitHubAccountName.isNullOrBlank()) {
+                    } else if (!privateReportingEnabled && !gitHubAccountName.isNullOrBlank()) {
                         Text(stringResource(R.string.ai_report_account_name, gitHubAccountName), modifier = Modifier.padding(top = 8.dp))
                     }
                     Text(stringResource(R.string.ai_report_reason), modifier = Modifier.padding(top = 12.dp))
@@ -77,11 +81,20 @@ fun AiContentReportDialog(
                         value = excerpt,
                         onValueChange = { if (it.length <= AiContentReportClient.MAX_EXCERPT_LENGTH) excerpt = it },
                         modifier = Modifier.fillMaxWidth(),
-                        label = { Text(stringResource(R.string.ai_report_excerpt)) },
+                        label = {
+                            Text(
+                                stringResource(
+                                    if (privateReportingEnabled) R.string.ai_report_private_excerpt else R.string.ai_report_excerpt,
+                                ),
+                            )
+                        },
                         enabled = !sending,
                     )
                     if (failed) {
-                        Text(stringResource(R.string.ai_report_failure), color = MaterialTheme.colorScheme.error)
+                        Text(
+                            stringResource(if (privateReportingEnabled) R.string.ai_report_private_failure else R.string.ai_report_failure),
+                            color = MaterialTheme.colorScheme.error,
+                        )
                     }
                 }
             }
@@ -91,7 +104,7 @@ fun AiContentReportDialog(
                 TextButton(onClick = onDismiss) { Text(stringResource(R.string.close_description)) }
             } else {
                 TextButton(
-                    enabled = hasGitHubAccount && excerpt.isNotBlank() && !sending,
+                    enabled = (privateReportingEnabled || hasGitHubAccount) && excerpt.isNotBlank() && !sending,
                     onClick = {
                         sending = true
                         failed = false
@@ -107,7 +120,17 @@ fun AiContentReportDialog(
                     },
                 ) {
                     if (sending) CircularProgressIndicator(modifier = Modifier.padding(end = 8.dp))
-                    Text(stringResource(if (sending) R.string.ai_report_sending else R.string.ai_report_send))
+                    Text(
+                        stringResource(
+                            if (sending) {
+                                R.string.ai_report_sending
+                            } else if (privateReportingEnabled) {
+                                R.string.ai_report_private_send
+                            } else {
+                                R.string.ai_report_send
+                            },
+                        ),
+                    )
                 }
             }
         },

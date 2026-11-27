@@ -15,4 +15,8 @@
     <string name="ai_report_success">举报已发送</string>
     <string name="ai_report_failure">发送失败。请检查网络、GitHub 账号及文本中的凭据。</string>
     <string name="ai_report_account_name">发布账号：%1$s</string>
+    <string name="ai_report_private_warning">举报通过 Cloudflare 私下发送给运营方。Cloudflare 会处理您的 IP 地址；举报将在约 90 天后删除。请仅输入已检查的文字，不要包含源代码、凭据或个人信息。</string>
+    <string name="ai_report_private_excerpt">已检查的摘录（必填）</string>
+    <string name="ai_report_private_send">发送举报</string>
+    <string name="ai_report_private_failure">无法发送。请检查网络连接并移除文字中的凭据。</string>
 </resources>
