@@ -294,6 +294,22 @@ class RuntimeCatalogRepositoryTest {
 
     private fun cache() = ProviderCatalogCache(temporaryFolder.newFolder("cache"), Json { ignoreUnknownKeys = true })
 
+    private fun agentCache() = AgentCatalogCache(temporaryFolder.newFolder("agent-cache"), Json { ignoreUnknownKeys = true })
+
+    private fun repositoryWithAgentCache(
+        target: RuntimeTarget,
+        agentCache: AgentCatalogCache,
+        scope: TestScope,
+    ): RuntimeCatalogRepository {
+        val registry =
+            RuntimeRegistry(
+                store = FakeStore(selectedRuntimeId = "mac"),
+                localTarget = FakeTarget("local-android", RuntimeType.LOCAL),
+                remoteFactory = { target },
+            )
+        return RuntimeCatalogRepository(registry, scope, agentCache = agentCache)
+    }
+
     private fun repositoryWithCache(
         target: RuntimeTarget,
         providerCache: ProviderCatalogCache,
@@ -513,6 +529,83 @@ class RuntimeCatalogRepositoryTest {
             assertFalse(repository.state.value.agentsLoading)
         }
 
+    @Test
+    fun `cached agents are shown while a slow agent read is still running`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val cache = agentCache()
+            cache.write("mac", listOf(OpenCodeAgent("orchestrator", mode = "primary")))
+            val target = FakeTarget("mac")
+            val gate = CompletableDeferred<Unit>()
+            target.agentsGate = gate
+            val repository = repositoryWithAgentCache(target, cache, TestScope(dispatcher))
+
+            // A restarted local OpenCode installing its plugins: the read has not answered yet.
+            testScheduler.runCurrent()
+
+            assertEquals(listOf("orchestrator"), repository.state.value.agents.map { it.name })
+            assertFalse(repository.state.value.agentsLoading)
+            // The rest of the catalogue is done even though the agent read is still running.
+            assertFalse(repository.state.value.isRefreshing)
+
+            gate.complete(Unit)
+            advanceUntilIdle()
+
+            assertEquals(listOf("build"), repository.state.value.agents.map { it.name })
+            assertFalse(repository.state.value.agentsLoading)
+        }
+
+    @Test
+    fun `a successful agent read replaces the stored list`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val cache = agentCache()
+            cache.write("mac", listOf(OpenCodeAgent("stale", mode = "primary")))
+            val target = FakeTarget("mac")
+            val repository = repositoryWithAgentCache(target, cache, TestScope(dispatcher))
+
+            advanceUntilIdle()
+
+            assertEquals(listOf("build"), repository.state.value.agents.map { it.name })
+            assertEquals(listOf("build"), cache.read("mac")?.map { it.name })
+        }
+
+    @Test
+    fun `a failed agent read keeps the cached list`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val cache = agentCache()
+            cache.write("mac", listOf(OpenCodeAgent("orchestrator", mode = "primary")))
+            val target = FakeTarget("mac")
+            target.agentAnswers.add { error("plugin load failed") }
+            val repository = repositoryWithAgentCache(target, cache, TestScope(dispatcher))
+
+            advanceUntilIdle()
+
+            assertEquals(listOf("orchestrator"), repository.state.value.agents.map { it.name })
+            assertFalse(repository.state.value.agentsLoading)
+            // A failed read must not erase the list a later restart could show again.
+            assertEquals(listOf("orchestrator"), cache.read("mac")?.map { it.name })
+        }
+
+    @Test
+    fun `a failed connect keeps the cached agents`() =
+        runTest {
+            val dispatcher = StandardTestDispatcher(testScheduler)
+            val cache = agentCache()
+            cache.write("mac", listOf(OpenCodeAgent("orchestrator", mode = "primary")))
+            val target = FakeTarget("mac", connectError = IllegalStateException("offline"))
+            val repository = repositoryWithAgentCache(target, cache, TestScope(dispatcher))
+
+            advanceUntilIdle()
+
+            // A stopped runtime must not empty the mode chip and make the user wait for a connect.
+            assertEquals(listOf("orchestrator"), repository.state.value.agents.map { it.name })
+            assertFalse(repository.state.value.agentsLoading)
+            assertNull(repository.state.value.agentsError)
+            assertEquals("offline", repository.state.value.error)
+        }
+
     private class FakeStore(
         profiles: List<ConnectionProfile> = listOf(profileStatic("mac")),
         override var selectedRuntimeId: String? = null,
@@ -623,8 +716,12 @@ class RuntimeCatalogRepositoryTest {
         val agentAnswers = ArrayDeque<() -> List<OpenCodeAgent>>()
         var agentCalls = 0
 
+        /** Holds [listAgents] until a test wants to simulate a slow plugin install on the server. */
+        var agentsGate: CompletableDeferred<Unit>? = null
+
         override suspend fun listAgents(): List<OpenCodeAgent> {
             agentCalls++
+            agentsGate?.await()
             return agentAnswers.removeFirstOrNull()?.invoke() ?: listOf(OpenCodeAgent("build", mode = "primary"))
         }
 

@@ -21,6 +21,7 @@ import com.yugahashimoto.andcode.core.storage.DeviceStorage
 import com.yugahashimoto.andcode.core.storage.DeviceStorageAccess
 import com.yugahashimoto.andcode.core.util.debounceFalseEdge
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
+import com.yugahashimoto.andcode.data.repository.AgentCatalogCache
 import com.yugahashimoto.andcode.data.repository.AndroidRuntimeActivityMessages
 import com.yugahashimoto.andcode.data.repository.AndroidRuntimeCatalogMessages
 import com.yugahashimoto.andcode.data.repository.ProviderCatalogCache
@@ -532,20 +533,19 @@ class AndCodeApplication : Application() {
                 runtimeWork = runtimeWork,
                 messages = claudeMessages,
             )
+        val catalogCacheJson =
+            Json {
+                ignoreUnknownKeys = true
+                isLenient = true
+                encodeDefaults = true
+            }
+        val catalogCacheDir = File(filesDir, "catalog-cache")
         catalogRepository =
             RuntimeCatalogRepository(
                 registry = runtimeRegistry,
                 scope = applicationScope,
-                providerCache =
-                    ProviderCatalogCache(
-                        directory = File(filesDir, "catalog-cache"),
-                        json =
-                            Json {
-                                ignoreUnknownKeys = true
-                                isLenient = true
-                                encodeDefaults = true
-                            },
-                    ),
+                providerCache = ProviderCatalogCache(catalogCacheDir, catalogCacheJson),
+                agentCache = AgentCatalogCache(catalogCacheDir, catalogCacheJson),
                 messages = AndroidRuntimeCatalogMessages(this),
             )
         // Learns each recent chat's pull requests from its transcript, so the drawer can badge a
