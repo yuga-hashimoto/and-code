@@ -40,6 +40,7 @@ jobs:
           python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_apk_cache.py'
           python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_alpine_sources.py'
           python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_qemu_experiment.py'
+          python3 -m unittest discover -s scripts/tests -p 'test_check_play_guest_elf_alignment.py'
           python3 -m unittest discover -s scripts/tests -p 'test_run_play_offline_device_tests.py'
           python3 -m unittest discover -s scripts/tests -p 'test_generate_play_apk_inventory.py'
           python3 scripts/generate_play_apk_inventory.py --check
@@ -124,6 +125,12 @@ jobs:
             fi
             if [ "$status" -ne 0 ]; then exit "$status"; fi
           done
+      - name: Audit bundled Linux guest ELF alignment
+        run: |
+          python3 scripts/check_play_guest_elf_alignment.py \
+            --runtime build/generated/play-runtime-assets \
+            --cache build/generated/play-apk-cache-assets \
+            --output "$RUNNER_TEMP/play-guest-elf-alignment.json"
       - name: Save experimental artifacts and reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -135,6 +142,7 @@ jobs:
             app/build/reports/
             app/build/intermediates/merged_manifests/playDebug/
             ${{ runner.temp }}/*.elf.txt
+            ${{ runner.temp }}/play-guest-elf-alignment.json
           if-no-files-found: warn
 
   offline-runtime-x86-16k:
@@ -179,6 +187,7 @@ jobs:
             ${{ runner.temp }}/play-offline-instrumentation.txt
             ${{ runner.temp }}/qemu-experiment-version.txt
             ${{ runner.temp }}/qemu-experiment-install.txt
+            ${{ runner.temp }}/qemu-experiment-native-probe.txt
             ${{ runner.temp }}/qemu-experiment-server.txt
             ${{ runner.temp }}/qemu-experiment-health.txt
           if-no-files-found: ignore

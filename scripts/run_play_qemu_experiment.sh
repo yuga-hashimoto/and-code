@@ -29,9 +29,22 @@ base=$1
 apk_path=$(pm path com.yugahashimoto.andcode.play)
 apk_path=${apk_path#package:}
 native_dir=${apk_path%/base.apk}/lib/$(getprop ro.product.cpu.abi | sed 's/arm64-v8a/arm64/')
-export LD_LIBRARY_PATH="$native_dir:$base/lib" PROOT_LOADER="$native_dir/libopencode_android_proot_loader.so" PROOT_LOADER_32="$native_dir/libopencode_android_proot_loader32.so" PROOT_TMP_DIR="$base/tmp"
+export PROOT_FORCE_FOREIGN_BINARY=1 LD_LIBRARY_PATH="$native_dir:$base/lib" PROOT_LOADER="$native_dir/libopencode_android_proot_loader.so" PROOT_LOADER_32="$native_dir/libopencode_android_proot_loader32.so" PROOT_TMP_DIR="$base/tmp"
 "$native_dir/libopencode_android_proot.so" --kill-on-exit --link2symlink -0 -q "$base/qemu-x86_64" -r "$base/rootfs" -b /dev -b /proc -b /sys -w /root /bin/sh -lc '/sbin/apk --no-network --cache-dir /var/cache/apk add bash git curl wget jq openssh-client ripgrep ca-certificates libstdc++ android-tools python3 py3-pillow'
 DEVICE_SCRIPT
+cat > "$result_dir/qemu-experiment-native-probe.sh" <<'DEVICE_SCRIPT'
+#!/system/bin/sh
+set -eu
+base=$1
+apk_path=$(pm path com.yugahashimoto.andcode.play)
+apk_path=${apk_path#package:}
+native_dir=${apk_path%/base.apk}/lib/$(getprop ro.product.cpu.abi | sed 's/arm64-v8a/arm64/')
+export LD_LIBRARY_PATH="$native_dir" PROOT_LOADER="$native_dir/libopencode_android_proot_loader.so" PROOT_LOADER_32="$native_dir/libopencode_android_proot_loader32.so" PROOT_TMP_DIR="$base/tmp"
+"$native_dir/libopencode_android_proot.so" -v 9 --kill-on-exit --link2symlink -0 -r "$base/rootfs" -b /dev -b /proc -b /sys -w /root /bin/busybox echo native-proot-ok
+DEVICE_SCRIPT
+adb push "$result_dir/qemu-experiment-native-probe.sh" "$base/native-probe.sh" > /dev/null
+adb shell sh "$base/native-probe.sh" "$base" > "$result_dir/qemu-experiment-native-probe.txt" 2>&1 || true
+adb shell "export LD_LIBRARY_PATH='$base/lib'; '$base/qemu-x86_64' -U LD_LIBRARY_PATH -E HOME='$base/home' -E BUN_JSC_useJIT=false -L '$base/rootfs' '$base/rootfs/opencode' --version" > "$result_dir/qemu-experiment-version.txt" 2>&1 || true
 adb push "$result_dir/qemu-experiment-install.sh" "$base/install.sh" > /dev/null
 adb shell sh "$base/install.sh" "$base" > "$result_dir/qemu-experiment-install.txt" 2>&1
 grep -q '^OK:' "$result_dir/qemu-experiment-install.txt"

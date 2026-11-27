@@ -141,3 +141,10 @@ device operation. No Play submission or signing-key operation performed.
   with SIGSEGV within 10 seconds. The baseline release
   archive contained the same executable bytes and also crashed. This was an ARM-host cross-ABI
   experiment, not a fix, a Play-distributed component, or a substitute for the failing x86_64 test.
+- A full scan of the generated Alpine minirootfs, mandatory APK cache and OpenCode archive found
+  315 ELF files per ABI: 17 in the base, 297 in packages and one OpenCode executable. All 315 arm64
+  files passed the 16 KB LOAD-alignment and offset/address congruence checks; all 315 x86_64 files
+  had 4 KB LOAD alignment. `scripts/check_play_guest_elf_alignment.py` reproduces this audit and
+  returns a failure while the x86_64 guest binaries remain incompatible. Passing this static check
+  alone would not establish runtime compatibility.
+- On the x86_64 16 KB CI emulator, the regular offline install still terminated with signal 7. The first shell-UID QEMU diagnostic stopped before package installation; it therefore did not establish whether QEMU works on that host. The next diagnostic forces PRoot to route same-architecture ELFs through QEMU and collects a native PRoot trace.
