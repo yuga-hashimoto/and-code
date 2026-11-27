@@ -17,6 +17,10 @@ class PlayBundledAssetsInstrumentedTest {
         val manifest = LocalRuntimeManifestReader(context).read()
         val apkCacheHashes =
             context.assets.open("play-runtime/apk-cache-hashes.json").bufferedReader().use { JSONObject(it.readText()) }
+        val notices = context.assets.open("legal/oss_licenses.md").bufferedReader().use { it.readText() }
+        assertTrue(notices.contains("Bun 1.4.4 and JavaScriptCore"))
+        assertTrue(notices.contains("GNU LIBRARY GENERAL PUBLIC LICENSE"))
+        assertTrue(notices.contains("Version 2.1, February 1999"))
         for (abi in listOf("arm64-v8a", "x86_64")) {
             val architecture = manifest.architecture(abi)
             for (

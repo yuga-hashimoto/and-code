@@ -77,3 +77,45 @@ approval of the same implementation in AndCode.
   authentication terms or trademark rights.
 * None of these sources establishes blanket permission for Android PRoot, all OAuth uses, or
   bundling every proprietary CLI into an AAB.
+
+### OpenCode's embedded Bun and JavaScriptCore
+
+Both pinned arm64 and x86_64 OpenCode 1.19.6 binaries identify themselves internally as Bun 1.4.4 and commit
+`38afee6c8`. The upstream OpenCode `v1.19.6` source declares `bun@1.4.4` and compiles the CLI with
+`Bun.build`. Bun's [1.4.4 license file](https://github.com/oven-sh/bun/blob/38afee6c84fcf48c0edb2466aa4b27d287a59c30/LICENSE.md)
+states that Bun statically links LGPL-covered JavaScriptCore and describes relinking with a modified
+engine; it also lists other linked and bundled libraries. Its default [WebKit source revision](https://github.com/oven-sh/bun/blob/38afee6c84fcf48c0edb2466aa4b27d287a59c30/scripts/build/deps/webkit.ts)
+is `d6375c72affe0f70222cdcb45012b10f0bf3a9d5`, although an upstream build option can override it;
+the actual release binary's engine revision and complete build provenance have not been established.
+The referenced [JavaScriptCore COPYING.LIB](https://github.com/oven-sh/WebKit/blob/d6375c72affe0f70222cdcb45012b10f0bf3a9d5/Source/JavaScriptCore/COPYING.LIB)
+contains GNU Library GPL version 2. The Play-only OSS notice now includes Bun's license information, that LGPL-2.0 text, and the
+LGPL-2.1 text for Bun-linked components that upstream identifies under that license. This does not finish third-party notices, establish complete corresponding
+source, or demonstrate that users can relink the distributed OpenCode executable with modified
+JavaScriptCore; resolve those matters before publishing.
+
+### x86_64 Linux executables on a 16 KB Android environment
+
+The actual offline test on the Google APIs x86_64 16 KB emulator reached PRoot but its Alpine guest
+terminated with `SIGBUS`. The pinned x86_64 Alpine BusyBox, `apk`, musl loader and OpenCode have
+4 KB ELF LOAD alignment, and some BusyBox/musl segments have file offsets and virtual addresses
+that are incongruent modulo 16 KB. This is a strong compatibility concern, but the faulting
+instruction and exact cause are not yet isolated. Google explains that the [x86_64 16 KB emulator
+emulates the larger userspace page size](https://android-developers.googleblog.com/2024/08/adding-16-kb-page-size-to-android.html)
+and documents [16 KB ELF requirements and compatibility](https://developer.android.com/guide/practices/page-sizes).
+Android's app compatibility loader must not be assumed to repair Linux guest ELF binaries loaded by
+PRoot. Investigate 16 KB-compatible Alpine/musl/OpenCode builds or a verified compatible guest
+execution method, then rerun the unchanged end-to-end offline test. Do not waive the failing gate.
+
+An experimental QEMU-user path on the ARM64 16 KB emulator ran the x86_64 Alpine package install
+and Git through PRoot. The pinned OpenCode x86_64 binary returned its version only with Bun's JIT
+explicitly disabled, but its HTTP server crashed with SIGSEGV shortly after starting. This was a
+cross-ABI experiment on an ARM host, not a result from the x86_64 CI host; it is not suitable as a
+production fallback without further debugging, licensing review, app-UID execution, performance and
+end-to-end verification. The source build scripts and package output are not included in the app.
+
+The failing x86_64 CI job also prepares an optional, hash-pinned Termux QEMU research payload and,
+only after the original offline test fails, attempts a separate shell-UID experiment inside the
+disposable emulator. It keeps the original job failed even if the experiment works and captures
+version/server diagnostics. These research binaries are never included in the application or AAB.
+A successful shell experiment alone would not establish app-UID executability, security, performance,
+license compliance or compatibility of all agents.

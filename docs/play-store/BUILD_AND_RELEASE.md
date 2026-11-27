@@ -80,3 +80,10 @@ printf '%s  %s\n' 4fe1e51fba53e229bb50cab0065aa1def7306134f0ffa8bd4876b3db51bee0
 The snapshot includes upstream's MIT license and source lockfile, but it is not evidence that the
 release binaries were reproducibly built from the snapshot, and does not include all build tools or
 third-party dependency source and notices. Those still require examination before distribution.
+
+The OpenCode release binary identifies Bun 1.4.4. The matching upstream Bun tag resolves to commit
+`38afee6c84fcf48c0edb2466aa4b27d287a59c30`; an upstream source snapshot downloaded from
+`https://codeload.github.com/oven-sh/bun/tar.gz/38afee6c84fcf48c0edb2466aa4b27d287a59c30`
+had SHA-256 `64c0d268a6fa9f5e6e5ac40761dacb6b0825b2092f02cd07d772a9018f39e520`.
+Bun's source declares default WebKit revision `d6375c72affe0f70222cdcb45012b10f0bf3a9d5`; the
+exact revision and relinking materials for the delivered OpenCode executable still need verification.

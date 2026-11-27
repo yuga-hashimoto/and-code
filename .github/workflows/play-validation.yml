@@ -39,6 +39,7 @@ jobs:
           python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_runtime_assets.py'
           python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_apk_cache.py'
           python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_alpine_sources.py'
+          python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_qemu_experiment.py'
           python3 -m unittest discover -s scripts/tests -p 'test_run_play_offline_device_tests.py'
           python3 -m unittest discover -s scripts/tests -p 'test_generate_play_apk_inventory.py'
           python3 scripts/generate_play_apk_inventory.py --check
@@ -148,6 +149,9 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Build Play APKs before disabling device networking
         run: ./gradlew --max-workers=1 --no-parallel :app:assemblePlayDebug :app:assemblePlayDebugAndroidTest
+      - name: Prepare optional QEMU diagnostic, not shipped in the app
+        continue-on-error: true
+        run: python3 scripts/prepare_play_qemu_experiment.py --output build/play-qemu-experiment-x86
       - name: Enable KVM access
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -164,7 +168,7 @@ jobs:
           profile: pixel_2
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -no-audio -no-boot-anim
-          script: bash scripts/run_play_offline_device_tests.sh
+          script: bash scripts/run_play_offline_device_tests.sh || { if [ -f build/play-qemu-experiment-x86/qemu-x86_64 ]; then bash scripts/run_play_qemu_experiment.sh || true; fi; exit 1; }
       - name: Save offline test diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
@@ -173,4 +177,8 @@ jobs:
           path: |
             ${{ runner.temp }}/play-offline-logcat.txt
             ${{ runner.temp }}/play-offline-instrumentation.txt
+            ${{ runner.temp }}/qemu-experiment-version.txt
+            ${{ runner.temp }}/qemu-experiment-install.txt
+            ${{ runner.temp }}/qemu-experiment-server.txt
+            ${{ runner.temp }}/qemu-experiment-health.txt
           if-no-files-found: ignore

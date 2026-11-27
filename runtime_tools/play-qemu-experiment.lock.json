@@ -1,0 +1,227 @@
+{
+  "architecture": "x86_64",
+  "packages": [
+    {
+      "name": "argp",
+      "version": "1.5.0-1",
+      "filename": "pool/main/a/argp/argp_1.5.0-1_x86_64.deb",
+      "sha256": "7e6521f6bcb2bb76ab3db95c883fc70db536765a3f0d38fcbca3695a6d2ac60e"
+    },
+    {
+      "name": "gdbm",
+      "version": "1.26-1",
+      "filename": "pool/main/g/gdbm/gdbm_1.26-1_x86_64.deb",
+      "sha256": "af6c89b403d42a98898c665fc2c48da59a7d20e6e26f651a654790661844001f"
+    },
+    {
+      "name": "glib",
+      "version": "2.90.2",
+      "filename": "pool/main/g/glib/glib_2.90.2_x86_64.deb",
+      "sha256": "9e9b3523dcec6d532f6c9bb012a9fe1ddd5cf93cd4db5d50a5fa814c4cd281aa"
+    },
+    {
+      "name": "json-c",
+      "version": "0.19",
+      "filename": "pool/main/j/json-c/json-c_0.19_x86_64.deb",
+      "sha256": "3817e1da4df01e43bf471ece32a8ae36327a3e56e293ec140a722de9aeb3d672"
+    },
+    {
+      "name": "libandroid-posix-semaphore",
+      "version": "0.1-4",
+      "filename": "pool/main/liba/libandroid-posix-semaphore/libandroid-posix-semaphore_0.1-4_x86_64.deb",
+      "sha256": "4bde3f8bc00fa59761544593f0606a05e4b449801f1c79038c42ce66988d0eb0"
+    },
+    {
+      "name": "libandroid-shmem",
+      "version": "0.7",
+      "filename": "pool/main/liba/libandroid-shmem/libandroid-shmem_0.7_x86_64.deb",
+      "sha256": "ffa9e4c87467b158b148d0ff92dda796aa038276c2075af3269cdcdb06f25797"
+    },
+    {
+      "name": "libandroid-support",
+      "version": "29-1",
+      "filename": "pool/main/liba/libandroid-support/libandroid-support_29-1_x86_64.deb",
+      "sha256": "665900760c05959ec076082a0941f05bd452f301e5a70bdfa7383fd3404d44d5"
+    },
+    {
+      "name": "libbz2",
+      "version": "1.0.8-8",
+      "filename": "pool/main/libb/libbz2/libbz2_1.0.8-8_x86_64.deb",
+      "sha256": "f6f81d38a40c1626202da1e87727e5a3e6de296b1c0eb252af8948646b164ca0"
+    },
+    {
+      "name": "libc++",
+      "version": "30",
+      "filename": "pool/main/libc/libc++/libc++_30_x86_64.deb",
+      "sha256": "c9bcd9a8067a19c9c0e4893a72d314a2e37d6b67ce8dd05c67b9bbacad044b4f"
+    },
+    {
+      "name": "libcrypt",
+      "version": "0.2-6",
+      "filename": "pool/main/libc/libcrypt/libcrypt_0.2-6_x86_64.deb",
+      "sha256": "c424f96ce977cf2e8aa44925a852fd4c6c63564490a100cc44f63b71afd943e2"
+    },
+    {
+      "name": "libdw",
+      "version": "0.197",
+      "filename": "pool/main/libd/libdw/libdw_0.197_x86_64.deb",
+      "sha256": "09b39adff368fe66353df537b993a66ac0384c6e4eafb03a7577545cac64723f"
+    },
+    {
+      "name": "libelf",
+      "version": "0.197",
+      "filename": "pool/main/libe/libelf/libelf_0.197_x86_64.deb",
+      "sha256": "22446e45c0d033c3c020b02151bff4f72e21cfa49bf9b827b4242836ff0b25f1"
+    },
+    {
+      "name": "libevent",
+      "version": "2.1.13",
+      "filename": "pool/main/libe/libevent/libevent_2.1.13_x86_64.deb",
+      "sha256": "5d0a0913d0280d5c1a499b119c4867499e893056d1dec4bac29a7723545217ec"
+    },
+    {
+      "name": "libexpat",
+      "version": "2.11.0",
+      "filename": "pool/main/libe/libexpat/libexpat_2.11.0_x86_64.deb",
+      "sha256": "0e703576d59ac8bd4d3592786ac7932338fea8bdce032d052bf0edbc6dce8675"
+    },
+    {
+      "name": "libffi",
+      "version": "3.8.2",
+      "filename": "pool/main/libf/libffi/libffi_3.8.2_x86_64.deb",
+      "sha256": "f1163fccc2c7d51d0036c451b7e180215287aef4e768321b133f17f9de1b15bb"
+    },
+    {
+      "name": "libgmp",
+      "version": "6.3.0-2",
+      "filename": "pool/main/libg/libgmp/libgmp_6.3.0-2_x86_64.deb",
+      "sha256": "743e742d1d2900bffecf17e85487c830df871653bcdaede223425d2c62ac1b49"
+    },
+    {
+      "name": "libgnutls",
+      "version": "3.8.14",
+      "filename": "pool/main/libg/libgnutls/libgnutls_3.8.14_x86_64.deb",
+      "sha256": "2043951a25aabb28b5580964caf04402d2f32a445ece4619ea5a8c75132ecc44"
+    },
+    {
+      "name": "libiconv",
+      "version": "1.19.1",
+      "filename": "pool/main/libi/libiconv/libiconv_1.19.1_x86_64.deb",
+      "sha256": "3eb0c454676ad24d26c79601721b2eb3f9485c611ad0179fb86b17229344f46d"
+    },
+    {
+      "name": "libidn2",
+      "version": "2.3.8-1",
+      "filename": "pool/main/libi/libidn2/libidn2_2.3.8-1_x86_64.deb",
+      "sha256": "4f4f91f5bc8b7b215f153fb96808f75b55a86c6e8ec66ff3286b859cb6048500"
+    },
+    {
+      "name": "liblzma",
+      "version": "5.8.4",
+      "filename": "pool/main/libl/liblzma/liblzma_5.8.4_x86_64.deb",
+      "sha256": "100ea7503a0b9ecffa45e1f168d035651f2eb7aedbebe71dd21fc0da4a84ef16"
+    },
+    {
+      "name": "libnettle",
+      "version": "4.0+really3.10.2",
+      "filename": "pool/main/libn/libnettle/libnettle_4.0+really3.10.2_x86_64.deb",
+      "sha256": "e754086e59615e260bdb24b8000732a3eaedefa40c8c11e30a30a9c22877e815"
+    },
+    {
+      "name": "libnghttp2",
+      "version": "1.71.0",
+      "filename": "pool/main/libn/libnghttp2/libnghttp2_1.71.0_x86_64.deb",
+      "sha256": "9bc1791438de6380038835cbd10c9cede716212cc32e37eb54407cd24f6605d6"
+    },
+    {
+      "name": "libngtcp2",
+      "version": "1.26.0",
+      "filename": "pool/main/libn/libngtcp2/libngtcp2_1.26.0_x86_64.deb",
+      "sha256": "9a4ba347834cf4593cd80df9c9ad4caaf0486946ac0e1a812d10f0d712b5eae2"
+    },
+    {
+      "name": "libpixman",
+      "version": "0.46.4-1",
+      "filename": "pool/main/libp/libpixman/libpixman_0.46.4-1_x86_64.deb",
+      "sha256": "169e3ce2e2adf1cbb51c39fc7e7e2532f519b3e5362fef24e895d6c98e82a8f5"
+    },
+    {
+      "name": "libsqlite",
+      "version": "3.54.1-1",
+      "filename": "pool/main/libs/libsqlite/libsqlite_3.54.1-1_x86_64.deb",
+      "sha256": "497471806378934fec8a6f3b5db70cf52a3652828786a241e2e37eebc19112b0"
+    },
+    {
+      "name": "libtasn1",
+      "version": "4.21.0",
+      "filename": "pool/main/libt/libtasn1/libtasn1_4.21.0_x86_64.deb",
+      "sha256": "1680378db0b5350d563783eb29ffe7c2397e204c8ab031047cfc3316e61b879b"
+    },
+    {
+      "name": "libunbound",
+      "version": "1.26.2",
+      "filename": "pool/main/libu/libunbound/libunbound_1.26.2_x86_64.deb",
+      "sha256": "7b1f9155b69184e051d73ad68d82ae146a643fda5be084641b3edb17aedbffa7"
+    },
+    {
+      "name": "libunistring",
+      "version": "1.5",
+      "filename": "pool/main/libu/libunistring/libunistring_1.5_x86_64.deb",
+      "sha256": "261efedb55f20f18ea943a78f35d89791a4805e80684bdab39dc15a8f9a93af8"
+    },
+    {
+      "name": "ncurses",
+      "version": "6.6.20260307+really6.5.20250830",
+      "filename": "pool/main/n/ncurses/ncurses_6.6.20260307+really6.5.20250830_x86_64.deb",
+      "sha256": "3f30f53c6a41c8450d146d4d42611a44be6ba0a8de1e8bb4dc903109a5fc3ff1"
+    },
+    {
+      "name": "ncurses-ui-libs",
+      "version": "6.6.20260307+really6.5.20250830",
+      "filename": "pool/main/n/ncurses-ui-libs/ncurses-ui-libs_6.6.20260307+really6.5.20250830_x86_64.deb",
+      "sha256": "1193618e18f579eb86064e00648d80648eaec5da70c0a5b944ac1315d209d16e"
+    },
+    {
+      "name": "openssl",
+      "version": "1:3.6.5",
+      "filename": "pool/main/o/openssl/openssl_1:3.6.5_x86_64.deb",
+      "sha256": "540f144592d23d35672976e175ede1b5d8cf464f153f646df5d4e6dcd8491a15"
+    },
+    {
+      "name": "p11-kit",
+      "version": "0.26.6",
+      "filename": "pool/main/p/p11-kit/p11-kit_0.26.6_x86_64.deb",
+      "sha256": "6fa55cdc0fb71c3f805a2362427d2063d319309baa4e4c3e8b243c8d8894d607"
+    },
+    {
+      "name": "pcre2",
+      "version": "10.49",
+      "filename": "pool/main/p/pcre2/pcre2_10.49_x86_64.deb",
+      "sha256": "4a6f66ac12565342897ce9b5cd11ba8ce6fce1fd1a91ae679c3468d7fc2ee541"
+    },
+    {
+      "name": "qemu-user-x86-64",
+      "version": "1:11.1.3",
+      "filename": "pool/main/q/qemu-user-x86-64/qemu-user-x86-64_1:11.1.3_x86_64.deb",
+      "sha256": "7f72dcec852bb19fe273897127dfada565980f874119d5c53885396ee4c6c076"
+    },
+    {
+      "name": "readline",
+      "version": "8.3.6",
+      "filename": "pool/main/r/readline/readline_8.3.6_x86_64.deb",
+      "sha256": "e9684798d13ede05f785315f68d3ff739563db2abef0e73db4dc9b8e17ded368"
+    },
+    {
+      "name": "zlib",
+      "version": "1.4",
+      "filename": "pool/main/z/zlib/zlib_1.4_x86_64.deb",
+      "sha256": "55ab8f16e492d6ed03c2e2bf701af52cf54a313442dd7adedd3d6f3e3eba2e4f"
+    },
+    {
+      "name": "zstd",
+      "version": "1.6.0",
+      "filename": "pool/main/z/zstd/zstd_1.6.0_x86_64.deb",
+      "sha256": "ca9b36002f306ce1f442867f778276eb9c3b7ce81e5f9ef61c6e03efbaf6b041"
+    }
+  ]
+}

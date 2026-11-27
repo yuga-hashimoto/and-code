@@ -11,6 +11,9 @@ LOCK = ROOT / 'runtime_tools/play-apk-cache.lock.json'
 BASE_NOTICE = ROOT / 'app/src/main/assets/legal/oss_licenses.md'
 PLAY_NOTICE = ROOT / 'app/src/play/assets/legal/oss_licenses.md'
 DOCUMENTATION = ROOT / 'docs/play-store/ALPINE_PACKAGE_INVENTORY.md'
+BUN_LICENSE = ROOT / 'THIRD_PARTY_LICENSES/Bun-1.4.4.md'
+JSC_LICENSE = ROOT / 'THIRD_PARTY_LICENSES/LGPL-2.0-JavaScriptCore.txt'
+LGPL21_LICENSE = ROOT / 'THIRD_PARTY_LICENSES/LGPL-2.1-Bun.txt'
 
 
 def render(lock):
@@ -49,13 +52,24 @@ def render(lock):
     return '\n'.join(lines).rstrip() + '\n'
 
 
+def compose_play_notice(base, alpine, bun, jsc, lgpl21):
+    return (base.rstrip() + '\n\n' + alpine.rstrip() +
+            '\n\n# Bun 1.4.4 and JavaScriptCore\n\n'
+            'The Play-bundled OpenCode binary identifies Bun 1.4.4. Bun documents a statically linked\n'
+            'JavaScriptCore component; the notices below reproduce its upstream license information.\n'
+            'Full corresponding-source and relinking obligations remain under review.\n\n'
+            '## Bun upstream license information\n\n' + bun.rstrip() +
+            '\n\n## JavaScriptCore upstream LGPL text\n\n' + jsc.rstrip() +
+            '\n\n## LGPL 2.1 (Bun linked libraries)\n\n' + lgpl21.rstrip() + '\n')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
     content = render(json.loads(LOCK.read_text()))
     outputs = {
-        PLAY_NOTICE: BASE_NOTICE.read_text().rstrip() + '\n\n' + content,
+        PLAY_NOTICE: compose_play_notice(BASE_NOTICE.read_text(), content, BUN_LICENSE.read_text(), JSC_LICENSE.read_text(), LGPL21_LICENSE.read_text()),
         DOCUMENTATION: content,
     }
     for path, expected in outputs.items():

@@ -122,3 +122,22 @@ device operation. No Play submission or signing-key operation performed.
   workflow now installs APKs first, waits for a stable offline state, runs instrumentation directly,
   and captures logcat on failure. The same runner passed both tests locally on the 16 KB arm64 image;
   an x86_64 pass must still be established.
+- On the subsequent x86_64 16 KB GitHub emulator run, connectivity stayed disabled and the asset
+  integrity test passed, but the offline installer failed while executing its first Alpine command:
+  PRoot reported guest termination by signal 7 (`SIGBUS`). Inspection of the pinned x86_64 Alpine
+  BusyBox, `apk`, musl loader and OpenCode ELF program headers found 4 KB (`0x1000`) LOAD alignment;
+  in BusyBox and musl, at least one segment's file offset and virtual address are not congruent
+  modulo 16 KB. This is a plausible cause, not a confirmed faulting instruction or complete root
+  cause. The x86_64 16 KB local runtime remains broken and this CI gate must remain failing until
+  the binaries or execution mechanism are fixed and the same test passes.
+- The Play OSS notices were expanded with the upstream Bun 1.4.4 license information and the
+  JavaScriptCore LGPL-2.0 and Bun-linked LGPL-2.1 texts. The Play asset-integrity instrumented test
+  checks that the generated notice is present inside the APK; this is not a complete license audit.
+- As a local execution experiment only, Termux `qemu-user-x86-64` 11.1.3 (aarch64 Termux package SHA-256
+  `0ab9a9b0b1587c344eea1873cb2dd8c0d63f227fc5e5c3d4271adf9cb43e913f`) was run with PRoot on
+  the ARM64 16 KB emulator against the x86_64 Alpine rootfs. The 134 required package operations
+  completed offline and Git ran. The x86_64 OpenCode `--version` returned `1.19.6` only after
+  setting `BUN_JSC_useJIT=false`; `opencode serve` answered one health request, then crashed
+  with SIGSEGV within 10 seconds. The baseline release
+  archive contained the same executable bytes and also crashed. This was an ARM-host cross-ABI
+  experiment, not a fix, a Play-distributed component, or a substitute for the failing x86_64 test.
