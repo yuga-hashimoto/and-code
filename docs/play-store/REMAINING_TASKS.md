@@ -12,8 +12,9 @@ Do not submit the experimental Play flavor.
    The unconfigured build offers a clearly labeled public GitHub issue requiring an account.
 3. Complete the source and notice obligations for GPL and other packages in bundled Alpine and
    transitive components in the bundled OpenCode binaries before distribution. The exact Alpine
-   package, license and recipe inventory is available in `ALPINE_PACKAGE_INVENTORY.md`; it is not
-   a complete corresponding-source distribution.
+   package, license and recipe inventory is available in `ALPINE_PACKAGE_INVENTORY.md`. The source
+   generator can recreate 20 copyleft-declared Alpine recipe groups locally, but this subset is
+   neither a complete corresponding-source offer nor hosted for recipients.
 4. Audit and implement permission minimization, especially `MANAGE_EXTERNAL_STORAGE` and SAF;
    verify foreground, microphone, boot, exact-alarm and denial behavior on API 36.
 5. Verify each ELF and APK/AAB alignment, including PRoot, talloc, shmem, Vosk and JNA; test both

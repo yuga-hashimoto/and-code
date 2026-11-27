@@ -38,6 +38,7 @@ jobs:
         run: |
           python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_runtime_assets.py'
           python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_apk_cache.py'
+          python3 -m unittest discover -s scripts/tests -p 'test_prepare_play_copyleft_sources.py'
           python3 -m unittest discover -s scripts/tests -p 'test_generate_play_apk_inventory.py'
           python3 scripts/generate_play_apk_inventory.py --check
       - name: Static analysis, tests, lint, APK and AAB
@@ -151,6 +152,9 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+      - name: Check emulator action script syntax
+        run: |
+          ruby -ryaml -e 'y = YAML.load_file(".github/workflows/play-validation.yml"); s = y.fetch("jobs").fetch("offline-runtime-x86-16k").fetch("steps").find { |step| step["uses"]&.include?("android-emulator-runner") }.fetch("with").fetch("script"); s.lines.each { |line| abort "invalid shell line: #{line}" unless system("sh", "-n", "-c", line) }'
       - name: Run offline setup on 16 KB x86_64 Android
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2
         with:
@@ -165,9 +169,6 @@ jobs:
             adb shell cmd connectivity airplane-mode enable
             adb shell svc wifi disable
             adb shell svc data disable
-            for attempt in $(seq 1 30); do
-              if adb shell dumpsys connectivity | grep -q 'Active default network: none'; then break; fi
-              sleep 1
-            done
+            for attempt in $(seq 1 30); do if adb shell dumpsys connectivity | grep -q 'Active default network: none'; then break; fi; sleep 1; done
             adb shell dumpsys connectivity | grep -q 'Active default network: none'
             ./gradlew --max-workers=1 --no-parallel :app:connectedPlayDebugAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=com.yugahashimoto.andcode.runtime.local.PlayOfflineInstallInstrumentedTest,com.yugahashimoto.andcode.runtime.local.PlayBundledAssetsInstrumentedTest

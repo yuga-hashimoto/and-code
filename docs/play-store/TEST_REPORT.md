@@ -96,3 +96,16 @@ device operation. No Play submission or signing-key operation performed.
   174 MiB measurement above predates those caches.
 - The x86_64 16 KB emulator job has been added to CI; its result is not established by the arm64
   device tests above. The 32-bit PRoot loader and source/license completeness remain open.
+
+- The complete local regression command passed after the report-client change: Play release
+  APK/AAB and all three debug APKs built, Play lint and formatting passed, and each flavor ran
+  1,891 unit tests with no failures or errors. The root detekt task remained `NO-SOURCE`.
+- For the 20 Alpine recipe revisions selected by GPL/LGPL/MPL metadata, 189 APKBUILD-listed
+  source files matched SHA-512 and 191 aports recipe files matched both Git blob identity and
+  SHA-256. A fresh download into an empty cache produced a byte-identical archive with 381 regular-file entries
+  including the manifest and SHA-256 `a3fdde4698b4f06dba9d1396e64ca01c82b911a0baeebec8719af3336d8afadb`.
+  This local, unhosted Alpine subset does not establish complete license compliance.
+- The x86_64 16 KB CI image booted and reported a 16,384-byte page size, but the first run stopped
+  before instrumentation because the emulator action executed a multiline shell loop one line at a
+  time. The workflow was corrected and now checks each action script line with `sh -n`; the actual
+  x86_64 runtime result must be verified on the subsequent run.

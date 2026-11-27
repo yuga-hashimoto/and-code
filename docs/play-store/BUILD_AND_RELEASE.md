@@ -46,3 +46,22 @@ An operator with a reviewed Cloudflare deployment and moderation process can bui
 host. The URL is public configuration, not a secret. The build rejects non-HTTPS endpoints and URLs
 containing credentials, a query, or a fragment. A failed private submission does not fall back to a
 public report. See the receiver README for retention, operational requirements and local tests.
+
+### Recreate the Alpine copyleft source subset
+
+Run the following to collect the pinned Alpine build recipes and all sources listed in their
+`sha512sums` for bundled package origins declaring GPL, LGPL or MPL licenses:
+
+```sh
+python3 scripts/prepare_play_copyleft_sources.py \
+  --cache build/play-copyleft-source-cache \
+  --output build/play-alpine-copyleft-sources.tar.gz
+```
+
+The generator checks that its source groups match the bundled package lock, downloads from the
+pinned Alpine source mirror or the specific aports revision, validates recipe SHA-256 and Git blob
+identities, checks each upstream source SHA-512 against the recipe, and creates a deterministic
+archive. The source archive is a local build artifact and is neither shipped in the app nor hosted.
+It is a verified **subset**, not a complete corresponding-source offer or license notice: other
+Alpine and OpenCode dependencies, toolchain/build instructions, license-specific conditions, durable
+source availability and the actual distribution method still require review and implementation.
