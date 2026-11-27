@@ -55,6 +55,7 @@ class RuntimeCatalogRepository(
     private val registry: RuntimeRegistry,
     private val scope: CoroutineScope,
     private val providerCache: ProviderCatalogCache? = null,
+    private val agentCache: AgentCatalogCache? = null,
     private val messages: RuntimeCatalogMessages = RuntimeCatalogMessages,
 ) {
     private val mutableState = MutableStateFlow(RuntimeCatalogState(runtime = registry.selected.value))
@@ -70,6 +71,14 @@ class RuntimeCatalogRepository(
 
     val state: StateFlow<RuntimeCatalogState> = mutableState.asStateFlow()
     private val refreshMutex = Mutex()
+
+    /**
+     * The one load-time agent read in flight and the runtime it is for, so overlapping loads do not
+     * each start a plugin install. Separate from [refreshMutex] on purpose: a slow `GET /agent` must
+     * not hold up the rest of the catalogue or the next load.
+     */
+    private var agentRead: Pair<String, Job>? = null
+    private val agentReadLock = Any()
 
     /**
      * The one agent retry in flight and the runtime it is for, so repeated taps on an empty mode
@@ -202,6 +211,20 @@ class RuntimeCatalogRepository(
                 mutableState.update { it.copy(runtime = target, providers = cached) }
             }
 
+            // The agent list has the same wait, and a longer one: a restarted local OpenCode
+            // installs its plugins on the first `GET /agent`, which can take over a minute. Show the
+            // last list instead of a spinner for that whole window and let the read below replace
+            // it. Only fills an empty list, so a refresh never downgrades agents already on screen.
+            agentCache?.read(target.id)?.let { cached ->
+                mutableState.update { state ->
+                    if (state.runtime?.id == target.id && !state.agents.hasSelectableAgent()) {
+                        state.copy(agents = cached, agentsLoading = false)
+                    } else {
+                        state
+                    }
+                }
+            }
+
             // The local runtime is usually still starting when the app opens, so a single attempt
             // fails and nothing ever retried: the catalogue stayed empty until something else asked
             // for it, which is what made the model picker look slow.
@@ -212,49 +235,39 @@ class RuntimeCatalogRepository(
                 connection = target.connect()
             }
             if (connection.isFailure) {
-                mutableState.value =
+                mutableState.update { current ->
+                    // Keep the agent list this runtime already had - cached, or from before the
+                    // restart - so a stopped server does not empty the mode chip and force the user
+                    // to wait for the next connect before they can pick an agent again.
+                    val keptAgents = current.agentsFor(target)
                     RuntimeCatalogState(
                         runtime = target,
+                        agents = keptAgents,
                         isRefreshing = false,
+                        agentsLoading = false,
                         error = connection.exceptionOrNull().safeMessage(messages.connectionFailed),
                     )
+                }
                 return
             }
             mutableState.update {
                 if (it.runtime?.id == target.id) it.copy(health = connection.getOrNull()) else it
             }
 
+            // Started before the other reads, and on the repository scope rather than under the
+            // refresh lock: a local OpenCode installing its plugins can take over a minute on its
+            // first `GET /agent`, and sessions, providers and workspaces must publish without it.
+            // [readAgents] publishes the agents the moment they arrive and retries in the background.
+            startAgentRead(target)
+
             val catalog =
                 supervisorScope {
                     val sessions = async { runCatching { target.listSessions() } }
                     val providers = async { runCatching { target.listProviders() } }
-                    // The picker can use agents as soon as they arrive, even if a provider or
-                    // workspace request is still waiting on the runtime.
-                    val agents =
-                        async {
-                            runCatching { target.listAgents() }.also { result ->
-                                val list = result.getOrNull()
-                                if (registry.selected.value?.id == target.id) {
-                                    mutableState.update { state ->
-                                        if (state.runtime?.id != target.id) {
-                                            state
-                                        } else {
-                                            val completed = state.copy(agentsInitialReadPending = false)
-                                            if (list.hasSelectableAgent()) completed.withAgents(list.orEmpty()) else completed
-                                        }
-                                    }
-                                    if (!mutableState.value.agentsFor(target).hasSelectableAgent()) {
-                                        // Retry immediately; unrelated requests may remain in flight.
-                                        refreshAgents()
-                                    }
-                                }
-                            }
-                        }
                     val workspaces = async { runCatching { target.listWorkspaces() } }
                     LoadedCatalog(
                         sessions = sessions.await(),
                         providers = providers.await(),
-                        agents = agents.await(),
                         workspaces = workspaces.await(),
                     )
                 }
@@ -283,43 +296,25 @@ class RuntimeCatalogRepository(
                     }
                 }
             }
-            // Like the providers above: a read that failed or offered no agent to pick must not blank
-            // a list this runtime already showed, or a flaky `GET /agent` empties a working picker.
-            val loadedAgents = catalog.agents.getOrNull()
-            // Read and written in one update: a background agent retry can land between this load's
-            // fetch and its write, and taking the list from before that would put an empty one back.
+            // The agent list is not written here: [readAgents] owns it, so a slow or failed
+            // `GET /agent` can neither delay the rest of the catalogue nor blank a list on screen.
+            // Its last failure, if any, is folded back into the catalogue error so the existing
+            // "Agents: ..." line still shows while nothing selectable has arrived.
             mutableState.update { current ->
-                val agentsToUse =
-                    if (loadedAgents.hasSelectableAgent()) {
-                        loadedAgents.orEmpty()
-                    } else {
-                        current.agentsFor(target).ifEmpty { loadedAgents.orEmpty() }
-                    }
-                val agentsFound = agentsToUse.hasSelectableAgent()
-                // A list kept on screen - from an earlier load or a retry that already succeeded -
-                // carries no failure of its own, so neither the chip nor the "Agents: ..." line in
-                // the catalogue error reports this read's failure.
-                val readFailure = catalog.agentsFailure(messages)
-                val agentsFailure = readFailure.takeUnless { agentsFound && !loadedAgents.hasSelectableAgent() }
-                val errors = catalog.failures(messages).filterNot { agentsFailure == null && it == readFailure }
-                RuntimeCatalogState(
+                if (current.runtime?.id != target.id) return@update current
+                val agentsError = current.agentsError.takeIf { !current.agentsFor(target).hasSelectableAgent() }
+                val errors = (catalog.failures(messages) + listOfNotNull(agentsError)).distinct()
+                current.copy(
                     runtime = target,
                     health = connection.getOrNull(),
                     sessions = catalog.sessions.getOrDefault(emptyList()),
                     providers = providersToUse,
-                    agents = agentsToUse,
                     workspaces = catalog.workspaces.getOrDefault(emptyList()),
                     isRefreshing = false,
                     error = errors.takeIf { it.isNotEmpty() }?.joinToString("\n"),
-                    agentsError = agentsFailure,
-                    // Still loading when nothing selectable came back: the retry below takes over.
-                    agentsLoading = !agentsFound,
                 )
             }
         }
-        // Outside the lock: a local OpenCode installing its plugins can take tens of seconds per
-        // `GET /agent`, and the rest of the catalogue - and every other refresh - must not wait on it.
-        if (!mutableState.value.agentsFor(target).hasSelectableAgent()) refreshAgents()
     }
 
     /**
@@ -338,6 +333,70 @@ class RuntimeCatalogRepository(
             result = runCatching { target.listAgents() }
         }
         return result
+    }
+
+    /**
+     * One line, so [withAgents] can find it again in [RuntimeCatalogState.error]: decoding errors
+     * carry the JSON input on a second line, which a line-by-line removal would never match.
+     */
+    private fun agentsFailure(result: Result<List<OpenCodeAgent>>): String? =
+        result.exceptionOrNull()?.let {
+            messages.agents(it.safeMessage(messages.connectionFailed).replace(Regex("\\s*\\n\\s*"), " "))
+        }
+
+    /**
+     * Starts the one load-time agent read, replacing any read left over from another runtime.
+     *
+     * A local OpenCode installs its plugins on the first `GET /agent` after a start, which can take
+     * over a minute. That read runs outside the refresh lock so sessions, providers and workspaces
+     * publish (and the next load can start) while it is still running.
+     */
+    private fun startAgentRead(target: RuntimeTarget) {
+        synchronized(agentReadLock) {
+            val running = agentRead
+            if (running != null && running.second.isActive) {
+                // One read per runtime at a time: a repeated warmup must not stack plugin installs.
+                if (running.first == target.id) return
+                // A read left over from the runtime the user switched away from must not make the
+                // new runtime wait for it.
+                running.second.cancel()
+            }
+            agentRead = target.id to scope.launch { readAgents(target) }
+        }
+    }
+
+    /**
+     * Reads the agents once and publishes them the moment they answer. A read that offers nothing
+     * hands over to [refreshAgents]; a list already on screen is kept and not blamed for this
+     * read's failure.
+     */
+    private suspend fun readAgents(target: RuntimeTarget) {
+        if (registry.selected.value?.id != target.id) return
+        val result = runCatching { target.listAgents() }
+        val list = result.getOrNull()
+        // Keep the last good list for the next cold start, where the same read can take a
+        // minute again while the plugins install.
+        if (list.hasSelectableAgent()) agentCache?.write(target.id, list.orEmpty())
+        if (registry.selected.value?.id != target.id) return
+        val failure = agentsFailure(result)
+        mutableState.update { state ->
+            if (state.runtime?.id != target.id) {
+                state
+            } else {
+                val completed = state.copy(agentsInitialReadPending = false)
+                when {
+                    list.hasSelectableAgent() -> completed.withAgents(list.orEmpty())
+                    state.agents.hasSelectableAgent() -> completed
+                    else ->
+                        completed.copy(
+                            agentsLoading = true,
+                            agentsError = failure,
+                            error = appendError(completed.error, failure),
+                        )
+                }
+            }
+        }
+        if (!mutableState.value.agentsFor(target).hasSelectableAgent()) refreshAgents()
     }
 
     /**
@@ -377,6 +436,7 @@ class RuntimeCatalogRepository(
                 target.id to
                 scope.launch {
                     val list = loadAgents(target).getOrNull()?.takeIf { it.hasSelectableAgent() }
+                    list?.let { agentCache?.write(target.id, it) }
                     if (registry.selected.value?.id != target.id) return@launch
                     mutableState.update {
                         when {
@@ -394,23 +454,12 @@ class RuntimeCatalogRepository(
     private data class LoadedCatalog(
         val sessions: Result<List<OpenCodeSession>>,
         val providers: Result<ProviderCatalog>,
-        val agents: Result<List<OpenCodeAgent>>,
         val workspaces: Result<List<WorkspaceRef>>,
     ) {
-        /**
-         * One line, so [withAgents] can find it again in [RuntimeCatalogState.error]: decoding errors
-         * carry the JSON input on a second line, which a line-by-line removal would never match.
-         */
-        fun agentsFailure(messages: RuntimeCatalogMessages): String? =
-            agents.exceptionOrNull()?.let {
-                messages.agents(it.safeMessage(messages.connectionFailed).replace(Regex("\\s*\\n\\s*"), " "))
-            }
-
         fun failures(messages: RuntimeCatalogMessages): List<String> =
             listOfNotNull(
                 sessions.exceptionOrNull()?.let { messages.sessions(it.safeMessage(messages.connectionFailed)) },
                 providers.exceptionOrNull()?.let { messages.providers(it.safeMessage(messages.connectionFailed)) },
-                agentsFailure(messages),
                 workspaces.exceptionOrNull()?.let { messages.workspaces(it.safeMessage(messages.connectionFailed)) },
             )
     }
@@ -424,6 +473,15 @@ class RuntimeCatalogRepository(
 }
 
 private fun Throwable?.safeMessage(fallback: String): String = this?.message?.takeIf { it.isNotBlank() } ?: fallback
+
+/** [error] with [line] appended, skipping either when blank. Used to add one failure to a catalogue error. */
+private fun appendError(
+    error: String?,
+    line: String?,
+): String? =
+    listOfNotNull(error?.takeIf { it.isNotBlank() }, line?.takeIf { it.isNotBlank() })
+        .takeIf { it.isNotEmpty() }
+        ?.joinToString("\n")
 
 /**
  * The providers on screen, but only while the state still belongs to [target]: another runtime's
