@@ -5,8 +5,10 @@ import com.yugahashimoto.andcode.AndCodeApplication
 import com.yugahashimoto.andcode.core.api.GitHubApiClient
 import com.yugahashimoto.andcode.core.notification.RuntimeNotificationHelper
 import com.yugahashimoto.andcode.data.connection.SecureSettingsRepository
+import com.yugahashimoto.andcode.data.repository.AgentCatalogCache
 import com.yugahashimoto.andcode.data.repository.AndroidRuntimeActivityMessages
 import com.yugahashimoto.andcode.data.repository.AndroidRuntimeCatalogMessages
+import com.yugahashimoto.andcode.data.repository.ProviderCatalogCache
 import com.yugahashimoto.andcode.data.repository.PullRequestSessionStore
 import com.yugahashimoto.andcode.data.repository.PullRequestStatusRepository
 import com.yugahashimoto.andcode.data.repository.RuntimeActivityRepository
@@ -38,6 +40,7 @@ import com.yugahashimoto.andcode.runtime.local.VerifiedRuntimeDownloader
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import org.koin.android.ext.koin.androidContext
 import org.koin.dsl.module
@@ -207,7 +210,22 @@ val appModule =
         }
 
         single {
-            RuntimeCatalogRepository(get(), get(), messages = get<AndroidRuntimeCatalogMessages>())
+            // Keep this in step with AndCodeApplication's hand-built repository: the screens use
+            // that one today, but a Koin-resolved catalog must not lose the on-disk caches.
+            val cacheDir = File(androidContext().filesDir, "catalog-cache")
+            val cacheJson =
+                Json {
+                    ignoreUnknownKeys = true
+                    isLenient = true
+                    encodeDefaults = true
+                }
+            RuntimeCatalogRepository(
+                registry = get(),
+                scope = get(),
+                providerCache = ProviderCatalogCache(cacheDir, cacheJson),
+                agentCache = AgentCatalogCache(cacheDir, cacheJson),
+                messages = get<AndroidRuntimeCatalogMessages>(),
+            )
         }
 
         single {

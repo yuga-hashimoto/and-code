@@ -199,6 +199,7 @@ class RuntimeCatalogRepository(
                         runtime = target,
                         isRefreshing = true,
                         error = null,
+                        agentsError = null,
                         agentsLoading = !current.agents.hasSelectableAgent(),
                         agentsInitialReadPending = true,
                     )
