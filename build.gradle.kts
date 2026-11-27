@@ -29,6 +29,16 @@ tasks.withType<io.gitlab.arturbosch.detekt.Detekt>().configureEach {
     }
 }
 
+// Play CI checks application sources against the existing main-branch debt separately from
+// the root task, preserving the existing GitHub and F-Droid build configuration.
+tasks.register<io.gitlab.arturbosch.detekt.Detekt>("detektPlaySources") {
+    setSource(files("app/src/main/java", "app/src/play/java", "app/src/play/kotlin"))
+    include("**/*.kt", "**/*.kts")
+    config.setFrom(files("$rootDir/config/detekt/detekt.yml"))
+    baseline.set(file("$rootDir/config/detekt/play-baseline.xml"))
+    buildUponDefaultConfig = true
+}
+
 spotless {
     kotlin {
         target("**/*.kt")

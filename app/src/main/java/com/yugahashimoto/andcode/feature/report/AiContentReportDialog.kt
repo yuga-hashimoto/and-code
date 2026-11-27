@@ -51,32 +51,8 @@ fun AiContentReportDialog(
                 if (submitted) {
                     Text(stringResource(R.string.ai_report_success))
                 } else {
-                    Text(
-                        stringResource(if (privateReportingEnabled) R.string.ai_report_private_warning else R.string.ai_report_warning),
-                        color = MaterialTheme.colorScheme.error,
-                    )
-                    if (!privateReportingEnabled && !hasGitHubAccount) {
-                        Text(stringResource(R.string.ai_report_account), modifier = Modifier.padding(top = 8.dp))
-                    } else if (!privateReportingEnabled && !gitHubAccountName.isNullOrBlank()) {
-                        Text(stringResource(R.string.ai_report_account_name, gitHubAccountName), modifier = Modifier.padding(top = 8.dp))
-                    }
-                    Text(stringResource(R.string.ai_report_reason), modifier = Modifier.padding(top = 12.dp))
-                    AiReportReason.entries.forEach { item ->
-                        val label =
-                            when (item) {
-                                AiReportReason.HARMFUL -> R.string.ai_report_harmful
-                                AiReportReason.HARASSMENT -> R.string.ai_report_harassment
-                                AiReportReason.DECEPTIVE -> R.string.ai_report_deceptive
-                                AiReportReason.OTHER -> R.string.ai_report_other
-                            }
-                        Row(
-                            modifier = Modifier.fillMaxWidth().clickable(enabled = !sending) { reason = item },
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(selected = reason == item, onClick = { reason = item }, enabled = !sending)
-                            Text(stringResource(label))
-                        }
-                    }
+                    AiReportWarning(privateReportingEnabled, hasGitHubAccount, gitHubAccountName)
+                    AiReportReasons(reason, sending) { reason = it }
                     OutlinedTextField(
                         value = excerpt,
                         onValueChange = { if (it.length <= AiContentReportClient.MAX_EXCERPT_LENGTH) excerpt = it },
@@ -138,4 +114,46 @@ fun AiContentReportDialog(
             if (!submitted) TextButton(onClick = onDismiss, enabled = !sending) { Text(stringResource(R.string.cancel)) }
         },
     )
+}
+
+@Composable
+private fun AiReportWarning(
+    privateReportingEnabled: Boolean,
+    hasGitHubAccount: Boolean,
+    gitHubAccountName: String?,
+) {
+    Text(
+        stringResource(if (privateReportingEnabled) R.string.ai_report_private_warning else R.string.ai_report_warning),
+        color = MaterialTheme.colorScheme.error,
+    )
+    if (!privateReportingEnabled && !hasGitHubAccount) {
+        Text(stringResource(R.string.ai_report_account), modifier = Modifier.padding(top = 8.dp))
+    } else if (!privateReportingEnabled && !gitHubAccountName.isNullOrBlank()) {
+        Text(stringResource(R.string.ai_report_account_name, gitHubAccountName), modifier = Modifier.padding(top = 8.dp))
+    }
+}
+
+@Composable
+private fun AiReportReasons(
+    reason: AiReportReason,
+    sending: Boolean,
+    onSelect: (AiReportReason) -> Unit,
+) {
+    Text(stringResource(R.string.ai_report_reason), modifier = Modifier.padding(top = 12.dp))
+    AiReportReason.entries.forEach { item ->
+        val label =
+            when (item) {
+                AiReportReason.HARMFUL -> R.string.ai_report_harmful
+                AiReportReason.HARASSMENT -> R.string.ai_report_harassment
+                AiReportReason.DECEPTIVE -> R.string.ai_report_deceptive
+                AiReportReason.OTHER -> R.string.ai_report_other
+            }
+        Row(
+            modifier = Modifier.fillMaxWidth().clickable(enabled = !sending) { onSelect(item) },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RadioButton(selected = reason == item, onClick = { onSelect(item) }, enabled = !sending)
+            Text(stringResource(label))
+        }
+    }
 }

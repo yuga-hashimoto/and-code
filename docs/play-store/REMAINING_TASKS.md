@@ -35,5 +35,5 @@ Do not submit the experimental Play flavor.
    artifacts; fill REVIEW_GUIDE after the implementation is final.
 10. Complete required independent pre-PR review, CI, and PR workflow. Play Console registration,
    review submission and release are explicitly outside this task.
-11. Configure the existing root `detekt` task to analyze app sources without breaking existing
-    distribution builds. It currently reports `NO-SOURCE`; Android Lint does analyze Play code.
+11. Reduce and eventually remove the existing static-analysis baseline. Play CI now runs
+    `detektPlaySources` against application code; the unrelated root task still reports `NO-SOURCE`.

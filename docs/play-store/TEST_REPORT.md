@@ -148,3 +148,8 @@ device operation. No Play submission or signing-key operation performed.
   returns a failure while the x86_64 guest binaries remain incompatible. Passing this static check
   alone would not establish runtime compatibility.
 - On the x86_64 16 KB CI emulator, the regular offline install still terminated with signal 7. The first shell-UID QEMU diagnostic stopped before package installation; it therefore did not establish whether QEMU works on that host. The next diagnostic forces PRoot to route same-architecture ELFs through QEMU and collects a native PRoot trace.
+- `detektPlaySources` scans shared and Play Kotlin sources against a baseline rooted in the existing
+  main branch. A synthetic file with excessive returns caused the task to fail as expected; this verifies
+  the task detects new findings, not that baseline findings are resolved.
+- After extracting report form components, `detektPlaySources`, `spotlessCheck` and all 1,891 Play
+  unit tests passed. The report dialog's three instrumented tests passed on the ARM64 16 KB emulator.

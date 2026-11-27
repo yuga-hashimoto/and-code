@@ -5,7 +5,7 @@ The Play flavor is experimental and must not be uploaded or published. From the 
 ```sh
 ./gradlew :app:assemblePlayDebug :app:assemblePlayRelease :app:bundlePlayRelease \
   :app:testPlayDebugUnitTest :app:lintPlayDebug
-./gradlew detekt spotlessCheck
+./gradlew detektPlaySources spotlessCheck
 ./gradlew :app:testGithubDebugUnitTest :app:testFdroidDebugUnitTest
 ```
 
@@ -36,6 +36,15 @@ The experimental workflow runs on pull requests and fails on 64-bit ELF alignmen
 Use `bundletool validate --bundle=<path>` and build split APKs; verify manifests, ELF program
 headers and `zipalign -c -P 16 -v 4 <apk>` and test on both ABI/page-size combinations. Bundletool
 validation alone does not prove policy or runtime compatibility. No automatic Play upload is set up.
+
+### Play static analysis baseline
+
+`detektPlaySources` scans the shared application and Play-specific Kotlin source sets. Its baseline
+`config/detekt/play-baseline.xml` was generated from `origin/main` at
+`6ae7b5ba214d486ceab0db54e7606b24a5ec27e3`; six existing large-function findings whose signatures
+or complexity changed on this branch were retained as baseline debt. New findings still fail the task.
+The baseline does not mean its existing findings were fixed. The pre-existing root `detekt` task is
+unchanged for other workflows and currently has no application source configured.
 
 ### Optional private report endpoint
 

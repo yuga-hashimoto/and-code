@@ -52,7 +52,7 @@ jobs:
             echo '::warning::AND_CODE_GITHUB_CLIENT_ID is not set; GitHub sign-in and AI reports are unavailable in these artifacts.'
           fi
           # Concurrent Kotlin compilation of several flavors exhausted the hosted runner's heap.
-          ./gradlew --max-workers=1 --no-parallel detekt spotlessCheck \
+          ./gradlew --max-workers=1 --no-parallel detektPlaySources spotlessCheck \
             :app:assemblePlayDebug :app:assemblePlayRelease :app:bundlePlayRelease \
             :app:testPlayDebugUnitTest :app:lintPlayDebug \
             :app:testGithubDebugUnitTest :app:testFdroidDebugUnitTest \

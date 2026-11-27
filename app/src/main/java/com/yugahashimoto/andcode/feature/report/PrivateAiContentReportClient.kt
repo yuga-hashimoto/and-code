@@ -35,9 +35,10 @@ class PrivateAiContentReportClient(
         withContext(Dispatchers.IO) {
             val reviewed = excerpt.trim()
             val credential = knownCredential()?.takeIf { it.isNotBlank() }
-            if (reviewed.isEmpty() || reviewed.length > AiContentReportClient.MAX_EXCERPT_LENGTH ||
-                (credential != null && reviewed.contains(credential)) || SecretRedaction.redact(reviewed) != reviewed
-            ) {
+            val invalidLength = reviewed.isEmpty() || reviewed.length > AiContentReportClient.MAX_EXCERPT_LENGTH
+            val containsCredential = credential != null && reviewed.contains(credential)
+            val containsDetectedSecret = SecretRedaction.redact(reviewed) != reviewed
+            if (invalidLength || containsCredential || containsDetectedSecret) {
                 return@withContext Result.failure(IllegalArgumentException("Invalid excerpt"))
             }
             val body = JSONObject().put("reason", reason.name).put("excerpt", reviewed).toString()
