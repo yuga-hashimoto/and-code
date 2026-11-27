@@ -63,6 +63,7 @@ class PlayOfflineInstallInstrumentedTest {
                 assertEquals(output, 0, process.exitValue())
                 assertTrue(output, output.contains("git version"))
                 assertTrue(output, output.contains("1.19.6"))
+                assertEquals("Network must remain disconnected", null, connectivity.activeNetwork)
             } finally {
                 directory.deleteRecursively()
             }

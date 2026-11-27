@@ -47,21 +47,36 @@ host. The URL is public configuration, not a secret. The build rejects non-HTTPS
 containing credentials, a query, or a fragment. A failed private submission does not fall back to a
 public report. See the receiver README for retention, operational requirements and local tests.
 
-### Recreate the Alpine copyleft source subset
+### Recreate the Alpine package source bundle
 
 Run the following to collect the pinned Alpine build recipes and all sources listed in their
-`sha512sums` for bundled package origins declaring GPL, LGPL or MPL licenses:
+`sha512sums` for every bundled Alpine package origin:
 
 ```sh
-python3 scripts/prepare_play_copyleft_sources.py \
-  --cache build/play-copyleft-source-cache \
-  --output build/play-alpine-copyleft-sources.tar.gz
+python3 scripts/prepare_play_alpine_sources.py \
+  --cache build/play-alpine-source-cache \
+  --output build/play-alpine-sources.tar.gz
 ```
 
 The generator checks that its source groups match the bundled package lock, downloads from the
 pinned Alpine source mirror or the specific aports revision, validates recipe SHA-256 and Git blob
 identities, checks each upstream source SHA-512 against the recipe, and creates a deterministic
 archive. The source archive is a local build artifact and is neither shipped in the app nor hosted.
-It is a verified **subset**, not a complete corresponding-source offer or license notice: other
-Alpine and OpenCode dependencies, toolchain/build instructions, license-specific conditions, durable
+It is not a complete corresponding-source offer or license notice: OpenCode and other
+dependencies, toolchain/build instructions, license-specific conditions, durable
 source availability and the actual distribution method still require review and implementation.
+
+### Pinned OpenCode upstream source snapshot
+
+The bundled OpenCode release reports version `1.19.6`. Its upstream `v1.19.6` tag was resolved
+on 2026-11-27 to commit `f4e363c8295fa90a03dddc451882fffe8fbce357`. The unmodified upstream source
+snapshot can be obtained and checked as follows:
+
+```sh
+curl -fL https://codeload.github.com/anomalyco/opencode/tar.gz/f4e363c8295fa90a03dddc451882fffe8fbce357 -o opencode-1.19.6-source.tar.gz
+printf '%s  %s\n' 4fe1e51fba53e229bb50cab0065aa1def7306134f0ffa8bd4876b3db51bee0d0 opencode-1.19.6-source.tar.gz | shasum -a 256 -c -
+```
+
+The snapshot includes upstream's MIT license and source lockfile, but it is not evidence that the
+release binaries were reproducibly built from the snapshot, and does not include all build tools or
+third-party dependency source and notices. Those still require examination before distribution.

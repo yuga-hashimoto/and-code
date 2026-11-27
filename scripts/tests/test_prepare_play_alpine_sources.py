@@ -7,14 +7,23 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-spec = importlib.util.spec_from_file_location('sources', ROOT / 'scripts/prepare_play_copyleft_sources.py')
+spec = importlib.util.spec_from_file_location('sources', ROOT / 'scripts/prepare_play_alpine_sources.py')
 sources = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sources)
 
 
 class SourceBundleTest(unittest.TestCase):
-    def test_lock_covers_every_copyleft_package_revision(self):
-        source_lock = json.loads((ROOT / 'runtime_tools/play-copyleft-sources.lock.json').read_text())
+    def test_recipe_url_encodes_reserved_filename_characters(self):
+        url = sources.recipe_url('a' * 40, 'main', 'alpine-keys', 'user@example.org.rsa.pub')
+        self.assertTrue(url.endswith('/alpine-keys/user%40example.org.rsa.pub'))
+
+    def test_permissively_licensed_packages_are_included(self):
+        package = {'repository': 'main', 'origin': 'sample', 'aportsCommit': 'a' * 40, 'license': 'MIT'}
+        apk_lock = {'basePackages': [package], 'architectures': {}}
+        self.assertEqual({('main', 'sample', 'a' * 40)}, sources.eligible_groups(apk_lock))
+
+    def test_lock_covers_every_package_revision(self):
+        source_lock = json.loads((ROOT / 'runtime_tools/play-alpine-sources.lock.json').read_text())
         apk_lock = json.loads((ROOT / 'runtime_tools/play-apk-cache.lock.json').read_text())
         sources.verify_groups(source_lock, apk_lock)
         source_lock['groups'].pop()

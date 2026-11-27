@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Assemble pinned Alpine copyleft sources for the experimental Play runtime.
+"""Assemble pinned Alpine sources for the experimental Play runtime.
 
 This is evidence for a subset of bundled components, not a complete license compliance package.
 """
@@ -14,7 +14,7 @@ from pathlib import Path, PurePosixPath
 import re
 import tarfile
 import tempfile
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
 from urllib.request import HTTPRedirectHandler, build_opener
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,6 +35,10 @@ def validate_url(url):
     if (parsed.scheme != 'https' or parsed.hostname not in HOSTS or parsed.username or parsed.password or
             parsed.port not in (None, 443) or parsed.query or parsed.fragment):
         raise ValueError('Source URL must use an approved HTTPS host')
+
+
+def recipe_url(commit, repo, origin, relative):
+    return f'https://raw.githubusercontent.com/alpinelinux/aports/{commit}/{repo}/{origin}/{quote(str(relative), safe="/")}'
 
 
 class RestrictedRedirects(HTTPRedirectHandler):
@@ -76,8 +80,7 @@ def eligible_groups(apk_lock):
     for arch in apk_lock['architectures'].values():
         packages.extend(arch['packages'])
     for item in packages:
-        if any(license_id in item['license'].upper() for license_id in ('GPL', 'LGPL', 'MPL')):
-            groups.add((item['repository'], item['origin'], item['aportsCommit']))
+        groups.add((item['repository'], item['origin'], item['aportsCommit']))
     return groups
 
 
@@ -127,7 +130,7 @@ def prepare(lock, apk_lock, cache, output):
         base = Path(repo) / origin / commit
         for entry in group['recipeFiles']:
             rel = safe_path(entry['path'])
-            expected_url = f'https://raw.githubusercontent.com/alpinelinux/aports/{commit}/{repo}/{origin}/{rel}'
+            expected_url = recipe_url(commit, repo, origin, rel)
             if entry['url'] != expected_url:
                 raise ValueError('Recipe URL differs from pinned revision')
             tasks.append((entry['url'], base / 'recipe' / str(rel), 'sha256', entry['sha256']))
@@ -180,7 +183,7 @@ def prepare(lock, apk_lock, cache, output):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--lock', type=Path, default=ROOT / 'runtime_tools/play-copyleft-sources.lock.json')
+    parser.add_argument('--lock', type=Path, default=ROOT / 'runtime_tools/play-alpine-sources.lock.json')
     parser.add_argument('--apk-lock', type=Path, default=ROOT / 'runtime_tools/play-apk-cache.lock.json')
     parser.add_argument('--cache', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)

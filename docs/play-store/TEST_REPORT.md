@@ -107,5 +107,18 @@ device operation. No Play submission or signing-key operation performed.
   This local, unhosted Alpine subset does not establish complete license compliance.
 - The x86_64 16 KB CI image booted and reported a 16,384-byte page size, but the first run stopped
   before instrumentation because the emulator action executed a multiline shell loop one line at a
-  time. The workflow was corrected and now checks each action script line with `sh -n`; the actual
-  x86_64 runtime result must be verified on the subsequent run.
+  time. The workflow was corrected; the actual x86_64 runtime result must be verified on a
+  subsequent run.
+- The expanded Alpine source bundle covers all 62 pinned recipe revisions, with 315 recipe-listed
+  source files and 320 packaging files. Every source matched its APKBUILD SHA-512 and every recipe
+  file matched its pinned SHA-256 and Git blob identity. A fresh empty-cache download produced the
+  same 636-entry archive, SHA-256 `02be386876384273e2bff013d2a77a04dbbf405d666477c4a50a178549af5118`.
+  The archive is local and unhosted; it does not include OpenCode dependencies or settle all license
+  obligations. Two downloads of the OpenCode `v1.19.6` source commit matched SHA-256
+  `4fe1e51fba53e229bb50cab0065aa1def7306134f0ffa8bd4876b3db51bee0d0`; its MIT license matched the
+  existing bundled OpenCode license text. This is not proof of a reproducible release binary.
+- The next x86_64 CI run booted the 16 KB image, but the first test saw a default network after
+  Gradle installed the APKs; a subsequent instrumentation process crash also needs diagnosis. The
+  workflow now installs APKs first, waits for a stable offline state, runs instrumentation directly,
+  and captures logcat on failure. The same runner passed both tests locally on the 16 KB arm64 image;
+  an x86_64 pass must still be established.
