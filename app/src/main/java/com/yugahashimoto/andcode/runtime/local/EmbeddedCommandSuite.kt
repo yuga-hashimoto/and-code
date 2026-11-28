@@ -23,6 +23,7 @@ class EmbeddedCommandSuite(
                 "TMPDIR" to tmp.absolutePath,
                 "PATH" to "/system/bin:/system/xbin",
                 "LD_LIBRARY_PATH" to nativeLibraryDirectory.absolutePath,
+                "PROOT_TMP_DIR" to tmp.absolutePath,
                 "PROOT_LOADER" to loader.absolutePath,
                 "PROOT_LOADER_32" to loader32.absolutePath,
             )
